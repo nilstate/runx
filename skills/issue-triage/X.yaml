@@ -1,124 +1,324 @@
 skill: issue-triage
-version: "0.1.1"
+version: "0.3.1"
+
 catalog:
-  kind: skill
+  kind: graph
   audience: public
   visibility: public
-  role: context
-harness:
-  cases:
-    - name: issue-triage-discover-queue
-      runner: discover
-      inputs:
-        repository: runxhq/runx
-        query: find unanswered issues where a maintainer response would unblock progress
-        operator_context: Respond as a maintainer who prefers concise, factual
-          clarifications over speculative promises.
-      caller:
-        answers:
-          agent_task.issue-triage-discover.output:
-            issue_candidates:
-              - id: issue-241
-                title: Sourcey output path is unclear
-                reason: Repeated confusion and no maintainer reply yet
-            selection_rationale:
-              chosen_issue: issue-241
-              rationale: Small answer cost with high unblock potential.
-            operator_notes:
-              escalation: none
-              caveats:
-                - Confirm the current output directory contract before replying.
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-    - name: issue-triage-draft-response
-      runner: respond
-      inputs:
-        issue_url: https://github.com/runxhq/runx/issues/241
-        objective: Draft the next helpful maintainer response
-        maintainer_context: Respond as a maintainer who prefers concise, factual
-          clarifications over speculative promises.
-      caller:
-        answers:
-          agent_task.issue-triage-respond.output:
-            issue_profile:
-              title: Sourcey output path is unclear
-              state: open
-              summary: The docs mention two different output directories.
-            response_strategy:
-              stance: acknowledge and clarify
-              next_action: point to the canonical directory and note the doc fix in progress
-            response_draft:
-              channel: github_issue_comment
-              body: The canonical output directory is `.sourcey/runx-docs`; the conflicting
-                doc text is being corrected.
-            follow_up_actions:
-              - update docs
-              - add a regression test for the path contract
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-    - name: issue-triage-mcp-read
-      runner: mcp-read
-      env:
-        RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-issue-triage-read
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: repo.read
-      inputs:
-        repository: runxhq/runx
-        issue_number: "241"
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
+  role: canonical
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: none
+
+input_definitions:
+  repository:
+    type: string
+    required: true
+    description: GitHub repository as owner/name.
+    schema:
+      pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
+      examples: [runxhq/runx]
+  issue_number:
+    type: string
+    required: true
+    description: Positive GitHub issue number.
+    schema:
+      pattern: '^[1-9][0-9]*$'
+      examples: ['241']
+  issue_snapshot:
+    type: object
+    required: true
+    description: One bounded GitHub issue snapshot from a declared provider or supplied source.
+    schema:
+      required: [repository, number, title, state, body]
+      additionalProperties: false
+      properties:
+        repository: { type: string, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' }
+        number: { type: string, pattern: '^[1-9][0-9]*$' }
+        title: { type: string, minLength: 1, maxLength: 256, pattern: '^[^\u0000]+$' }
+        state: { type: string, enum: [open, closed] }
+        body: { type: string, maxLength: 20000, pattern: '^[^\u0000]*$' }
+        source_ref: { type: string, minLength: 1, maxLength: 1024 }
+  issue_snapshots:
+    type: array
+    required: true
+    description: One to 100 bounded GitHub issue snapshots from declared providers or supplied sources.
+    schema:
+      minItems: 1
+      maxItems: 100
+      items:
+        type: object
+        required: [repository, number, title, state, body]
+        additionalProperties: false
+        properties:
+          repository: { type: string, pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$' }
+          number: { type: string, pattern: '^[1-9][0-9]*$' }
+          title: { type: string, minLength: 1, maxLength: 256, pattern: '^[^\u0000]+$' }
+          state: { type: string, enum: [open, closed] }
+          body: { type: string, maxLength: 20000, pattern: '^[^\u0000]*$' }
+          source_ref: { type: string, minLength: 1, maxLength: 1024 }
+
 runners:
-  discover:
-    type: agent-task
-    agent: researcher
-    task: issue-triage-discover
-    outputs:
-      issue_candidates: array
-      selection_rationale: object
-      operator_notes: object
-    artifacts:
-      wrap_as: issue_triage_queue
-      packet: runx.issue.triage_queue.v1
+  provider-respond:
+    default: true
+    type: graph
     inputs:
-      repository:
+      repository: { definition: repository }
+      issue_number: { definition: issue_number }
+      objective:
         type: string
         required: false
-        description: Repository slug or local repo reference to inspect.
-      query:
-        type: string
-        required: true
-        description: Discovery objective for the issue queue.
+        description: Desired outcome for the draft response.
       maintainer_context:
         type: string
         required: false
-        description: Maintainer norms or project-specific constraints.
-      operator_context:
+        description: Repository norms, tone, and release posture.
+    examples:
+      - repository: runxhq/runx
+        issue_number: '241'
+        objective: Draft the next helpful maintainer response.
+    graph:
+      name: issue-triage-provider-respond
+      result_from: [finalize]
+      steps:
+        - id: read-issue
+          tool: provider.read
+          scopes:
+            - repo.read
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: issue.read
+            target: $input.repository
+            expected_provider: github
+            expected_result:
+              repository: $input.repository
+              number: $input.issue_number
+            result_fields: [repository, number, title, state, body]
+            input:
+              repository: $input.repository
+              issue_number: $input.issue_number
+
+        - id: digest-snapshot
+          tool: data.digest
+          context:
+            value: read-issue.provider_operation.data.result
+
+        - id: admit
+          context:
+            issue_snapshot: read-issue.provider_operation.data.result
+            provider_operation: read-issue.provider_operation.data
+            snapshot_digest: digest-snapshot.digest_result.data.digest
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: admitIssue
+            outputs:
+              issue_evidence: object
+          artifacts:
+            named_emits:
+              issue_evidence: issue_evidence
+
+        - id: draft
+          run:
+            type: agent-task
+            agent: builder
+            task: issue-triage-respond
+            outputs:
+              issue_profile: object
+              response_strategy: object
+              response_draft: object
+              follow_up_actions: array
+          inputs:
+            objective: $input.objective
+            maintainer_context: $input.maintainer_context
+          context:
+            issue_evidence: admit.issue_evidence.data
+
+        - id: finalize
+          context:
+            issue_evidence: admit.issue_evidence.data
+            issue_profile: draft.issue_profile
+            response_strategy: draft.response_strategy
+            response_draft: draft.response_draft
+            follow_up_actions: draft.follow_up_actions
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: finalizeResponse
+            outputs:
+              issue_triage_packet: object
+          artifacts:
+            named_emits:
+              issue_triage_packet: issue_triage_packet
+            packets:
+              issue_triage_packet: runx.issue.triage.v1
+
+  discover:
+    type: graph
+    inputs:
+      issue_snapshots: { definition: issue_snapshots }
+      query:
+        type: string
+        required: true
+        description: Selection objective for this bounded issue set.
+        schema:
+          minLength: 1
+          maxLength: 2000
+      maintainer_context:
         type: string
         required: false
-        description: Operator-supplied context for triage.
+        description: Repository norms and response constraints.
+    examples:
+      - query: Find unanswered issues where a maintainer response would unblock progress.
+        issue_snapshots:
+          - { repository: runxhq/runx, number: '241', title: Sourcey output path is unclear, state: open, body: The docs name two different output directories. }
+    graph:
+      name: issue-triage-discover
+      result_from: [finalize]
+      steps:
+        - id: digest-snapshots
+          tool: data.digest
+          inputs:
+            value: $input.issue_snapshots
+
+        - id: index
+          inputs:
+            issue_snapshots: $input.issue_snapshots
+            query: $input.query
+          context:
+            snapshot_digest: digest-snapshots.digest_result.data.digest
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: indexIssues
+            outputs:
+              issue_index: object
+          artifacts:
+            named_emits:
+              issue_index: issue_index
+
+        - id: select
+          run:
+            type: agent-task
+            agent: researcher
+            task: issue-triage-discover
+            outputs:
+              issue_candidates: array
+              selection_rationale: object
+          inputs:
+            maintainer_context: $input.maintainer_context
+          context:
+            issue_index: index.issue_index.data
+
+        - id: finalize
+          context:
+            issue_index: index.issue_index.data
+            issue_candidates: select.issue_candidates
+            selection_rationale: select.selection_rationale
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: finalizeDiscovery
+            outputs:
+              issue_triage_queue: object
+          artifacts:
+            named_emits:
+              issue_triage_queue: issue_triage_queue
+            packets:
+              issue_triage_queue: runx.issue.triage_queue.v1
+
+  respond:
+    type: graph
+    inputs:
+      issue_snapshot: { definition: issue_snapshot }
+      objective:
+        type: string
+        required: false
+        description: Desired outcome for the draft response.
+      maintainer_context:
+        type: string
+        required: false
+        description: Repository norms, tone, and release posture.
+    examples:
+      - issue_snapshot: { repository: runxhq/runx, number: '241', title: Sourcey output path is unclear, state: open, body: The docs name two different output directories. }
+        objective: Draft the next helpful maintainer response.
+    graph:
+      name: issue-triage-respond
+      result_from: [finalize]
+      steps:
+        - id: digest-snapshot
+          tool: data.digest
+          inputs:
+            value: $input.issue_snapshot
+
+        - id: admit
+          inputs:
+            issue_snapshot: $input.issue_snapshot
+          context:
+            snapshot_digest: digest-snapshot.digest_result.data.digest
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: admitIssue
+            outputs:
+              issue_evidence: object
+          artifacts:
+            named_emits:
+              issue_evidence: issue_evidence
+
+        - id: draft
+          run:
+            type: agent-task
+            agent: builder
+            task: issue-triage-respond
+            outputs:
+              issue_profile: object
+              response_strategy: object
+              response_draft: object
+              follow_up_actions: array
+          inputs:
+            objective: $input.objective
+            maintainer_context: $input.maintainer_context
+          context:
+            issue_evidence: admit.issue_evidence.data
+
+        - id: finalize
+          context:
+            issue_evidence: admit.issue_evidence.data
+            issue_profile: draft.issue_profile
+            response_strategy: draft.response_strategy
+            response_draft: draft.response_draft
+            follow_up_actions: draft.follow_up_actions
+          run:
+            type: javascript
+            module: issue-triage.mjs
+            export: finalizeResponse
+            outputs:
+              issue_triage_packet: object
+          artifacts:
+            named_emits:
+              issue_triage_packet: issue_triage_packet
+            packets:
+              issue_triage_packet: runx.issue.triage.v1
+
   mcp-read:
     type: graph
     inputs:
-      repository:
-        type: string
-        required: true
-        description: Repository slug to inspect through the governed MCP read path.
-      issue_number:
-        type: string
-        required: true
-        description: Issue number to inspect through the governed MCP read path.
+      repository: { definition: repository }
+      issue_number: { definition: issue_number }
+    examples:
+      - repository: runxhq/runx
+        issue_number: '241'
     graph:
       name: issue-triage-mcp-read
+      result_from: [read_issue]
       steps:
         - id: read_issue
           skill: ../../examples/github-mcp-hero/read-issue
-          scopes:
-            - repo.read
+          scopes: [repo.read]
           policy:
             provider_permission:
               grant_id: github-mcp-issue-triage-read
@@ -126,37 +326,3 @@ runners:
           inputs:
             repository: $input.repository
             issue_number: $input.issue_number
-  respond:
-    default: true
-    type: agent-task
-    agent: builder
-    task: issue-triage-respond
-    outputs:
-      issue_profile: object
-      response_strategy: object
-      response_draft: object
-      follow_up_actions: array
-    artifacts:
-      wrap_as: issue_triage_packet
-      packet: runx.issue.triage.v1
-    inputs:
-      issue_url:
-        type: string
-        required: false
-        description: Canonical issue URL when available.
-      issue_snapshot:
-        type: json
-        required: false
-        description: Structured issue snapshot or prior discovery output.
-      objective:
-        type: string
-        required: false
-        description: What the operator wants from the drafted response.
-      maintainer_context:
-        type: string
-        required: false
-        description: Repository norms, tone guidance, or release posture.
-      operator_context:
-        type: string
-        required: false
-        description: Operator-supplied context for triage.

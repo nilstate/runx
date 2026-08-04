@@ -2,13 +2,20 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 use runx_contracts::{
     FanoutReceiptDecision, FanoutReceiptStrategy, FanoutReceiptSyncPoint, JsonObject, JsonValue,
 };
 use runx_core::state_machine::{GraphStatus, GraphStepStatus};
+use runx_parser::SkillSource;
 use runx_receipts::validate_receipt_tree;
-use runx_runtime::{RUNX_MAX_FANOUT_CONCURRENCY_ENV, Runtime, RuntimeError, RuntimeOptions};
+use runx_runtime::{
+    InvocationOutput, RUNX_CWD_ENV, RUNX_MAX_FANOUT_CONCURRENCY_ENV, Runtime, RuntimeError,
+    RuntimeOptions, SkillAdapter, SkillInvocation,
+};
 use serde::Deserialize;
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
@@ -47,9 +54,8 @@ struct ExpectedStep {
     attempt: Option<u32>,
     fanout_group: Option<String>,
     #[serde(default)]
-    stdout: String,
-    #[serde(default)]
-    stderr: String,
+    contract: JsonObject,
+    failure: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -115,6 +121,39 @@ fn fanout_parallel_cli_tool_mode_preserves_plan_order() -> Result<(), Box<dyn st
 }
 
 #[test]
+fn fanout_scheduler_keeps_slots_saturated_across_uneven_jobs()
+-> Result<(), Box<dyn std::error::Error>> {
+    let directory = tempfile::tempdir()?;
+    write_saturation_fixture(directory.path(), 8)?;
+    let state = SaturationState::default();
+    let adapter = SaturationAdapter {
+        state: state.clone(),
+    };
+    let mut options = fixture_runtime_options();
+    options
+        .env
+        .insert(RUNX_MAX_FANOUT_CONCURRENCY_ENV.to_owned(), "4".to_owned());
+
+    let run =
+        Runtime::new(adapter, options).run_graph_file(&directory.path().join("graph.yaml"))?;
+
+    assert_eq!(
+        run.steps
+            .iter()
+            .map(|step| step.step_id.as_str())
+            .collect::<Vec<_>>(),
+        (0..8)
+            .map(|index| format!("branch_{index}"))
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        state.opened_at.load(Ordering::Acquire) >= 5,
+        "the slow first branch opened before a later job reused an available slot"
+    );
+    Ok(())
+}
+
+#[test]
 fn fanout_quorum_continue_tolerates_failed_branch() -> Result<(), Box<dyn std::error::Error>> {
     let expected = fixture()?.quorum_continue;
     let run = run_fixture_graph_file(Path::new("../../fixtures/graphs/fanout/graph.yaml"))?;
@@ -136,7 +175,7 @@ fn fanout_threshold_pause_blocks_followup() -> Result<(), Box<dyn std::error::Er
     let expected = fixture()?.threshold_pause;
     let error =
         match run_fixture_graph_file(Path::new("../../fixtures/graphs/fanout/threshold.yaml")) {
-            Ok(_) => return Err("threshold fanout should pause".into()),
+            Ok(run) => return Err(format!("threshold fanout should pause: {run:#?}").into()),
             Err(error) => error,
         };
 
@@ -246,11 +285,19 @@ fn fanout_runtime_error_branch_records_failure_and_continues()
     assert_step_state(&run, "missing", GraphStepStatus::Failed)?;
     assert_step_state(&run, "risk", GraphStepStatus::Succeeded)?;
     assert_step_state(&run, "synthesize", GraphStepStatus::Succeeded)?;
+    let missing_step = run
+        .steps
+        .iter()
+        .find(|step| step.step_id == "missing")
+        .ok_or("missing fanout branch result")?;
+    let failure = missing_step
+        .outcome
+        .failure_message()
+        .ok_or("missing fanout branch failure diagnostic")?;
     assert!(
-        run.steps
-            .iter()
-            .find(|step| step.step_id == "missing")
-            .is_some_and(|step| step.output.stderr.contains("skill file is missing"))
+        failure.contains("runtime I/O failed while reading")
+            && failure.contains("skills/not-found"),
+        "unexpected missing-branch error: {failure}"
     );
     assert_eq!(run.sync_points.len(), 1);
     assert_eq!(run.sync_points[0].decision, FanoutReceiptDecision::Proceed);
@@ -279,12 +326,12 @@ fn fanout_successful_retry_feeds_downstream_with_latest_outputs()
             .collect::<Vec<_>>(),
         vec![(1, "failure"), (2, "success")]
     );
-    assert!(
-        run.steps
-            .iter()
-            .find(|step| step.step_id == "downstream")
-            .is_some_and(|step| step.output.stdout == "fresh")
-    );
+    assert_output(
+        &run,
+        "downstream",
+        "message.data",
+        JsonValue::String("fresh".to_owned()),
+    )?;
     assert_terminal_receipt_child(&run, "flaky", 2)?;
     assert_receipt_tree(&run);
     Ok(())
@@ -309,14 +356,108 @@ fn sequential_successful_retry_feeds_downstream_with_latest_outputs()
             .collect::<Vec<_>>(),
         vec![(1, "failure"), (2, "success")]
     );
-    assert!(
-        run.steps
-            .iter()
-            .find(|step| step.step_id == "downstream")
-            .is_some_and(|step| step.output.stdout == "fresh")
-    );
+    assert_output(
+        &run,
+        "downstream",
+        "message.data",
+        JsonValue::String("fresh".to_owned()),
+    )?;
     assert_terminal_receipt_child(&run, "flaky", 2)?;
     Ok(())
+}
+
+#[derive(Clone, Default)]
+struct SaturationState {
+    started: Arc<(Mutex<usize>, Condvar)>,
+    opened_at: Arc<AtomicUsize>,
+}
+
+#[derive(Clone)]
+struct SaturationAdapter {
+    state: SaturationState,
+}
+
+impl SkillAdapter for SaturationAdapter {
+    fn adapter_type(&self) -> &'static str {
+        "fanout-saturation-test"
+    }
+
+    fn invoke(&self, request: SkillInvocation) -> Result<InvocationOutput, RuntimeError> {
+        let branch = request
+            .inputs
+            .get("branch")
+            .and_then(JsonValue::as_str)
+            .ok_or_else(|| RuntimeError::SkillFailed {
+                skill_name: request.skill_name.clone(),
+                message: "branch input is missing".to_owned(),
+            })?;
+        let (started, available) = &*self.state.started;
+        let mut count = started.lock().map_err(|_| RuntimeError::SkillFailed {
+            skill_name: request.skill_name.clone(),
+            message: "saturation test state was poisoned".to_owned(),
+        })?;
+        *count += 1;
+        available.notify_all();
+        if branch == "0" {
+            let deadline = Instant::now() + Duration::from_millis(500);
+            while *count < 5 {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return Err(RuntimeError::SkillFailed {
+                        skill_name: request.skill_name,
+                        message: "fanout worker slots stopped at a chunk barrier".to_owned(),
+                    });
+                }
+                let waited = available.wait_timeout(count, remaining).map_err(|_| {
+                    RuntimeError::SkillFailed {
+                        skill_name: request.skill_name.clone(),
+                        message: "saturation test wait was poisoned".to_owned(),
+                    }
+                })?;
+                count = waited.0;
+            }
+            self.state.opened_at.store(*count, Ordering::Release);
+        }
+        drop(count);
+        Ok(InvocationOutput::runtime_success(
+            JsonValue::Object(JsonObject::new()),
+            0,
+            JsonObject::new(),
+        ))
+    }
+
+    fn isolated_fanout_adapter(
+        &self,
+        _source: &SkillSource,
+    ) -> Option<Box<dyn SkillAdapter + Send + Sync>> {
+        Some(Box::new(self.clone()))
+    }
+}
+
+fn write_saturation_fixture(root: &Path, branches: usize) -> Result<(), std::io::Error> {
+    let worker = root.join("worker");
+    fs::create_dir_all(&worker)?;
+    fs::write(
+        worker.join("SKILL.md"),
+        "---\nname: fanout-saturation-worker\ndescription: Exercise bounded fanout scheduling.\n---\n\n# Fanout saturation worker\n",
+    )?;
+    fs::write(
+        worker.join("X.yaml"),
+        "skill: fanout-saturation-worker\nrunners:\n  run:\n    default: true\n    type: cli-tool\n    command: never-executed\n    inputs:\n      branch:\n        type: string\n        required: true\n",
+    )?;
+    let steps = (0..branches)
+        .map(|index| {
+            format!(
+                "  - id: branch_{index}\n    mode: fanout\n    fanout_group: workers\n    skill: ./worker\n    inputs:\n      branch: \"{index}\"\n"
+            )
+        })
+        .collect::<String>();
+    fs::write(
+        root.join("graph.yaml"),
+        format!(
+            "name: fanout-saturation\nfanout:\n  groups:\n    workers:\n      strategy: all\n      on_branch_failure: halt\nsteps:\n{steps}"
+        ),
+    )
 }
 
 fn fixture() -> Result<FanoutFixture, serde_json::Error> {
@@ -336,9 +477,14 @@ fn run_fixture_graph_file(
 }
 
 fn fixture_runtime_options() -> RuntimeOptions {
+    let mut env = std::env::vars().collect::<std::collections::BTreeMap<_, _>>();
+    env.insert(
+        RUNX_CWD_ENV.to_owned(),
+        env!("CARGO_MANIFEST_DIR").to_owned(),
+    );
     RuntimeOptions {
         created_at: FIXTURE_CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(env)
     }
 }
 
@@ -350,20 +496,25 @@ fn write_retry_latest_wins_graph(root: &Path) -> Result<PathBuf, Box<dyn std::er
         r#"---
 name: flaky-json
 description: Fail once, then emit structured JSON.
-source:
-  type: cli-tool
-  command: sh
-  args:
-    - ./run.sh
-  timeout_seconds: 10
-inputs: {}
-runx:
-  artifacts:
-    named_emits:
-      message: message
 ---
 
 Fail once, then emit structured JSON.
+"#,
+    )?;
+    fs::write(
+        flaky_dir.join("X.yaml"),
+        r#"skill: flaky-json
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./run.sh
+    timeout_seconds: 10
+    artifacts:
+      named_emits:
+        message: message
 "#,
     )?;
     fs::write(
@@ -386,25 +537,35 @@ printf '%s' '{"message":"fresh"}'
         r#"---
 name: echo
 description: Echo a message.
-source:
-  type: cli-tool
-  command: sh
-  args:
-    - ./run.sh
-  timeout_seconds: 10
-inputs:
-  message:
-    type: string
-    required: true
 ---
 
 Echo a message.
 "#,
     )?;
     fs::write(
+        echo_dir.join("X.yaml"),
+        r#"skill: echo
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./run.sh
+    timeout_seconds: 10
+    inputs:
+      message:
+        type: string
+        required: true
+    artifacts:
+      named_emits:
+        message: message
+"#,
+    )?;
+    fs::write(
         echo_dir.join("run.sh"),
         r#"#!/bin/sh
-printf '%s' "${RUNX_INPUT_MESSAGE:-}"
+printf '{"message":"%s"}' "${RUNX_INPUT_MESSAGE:-}"
 "#,
     )?;
 
@@ -469,8 +630,11 @@ fn assert_steps(run: &runx_runtime::GraphRun, expected: &[ExpectedStep]) {
             assert_eq!(actual.fanout_group.as_deref(), Some(fanout_group.as_str()));
         }
         assert_eq!(output_status(actual), expected.status);
-        assert_eq!(actual.output.stdout, expected.stdout);
-        assert_eq!(actual.output.stderr, expected.stderr);
+        assert_eq!(actual.contract, expected.contract);
+        assert_eq!(
+            actual.outcome.failure_message().as_deref(),
+            expected.failure.as_deref()
+        );
     }
 }
 
@@ -485,8 +649,11 @@ fn assert_steps_in_checkpoint(run: &runx_runtime::GraphCheckpoint, expected: &[E
             assert_eq!(actual.fanout_group.as_deref(), Some(fanout_group.as_str()));
         }
         assert_eq!(output_status(actual), expected.status);
-        assert_eq!(actual.output.stdout, expected.stdout);
-        assert_eq!(actual.output.stderr, expected.stderr);
+        assert_eq!(actual.contract, expected.contract);
+        assert_eq!(
+            actual.outcome.failure_message().as_deref(),
+            expected.failure.as_deref()
+        );
     }
 }
 
@@ -519,7 +686,7 @@ fn assert_output(
     // Walk the contract path (for example `result.data.budget`) into the step's
     // addressable outputs.
     let mut value = step
-        .outputs
+        .contract
         .get(key.split('.').next().unwrap_or(key))
         .ok_or_else(|| format!("missing output {key} on step {step_id}"))?;
     for segment in key.split('.').skip(1) {
@@ -627,7 +794,7 @@ fn assert_sync_points(run: &runx_runtime::GraphRun, expected: &[FanoutReceiptSyn
 }
 
 fn output_status(step: &runx_runtime::StepRun) -> &'static str {
-    if step.output.succeeded() {
+    if step.outcome.succeeded() {
         "success"
     } else {
         "failure"

@@ -1,0 +1,28 @@
+{
+  "$id": "https://schemas.runx.ai/runx/git/blob-digest/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "algorithm": {
+      "type": "string"
+    },
+    "bytes": {
+      "type": "integer"
+    },
+    "digest": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.git.blob_digest.v1",
+      "type": "string"
+    }
+  },
+  "required": [
+    "algorithm",
+    "digest",
+    "bytes"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.git.blob_digest.v1"
+}

@@ -5,9 +5,13 @@
 //! helper module (tests/support/), referenced by test modules as
 //! `crate::support`. `autotests = false` in Cargo.toml keeps Cargo from also
 //! building each file as its own binary.
+//! Cross-command behavior belongs in `operator_journeys`; focused modules keep
+//! only distinct parser, security, protocol, and failure-boundary invariants.
 //! See .scafld/specs/active/test-surface-build-consolidation.md.
 
 mod connect;
+mod credential;
+mod data;
 mod doctor;
 mod export;
 mod harness;
@@ -17,6 +21,9 @@ mod local_credential;
 mod locality;
 mod mcp_dogfood;
 mod native_no_ts;
+mod new_skill_authoring;
+mod official_skill_admission;
+mod operator_journeys;
 mod parser;
 mod policy;
 mod registry;

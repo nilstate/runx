@@ -1,0 +1,31 @@
+//! Shared hosted Runx API environment resolution.
+//!
+//! This module keeps environment selection, credential binding, authentication,
+//! and public error parsing behind one stable facade. Provider-specific operator
+//! logic remains outside the hosted control-plane boundary.
+
+mod connect;
+mod environment;
+mod error;
+mod login;
+mod receipts;
+pub(crate) mod request;
+
+pub use connect::{HostedConnectAction, HostedConnectStart, execute_hosted_connect};
+pub use environment::{
+    AuthenticatedHostedApiEnvironment, HostedApiEnvironment, hosted_api_transport,
+    hosted_private_network_allowed, store_authenticated_hosted_environment,
+};
+pub use error::{
+    HostedApiError, HostedApiErrorPayload, HostedApiOperationError, parse_hosted_api_error,
+};
+pub use login::{
+    HostedLoginCompleteResponse, HostedLoginStartResponse, HostedProviderTokenLoginResponse,
+    complete_hosted_login, exchange_hosted_provider_token, start_hosted_login,
+};
+pub use receipts::{ReceiptPublishResponse, publish_hosted_receipt};
+
+pub const DEFAULT_HOSTED_API_BASE_URL: &str = "https://api.runx.ai";
+pub const HOSTED_API_BASE_URL_ENV: &str = "RUNX_PUBLIC_API_BASE_URL";
+pub const HOSTED_API_TOKEN_ENV: &str = "RUNX_PUBLIC_API_TOKEN";
+pub const HOSTED_API_ALLOW_PRIVATE_NETWORK_ENV: &str = "RUNX_PUBLIC_API_ALLOW_PRIVATE_NETWORK";

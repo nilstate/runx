@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/fs/apply_bundle/v1.json",
+  "x-runx-packet-id": "runx.fs.apply_bundle.v1",
+  "type": "object",
+  "required": ["repo_root", "write_count", "delete_count", "writes", "deletes"],
+  "properties": {
+    "repo_root": { "type": "string", "minLength": 1 },
+    "write_count": { "type": "integer", "minimum": 0 },
+    "delete_count": { "type": "integer", "minimum": 0 },
+    "writes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "bytes_written", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "bytes_written": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deletes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "status"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["deleted", "already_absent"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

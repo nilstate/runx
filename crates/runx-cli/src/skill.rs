@@ -1,27 +1,38 @@
-// rust-style-allow: large-file - skill command keeps parse, inspect, registry provenance, and execution wiring together until the native skill UX settles.
+// Module rationale: skill command keeps parse, inspect, registry provenance, and execution wiring together until the native skill UX settles.
 use std::collections::BTreeMap;
-use std::env;
-use std::fs;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_contracts::{JsonObject, JsonValue};
-use runx_runtime::SkillRunRequest;
-use runx_runtime::orchestrator::LocalCredentialDescriptor;
-use runx_runtime::skill_front::{
-    PreparedEntryProvenance, PreparedSkillRunApproval, PreparedSkillRunStatus,
+use runx_runtime::skill_front::{PreparedEntryProvenance, PreparedSkillRunStatus};
+use runx_runtime::{
+    ManagedAgentPolicy, OrchestratorError, SkillCredentialContext, SkillRunRequest, WorkspaceEnv,
+    resolve_skill_credential_for_path,
 };
 
+mod credential;
+mod environment_readiness;
 mod inputs;
 mod operator_context;
 mod output;
 mod parser;
+mod provider_readiness;
 mod resolver;
 
+use credential::{
+    inspect_context as inspect_credential_context, write_required as write_needs_credential,
+};
+use environment_readiness::{
+    append_text as append_environment_readiness_text, inspect as inspect_environment_readiness,
+};
+use inputs::read_input_document;
 use operator_context::write_operator_context;
-use output::{SkillOutputResume, skill_result_exit_code, write_skill_output};
-pub use parser::parse_skill_plan;
+use output::{ResumeHint, skill_result_exit_code, write_skill_output};
+pub use parser::{parse_skill_plan, parse_skill_plan_with_workspace};
+use provider_readiness::{
+    append_text as append_provider_readiness_text, inspect as inspect_provider_readiness,
+};
 use resolver::{RegistryTrustState, ResolvedSkillRef, resolve_skill_ref_details};
 
 #[derive(Debug, PartialEq)]
@@ -34,19 +45,20 @@ pub struct SkillPlan {
     pub answers: Option<PathBuf>,
     pub registry: Option<String>,
     pub expected_digest: Option<String>,
+    pub expected_package_digest: Option<String>,
+    pub expected_execution_closure_digest: Option<String>,
     pub json: bool,
     pub non_interactive: bool,
-    pub skip_operator_context: bool,
+    /// Internal command authorization for composite CLI commands such as
+    /// `runx new`. User-supplied `runx skill` invocations cannot set this.
+    pub trusted_command_execution: bool,
     pub full_operator_context: bool,
-    pub approve_operator_context: Option<String>,
     pub inputs: BTreeMap<String, JsonValue>,
-    /// One-shot, per-run local credential descriptor supplied via
-    /// `--credential`, repeatable `--credential-scope`, and `--secret-env`.
-    /// The secret is read from the named process environment variable so raw
-    /// secret material never appears on argv. Runner-specific execution
-    /// validates whether that delivery channel is supported before any child
-    /// process starts.
-    pub local_credential: Option<LocalCredentialDescriptor>,
+    pub input_document: Option<crate::document_input::DocumentInputSource>,
+    /// Optional stored profile selector. Secret resolution happens only after
+    /// the selected runner's manifest credential requirement is known.
+    pub credential_profile: Option<String>,
+    pub managed_agent: ManagedAgentPolicy,
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,12 +67,11 @@ pub enum SkillAction {
     Run,
 }
 
-// rust-style-allow: long-function - the top-level command path owns resolve/inspect/run/failure presentation in one explicit dispatch.
-pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let env = env::vars().collect();
-    let resume_skill_ref = plan.skill_path.to_string_lossy().into_owned();
-    let resolved = match resolve_skill_ref_details(
+// Function rationale: the top-level command path owns resolve/inspect/run/failure presentation in one explicit dispatch.
+pub fn run_native_skill_with_workspace(plan: SkillPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    let cwd = workspace.cwd().to_path_buf();
+    let env = workspace.env().clone();
+    let mut resolved = match resolve_skill_ref_details(
         &plan.skill_path,
         &cwd,
         resolver::SkillResolverOptions {
@@ -74,18 +85,59 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
             return write_skill_failure(&error.to_string(), plan.json, "skill_error", 1, None);
         }
     };
+    if let Some(expected_package_digest) = &plan.expected_package_digest {
+        resolved.package_digest = Some(expected_package_digest.clone());
+    }
     let skill_path = resolved.runnable_path.clone();
+    let credential = match resolve_skill_credential_for_path(
+        &skill_path,
+        plan.runner.as_deref(),
+        plan.credential_profile.as_deref(),
+        workspace,
+    ) {
+        Ok(credential) => credential,
+        Err(error) => {
+            return write_skill_failure(
+                &error.to_string(),
+                plan.json,
+                "credential_error",
+                1,
+                registry_provenance(&resolved),
+            );
+        }
+    };
     if plan.action == SkillAction::Inspect {
         return write_skill_inspection(
             &skill_path,
             plan.runner.as_deref(),
             plan.json,
             registry_provenance(&resolved),
+            credential.as_ref(),
+            &env,
+            &cwd,
         );
     }
-    let resume = SkillOutputResume {
-        skill_ref: Some(&resume_skill_ref),
-        selected_runner: plan.runner.as_deref(),
+    if let Some(context) = credential.as_ref()
+        && !context.resolution.is_ready()
+    {
+        return write_needs_credential(&context.request, plan.json);
+    }
+    let inputs = match plan.input_document.as_ref() {
+        Some(source) => match read_input_document(source, &env, &cwd) {
+            Ok(inputs) => inputs,
+            Err(error) => {
+                return write_skill_failure(
+                    &error,
+                    plan.json,
+                    "input_error",
+                    1,
+                    registry_provenance(&resolved),
+                );
+            }
+        },
+        None => plan.inputs.clone(),
+    };
+    let resume = ResumeHint {
         receipt_dir: plan.receipt_dir.as_deref(),
         answers_path: plan.answers.as_deref(),
     };
@@ -94,13 +146,36 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
         receipt_dir: plan.receipt_dir.clone(),
         run_id: plan.run_id.clone(),
         answers_path: plan.answers.clone(),
-        inputs: plan.inputs.clone(),
+        inputs,
         env,
         cwd,
-        local_credential: plan.local_credential.clone(),
+        managed_agent: plan.managed_agent.clone(),
+        local_credential: credential
+            .as_ref()
+            .and_then(|context| context.resolution.descriptor().cloned()),
     };
-    let orchestrator = crate::runtime::local_orchestrator();
-    let result = if plan.skip_operator_context {
+    let orchestrator = match crate::runtime::local_orchestrator(&request.env) {
+        Ok(orchestrator) => orchestrator,
+        Err(error) => {
+            return write_skill_failure(
+                &format!("failed to initialize runtime effects: {error}"),
+                plan.json,
+                "skill_error",
+                1,
+                registry_provenance(&resolved),
+            );
+        }
+    };
+    let bound_execution =
+        plan.expected_package_digest.is_some() && plan.expected_execution_closure_digest.is_some();
+    let result = if bound_execution {
+        orchestrator.run_skill_with_binding(
+            &request,
+            plan.runner.as_deref(),
+            plan.expected_package_digest.as_deref(),
+            plan.expected_execution_closure_digest.as_deref(),
+        )
+    } else if plan.trusted_command_execution {
         match plan.runner.as_deref() {
             Some(runner) => orchestrator.run_skill_with_runner(&request, runner),
             None => orchestrator.run_skill(&request),
@@ -109,12 +184,12 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
         let mut prepared = match orchestrator.prepare_skill(
             request,
             plan.runner.as_deref(),
-            prepared_entry_provenance(&resolved),
+            prepared_entry_provenance(&resolved, plan.expected_execution_closure_digest.as_deref()),
         ) {
             Ok(prepared) => prepared,
             Err(error) => {
-                return write_skill_failure(
-                    &error.to_string(),
+                return write_orchestrator_failure(
+                    &error,
                     plan.json,
                     "skill_error",
                     1,
@@ -122,6 +197,8 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
                 );
             }
         };
+        // Operator context is written to stderr, so it never pollutes a
+        // --json stdout payload; every invocation gets the same preflight facts.
         if let Err(error) = write_operator_context(prepared.report(), plan.full_operator_context) {
             return write_skill_failure(
                 &error,
@@ -132,45 +209,42 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
             );
         }
         if prepared.report().status == PreparedSkillRunStatus::Blocked {
-            return write_skill_failure(
-                prepared
-                    .report()
-                    .blocked_reason
-                    .as_deref()
-                    .unwrap_or("operator context preparation blocked"),
+            let report = prepared.report();
+            let message = report
+                .blocked_reason
+                .as_deref()
+                .unwrap_or("operator context preparation blocked");
+            let detail = report.refusal_receipt_id.as_ref().map(|receipt_id| {
+                JsonObject::from([
+                    (
+                        "receipt_id".to_owned(),
+                        JsonValue::String(receipt_id.clone()),
+                    ),
+                    (
+                        "prepared_context_digest".to_owned(),
+                        JsonValue::String(report.digest.clone()),
+                    ),
+                ])
+            });
+            return write_skill_failure_with_detail(
+                message,
                 plan.json,
                 "operator_context_blocked",
                 1,
                 registry_provenance(&resolved),
+                detail,
             );
         }
-        match authorize_operator_context(&plan, prepared.digest(), &resume_skill_ref) {
-            OperatorAuthorization::Approved(mode) => {
-                let actor = env::var("USER").unwrap_or_else(|_| "local_operator".to_owned());
-                if let Err(error) = prepared.approve(PreparedSkillRunApproval::now(actor, mode)) {
-                    return write_skill_failure(
-                        &error.to_string(),
-                        plan.json,
-                        "operator_context_approval_error",
-                        1,
-                        registry_provenance(&resolved),
-                    );
-                }
-                orchestrator.run_prepared_skill(&prepared)
-            }
-            OperatorAuthorization::NeedsApproval => {
-                return write_operator_approval_required(prepared.digest(), plan.json);
-            }
-            OperatorAuthorization::Denied { message, code } => {
-                return write_skill_failure(
-                    &message,
-                    plan.json,
-                    code,
-                    1,
-                    registry_provenance(&resolved),
-                );
-            }
+        if let Err(error) = prepared.bind_context() {
+            return write_skill_failure(
+                &error.to_string(),
+                plan.json,
+                "operator_context_admission_error",
+                1,
+                registry_provenance(&resolved),
+            );
         }
+        orchestrator.run_prepared_skill(&prepared)
     };
     match result {
         Ok(mut result) => {
@@ -178,8 +252,8 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
             let exit_code = skill_result_exit_code(&result.output);
             write_skill_output(&result.output, plan.json, exit_code, resume)
         }
-        Err(error) => write_skill_failure(
-            &error.to_string(),
+        Err(error) => write_orchestrator_failure(
+            &error,
             plan.json,
             "skill_error",
             1,
@@ -188,86 +262,10 @@ pub fn run_native_skill(plan: SkillPlan) -> ExitCode {
     }
 }
 
-enum OperatorAuthorization {
-    Approved(&'static str),
-    NeedsApproval,
-    Denied { message: String, code: &'static str },
-}
-
-fn authorize_operator_context(
-    plan: &SkillPlan,
-    digest: &str,
-    skill_ref: &str,
-) -> OperatorAuthorization {
-    if let Some(approved) = plan.approve_operator_context.as_deref() {
-        if approved == digest {
-            return OperatorAuthorization::Approved("explicit_digest");
-        }
-        return OperatorAuthorization::Denied {
-            message: format!(
-                "operator context approval is stale for {skill_ref}: prepared {digest}; supplied {approved}. Review and approve the new digest"
-            ),
-            code: "operator_context_approval_mismatch",
-        };
-    }
-    if plan.non_interactive || !io::stdin().is_terminal() || !io::stderr().is_terminal() {
-        return OperatorAuthorization::NeedsApproval;
-    }
-    let _ignored = write!(io::stderr(), "Run this prepared skill? [y/N] ");
-    let _ignored = io::stderr().flush();
-    let mut answer = String::new();
-    match io::stdin().read_line(&mut answer) {
-        Ok(_) if matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") => {
-            OperatorAuthorization::Approved("interactive_terminal")
-        }
-        Ok(_) => OperatorAuthorization::Denied {
-            message: "operator context approval denied".to_owned(),
-            code: "operator_context_approval_denied",
-        },
-        Err(error) => OperatorAuthorization::Denied {
-            message: format!("failed to read operator context approval: {error}"),
-            code: "operator_context_approval_error",
-        },
-    }
-}
-
-fn write_operator_approval_required(digest: &str, json: bool) -> ExitCode {
-    let approval_flag = format!("--approve-operator-context {digest}");
-    if json {
-        let value = JsonValue::Object(JsonObject::from([
-            (
-                "schema".to_owned(),
-                JsonValue::String("runx.operator_context_approval.v1".to_owned()),
-            ),
-            (
-                "status".to_owned(),
-                JsonValue::String("needs_operator_approval".to_owned()),
-            ),
-            ("digest".to_owned(), JsonValue::String(digest.to_owned())),
-            (
-                "approval_flag".to_owned(),
-                JsonValue::String(approval_flag.clone()),
-            ),
-        ]));
-        return write_skill_output(
-            &value,
-            true,
-            ExitCode::from(2),
-            SkillOutputResume {
-                skill_ref: None,
-                selected_runner: None,
-                receipt_dir: None,
-                answers_path: None,
-            },
-        );
-    }
-    let _ignored = writeln!(io::stdout(), "Approval required");
-    let _ignored = writeln!(io::stdout(), "Rerun the same command with:");
-    let _ignored = writeln!(io::stdout(), "  {approval_flag}");
-    ExitCode::from(2)
-}
-
-fn prepared_entry_provenance(resolved: &ResolvedSkillRef) -> PreparedEntryProvenance {
+fn prepared_entry_provenance(
+    resolved: &ResolvedSkillRef,
+    execution_closure_digest: Option<&str>,
+) -> PreparedEntryProvenance {
     PreparedEntryProvenance {
         kind: match resolved.kind {
             resolver::SkillRefKind::ExplicitPath => "explicit_path",
@@ -290,7 +288,8 @@ fn prepared_entry_provenance(resolved: &ResolvedSkillRef) -> PreparedEntryProven
         skill_id: resolved.skill_id.clone(),
         version: resolved.version.clone(),
         digest: resolved.digest.clone(),
-        package_digest: None,
+        package_digest: resolved.package_digest.clone(),
+        execution_closure_digest: execution_closure_digest.map(str::to_owned),
         trust_tier: resolved.trust_tier.clone(),
     }
 }
@@ -300,8 +299,11 @@ fn write_skill_inspection(
     runner: Option<&str>,
     json: bool,
     provenance: Option<JsonObject>,
+    credential: Option<&SkillCredentialContext>,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
 ) -> ExitCode {
-    match inspect_skill(skill_path, runner, provenance) {
+    match inspect_skill(skill_path, runner, provenance, credential, env, cwd) {
         Ok(value) if json => crate::cli_io::write_stdout_code(
             &format!(
                 "{}\n",
@@ -314,94 +316,87 @@ fn write_skill_inspection(
     }
 }
 
-// rust-style-allow: long-function - inspection assembles one public JSON contract from SKILL.md, X.yaml, fixtures, and selected runner metadata.
+// Function rationale: inspection assembles one public JSON contract from SKILL.md, X.yaml, fixtures, and selected runner metadata.
 fn inspect_skill(
     skill_path: &Path,
     selected_runner: Option<&str>,
     provenance: Option<JsonObject>,
+    credential: Option<&SkillCredentialContext>,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
 ) -> Result<JsonValue, String> {
-    let skill_dir = skill_directory(skill_path);
-    let skill_md = fs::read_to_string(skill_dir.join("SKILL.md")).map_err(|error| {
-        format!(
-            "could not read skill markdown {}: {error}",
-            skill_dir.join("SKILL.md").display()
-        )
-    })?;
-    let frontmatter = parse_skill_frontmatter(&skill_md)?;
-    let x_yaml_path = skill_dir.join("X.yaml");
-    let profile = match fs::read_to_string(&x_yaml_path) {
-        Ok(contents) => parse_yaml_object(&contents, &x_yaml_path)?,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => JsonObject::new(),
-        Err(error) => {
-            return Err(format!("could not read {}: {error}", x_yaml_path.display()));
-        }
+    let mut output = runx_runtime::inspect_skill_package(skill_path, selected_runner)
+        .map_err(|error| error.to_string())?;
+    let JsonValue::Object(object) = &mut output else {
+        return Err("native skill inspection returned a non-object".to_owned());
     };
-    let runners = profile
-        .get("runners")
-        .and_then(JsonValue::as_object)
-        .cloned()
-        .unwrap_or_default();
-    let mut output = JsonObject::new();
-    output.insert(
-        "schema".to_owned(),
-        JsonValue::String("runx.skill.inspect.v1".to_owned()),
-    );
-    output.insert("status".to_owned(), JsonValue::String("ok".to_owned()));
-    insert_frontmatter_string(&mut output, &frontmatter, "name", "name");
-    insert_frontmatter_string(&mut output, &frontmatter, "description", "description");
-    if let Some(version) = profile.get("version").and_then(JsonValue::as_str) {
-        output.insert("version".to_owned(), JsonValue::String(version.to_owned()));
-    }
-    if let Some(capabilities) = inspect_catalog_capabilities(&profile) {
-        output.insert("capabilities".to_owned(), capabilities);
-    }
     if let Some(provenance) = provenance {
-        output.insert(
+        object.insert(
             "registry_provenance".to_owned(),
             JsonValue::Object(provenance),
         );
     }
-    output.insert(
-        "skill_path".to_owned(),
-        JsonValue::String(skill_dir.to_string_lossy().into_owned()),
-    );
-    output.insert(
-        "runners".to_owned(),
-        JsonValue::Array(
-            runners
-                .keys()
-                .map(|runner| JsonValue::String(runner.clone()))
-                .collect(),
-        ),
-    );
-    if let Some(runner) = selected_runner {
-        let runner_def = runners
-            .get(runner)
-            .and_then(JsonValue::as_object)
-            .ok_or_else(|| format!("skill has no runner '{runner}'"))?;
-        output.insert("runner".to_owned(), inspect_runner(runner, runner_def));
-        output.insert(
-            "examples".to_owned(),
-            JsonValue::Array(fixture_examples(&skill_dir, runner)),
-        );
-        output.insert(
-            "resume".to_owned(),
-            JsonValue::Object(JsonObject::from([
-                (
-                    "may_pause".to_owned(),
-                    JsonValue::Bool(runner_may_pause(runner_def)),
-                ),
-                (
-                    "command".to_owned(),
-                    JsonValue::String("runx resume <run-id> answers.json".to_owned()),
-                ),
-            ])),
+    if object.get("runner").is_some()
+        && let Some(provider) = inspect_provider_readiness(object, env, cwd)
+    {
+        let status = provider
+            .as_object()
+            .and_then(|value| value.get("status"))
+            .and_then(JsonValue::as_str)
+            .unwrap_or("provider_readiness_unknown")
+            .to_owned();
+        object.insert("provider".to_owned(), provider);
+        object.insert(
+            "readiness".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "status".to_owned(),
+                JsonValue::String(status),
+            )])),
         );
     }
-    Ok(JsonValue::Object(output))
+    if object.get("runner").is_some()
+        && let Some(environment) = inspect_environment_readiness(object, env)?
+    {
+        let ready = environment
+            .as_object()
+            .and_then(|value| value.get("status"))
+            .and_then(JsonValue::as_str)
+            == Some("ready");
+        object.insert("environment".to_owned(), environment);
+        if !ready {
+            object.insert(
+                "readiness".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "status".to_owned(),
+                    JsonValue::String("needs_environment".to_owned()),
+                )])),
+            );
+        }
+    }
+    if object.get("runner").is_some()
+        && let Some(credential) = credential
+    {
+        let credential = inspect_credential_context(credential);
+        let ready = credential
+            .as_object()
+            .and_then(|value| value.get("status"))
+            .and_then(JsonValue::as_str)
+            == Some("ready");
+        object.insert("credential".to_owned(), credential);
+        if !ready {
+            object.insert(
+                "readiness".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "status".to_owned(),
+                    JsonValue::String("needs_credential".to_owned()),
+                )])),
+            );
+        }
+    }
+    Ok(output)
 }
 
-// rust-style-allow: long-function - text rendering mirrors the inspect JSON shape and is kept adjacent to avoid presentation drift.
+// Function rationale: text rendering mirrors the inspect JSON shape and is kept adjacent to avoid presentation drift.
 fn write_inspection_text(value: &JsonValue) -> ExitCode {
     let Some(object) = value.as_object() else {
         return crate::cli_io::write_stdout_code("{}\n", 0);
@@ -425,6 +420,20 @@ fn write_inspection_text(value: &JsonValue) -> ExitCode {
         if let Some(kind) = object_string(runner, "type") {
             out.push_str(&format!("type: {kind}\n"));
         }
+        if let Some(readiness) = object.get("readiness").and_then(JsonValue::as_object)
+            && let Some(status) = object_string(readiness, "status")
+        {
+            out.push_str(&format!("readiness: {status}\n"));
+        }
+        append_provider_readiness_text(&mut out, object);
+        append_environment_readiness_text(&mut out, object);
+        if let Some(credential) = object.get("credential").and_then(JsonValue::as_object) {
+            out.push_str(&format!(
+                "credential: {} ({})\n",
+                object_string(credential, "provider").unwrap_or("<unknown>"),
+                object_string(credential, "status").unwrap_or("unknown")
+            ));
+        }
         if let Some(capabilities) = object.get("capabilities").and_then(JsonValue::as_object) {
             for key in ["execution", "completion", "requires_adapter", "approval"] {
                 if let Some(value) = capabilities.get(key) {
@@ -432,20 +441,20 @@ fn write_inspection_text(value: &JsonValue) -> ExitCode {
                 }
             }
         }
-        if let Some(inputs) = runner.get("inputs").and_then(JsonValue::as_array) {
-            if !inputs.is_empty() {
-                out.push_str("inputs:\n");
-                for input in inputs {
-                    if let Some(input) = input.as_object() {
-                        let name = object_string(input, "name").unwrap_or("<unknown>");
-                        let kind = object_string(input, "type").unwrap_or("json");
-                        let required = input
-                            .get("required")
-                            .and_then(JsonValue::as_bool)
-                            .unwrap_or(false);
-                        let marker = if required { "required" } else { "optional" };
-                        out.push_str(&format!("  - {name}: {kind} ({marker})\n"));
-                    }
+        if let Some(inputs) = runner.get("inputs").and_then(JsonValue::as_array)
+            && !inputs.is_empty()
+        {
+            out.push_str("inputs:\n");
+            for input in inputs {
+                if let Some(input) = input.as_object() {
+                    let name = object_string(input, "name").unwrap_or("<unknown>");
+                    let kind = object_string(input, "type").unwrap_or("json");
+                    let required = input
+                        .get("required")
+                        .and_then(JsonValue::as_bool)
+                        .unwrap_or(false);
+                    let marker = if required { "required" } else { "optional" };
+                    out.push_str(&format!("  - {name}: {kind} ({marker})\n"));
                 }
             }
         }
@@ -495,132 +504,6 @@ fn write_inspection_text(value: &JsonValue) -> ExitCode {
     crate::cli_io::write_stdout_code(&out, 0)
 }
 
-fn skill_directory(skill_path: &Path) -> PathBuf {
-    if skill_path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md") {
-        return skill_path.parent().unwrap_or(skill_path).to_path_buf();
-    }
-    skill_path.to_path_buf()
-}
-
-fn parse_skill_frontmatter(markdown: &str) -> Result<JsonObject, String> {
-    let Some(rest) = markdown.strip_prefix("---") else {
-        return Ok(JsonObject::new());
-    };
-    let Some((frontmatter, _body)) = rest.split_once("\n---") else {
-        return Ok(JsonObject::new());
-    };
-    serde_norway::from_str::<JsonValue>(frontmatter)
-        .map_err(|error| format!("skill frontmatter is invalid YAML: {error}"))
-        .map(|value| match value {
-            JsonValue::Object(object) => object,
-            _ => JsonObject::new(),
-        })
-}
-
-fn parse_yaml_object(contents: &str, path: &Path) -> Result<JsonObject, String> {
-    serde_norway::from_str::<JsonValue>(contents)
-        .map_err(|error| format!("{} is invalid YAML: {error}", path.display()))
-        .and_then(|value| match value {
-            JsonValue::Object(object) => Ok(object),
-            _ => Err(format!("{} must contain a YAML object", path.display())),
-        })
-}
-
-fn insert_frontmatter_string(
-    output: &mut JsonObject,
-    frontmatter: &JsonObject,
-    source_key: &str,
-    output_key: &str,
-) {
-    if let Some(value) = object_string(frontmatter, source_key) {
-        output.insert(output_key.to_owned(), JsonValue::String(value.to_owned()));
-    }
-}
-
-fn inspect_runner(name: &str, runner: &JsonObject) -> JsonValue {
-    let mut output = JsonObject::new();
-    output.insert("name".to_owned(), JsonValue::String(name.to_owned()));
-    if let Some(kind) = runner_string(runner, "type") {
-        output.insert("type".to_owned(), JsonValue::String(kind.to_owned()));
-    }
-    let inputs = runner_value(runner, "inputs")
-        .and_then(JsonValue::as_object)
-        .map(|inputs| {
-            inputs
-                .iter()
-                .map(|(name, input)| inspect_input(name, input))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    output.insert("inputs".to_owned(), JsonValue::Array(inputs));
-    let outputs = runner_value(runner, "outputs")
-        .and_then(JsonValue::as_object)
-        .map(|outputs| {
-            outputs
-                .iter()
-                .map(|(name, declaration)| inspect_output(name, declaration))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    output.insert("outputs".to_owned(), JsonValue::Array(outputs));
-    if let Some(artifacts) = runner_value(runner, "artifacts").and_then(JsonValue::as_object) {
-        output.insert("artifacts".to_owned(), JsonValue::Object(artifacts.clone()));
-    }
-    for field in ["allowed_tools", "scopes"] {
-        if let Some(value) = runner_value(runner, field) {
-            output.insert(field.to_owned(), value.clone());
-        }
-    }
-    if let Some(value) = runner_value(runner, "mutating").and_then(JsonValue::as_bool) {
-        output.insert("mutating".to_owned(), JsonValue::Bool(value));
-    }
-    JsonValue::Object(output)
-}
-
-fn inspect_catalog_capabilities(profile: &JsonObject) -> Option<JsonValue> {
-    let catalog = profile.get("catalog")?.as_object()?;
-    let mut capabilities = JsonObject::new();
-    for key in ["execution", "completion", "requires_adapter", "approval"] {
-        if let Some(value) = catalog.get(key) {
-            capabilities.insert(key.to_owned(), value.clone());
-        }
-    }
-    (!capabilities.is_empty()).then_some(JsonValue::Object(capabilities))
-}
-
-fn inspect_output(name: &str, declaration: &JsonValue) -> JsonValue {
-    let mut output = JsonObject::new();
-    output.insert("name".to_owned(), JsonValue::String(name.to_owned()));
-    match declaration {
-        JsonValue::String(kind) => {
-            output.insert("type".to_owned(), JsonValue::String(kind.clone()));
-        }
-        JsonValue::Object(details) => {
-            if let Some(kind) = object_string(details, "type") {
-                output.insert("type".to_owned(), JsonValue::String(kind.to_owned()));
-            }
-            if let Some(required) = details.get("required").and_then(JsonValue::as_bool) {
-                output.insert("required".to_owned(), JsonValue::Bool(required));
-            }
-        }
-        _ => {}
-    }
-    JsonValue::Object(output)
-}
-
-fn runner_value<'a>(runner: &'a JsonObject, key: &str) -> Option<&'a JsonValue> {
-    runner.get(key).or_else(|| {
-        runner
-            .get("source")
-            .and_then(JsonValue::as_object)
-            .and_then(|source| source.get(key))
-    })
-}
-
-fn runner_string<'a>(runner: &'a JsonObject, key: &str) -> Option<&'a str> {
-    runner_value(runner, key).and_then(JsonValue::as_str)
-}
-
 fn display_json_scalar(value: &JsonValue) -> String {
     value
         .as_str()
@@ -628,73 +511,8 @@ fn display_json_scalar(value: &JsonValue) -> String {
         .unwrap_or_else(|| serde_json::to_string(value).unwrap_or_else(|_| "null".to_owned()))
 }
 
-fn inspect_input(name: &str, value: &JsonValue) -> JsonValue {
-    let mut output = JsonObject::new();
-    output.insert("name".to_owned(), JsonValue::String(name.to_owned()));
-    if let Some(input) = value.as_object() {
-        if let Some(kind) = object_string(input, "type") {
-            output.insert("type".to_owned(), JsonValue::String(kind.to_owned()));
-        }
-        output.insert(
-            "required".to_owned(),
-            JsonValue::Bool(
-                input
-                    .get("required")
-                    .and_then(JsonValue::as_bool)
-                    .unwrap_or(false),
-            ),
-        );
-        if let Some(description) = object_string(input, "description") {
-            output.insert(
-                "description".to_owned(),
-                JsonValue::String(description.to_owned()),
-            );
-        }
-    }
-    JsonValue::Object(output)
-}
-
 fn object_string<'a>(object: &'a JsonObject, key: &str) -> Option<&'a str> {
     object.get(key).and_then(JsonValue::as_str)
-}
-
-fn fixture_examples(skill_dir: &Path, runner: &str) -> Vec<JsonValue> {
-    let fixtures_dir = skill_dir.join("fixtures");
-    let Ok(entries) = fs::read_dir(fixtures_dir) else {
-        return Vec::new();
-    };
-    let mut fixtures = entries
-        .filter_map(Result::ok)
-        .filter_map(|entry| {
-            let path = entry.path();
-            let name = path.file_name()?.to_str()?.to_owned();
-            (name.ends_with(".yaml") && fixture_targets_runner(&path, runner)).then_some(name)
-        })
-        .map(JsonValue::String)
-        .collect::<Vec<_>>();
-    fixtures.sort_by(|left, right| left.as_str().cmp(&right.as_str()));
-    fixtures
-}
-
-fn fixture_targets_runner(path: &Path, runner: &str) -> bool {
-    fs::read_to_string(path)
-        .ok()
-        .and_then(|contents| serde_norway::from_str::<JsonValue>(&contents).ok())
-        .and_then(|value| value.as_object().cloned())
-        .and_then(|object| {
-            object
-                .get("runner")
-                .and_then(JsonValue::as_str)
-                .map(str::to_owned)
-        })
-        .is_some_and(|fixture_runner| fixture_runner == runner)
-}
-
-fn runner_may_pause(runner: &JsonObject) -> bool {
-    matches!(
-        runner_string(runner, "type"),
-        Some("agent") | Some("agent-task") | Some("graph")
-    )
 }
 
 fn attach_registry_provenance(output: &mut JsonValue, resolved: &ResolvedSkillRef) {
@@ -720,6 +538,11 @@ fn registry_provenance(resolved: &ResolvedSkillRef) -> Option<JsonObject> {
         &mut provenance,
         "profile_digest",
         resolved.profile_digest.as_ref(),
+    );
+    insert_optional(
+        &mut provenance,
+        "package_digest",
+        resolved.package_digest.as_ref(),
     );
     insert_optional(
         &mut provenance,
@@ -762,18 +585,96 @@ fn write_skill_failure(
     exit_code: u8,
     provenance: Option<JsonObject>,
 ) -> ExitCode {
+    write_skill_failure_with_detail(message, json, code, exit_code, provenance, None)
+}
+
+fn write_orchestrator_failure(
+    error: &OrchestratorError,
+    json: bool,
+    code: &str,
+    exit_code: u8,
+    provenance: Option<JsonObject>,
+) -> ExitCode {
+    write_skill_failure_with_detail(
+        &error.to_string(),
+        json,
+        code,
+        exit_code,
+        provenance,
+        input_contract_detail(error),
+    )
+}
+
+fn write_skill_failure_with_detail(
+    message: &str,
+    json: bool,
+    code: &str,
+    exit_code: u8,
+    provenance: Option<JsonObject>,
+    detail: Option<JsonObject>,
+) -> ExitCode {
     if json {
-        let output = skill_json_failure_output(message, code, provenance);
+        let output = skill_json_failure_output(message, code, provenance, detail);
         return crate::cli_io::write_stdout_code(&output, exit_code);
     }
     let _ignored = writeln!(io::stderr(), "runx: {message}");
     ExitCode::from(exit_code)
 }
 
-fn skill_json_failure_output(message: &str, code: &str, provenance: Option<JsonObject>) -> String {
+fn input_contract_detail(error: &OrchestratorError) -> Option<JsonObject> {
+    let (runtime, receipt_id) = match error {
+        OrchestratorError::SkillRun(
+            runx_runtime::execution::skill_front::SkillRunError::Runtime(runtime),
+        )
+        | OrchestratorError::Runtime(runtime) => (runtime, None),
+        OrchestratorError::SkillRun(
+            runx_runtime::execution::skill_front::SkillRunError::PreflightRefused {
+                source,
+                receipt_id,
+            },
+        ) => (source.as_ref(), Some(receipt_id)),
+        _ => return None,
+    };
+    let runx_runtime::RuntimeError::InputContract {
+        owner,
+        input,
+        path,
+        accepted_schema,
+        ..
+    } = runtime
+    else {
+        return None;
+    };
+    let mut detail = JsonObject::from([
+        ("owner".to_owned(), JsonValue::String((*owner).to_owned())),
+        ("input".to_owned(), JsonValue::String(input.clone())),
+        ("path".to_owned(), JsonValue::String(path.clone())),
+        (
+            "accepted_schema".to_owned(),
+            accepted_schema.as_ref().clone(),
+        ),
+    ]);
+    if let Some(receipt_id) = receipt_id {
+        detail.insert(
+            "receipt_id".to_owned(),
+            JsonValue::String(receipt_id.clone()),
+        );
+    }
+    Some(detail)
+}
+
+fn skill_json_failure_output(
+    message: &str,
+    code: &str,
+    provenance: Option<JsonObject>,
+    detail: Option<JsonObject>,
+) -> String {
     let mut error = JsonObject::new();
     error.insert("message".to_owned(), JsonValue::String(message.to_owned()));
     error.insert("code".to_owned(), JsonValue::String(code.to_owned()));
+    if let Some(detail) = detail {
+        error.extend(detail);
+    }
     let mut output = JsonObject::new();
     output.insert("status".to_owned(), JsonValue::String("failure".to_owned()));
     output.insert("error".to_owned(), JsonValue::Object(error));

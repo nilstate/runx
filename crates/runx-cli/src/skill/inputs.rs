@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
+use std::path::{Path, PathBuf};
 
 use runx_contracts::JsonValue;
+
+use crate::document_input::{DocumentInputSource, read_document_input};
 
 pub(super) fn parse_direct_input_arg(
     args: &[OsString],
@@ -66,6 +69,48 @@ pub(super) fn parse_json_input_arg(
     Ok(index)
 }
 
+pub(super) fn parse_input_document_arg(
+    args: &[OsString],
+    mut index: usize,
+    inline_value: Option<&str>,
+    source: &mut Option<DocumentInputSource>,
+) -> Result<usize, String> {
+    if source.is_some() {
+        return Err("runx skill accepts exactly one --inputs document".to_owned());
+    }
+    let value = if let Some(value) = inline_value {
+        value.to_owned()
+    } else {
+        index += 1;
+        string_arg(args, index)?
+    };
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("runx skill --inputs requires a file path or - for stdin".to_owned());
+    }
+    *source = Some(if value == "-" {
+        DocumentInputSource::Stdin
+    } else {
+        DocumentInputSource::Path(PathBuf::from(value))
+    });
+    Ok(index)
+}
+
+pub(super) fn read_input_document(
+    source: &DocumentInputSource,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+) -> Result<BTreeMap<String, JsonValue>, String> {
+    let raw = read_document_input(source, env, cwd)
+        .map_err(|error| format!("runx skill --inputs could not be read: {error}"))?;
+    let value: JsonValue = serde_json::from_str(&raw)
+        .map_err(|error| format!("runx skill --inputs contains invalid JSON: {error}"))?;
+    value
+        .as_object()
+        .cloned()
+        .ok_or_else(|| "runx skill --inputs must contain one JSON object".to_owned())
+}
+
 fn parse_input_assignment(
     key_or_assignment: &str,
     explicit_value: Option<String>,
@@ -107,8 +152,7 @@ fn insert_input(
     if key.is_empty() {
         return Err("runx skill input key must be non-empty".to_owned());
     }
-    inputs.insert(key, parse_cli_value(&raw_value));
-    Ok(())
+    insert_unique(inputs, key, parse_cli_value(&raw_value))
 }
 
 fn insert_json_input(
@@ -122,6 +166,19 @@ fn insert_json_input(
     }
     let value = serde_json::from_str(raw_value)
         .map_err(|error| format!("runx skill --input-json {key} is invalid JSON: {error}"))?;
+    insert_unique(inputs, key, value)
+}
+
+fn insert_unique(
+    inputs: &mut BTreeMap<String, JsonValue>,
+    key: String,
+    value: JsonValue,
+) -> Result<(), String> {
+    if inputs.contains_key(&key) {
+        return Err(format!(
+            "runx skill input {key:?} was supplied more than once"
+        ));
+    }
     inputs.insert(key, value);
     Ok(())
 }

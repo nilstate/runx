@@ -1,7 +1,7 @@
 name: transactional-order-confirmation-ready
 kind: skill
 target: ..
-runner: send-transactional
+runner: plan-transactional
 inputs:
   objective: Send an order confirmation email to alice@example.com for order 1234.
   recipient: alice@example.com

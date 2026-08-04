@@ -1,56 +1,36 @@
 skill: governed-outbound
-version: "0.1.2"
-
+version: "0.2.2"
 catalog:
   kind: graph
   audience: public
   visibility: public
   role: context
+  execution: read
+  completion: plan
+  requires_adapter: false
+  approval: required
 harness:
   cases:
     - name: governed-outbound-approved-plan
       env:
-        RUNX_PROVIDER_PERMISSION_GRANT_ID: provider-send-demo
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: runx:net:allowlist
+        RUNX_PROVIDER_PERMISSION_GRANT_ID: provider-read-demo
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["runx:net:allowlist"]'
       inputs:
-        url: https://status.example.com/incidents/2026-06-14
+        url: https://example.com/
         allowlist:
-          - status.example.com
+          - example.com
         channel: "#incidents"
         principal: account:ops-bot
-        claim: A public incident update was gathered, scrubbed of personal data, and authorized for the incident channel.
-        operator_context: Post-incident summary; never let customer identifiers reach the channel.
+        operator_context: Public incident-summary planning; provider delivery remains separate.
       caller:
         answers:
-          agent_task.web-fetch.output:
-            fetch_result:
-              final_url: https://status.example.com/incidents/2026-06-14
-              status: 200
-              content_digest: "sha256:1f0a9c7e4b2d6a8f3c5e1b0d9a7c6e4f2b8d0a1c3e5f7a9b1d3f5a7c9e1b3d5f"
-              extracted: "Incident resolved at 14:20 UTC. Primary restored in us-east-1. Reporter on file and one affected account were contacted directly."
-              provenance:
-                fetched_at: "2026-06-14T14:35:00Z"
-                redirects: 0
-                bytes: 1841
-          agent_task.redact-pii.output:
-            redaction_report:
+          agent_task.redact-pii-detect.output:
+            redaction_draft:
               decision: ready
-              detected:
-                - class: person
-                  span: [78, 86]
-                  confidence: 0.91
-                - class: account_id
-                  span: [104, 118]
-                  confidence: 0.95
-              redacted_digest: "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+              detected: []
               residual_risk:
                 level: low
-                reason: Two personal spans removed at high confidence; the rest is incident status with no identifiers.
-              policy:
-                classes:
-                  - person
-                  - account_id
-                mode: redact
+                reason_code: none
           agent_task.send-as.output:
             send_plan:
               decision: ready
@@ -69,9 +49,9 @@ harness:
                 ref: "#incidents"
                 requires_reconfirmation: false
               content:
-                draft_ref: redaction:redacted
-                digest: "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
-                subject_or_title: Incident resolved
+                draft_ref: governed-outbound:redacted-content
+                digest: sha256:d003f90bc10db991b76e6fb480123cfce2cbb2b2784abe687fccccfa7ecacad8
+                subject_or_title: Example Domain update
               gates:
                 preflight_required: true
                 human_approval_required: true
@@ -80,32 +60,67 @@ harness:
               provider_actions:
                 - channel.post
               evidence_refs:
-                - "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
+                - sha256:d003f90bc10db991b76e6fb480123cfce2cbb2b2784abe687fccccfa7ecacad8
               success_checkpoint:
                 milestone: provider_delivery_required
                 description: Provider delivery and readback remain required after this plan.
-          agent_task.sign-receipt.output:
-            attestation:
-              action: governed outbound plan
-              claim: A public incident update was gathered, scrubbed of personal data, and authorized for the incident channel.
-              principal: account:ops-bot
-              evidence_refs:
-                - "sha256:1f0a9c7e4b2d6a8f3c5e1b0d9a7c6e4f2b8d0a1c3e5f7a9b1d3f5a7c9e1b3d5f"
-                - "sha256:9b1d4c0e2af7b53c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
-              signed: true
-              attestation_id: att_governed_outbound_demo
         approvals:
           governed-outbound.send.approval: true
       expect:
         status: sealed
+        steps:
+          - fetch-source
+          - scrub-content
+          - approve-send
+          - plan-notice
+          - finalize
+        step_outputs:
+          finalize:
+            subset:
+              outbound_plan:
+                decision: ready
+                completion: plan_only
+                provider_delivery: not_executed
+                principal: account:ops-bot
+                audience: "#incidents"
+                redaction:
+                  digest: sha256:d003f90bc10db991b76e6fb480123cfce2cbb2b2784abe687fccccfa7ecacad8
+                provider_actions:
+                  - channel.post
         receipt:
           schema: runx.receipt.v1
-
+    - name: governed-outbound-redaction-hold
+      env:
+        RUNX_PROVIDER_PERMISSION_GRANT_ID: provider-read-hold-demo
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["runx:net:allowlist"]'
+      inputs:
+        url: https://example.com/
+        allowlist:
+          - example.com
+        channel: "#incidents"
+        principal: account:ops-bot
+      caller:
+        answers:
+          agent_task.redact-pii-detect.output:
+            redaction_draft:
+              decision: needs_review
+              detected: []
+              residual_risk:
+                level: medium
+                reason_code: ambiguous_semantics
+      expect:
+        status: policy_denied
+        step_outputs:
+          scrub-content:
+            subset:
+              redaction_report:
+                data:
+                  decision: needs_review
+                  redacted_digest: null
     - name: governed-outbound-needs-target
       inputs: {}
       expect:
         status: failure
-
 runners:
   governed-outbound:
     default: true
@@ -114,29 +129,26 @@ runners:
       url:
         type: string
         required: true
-        description: "Source URL to gather before preparing the notification."
+        description: Source URL to gather before preparing the notification.
       allowlist:
         type: json
         required: true
-        description: "Hosts the fetch is permitted to reach."
+        description: Hosts the fetch is permitted to reach.
       channel:
         type: string
         required: true
-        description: "Destination channel for the notification."
+        description: Destination channel for the notification plan.
       principal:
         type: string
         required: true
-        description: "Principal the notification is sent as."
-      claim:
-        type: string
-        required: false
-        description: "What the sealed attestation should assert about the run."
+        description: Principal the notification would be sent as.
       operator_context:
         type: string
         required: false
-        description: "Boundary, audience, or compliance context for the run."
+        description: Boundary, audience, or compliance context for the plan.
     graph:
       name: governed-outbound
+      result_from: [finalize]
       steps:
         - id: fetch-source
           label: gather the source
@@ -145,6 +157,8 @@ runners:
           scopes:
             - runx:net:allowlist
           inputs:
+            url: $input.url
+            allowlist: $input.allowlist
             extract: text
         - id: scrub-content
           label: scrub personal data before the boundary
@@ -157,12 +171,12 @@ runners:
           context:
             content: fetch-source.fetch_result.data.extracted
         - id: approve-send
-          label: human approval before delivery
+          label: approve the exact downstream plan
           run:
             type: approval
           inputs:
             gate_id: governed-outbound.send.approval
-            reason: Approve delivery of the scrubbed content; review the redaction verdict and residual risk before it leaves the boundary.
+            reason: Approve the exact scrubbed-content plan; provider execution and delivery readback remain separate.
           context:
             decision: scrub-content.redaction_report.data.decision
             residual_risk: scrub-content.redaction_report.data.residual_risk
@@ -175,26 +189,99 @@ runners:
           skill: ../send-as
           runner: plan
           inputs:
-            objective: Authorize the approved scrubbed update for the configured provider host.
-            audience: "$input.channel"
-            provider_context: "$input.operator_context"
+            objective: Authorize the approved scrubbed update for a separate provider adapter.
+            principal: $input.principal
+            audience: $input.channel
+            provider_context: $input.operator_context
           context:
             content_ref: scrub-content.redaction_report.data
-        - id: seal-run
-          label: seal the run to the ledger
-          skill: ../sign-receipt
-          runner: sign-receipt
-          scopes:
-            - runx:ledger:append
+        - id: finalize
+          label: validate and seal the plan-only handoff
           inputs:
-            action: governed outbound plan
+            principal: $input.principal
+            channel: $input.channel
           context:
-            evidence: plan-notice.send_plan.data
+            source: fetch-source.fetch_result.data
+            redaction: scrub-content.redaction_report.data
+            approval: approve-send.approval_decision.data
+            send_plan: plan-notice.send_plan.data
+          run:
+            type: javascript
+            module: governed-outbound.mjs
+            outputs:
+              outbound_plan:
+                type: object
+                schema:
+                  required: [decision, completion, provider_delivery, principal, audience, source, redaction, approval, provider_actions, send_plan]
+                  additionalProperties: false
+                  properties:
+                    decision: { const: ready }
+                    completion: { const: plan_only }
+                    provider_delivery: { const: not_executed }
+                    principal: { type: string, minLength: 1 }
+                    audience: { type: string, minLength: 1 }
+                    source:
+                      type: object
+                      required: [final_url, digest, fetched_at]
+                      additionalProperties: false
+                      properties:
+                        final_url: { type: string, format: uri }
+                        digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                        fetched_at: { type: string }
+                    redaction:
+                      type: object
+                      required: [digest, source_digest]
+                      additionalProperties: false
+                      properties:
+                        digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                        source_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                    approval:
+                      type: object
+                      required: [approved, gate_id]
+                      additionalProperties: false
+                      properties:
+                        approved: { const: true }
+                        gate_id: { type: string, minLength: 1 }
+                    provider_actions: { type: array, items: { type: string }, uniqueItems: true }
+                    send_plan:
+                      type: object
+                      required: [decision, principal, audience, content, success_checkpoint]
+                      properties:
+                        decision: { const: ready }
+                        principal:
+                          type: object
+                          required: [ref]
+                          properties: { ref: { type: string, minLength: 1 } }
+                        audience:
+                          type: object
+                          required: [ref]
+                          properties: { ref: { type: string, minLength: 1 } }
+                        content:
+                          type: object
+                          required: [digest]
+                          properties: { digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' } }
+                        success_checkpoint:
+                          type: object
+                          required: [milestone]
+                          properties: { milestone: { const: provider_delivery_required } }
+                      additionalProperties: true
+          artifacts:
+            wrap_as: outbound_plan_packet
+            packet: runx.governed_outbound.plan.v1
       policy:
         guards:
+          - step: approve-send
+            field: scrub-content.redaction_report.data.decision
+            equals: ready
           - step: plan-notice
             field: approve-send.approval_decision.data.approved
             equals: true
           - step: plan-notice
+            field: scrub-content.redaction_report.data.decision
+            equals: ready
+          - step: finalize
+            field: approve-send.approval_decision.data.approved
+            equals: true
+          - step: finalize
             field: scrub-content.redaction_report.data.decision
             equals: ready

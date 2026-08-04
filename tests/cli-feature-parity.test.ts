@@ -1,99 +1,59 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
+import {
+  loadCliFeatureParityContract,
+  type CliFeatureParityContract,
+  type OracleCase,
+} from "./cli-feature-parity-contract.js";
 import { ensureRunxBinary, kernelTestEnv, runxBinary } from "./host-protocol-test-utils.js";
 import { appendLedgerEntries, createRunEventEntry } from "./ledger-fixtures.js";
 
-interface CommandMatrix {
-  readonly exitCodes: readonly number[];
-  readonly commands: readonly CommandEntry[];
-}
-
-interface CommandEntry {
-  readonly id: string;
-  readonly usage: string;
-  readonly exitCodes: readonly number[];
-  readonly parity: {
-    readonly humanOutput: "semantic" | "none";
-    readonly jsonOutput: "schema-exact" | "none";
-    readonly receipt: "schema-exact" | "none";
-    readonly sideEffect: string;
-    readonly surfaces: readonly string[];
-  };
-  readonly cases: readonly string[];
-}
-
-interface RuntimeSurfaces {
-  readonly surfaces: readonly {
-    readonly id: string;
-    readonly owner: string;
-    readonly parityClass: string;
-    readonly coveredBy: readonly string[];
-  }[];
-}
-
-interface OracleCases {
-  readonly cases: readonly OracleCase[];
-}
-
-interface OracleCase {
-  readonly id: string;
-  readonly commandId: string;
-  readonly mode: "execute" | "validate";
-  readonly argv?: readonly string[];
-  readonly expectedExitCode?: number;
-  readonly expectJson?: boolean;
-  readonly stdoutIncludes?: readonly string[];
-  readonly stderrIncludes?: readonly string[];
-  readonly proves: readonly string[];
-}
-
 describe("CLI feature parity matrix", () => {
+  let contract: CliFeatureParityContract;
+
   beforeAll(() => {
     ensureRunxBinary();
+    contract = loadCliFeatureParityContract(runxBinary);
   });
 
-  it("covers every command with at least one oracle case", async () => {
-    const matrix = await readJson<CommandMatrix>("fixtures/cli-parity/commands.json");
-    const oracle = await readOracleCases();
+  it("covers every command with at least one oracle case", () => {
     const casesByCommand = new Map<string, OracleCase[]>();
+    const caseIds = new Set<string>();
 
-    for (const testCase of oracle) {
+    for (const testCase of contract.cases) {
+      expect(caseIds.has(testCase.id), testCase.id).toBe(false);
+      caseIds.add(testCase.id);
       const cases = casesByCommand.get(testCase.commandId) ?? [];
       cases.push(testCase);
       casesByCommand.set(testCase.commandId, cases);
     }
 
-    expect(matrix.exitCodes).toEqual([0, 1, 2, 64]);
-    for (const command of matrix.commands) {
-      expect(command.exitCodes).toEqual(matrix.exitCodes);
+    for (const command of contract.commands) {
       expect(command.parity.surfaces.length).toBeGreaterThan(0);
-      expect(casesByCommand.get(command.id)?.length ?? 0).toBeGreaterThan(0);
+      expect(casesByCommand.get(command.name)?.length ?? 0).toBeGreaterThan(0);
     }
   });
 
-  it("connects every runtime surface to a command and oracle case", async () => {
-    const matrix = await readJson<CommandMatrix>("fixtures/cli-parity/commands.json");
-    const runtime = await readJson<RuntimeSurfaces>("fixtures/cli-parity/runtime-surfaces.json");
-    const oracle = await readOracleCases();
-    const commandIds = new Set(matrix.commands.map((command) => command.id));
-    const provenSurfaces = new Set(oracle.flatMap((testCase) => testCase.proves));
+  it("connects every runtime surface to a command and oracle case", () => {
+    const commandIds = new Set(contract.commands.map((command) => command.name));
+    const provenSurfaces = new Set(contract.cases.flatMap((testCase) => testCase.proves));
 
-    for (const surface of runtime.surfaces) {
-      expect(surface.coveredBy.length).toBeGreaterThan(0);
+    for (const surface of contract.surfaces) {
+      expect(surface.coveredBy.length, surface.id).toBeGreaterThan(0);
       for (const commandId of surface.coveredBy) {
-        expect(commandIds.has(commandId)).toBe(true);
+        expect(commandIds.has(commandId), `${surface.id}:${commandId}`).toBe(true);
       }
-      expect(provenSurfaces.has(surface.id)).toBe(true);
+      expect(provenSurfaces.has(surface.id), surface.id).toBe(true);
     }
   });
 
   it("executes deterministic oracle cases against the native CLI", async () => {
-    const executableCases = (await readOracleCases()).filter((testCase) => testCase.mode === "execute");
+    const executableCases = contract.cases.filter((testCase) => testCase.mode === "execute");
 
     for (const testCase of executableCases) {
       const tempDir = await mkdtemp(path.join(os.tmpdir(), `runx-cli-parity-${testCase.id}-`));
@@ -174,15 +134,4 @@ async function prepareOracleFixtures(testCase: OracleCase, receiptDir: string): 
       ],
     });
   }
-}
-
-async function readOracleCases(): Promise<readonly OracleCase[]> {
-  const directory = "fixtures/cli-parity/cases";
-  const names = (await readdir(directory)).filter((name) => name.endsWith(".json"));
-  const files = await Promise.all(names.map((name) => readJson<OracleCases>(path.join(directory, name))));
-  return files.flatMap((file) => file.cases);
-}
-
-async function readJson<T>(filePath: string): Promise<T> {
-  return JSON.parse(await readFile(filePath, "utf8")) as T;
 }

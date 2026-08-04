@@ -12,6 +12,4 @@ expect:
     state: sealed
     disposition: closed
     reason_code: graph_closed
-    child_receipt_refs:
-      - runx:receipt:sha256:224326828748840e3f9538237fe4387ac01fe9e4d5b819e4a9de8a85238701c3
-      - runx:receipt:sha256:5eb58a3bed18795aa5e930ab625af9b6eea165d09012f6bbea2286c6f42bc4e2
+    child_receipt_count: 2

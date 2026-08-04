@@ -28,6 +28,7 @@ try {
   const adapterRef = firstNonEmptyString(adapter?.adapter_ref);
   const pendingProviderThread = optionalRecord(thread.metadata)?.pending_provider_thread === true;
   const shouldUseLiveProvider = isGitHubThreadAdapter(adapter);
+  const mutationOnlyReadback = payload.provider_readback === "mutation_only";
 
   if (!shouldUseLiveProvider) {
     writeJson({
@@ -49,7 +50,7 @@ try {
     process.exit(0);
   }
 
-  const pushThread = adapterRef && !pendingProviderThread
+  const pushThread = adapterRef && !pendingProviderThread && !mutationOnlyReadback
     ? fetchGitHubIssueThread({ adapterRef, env, cwd: workspacePath ?? process.cwd() })
     : thread;
 
@@ -91,9 +92,11 @@ try {
     throw new Error(`unsupported GitHub outbox entry kind '${kind ?? "unknown"}'`);
   }
 
-  const refreshedThread = adapterRef && !pendingProviderThread
+  const refreshedThread = adapterRef && !pendingProviderThread && !mutationOnlyReadback
     ? fetchGitHubIssueThread({ adapterRef, env, cwd: workspacePath ?? process.cwd() })
-    : pushThread;
+    : mutationOnlyReadback
+      ? undefined
+      : pushThread;
   const pushedEntry = optionalRecord(result.outbox_entry) ?? outboxEntry;
   const locator = firstNonEmptyString(
     pushedEntry.locator,

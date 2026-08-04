@@ -44,3 +44,9 @@ path = "src/lib.rs"
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[bin]]
+name = "runx-schema-artifacts"
+path = "src/bin/runx-schema-artifacts.rs"
+test = false
+bench = false

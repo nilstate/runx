@@ -2,11 +2,17 @@
 
 ## Security model
 
-runx keeps execution, state, and receipts on your machine. Fetching a skill from the registry is the one call that ever leaves it. A run reaches runx only when you choose to publish its receipt.
+runx keeps local execution state and receipts on your machine. It makes no
+telemetry call. Network access occurs only through an explicit surface: registry
+fetch/publish, a declared network-capable skill adapter, or an opted-in hosted
+connector. The receipt crate itself has no network access by design.
 
-The crate that holds receipts has no network access by design, so there is no telemetry to send. This is a property of the build, not a setting you toggle.
-
-Credentials are supplied per run with `runx skill <ref> --secret-env` and `runx skill <ref> --credential`. They are never persisted.
+Skills declare credential requirements in `X.yaml`. Operators resolve them from
+an explicit stored profile, a project binding, a global default, a pre-resolved
+hosted handle, or the declared workspace environment name. Secret values are
+accepted only on stdin by `runx credential set`; encrypted local material is
+never written to manifests, bindings, argv, receipts, or resume checkpoints.
+See [Credential Resolution](docs/credentials.md).
 
 Authority narrows at every hop. A hop's scopes are a subset of the grant it inherits, and widening is denied by construction, so a skill deep in a graph cannot reach past the authority its caller held. Every act produces a signed, reproducible receipt.
 

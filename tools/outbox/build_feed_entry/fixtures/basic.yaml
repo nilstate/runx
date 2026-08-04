@@ -56,29 +56,18 @@ inputs:
       url: https://github.com/acme/widgets/pull/42
 expect:
   status: success
-  outputs:
-    feed_entry:
-      matches_packet: runx.feed_entry.v1
-      subset:
-        thread_locator: issue://fixture/123
-        milestones:
-          - kind: accepted
-          - kind: triaged
-          - kind: spec_ready
-          - kind: build_started
-            status: passed
-          - kind: review_requested
-            status: passed
-          - kind: change_request_created
-            status: ready
-          - kind: human_gate
-            status: ready
-    outbox_entry:
-      matches_packet: runx.outbox.entry.v1
-      subset:
-        entry_id: message:task-fixture:human_gate
-        kind: message
-        status: proposed
-        metadata:
-          workflow: issue-to-pr
-          milestone_kind: human_gate
+  output:
+    subset:
+      feed_entry:
+        schema: runx.feed_entry.v1
+        data:
+          thread_locator: issue://fixture/123
+          title: Improve docs
+      outbox_entry:
+        data:
+          entry_id: message:task-fixture:human_gate
+          kind: message
+          status: proposed
+          metadata:
+            workflow: issue-to-pr
+            milestone_kind: human_gate

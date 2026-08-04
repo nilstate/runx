@@ -1,5 +1,5 @@
 skill: issue-to-pr-push-outbox
-version: "0.1.1"
+version: "0.1.4"
 
 catalog:
   kind: graph
@@ -19,10 +19,12 @@ runners:
         description: Portable thread carrying the provider adapter and canonical locator.
       outbox_entry:
         type: json
+        packet: runx.outbox.entry.v1
         required: true
         description: Digest-bound outbox entry to publish or update.
       draft_pull_request:
         type: json
+        packet: runx.outbox.draft_pull_request.v1
         required: false
         description: Draft pull-request packet when publishing a pull_request entry.
       fixture:
@@ -40,6 +42,7 @@ runners:
         description: Outbox status recorded after a successful provider push.
     graph:
       name: issue-to-pr-push-outbox
+      result_from: [provider-push]
       steps:
         - id: provider-push
           label: push one digest-bound outbox entry
@@ -55,3 +58,8 @@ runners:
             fixture: $input.fixture
             workspace_path: $input.workspace_path
             next_status: $input.next_status
+          artifacts:
+            named_emits:
+              thread: thread
+              outbox_entry: outbox_entry
+              push: push

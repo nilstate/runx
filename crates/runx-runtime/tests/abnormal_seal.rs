@@ -7,8 +7,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use runx_contracts::{ClosureDisposition, JsonObject};
 use runx_runtime::{
-    HarnessExpectedStatus, InvocationStatus, RuntimeOptions, SkillAdapter, SkillInvocation,
-    SkillOutput, run_harness_fixture_with_adapter,
+    HarnessExpectedStatus, InvocationOutput, RuntimeOptions, SkillAdapter, SkillInvocation,
+    run_harness_fixture_with_adapter,
 };
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
@@ -73,24 +73,29 @@ impl SkillAdapter for RecordingAdapter {
         "cli-tool"
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, runx_runtime::RuntimeError> {
+    fn invoke(
+        &self,
+        request: SkillInvocation,
+    ) -> Result<InvocationOutput, runx_runtime::RuntimeError> {
         self.calls
             .lock()
             .map_err(|_| runx_runtime::RuntimeError::ReceiptInvalid {
                 message: "adapter calls lock poisoned".to_owned(),
             })?
             .push(request.skill_name.clone());
-        Ok(SkillOutput {
-            status: InvocationStatus::Success,
-            stdout: match request.skill_name.as_str() {
-                "act" => r#"{"approved":false}"#.to_owned(),
-                _ => r#"{"closed":true}"#.to_owned(),
-            },
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 0,
-            metadata: JsonObject::default(),
-        })
+        let value = match request.skill_name.as_str() {
+            "act" => serde_json::json!({ "approved": false }),
+            _ => serde_json::json!({ "closed": true }),
+        };
+        Ok(InvocationOutput::runtime_success(
+            serde_json::from_value(value).map_err(|source| {
+                runx_runtime::RuntimeError::ReceiptInvalid {
+                    message: format!("building adapter output: {source}"),
+                }
+            })?,
+            0,
+            JsonObject::default(),
+        ))
     }
 }
 
@@ -114,22 +119,29 @@ impl TempCase {
 
     fn write_skill(&self, directory: &str, name: &str) -> Result<(), std::io::Error> {
         let skill_dir = self.root.join(directory);
-        fs::create_dir_all(&skill_dir)?;
-        fs::write(
-            skill_dir.join("SKILL.md"),
+        crate::support::write_test_skill_package(
+            &skill_dir,
             format!(
                 r#"---
 name: {name}
 description: Abnormal seal test {name} skill.
-source:
-  type: cli-tool
-  command: runx-test-adapter
-  args: []
 ---
 
 Emits structured test output through the harness adapter.
 "#
-            ),
+            )
+            .as_str(),
+            format!(
+                r#"skill: {name}
+runners:
+  {name}:
+    default: true
+    type: cli-tool
+    command: runx-test-adapter
+    args: []
+"#
+            )
+            .as_str(),
         )
     }
 
@@ -181,6 +193,6 @@ impl Drop for TempCase {
 fn runtime_options() -> RuntimeOptions {
     RuntimeOptions {
         created_at: FIXTURE_CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }

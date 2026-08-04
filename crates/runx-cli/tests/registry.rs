@@ -115,6 +115,171 @@ fn registry_local_publish_search_resolve_install_json() -> Result<(), Box<dyn st
 }
 
 #[test]
+fn registry_local_publish_install_executes_bundled_sibling()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("registry-bundled-sibling");
+    let source = root.join("source");
+    let skill_dir = source.join("root");
+    let sibling_dir = source.join("sibling");
+    let leaf_dir = source.join("leaf");
+    let registry_dir = root.join("registry");
+    let install_dir = root.join("installed");
+    fs::create_dir_all(skill_dir.join("packets"))?;
+    fs::create_dir_all(&sibling_dir)?;
+    fs::create_dir_all(&leaf_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: bundled-root\ndescription: Registry bundle integration fixture.\n---\n# Bundled root\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"skill: bundled-root
+harness:
+  cases:
+    - name: sibling
+      runner: default
+      expect:
+        status: sealed
+runners:
+  default:
+    default: true
+    type: graph
+    graph:
+      name: bundled-root
+      result_from: [sibling]
+      steps:
+        - id: sibling
+          skill: ../sibling
+          artifacts:
+            wrap_as: sibling_packet
+            packet: runx.test.registry-sibling.v1
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("packets/sibling.schema.json"),
+        "{\"x-runx-packet-id\":\"runx.test.registry-sibling.v1\",\"type\":\"object\"}\n",
+    )?;
+    fs::write(
+        sibling_dir.join("SKILL.md"),
+        "---\nname: bundled-sibling\ndescription: Bundled dependency fixture.\n---\n# Bundled sibling\n",
+    )?;
+    fs::write(
+        sibling_dir.join("X.yaml"),
+        r#"skill: bundled-sibling
+runners:
+  default:
+    default: true
+    type: graph
+    graph:
+      name: bundled-sibling
+      result_from: [leaf]
+      steps:
+        - id: leaf
+          skill: ../leaf
+"#,
+    )?;
+    fs::write(
+        leaf_dir.join("SKILL.md"),
+        "---\nname: bundled-leaf\ndescription: Transitive bundled dependency fixture.\n---\n# Bundled leaf\n",
+    )?;
+    fs::write(
+        leaf_dir.join("X.yaml"),
+        r#"skill: bundled-leaf
+runners:
+  default:
+    default: true
+    type: graph
+    graph:
+      name: bundled-leaf
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: installed-leaf
+"#,
+    )?;
+
+    let package = runx_command()?
+        .args([
+            "registry",
+            "package",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+        ])
+        .output()?;
+    assert_success_contains(
+        &package,
+        &[
+            "\"action\": \"package\"",
+            "\"path\": \"runx.package.json\"",
+            "\"path\": \"dependencies/sibling/X.yaml\"",
+            "\"path\": \"dependencies/leaf/X.yaml\"",
+        ],
+    )?;
+
+    let publish = runx_command()?
+        .args([
+            "registry",
+            "publish",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--registry-dir",
+            registry_dir.to_str().ok_or("non-utf8 registry dir")?,
+            "--owner",
+            "acme",
+            "--version",
+            "1.0.0",
+            "--json",
+        ])
+        .output()?;
+    assert_success_contains(&publish, &["\"action\": \"publish\""])?;
+
+    let install = runx_command()?
+        .args([
+            "registry",
+            "install",
+            "acme/bundled-root@1.0.0",
+            "--registry-dir",
+            registry_dir.to_str().ok_or("non-utf8 registry dir")?,
+            "--to",
+            install_dir.to_str().ok_or("non-utf8 install dir")?,
+            "--json",
+        ])
+        .output()?;
+    assert_success_contains(&install, &["\"status\": \"installed\""])?;
+
+    let installed = install_dir.join("acme").join("bundled-root").join("1.0.0");
+    assert!(installed.join("runx.package.json").is_file());
+    assert!(installed.join("dependencies/sibling/X.yaml").is_file());
+    assert!(installed.join("dependencies/leaf/X.yaml").is_file());
+    let run = crate::support::isolated_runx_command_with_inherited_cwd("registry-bundle-run")
+        .current_dir(&root)
+        .env("RUNX_HOME", root.join("home"))
+        .args([
+            "skill",
+            installed.to_str().ok_or("non-utf8 installed skill dir")?,
+            "--json",
+            "--non-interactive",
+        ])
+        .output()?;
+    assert_eq!(
+        run.status.code(),
+        Some(0),
+        "stderr={}\nstdout={}",
+        String::from_utf8_lossy(&run.stderr),
+        String::from_utf8_lossy(&run.stdout)
+    );
+    let result = serde_json::from_slice::<serde_json::Value>(&run.stdout)?;
+    assert_eq!(result["status"], "sealed");
+    assert_eq!(
+        result["result"]["sibling_packet"]["data"]["digest_result"]["data"]["digest"],
+        "sha256:e225fda0645d7ec6cfdbd8216a0e81604271cb0a900ea4e2989187e3d4ecd3d1"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn registry_install_versions_are_side_by_side() -> Result<(), Box<dyn std::error::Error>> {
     let root = temp_root("registry-side-by-side");
     let registry_dir = root.join("registry");

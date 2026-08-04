@@ -1,93 +1,32 @@
 skill: charge-challenge
-version: "0.1.0"
+version: 0.3.1
 catalog:
-  kind: skill
+  kind: graph
   audience: operator
   visibility: internal
   role: graph-stage
   part_of:
     - runx/charge
-harness:
-  cases:
-    - name: charge-challenge-emits-payment-required
-      runner: challenge
-      inputs:
-        charge_price_packet:
-          charge_price:
-            price_id: charge_price_demo_001
-            amount_minor: 125
-            currency: USD
-            settlement_families:
-              - mock
-            counterparty: provider:demo
-            operation: search.paid
-          requested_payment_authority:
-            authority_ref: authority:payment:charge-price-demo-001
-        idempotency_seed: paid-search-001
-      caller:
-        answers:
-          agent_task.charge-challenge.output:
-            effect_required_signal:
-              signal_type: effect_required
-              challenge_id: charge_challenge_demo_001
-              amount_minor: 125
-              currency: USD
-              rail: mock
-              counterparty: provider:demo
-              operation: search.paid
-            charge_challenge:
-              challenge_id: charge_challenge_demo_001
-              price_id: charge_price_demo_001
-              required_authority_ref: authority:payment:charge-price-demo-001
-              receipt_before_forward_required: true
-            idempotency:
-              key: charge:paid-search-001
-              replay_policy: recover_or_refuse_duplicate
-            accepted_settlement_families:
-              - mock
-            open_questions: []
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: charge_challenge_closed
 runners:
   challenge:
     default: true
-    type: agent-task
-    agent: operator
-    task: charge-challenge
-    outputs:
-      effect_required_signal: object
-      charge_challenge: object
-      idempotency: object
-      accepted_settlement_families: array
-      open_questions: array
-    artifacts:
-      wrap_as: charge_challenge_packet
-      packet: runx.payment.charge_challenge.v1
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: challenge
-        resource_family: effect
-        verbs:
-          - estimate
-        mutates_rail: false
-        receives_rail_secret_material: false
-        receipt_before_forward_required: true
+    type: graph
     inputs:
       charge_price_packet:
-        type: object
+        type: json
+        packet: runx.payment.charge_price.v1
         required: true
-        description: Output from charge-price.
-      provider_policy:
-        type: object
-        required: false
-        description: Provider challenge formatting hints.
+        description: Native charge-price packet data.
       idempotency_seed:
         type: string
-        required: false
-        description: Stable seed if the price packet lacks an idempotency key.
+        required: true
+        description: Stable caller-owned challenge seed.
+    graph:
+      name: charge-challenge
+      result_from: [challenge]
+      steps:
+        - id: challenge
+          tool: payment.charge_challenge
+          inputs:
+            charge_price_packet: $input.charge_price_packet
+            idempotency_seed: $input.idempotency_seed

@@ -1,9 +1,0 @@
-{
-  "status": "failure",
-  "stdout": "",
-  "stderr": "A2A source requires agent_card_url and task metadata.",
-  "exitCode": null,
-  "signal": null,
-  "durationMs": 0,
-  "errorMessage": "A2A source requires agent_card_url and task metadata."
-}

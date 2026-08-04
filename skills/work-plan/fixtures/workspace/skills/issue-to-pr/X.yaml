@@ -1,0 +1,23 @@
+skill: issue-to-pr
+version: "0.0.0"
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+runners:
+  execute:
+    default: true
+    type: graph
+    graph:
+      name: issue-to-pr-fixture
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: issue-to-pr-fixture

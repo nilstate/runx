@@ -59,19 +59,6 @@ export const externalAdapterCredentialNeedSchema = Type.Object(
 export type ExternalAdapterCredentialNeedContract =
   DeepReadonly<Static<typeof externalAdapterCredentialNeedSchema>>;
 
-export const externalAdapterSandboxIntentSchema = Type.Object(
-  {
-    profile: Type.String({ minLength: 1 }),
-    network: Type.Boolean(),
-    cwd_policy: Type.String({ minLength: 1 }),
-    writable_paths: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-  },
-  { additionalProperties: false },
-);
-
-export type ExternalAdapterSandboxIntentContract =
-  DeepReadonly<Static<typeof externalAdapterSandboxIntentSchema>>;
-
 export const externalAdapterTimeoutsSchema = Type.Object(
   {
     startup_ms: Type.Integer({ minimum: 1 }),
@@ -93,7 +80,6 @@ const externalAdapterManifestV1TypeSchema = Type.Object(
     transport: externalAdapterTransportSchema,
     timeouts: externalAdapterTimeoutsSchema,
     credential_needs: Type.Optional(Type.Array(externalAdapterCredentialNeedSchema)),
-    sandbox_intent: externalAdapterSandboxIntentSchema,
     metadata: Type.Optional(unknownRecordSchema()),
   },
   {

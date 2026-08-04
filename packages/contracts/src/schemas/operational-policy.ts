@@ -1,11 +1,5 @@
-import { Type, type Static } from "../internal.js";
 import {
-  JSON_SCHEMA_DRAFT_2020_12,
-  RUNX_CONTRACT_IDS,
-  RUNX_LOGICAL_SCHEMAS,
-  type DeepReadonly,
-  dateTimeStringSchema,
-  stringEnum,
+  generatedSchema,
   validateContractSchema,
 } from "../internal.js";
 
@@ -42,7 +36,6 @@ export const operationalPolicyActions = [
 export const operationalPolicyRunnerKinds = [
   "local",
   "github-actions",
-  "aster",
 ] as const;
 
 export const operationalPolicyRunnerStates = [
@@ -63,143 +56,72 @@ export const operationalPolicyOutcomeCloseModes = [
   "when_terminal",
 ] as const;
 
-const repoSlugSchema = Type.String({
-  minLength: 3,
-  pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
-});
-
-const idSchema = Type.String({
-  minLength: 1,
-  pattern: "^[A-Za-z0-9_.:-]+$",
-});
-
-const actionSchema = stringEnum(operationalPolicyActions);
-
-const sourceProviderSchema = Type.String({ minLength: 1 });
-
-const runnerKindSchema = Type.String({ minLength: 1 });
-
-const runnerStateSchema = stringEnum(operationalPolicyRunnerStates);
-
-const dedupeStrategySchema = stringEnum(operationalPolicyDedupeStrategies);
-
-const outcomeCloseModeSchema = stringEnum(operationalPolicyOutcomeCloseModes);
-
-const sourceThreadPolicySchema = Type.Object(
-  {
-    required: Type.Boolean(),
-    publish_mode: stringEnum(["reply", "comment", "none"] as const),
-    missing_behavior: Type.Literal("fail_closed"),
-  },
-  { additionalProperties: false },
-);
-
-const sourceRuleSchema = Type.Object(
-  {
-    source_id: idSchema,
-    provider: sourceProviderSchema,
-    allowed_locators: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-    allowed_actions: Type.Array(actionSchema, { minItems: 1 }),
-    source_thread: sourceThreadPolicySchema,
-    minimum_confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
-    adapter_policy: Type.Optional(Type.Record(
-      Type.String({ minLength: 1 }),
-      Type.Unknown(),
-    )),
-  },
-  { additionalProperties: false },
-);
-
-const runnerRuleSchema = Type.Object(
-  {
-    runner_id: idSchema,
-    kind: runnerKindSchema,
-    state: runnerStateSchema,
-    allowed_actions: Type.Array(actionSchema, { minItems: 1 }),
-    target_repos: Type.Array(repoSlugSchema, { minItems: 1 }),
-    scafld_required: Type.Boolean(),
-  },
-  { additionalProperties: false },
-);
-
-const ownerRouteSchema = Type.Object(
-  {
-    route_id: idSchema,
-    owners: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-    target_repos: Type.Array(repoSlugSchema, { minItems: 1 }),
-    labels: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-    project: Type.Optional(Type.String({ minLength: 1 })),
-  },
-  { additionalProperties: false },
-);
-
-const targetRuleSchema = Type.Object(
-  {
-    repo: repoSlugSchema,
-    runner_ids: Type.Array(idSchema, { minItems: 1 }),
-    allowed_actions: Type.Array(actionSchema, { minItems: 1 }),
-    default_owner_route: idSchema,
-    scafld_required: Type.Boolean(),
-    base_branch: Type.Optional(Type.String({ minLength: 1 })),
-  },
-  { additionalProperties: false },
-);
-
-const dedupePolicySchema = Type.Object(
-  {
-    strategy: dedupeStrategySchema,
-    key_fields: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
-    on_duplicate: stringEnum(["reuse", "comment", "block"] as const),
-  },
-  { additionalProperties: false },
-);
-
-const outcomePolicySchema = Type.Object(
-  {
-    observe_provider: Type.Boolean(),
-    verification_required: Type.Boolean(),
-    close_source_issue: outcomeCloseModeSchema,
-    publish_final_source_thread_update: Type.Boolean(),
-  },
-  { additionalProperties: false },
-);
-
-const automationPermissionsSchema = Type.Object(
-  {
-    auto_merge: Type.Literal(false),
-    mutate_target_repo: Type.Boolean(),
-    require_human_merge_gate: Type.Literal(true),
-  },
-  { additionalProperties: false },
-);
-
-export const operationalPolicySchema = Type.Object(
-  {
-    schema: Type.Literal(RUNX_LOGICAL_SCHEMAS.operationalPolicy),
-    schema_version: Type.Literal(operationalPolicySchemaVersion),
-    policy_id: idSchema,
-    created_at: Type.Optional(dateTimeStringSchema()),
-    sources: Type.Array(sourceRuleSchema, { minItems: 1 }),
-    runners: Type.Array(runnerRuleSchema, { minItems: 1 }),
-    owner_routes: Type.Array(ownerRouteSchema, { minItems: 1 }),
-    targets: Type.Array(targetRuleSchema, { minItems: 1 }),
-    dedupe: dedupePolicySchema,
-    outcomes: outcomePolicySchema,
-    permissions: automationPermissionsSchema,
-  },
-  {
-    $schema: JSON_SCHEMA_DRAFT_2020_12,
-    $id: RUNX_CONTRACT_IDS.operationalPolicy,
-    "x-runx-schema": RUNX_LOGICAL_SCHEMAS.operationalPolicy,
-    additionalProperties: false,
-  },
-);
-
 export type OperationalPolicySourceProviderContract = string;
 export type OperationalPolicyActionContract = string;
 export type OperationalPolicyRunnerKindContract = string;
 export type OperationalPolicyRunnerStateContract = string;
-export type OperationalPolicyContract = DeepReadonly<Static<typeof operationalPolicySchema>>;
+
+export interface OperationalPolicyContract {
+  readonly schema: "runx.operational_policy.v1";
+  readonly schema_version: typeof operationalPolicySchemaVersion;
+  readonly policy_id: string;
+  readonly created_at?: string;
+  readonly sources: readonly {
+    readonly source_id: string;
+    readonly provider: OperationalPolicySourceProviderContract;
+    readonly allowed_locators: readonly string[];
+    readonly allowed_actions: readonly OperationalPolicyActionContract[];
+    readonly source_thread: {
+      readonly required: boolean;
+      readonly publish_mode: "reply" | "comment" | "none";
+      readonly missing_behavior: "fail_closed";
+    };
+    readonly minimum_confidence?: number;
+    readonly adapter_policy?: Readonly<Record<string, unknown>>;
+  }[];
+  readonly runners: readonly {
+    readonly runner_id: string;
+    readonly kind: OperationalPolicyRunnerKindContract;
+    readonly state: OperationalPolicyRunnerStateContract;
+    readonly allowed_actions: readonly OperationalPolicyActionContract[];
+    readonly target_repos: readonly string[];
+    readonly scafld_required: boolean;
+  }[];
+  readonly owner_routes: readonly {
+    readonly route_id: string;
+    readonly owners: readonly string[];
+    readonly target_repos: readonly string[];
+    readonly labels?: readonly string[];
+    readonly project?: string;
+  }[];
+  readonly targets: readonly {
+    readonly repo: string;
+    readonly runner_ids: readonly string[];
+    readonly allowed_actions: readonly OperationalPolicyActionContract[];
+    readonly default_owner_route: string;
+    readonly scafld_required: boolean;
+    readonly base_branch?: string;
+  }[];
+  readonly dedupe: {
+    readonly strategy: string;
+    readonly key_fields: readonly string[];
+    readonly on_duplicate: "reuse" | "comment" | "block";
+  };
+  readonly outcomes: {
+    readonly observe_provider: boolean;
+    readonly verification_required: boolean;
+    readonly close_source_issue: string;
+    readonly publish_final_source_thread_update: boolean;
+  };
+  readonly permissions: {
+    readonly auto_merge: false;
+    readonly mutate_target_repo: boolean;
+    readonly require_human_merge_gate: true;
+  };
+}
+
+export const operationalPolicySchema =
+  generatedSchema<OperationalPolicyContract>("operational-policy.schema.json");
 
 export interface OperationalPolicyValidationFinding {
   readonly code: string;

@@ -17,7 +17,7 @@ use crate::effect_state::{
     EffectStepStateInput, consumed_spend_capability_recorded, record_effect_finality_intent,
 };
 
-// rust-style-allow: long-function because admission is one fail-closed
+// Function rationale: admission is one fail-closed
 // decision path (parse submission, check idempotency, reserve, build the
 // admission record) that must read top to bottom to stay auditable.
 pub(super) fn admit_payment_effect(

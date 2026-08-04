@@ -1,0 +1,123 @@
+use std::collections::BTreeSet;
+
+use crate::CapabilityContract;
+
+#[cfg(feature = "catalog")]
+use super::super::EffectToolRequest;
+use super::{RuntimeEffectError, RuntimeEffectRegistry};
+
+impl RuntimeEffectRegistry {
+    pub(crate) fn capability(&self, tool_ref: &str) -> Option<&'static dyn CapabilityContract> {
+        self.families
+            .values()
+            .flat_map(|effect| effect.capabilities())
+            .copied()
+            .find(|capability| capability.definition().id == tool_ref)
+    }
+
+    pub(crate) fn capabilities(&self) -> Vec<&'static dyn CapabilityContract> {
+        self.families
+            .values()
+            .flat_map(|effect| effect.capabilities())
+            .copied()
+            .collect()
+    }
+
+    pub(crate) fn capability_execution_boundary(
+        &self,
+        tool_ref: &str,
+    ) -> Option<runx_contracts::ExecutionBoundaryKind> {
+        self.families.values().find_map(|effect| {
+            effect
+                .capabilities()
+                .iter()
+                .any(|capability| capability.definition().id == tool_ref)
+                .then(|| effect.execution_boundary())
+        })
+    }
+
+    #[cfg(feature = "catalog")]
+    pub(crate) fn invoke_tool(
+        &self,
+        request: EffectToolRequest<'_>,
+    ) -> Option<Result<runx_contracts::JsonValue, crate::RuntimeError>> {
+        let effect = self.families.values().find(|effect| {
+            effect
+                .capabilities()
+                .iter()
+                .any(|capability| capability.definition().id == request.tool_ref)
+        })?;
+        let capability = effect
+            .capabilities()
+            .iter()
+            .copied()
+            .find(|capability| capability.definition().id == request.tool_ref)?;
+        let inputs = match capability.normalize_inputs(request.inputs) {
+            Ok(inputs) => inputs,
+            Err(error) => return Some(Err(error)),
+        };
+        let normalized = EffectToolRequest {
+            tool_ref: request.tool_ref,
+            observed_at: request.observed_at,
+            inputs: &inputs,
+            env: request.env,
+            skill_directory: request.skill_directory,
+            credential_delivery: request.credential_delivery,
+            admission: request.admission,
+        };
+        Some(invoke_effect_tool(effect.as_ref(), capability, normalized))
+    }
+
+    pub(super) fn capability_owner(&self, tool_ref: &str) -> Option<&'static str> {
+        self.families.values().find_map(|effect| {
+            effect
+                .capabilities()
+                .iter()
+                .any(|capability| capability.definition().id == tool_ref)
+                .then(|| effect.family())
+        })
+    }
+}
+
+#[cfg(feature = "catalog")]
+fn invoke_effect_tool(
+    effect: &dyn super::super::RuntimeEffect,
+    capability: &dyn CapabilityContract,
+    request: EffectToolRequest<'_>,
+) -> Result<runx_contracts::JsonValue, crate::RuntimeError> {
+    let tool_ref = request.tool_ref;
+    let output = effect.invoke_tool(request).unwrap_or_else(|| {
+        Err(crate::RuntimeError::SkillFailed {
+            skill_name: tool_ref.to_owned(),
+            message: format!(
+                "effect family {} declares tool {tool_ref} but does not implement it",
+                effect.family()
+            ),
+        })
+    })?;
+    capability.validate_output(&output)?;
+    Ok(output)
+}
+
+pub(super) fn validate_capabilities(
+    family: &'static str,
+    capabilities: &[&dyn CapabilityContract],
+) -> Result<(), RuntimeEffectError> {
+    let mut names = BTreeSet::new();
+    for capability in capabilities {
+        let definition = capability.definition();
+        crate::capability::validate_capability_contract(*capability).map_err(|error| {
+            RuntimeEffectError::InvalidMetadata {
+                family: family.to_owned(),
+                message: error.to_string(),
+            }
+        })?;
+        if !names.insert(definition.id) {
+            return Err(RuntimeEffectError::InvalidMetadata {
+                family: family.to_owned(),
+                message: format!("tool {} is declared more than once", definition.id),
+            });
+        }
+    }
+    Ok(())
+}

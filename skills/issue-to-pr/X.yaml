@@ -1,12 +1,18 @@
 skill: issue-to-pr
-version: "0.2.1"
+version: "0.2.5"
 
 catalog:
   kind: graph
   audience: public
   visibility: public
-  role: context
+  role: canonical
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: required
 harness:
+  files:
+    - fixtures/issue-to-pr-harness-scafld.mjs
   cases:
     - name: issue-to-pr-dispatches-first-step
       inputs:
@@ -16,7 +22,7 @@ harness:
         thread_locator: local://fixtures/issue-to-pr-smoke
         size: small
         risk: low
-        scafld_bin: fixtures/issue-to-pr-harness-scafld.mjs
+        scafld_bin: ../../fixtures/issue-to-pr-harness-scafld.mjs
       expect:
         status: needs_agent
 
@@ -28,7 +34,7 @@ harness:
         thread_locator: local://fixtures/issue-to-pr-reach-fix
         size: small
         risk: low
-        scafld_bin: fixtures/issue-to-pr-harness-scafld.mjs
+        scafld_bin: ../../fixtures/issue-to-pr-harness-scafld.mjs
       caller:
         answers:
           agent_task.issue-to-pr-author-spec.output:
@@ -43,6 +49,8 @@ harness:
               size: small
               risk_level: low
               ---
+
+              # Harness Task
 
               ## Current State
 
@@ -201,6 +209,8 @@ harness:
               ## Planning Log
 
               - none
+            context_files:
+              - README.md
       expect:
         status: needs_agent
 
@@ -233,18 +243,22 @@ runners:
         description: "Portable thread for the current thread."
       outbox_entry:
         type: json
+        packet: runx.outbox.entry.v1
         required: false
         description: "Current outbox entry when the lane is refreshing an adapter-owned target."
       harness:
         type: json
+        packet: runx.receipt.v1
         required: false
         description: "Optional runx.receipt.v1 packet for the governed run boundary."
       signal:
         type: json
+        packet: runx.signal.v1
         required: false
         description: "Optional runx.signal.v1 packet with source references, authenticity, fingerprint, and evidence references."
       decision:
         type: json
+        packet: runx.decision.v1
         required: false
         description: "Optional runx.decision.v1 packet with the accountable lane selection rationale."
       target_repo:
@@ -253,6 +267,7 @@ runners:
         description: "Intended repository slug for repo-local dispatchers."
       operational_policy:
         type: json
+        packet: runx.operational_policy.v1
         required: false
         description: "Optional runx.operational_policy.v1 packet for source, target, runner, and source-thread admission."
       source_id:
@@ -322,15 +337,26 @@ runners:
         type: string
         required: false
         description: "Optional model forwarded to scafld review."
+    examples:
+      - task_id: issue-to-pr-example
+        thread_title: Fix the bounded runtime regression
+        thread_body: Reproduce the regression, preserve the public contract, and add focused coverage.
+        thread_locator: github://runxhq/runx/issues/42
+        target_repo: runxhq/runx
+        size: small
+        risk: low
+        base: main
     graph:
       name: issue-to-pr
+      result_from: [push-feed-entry]
       notes:
         status: governed
         rationale: >
           This graph keeps cognition and mutation separate while treating
-          scafld 2.4 as the workflow kernel. Agent phases author the markdown
-          spec and bounded fix bundle. Deterministic fs.write phases perform
-          mutations. Native scafld plan, validate, approve, build, review,
+          scafld 2.4 as the workflow kernel. Agent phases complete the
+          CLI-created markdown draft and author the bounded fix bundle.
+          Deterministic fs.write phases perform mutations. Native scafld plan,
+          validate, approve, build, review,
           complete, status, and handoff surfaces stay visible instead of being
           re-created by translation projection steps. The public story is the
           source-thread lifecycle: signal, decision, spec, build, review,
@@ -344,75 +370,29 @@ runners:
           mutation: true
           inputs:
             command: plan
+        - id: read-planned-spec
+          label: read scafld-owned draft
+          tool: fs.read
+          scopes:
+            - fs.read
+          context:
+            path: scafld-plan.result.data.path
         - id: author-spec
-          label: author scafld spec
+          label: complete scafld spec
           run:
             type: agent-task
             agent: builder
             task: issue-to-pr-author-spec
             outputs:
               spec_contents: string
-          instructions: >
-            Replace the draft created by scafld plan with a complete
-            scafld 2.4-compatible markdown spec. Use thread_title,
-            thread_body, thread_locator,
-            thread, outbox_entry, target_repo, repo_snapshot,
-            repo_snapshot_path, and repo_context to keep the spec grounded in
-            the actual request and repository. Preserve the front matter shape
-            with spec_version '2.0', task_id, created, updated, status set to
-            draft, a non-empty thread title, harden_status set to not_run, size
-            as one of small, medium, or large, and risk_level. The body must include
-            Current State, Summary, Context, Objectives, Scope, Dependencies,
-            Assumptions, Touchpoints, Risks, Acceptance, at least one Phase
-            section, Rollback, Review, Self Eval, Deviations, Metadata, Origin,
-            Harden Rounds, and
-            Planning Log. Declare changed repo files in Context / Files
-            impacted and Phase / Changes using concrete repo-relative paths in
-            backticks. Do not declare scafld-managed control-plane artifacts
-            under .scafld/specs, .scafld/reviews, .scafld/runs, or old .ai
-            governance paths as repo-change scope. Validation commands must be
-            executable in the current workspace after the fix bundle is written.
-            Do not depend on git history ranges such as HEAD~1. When validation
-            commands are included, use direct repo-local checks such as tests,
-            lint, build, or file-content commands. Do not use runx runtime
-            internals or graph/scafld/run.mjs as validation commands; scafld
-            is already the lifecycle runner around this graph. For any code
-            change, declare at least one targeted test/spec file in Files
-            impacted and Phase / Changes and include at least one executable
-            validation command that exercises that target. Do this even when the
-            source thread does not explicitly request coverage; code PRs are not
-            publishable from this lane without either targeted test/spec scope
-            or grounded scafld validation evidence. When the source thread or
-            acceptance criteria asks for tests, specs, regression coverage,
-            focused coverage, or request/service coverage, this coverage
-            requirement is mandatory and cannot be softened to a generic smoke
-            check. If no existing test/spec path is declared but the repository
-            layout makes a conventional path inferable, declare that new
-            test/spec file. If no grounded test/spec path or command can be
-            inferred from the repo snapshot, stop with a missing-evidence reason
-            instead of publishing a code-only PR. If a required file
-            path cannot be grounded from the thread or repository evidence, keep
-            the scope narrow and state the assumption instead of inventing a file.
-            When the approved lane is documentation or process work, prefer
-            existing documentation surfaces from repo_snapshot.existing_files or
-            repo_context, and declare at least one non-governance repo file;
-            issue-to-pr is a PR lane, so an approved spec must not leave the
-            repo-change scope empty. Preserve source-thread context in Summary,
-            Origin, and Planning Log so the eventual reviewer story can explain
-            why this lane ran and what evidence justified mutation.
+              context_files: array
           allowed_tools:
             - fs.read
             - git.status
           context:
             spec_path: scafld-plan.result.data.path
             scafld_plan: scafld-plan.result.data
-        - id: normalize-spec
-          label: normalize scafld frontmatter
-          tool: spec.normalize_scafld_frontmatter
-          scopes:
-            - spec.normalize_scafld_frontmatter
-          context:
-            spec_contents: author-spec.spec_contents
+            planned_spec_contents: read-planned-spec.file_read.data.contents
         - id: write-spec
           label: write markdown spec
           tool: fs.write
@@ -421,7 +401,7 @@ runners:
           mutation: true
           context:
             path: scafld-plan.result.data.path
-            contents: normalize-spec.normalized_spec.data.contents
+            contents: author-spec.spec_contents
         - id: read-draft-spec
           label: read draft spec
           tool: fs.read
@@ -452,14 +432,14 @@ runners:
           context:
             path: scafld-approve.result.data.path
         - id: read-declared-files
-          label: read declared files
-          tool: spec.read_declared_files
+          label: read bounded authoring context
+          tool: fs.read_bundle
           scopes:
-            - spec.read_declared_files
+            - fs.read
           inputs:
-            extra_files: $input.repo_snapshot.recommended_files
+            on_missing: report
           context:
-            spec_contents: read-approved-spec.file_read.data.contents
+            paths: author-spec.context_files
         - id: author-fix
           label: author bounded fix
           run:
@@ -468,56 +448,6 @@ runners:
             task: issue-to-pr-apply-fix
             outputs:
               fix_bundle: object
-          instructions: >
-            Produce the bounded fix bundle described by the approved scafld 2
-            markdown spec. Use repo_snapshot, repo_snapshot_path, repo_context,
-            approved spec contents, current thread context, and
-            declared_file_context. Review declared_file_context.files before
-            deciding what to edit. declared_file_context is unwrapped and has
-            the shape { repo_root, declared_count, files }, where each file has
-            { path, exists, kind, declared_in, contents }. Treat files with
-            exists: true and contents as already read source evidence, not as
-            missing context. fix_bundle.files must be an array of
-            { path, contents } entries covering every repo file needed to satisfy
-            the approved spec. For documentation or process changes, the
-            approved spec, thread, repo_snapshot, repo_context, and current
-            declared file contents are sufficient when they identify a narrow
-            edit; do not return an empty bundle when one scoped docs edit is
-            possible. For any existing file, contents must be the complete
-            current file with the smallest necessary edit applied; preserve
-            unrelated sections, headings, prose, tables, links, setup
-            instructions, and ordering exactly. Never replace an existing file
-            with only the new section or a shortened summary. If a declared file
-            list is sparse but repo_snapshot.recommended_files contains
-            concrete repo-relative files, treat those recommended files as
-            actionable target evidence. Read the recommended file and the
-            nearest relevant test or spec before blocking. When the source
-            thread includes a runtime exception, backtrace, failing command, or
-            named behavior and a recommended file exists, prefer the smallest
-            conventional fix plus targeted regression coverage over an empty
-            bundle. For any production code change, fix_bundle.files must
-            include both the smallest production fix and a targeted test/spec
-            file, even when the source request does not explicitly ask for
-            coverage. Do not publish a code-only fix bundle from this lane. When
-            the approved spec, source thread, or acceptance criteria asks for
-            tests, specs, regression coverage, focused coverage, or
-            request/service coverage, the targeted test/spec file must directly
-            cover that requested behavior. If no test file exists, create the
-            narrow conventional test file when the repository structure makes
-            that path inferable; otherwise block with the missing path and
-            evidence reason. If no fix is possible after inspecting the target paths, the
-            blocked reason must name the exact path and missing evidence. If a
-            declared file
-            has exists: false and the approved spec intentionally creates it,
-            write the new file when the desired contents are inferable from the
-            spec and thread. Do not widen scope.
-            Do not hand-edit scafld lifecycle files. Return
-            fix_bundle.status: blocked with a reason and an empty files
-            array only when no concrete repo-relative target is declared, a
-            required existing file cannot be read, or the requested behavior
-            cannot be inferred after inspecting the supplied target files
-            without inventing requirements; name the missing evidence and path
-            in the reason because an empty bundle is a terminal policy denial.
           allowed_tools:
             - fs.read
             - git.status
@@ -525,7 +455,7 @@ runners:
             spec_path: scafld-approve.result.data.path
             spec_file: read-approved-spec.file_read.data
             spec_contents: read-approved-spec.file_read.data.contents
-            declared_file_context: read-declared-files.declared_file_context.data
+            declared_file_context: read-declared-files.file_read_bundle.data
           artifacts:
             named_emits:
               fix_bundle: fix_bundle
@@ -533,12 +463,12 @@ runners:
               fix_bundle: runx.issue.fix_bundle.v1
         - id: write-fix
           label: write fix
-          tool: fs.write_bundle
+          tool: fs.apply_bundle
           scopes:
             - fs.write
           mutation: true
           context:
-            files: author-fix.fix_bundle.data.files
+            writes: author-fix.fix_bundle.data.files
         - id: scafld-build
           label: build to review
           skill: graph/scafld

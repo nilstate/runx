@@ -15,10 +15,10 @@ kernel, but the local runtime cutover is now the operating boundary. For trusted
 local execution, Rust is the canonical owner once a command is advertised by
 the native CLI or runtime. That includes graph execution, harness and dogfood
 execution, receipt sealing and verification, policy and registry configuration,
-authority admission, effect-family authority, sandbox admission/metadata, and local
-built-in adapter execution plus external execution-adapter supervision. Future
-OS sandbox enforcement belongs in `runx-runtime`, but current sandbox
-declarations are not confinement by themselves.
+authority admission, effect-family authority, permission delivery, and local
+built-in adapter execution plus external execution-adapter supervision. Local
+process sources are trusted host code: Runx controls their exact invocation and
+delivered grant, but does not claim portable syscall or filesystem confinement.
 TypeScript remains for generated contracts,
 CLI/client wrappers, cloud/product integrations, host adapters, authoring
 tooling, docs, conformance tests, and helper SDKs over language-neutral
@@ -37,7 +37,7 @@ Rust crates exist to:
   still in the dual-tree window.
 - Make TypeScript kernel drift explicit (intentional fixture refresh required).
 - Provide the native local CLI/runtime path for skill, graph, harness, receipt,
-  history, policy, authority, effect-family admission, sandbox admission/metadata, and
+  history, policy, authority, effect-family admission, permission delivery, and
   external execution-adapter supervision.
 
 Rust is not a second source of truth for cut-over surfaces; it is the source of
@@ -96,7 +96,7 @@ runx-contracts    pure public contracts: CLI JSON, host protocol,
                     deferred deps: serde_json/thiserror only when concrete code
                                    needs them outside tests
 
-runx-core         pure decisions: state-machine, policy, scope, sandbox normalization
+runx-core         pure decisions: state-machine, policy, scope, grant attenuation
                     deps: runx-contracts as needed, serde, thiserror as needed,
                           serde_json for private deterministic JSON canonicalization
                     posture: std default; no_std deferred to a follow-up spec
@@ -107,7 +107,7 @@ runx-parser       pure: YAML -> AST -> intermediate representation
                     posture: public raw object subtrees use
                              `runx_contracts::JsonValue`; execution
                              semantics use `runx_contracts::execution`;
-                             sandbox normalization uses `runx_core::policy`
+                             grant admission uses `runx_core::policy`
 
 runx-receipts     pure: receipt model, hashing helpers, verification rules
                     deps: runx-contracts, serde, sha2
@@ -118,18 +118,18 @@ runx-sdk          library: blocking CLI-backed SDK v0; future async path
 
 runx-runtime      impure: filesystem, subprocess, network, built-in adapter
                   execution, external execution-adapter supervision, MCP,
-                  sandbox admission/metadata, and future OS enforcement
+                  typed execution-boundary evidence and process supervision
                     default features: none
-                    opt-in features: cli-tool, mcp, mcp-http-server, a2a,
-                                     agent, catalog, external-adapter, http,
-                                     thread-outbox-provider
+                    opt-in features: async-http, cli-tool, mcp,
+                                     mcp-http-server, a2a, agent, catalog,
+                                     external-adapter, thread-outbox-provider
                     deps: runx-contracts, runx-core, runx-parser,
                           runx-receipts; async/network dependencies require
                           explicit adapter-tier exception specs
 
 runx-cli          binary: argument parsing, presentation, exit codes
-                    includes: skill authoring subcommands until a separate
-                              authoring library use case exists
+                    includes: thin `runx new` entry into the runtime-owned
+                              Skill Lab authoring service
                     deps: runx-runtime (long-term)
                     current: native local command surface for advertised Rust
                              commands; npm package is selector/client wrapper
@@ -139,8 +139,8 @@ Pure crates (`runx-contracts`, `runx-core`, `runx-parser`, `runx-receipts`,
 and the CLI-backed v0 `runx-sdk`) depend only on each other when that coupling
 is needed plus parsing, hashing, and serde-style support crates. `runx-parser`
 depends on `runx-contracts` for JSON and execution-semantic boundary types and
-on `runx-core` for sandbox normalization, so parser parity exercises the same
-typed Rust surfaces the future runtime will consume.
+on `runx-core` for grant policy, so parser parity exercises the same typed Rust
+surfaces the runtime consumes.
 `runx-sdk` is special: it is pure library code plus a blocking CLI client, but
 it is not part of the trusted kernel and must not depend on `runx-core` in v0.
 Crates below the runtime line own all side effects. The boundary between pure
@@ -171,7 +171,7 @@ Only after the initial pure set passes parity does any impure crate begin:
    subset and CLI JSON cases are fixture-backed.
 7. `runx-runtime` skeleton with one impure adapter execution path ported
    as a runtime feature (cli-tool first; MCP last because rmcp + tokio +
-   sandbox + spawn semantics are the hardest cross-language surface).
+   process and protocol semantics are the hardest cross-language surface).
 8. `runx-cli` native binary, gated by `rust-cli-feature-parity-matrix`.
 9. `runx-sdk` native-runtime feature, gated by the same runtime and CLI
    feature-parity evidence.
@@ -194,16 +194,17 @@ and consumed JSON contract types before SDK Phase 2. `runx-sdk` may depend on
 `runx-contracts` in CLI-backed v0, but it must not duplicate contract-owned
 types or hash helpers.
 
-There is no `runx-authoring` crate in the initial Rust shape. Skill authoring
-helpers live in `runx-cli` subcommands or `runx-sdk` modules until there is a
-clear library caller who needs authoring without either surface. The TypeScript
-package split is useful history, not a forcing function for Cargo crates.
+There is no `runx-authoring` crate. Skill authoring has one service in
+`runx-runtime`, composed by `skill-lab`; `runx new` is a thin CLI entry into
+that lane. Neither `runx-sdk` nor a TypeScript package owns a second authoring
+implementation. The old TypeScript package split is useful history, not a
+forcing function for Cargo crates.
 
 There is also no `runx-adapters` crate in the initial Rust shape. Built-in
 adapter execution and external execution-adapter protocol supervision live under
 `runx-runtime` feature flags
-(`cli-tool`, `mcp`, `mcp-http-server`, `a2a`, `agent`, `catalog`,
-`external-adapter`, `http`, `thread-outbox-provider`) until a family has an
+(`async-http`, `cli-tool`, `mcp`, `mcp-http-server`, `a2a`, `agent`,
+`catalog`, `external-adapter`, `thread-outbox-provider`) until a family has an
 independent publishing story;
 `a2a` is contract-defined but not enabled in `runx-cli`. External execution adapter implementations live
 outside the trusted core and talk to runx over language-neutral protocols. The
@@ -230,9 +231,9 @@ of side effects. Current modules map to these implementation buckets:
   `execution::runner`, and `execution::skill_front`. These modules open the
   governed execution boundary, run graphs or skills, and seal receipts.
 - Adapter invocation: `adapter`, `adapters::*`, `agent_invocation`,
-  `sandbox`, and `outbox_provider`. These modules resolve an invocation,
-  admit it, run or supervise a process/protocol call, capture output, and
-  return projected evidence to the harness.
+  `process_invocation`, and `outbox_provider`. These modules resolve an
+  invocation, deliver admitted authority, run or supervise a process/protocol
+  call, capture output, and return projected evidence to the harness.
 - Receipt and event projection: `receipts`, `journal`, `host`, `redaction`,
   and the receipt tree verifier. These modules own durable evidence and the
   projections that feed history, hosted ingestion, and fixture oracles.
@@ -242,7 +243,7 @@ of side effects. Current modules map to these implementation buckets:
   but checkable attenuation belongs in typed policy primitives.
 - CLI presentation: `runx-cli` owns argument parsing, output, and exit codes.
   It may call runtime services, but should not recreate runtime semantics.
-- Dev and testing: `dev`, `doctor`, `scaffold`, `tool_catalogs`, harness
+- Dev and testing: `dev`, `doctor`, project initialization, `tool_catalogs`, harness
   fixtures, adapter oracles, throughput scripts, and stress gates. These are
   product surfaces for authors and maintainers, not hidden fallback runtimes.
 
@@ -253,7 +254,7 @@ creates a clearer dependency or capability boundary.
 Current runtime lift shape:
 
 - `runx-runtime::services` owns small service facets for workspace environment,
-  receipts, sandboxing, and adapter invocation. These facets are passed where
+  receipts, process invocation, and adapter invocation. These facets are passed where
   they are needed; there is no catch-all harness context.
 - `runx-runtime::adapter_pipeline` owns the shared adapter lifecycle:
   resolve, admit, invoke, capture, project, and seal. CLI-tool, external
@@ -268,6 +269,32 @@ Current runtime lift shape:
 - Stress gates are explicit scripts (`stress:runtime:mcp`,
   `stress:runtime:cli-tool`, `stress:runtime:external-adapter`,
   `stress:runtime:fanout`). They are not hidden inside the default fast loop.
+
+### Volume-independent execution boundary
+
+Payload size does not create a new execution lane or grant more authority. The
+runtime uses three transports with different ownership:
+
+- control input is one typed JSON object; the CLI may read that object from a
+  contained `--inputs` file or stdin up to 64 MiB, but the selected runner and
+  worker retain their normal type and resource limits;
+- immutable local content is admitted once by the runtime as a digest-bound
+  artifact of at most 512 MiB and consumed through exact pages that default to
+  1 MiB and may be configured up to 4 MiB; a deterministic module receives
+  records and continuation metadata, not a workspace path or ambient
+  filesystem access;
+- durable histories stay in the data plane and move through bounded
+  `after_version`/keyset cursors or projections, never through an accumulating
+  graph-context array.
+
+`WorkspaceFile` is the single runtime owner for relative-path validation,
+canonical containment, regular-file checks, bounded reads, streaming digest,
+and source-copy detection. `fs.read`, `fs.read_bundle`, structured CLI input,
+and local-artifact admission compose that owner rather than maintaining
+parallel path resolvers or hashing loops. The artifact service owns immutable
+snapshot identity and page framing above it. Package code owns only an
+irreducible record transform and cannot select a larger profile, widen a page,
+or reopen the source path.
 
 ## 4. `runx-core` public API stance
 
@@ -284,9 +311,9 @@ Stability rules during the parity phase:
   stays `0.0.x`.
 - Every module is `pub mod` only if a fixture or sibling crate consumes it.
   Internal helpers stay private.
-- Re-exports at crate root follow the TypeScript export shape: one module per
-  TS sub-module (`state_machine`, `policy`, `policy::sandbox`,
-  `policy::authority_proof`, `policy::public_work`, `policy::scope`).
+- Re-exports at crate root follow the owned contract shape: one module per
+  policy family (`state_machine`, `policy`, `policy::authority_proof`,
+  `policy::public_work`, `policy::scope`).
 - Naming preserves runx vocabulary. `admit_local_skill` matches
   `admitLocalSkill`. No invented aliases.
 
@@ -314,8 +341,8 @@ Rationale:
 - Callers can `match` exhaustively; new variants are breaking changes that
   surface at compile time.
 
-Rejection reasons are typed enums (`AdmissionRejectionReason`,
-`SandboxRejectionReason`, etc.), not free-form strings. The reason value in
+Rejection reasons are typed enums (`AdmissionRejectionReason`, effect-family
+rejection reasons, and similar owners), not free-form strings. The reason value in
 fixtures uses the serde-renamed enum variant name.
 
 Panics are forbidden in `runx-core`. The workspace `Cargo.toml` already denies
@@ -400,15 +427,16 @@ is revisited as a follow-up spec; it does not constrain this plan.
 
 - Edition: 2024.
 - Resolver: 3.
-- MSRV: 1.85.0 (the first Rust release with edition 2024 support).
-- MSRV pinned in `crates/Cargo.toml` workspace `[workspace.package]` block and
-  enforced in CI via `rust-toolchain.toml` or an explicit toolchain in the
-  workflow.
+- MSRV: 1.97.0, expressed by the `crates/Cargo.toml` workspace
+  `[workspace.package]` block.
+- Repository, CI, and release builds use the single root `rust-toolchain.toml`
+  pin. That reproducible build toolchain is deliberately separate from the
+  oldest compiler version the public crates support.
 - MSRV bumps are spec-level changes, not silent dependency updates.
 
 ## 10. Rust-side boundary enforcement
 
-The TypeScript boundary script ([oss/scripts/check-boundaries.mjs](../scripts/check-boundaries.mjs))
+The TypeScript boundary script ([scripts/check-boundaries.mjs](../scripts/check-boundaries.mjs))
 forbids node APIs from `policy` and `state-machine` packages. The Rust side
 needs the same discipline. Layered enforcement:
 
@@ -463,9 +491,9 @@ Differential testing is optional in early phases but is the only realistic
 way to catch parity drift on combinatorial state spaces. Each parity spec
 declares whether it adopts it.
 
-## 12. Dual-tree maintenance policy
+## 12. Dual-tree migration record
 
-Once parity exists, the maintenance cost is real. The policy is staged:
+Before cutover, parity was staged:
 
 - **Phase A (advisory)**: Rust parity runs in CI through
   `scripts/check-rust-kernel-parity.mjs`, but failure is a warning.
@@ -486,8 +514,9 @@ PR for the dual-tree update (TS change, fixture regen, Rust port, Rust
 clippy/proptest update, public-API snapshot bump). Budget this explicitly;
 do not pretend it is free.
 
-The transition between phases is a deliberate decision in the follow-up
-`rust-kernel-blocking-promotion` spec, not automatic.
+This staged policy is historical. The Rust workspace is now blocking in CI and
+release validation, and retired TypeScript runtime-local surfaces are not
+maintained as a second implementation.
 
 ### TS sunset trigger
 
@@ -517,9 +546,6 @@ Sunset order (each step is its own cutover spec, not implicit):
    may remain as clients over CLI JSON, generated contracts, cloud HTTP, or
    ratified language-neutral protocol lanes.
 
-Until step 1 is approved as its own spec, the dual tree is the operating
-state, and the cost in section 12 applies.
-
 ## 13. CLI cutover position
 
 `crates/runx-cli` is now the native local command surface for the Rust-backed
@@ -538,7 +564,7 @@ New native command forms still require parity evidence:
 
 - `fixtures/cli-parity` exists and covers every current command, subcommand,
   flag, exit code, JSON output shape, human-output promise, receipt behavior,
-  sandbox metadata path, adapter path, and documented workflow.
+  execution-boundary evidence, adapter path, and documented workflow.
 - `runx-core`, `runx-parser`, and `runx-receipts` exist and pass parity.
 - A `runx-runtime` crate exists with at least one impure adapter execution path
   ported.
@@ -552,7 +578,7 @@ present them as canonical.
 
 The one-to-one CLI matrix belongs in `fixtures/cli-parity/` and is governed by
 the `rust-cli-feature-parity-matrix` spec. The matrix is intentionally broader
-than kernel parity. It includes `skill`, `evolve`, `resume`, `replay`, `diff`,
+than kernel parity. It includes `skill`, `resume`, `replay`, `diff`,
 `search`, `add`, `inspect`, `history`, `knowledge show`,
 `connect`, `config`, `new`, `init`, `harness`, `list`, `doctor`, `dev`,
 `mcp serve`, `tool search`, `tool inspect`, and `tool build`, plus any
@@ -569,42 +595,20 @@ catalog now keep payment lifecycle internals as owned graph stages under
 Fixture and runtime-path packages remain internal wrappers that delegate to the
 canonical graph skills; legacy `payment-*` aliases are not restored.
 
-## 14. Placeholder publishing strategy
+## 14. Package publishing ownership
 
-Cargo placeholders are also a crates.io name reservation strategy. The policy
-is explicit:
-
-- `runx-cli` publishes as the launcher package because it installs a useful
-  `runx` binary today. It is live at `0.1.0`.
-- Placeholder crates publish as explicit reservation releases at `0.0.1`.
-  `runx-contracts`, `runx-receipts`, `runx-runtime`, and `runx-sdk` are live
-  at `0.0.1`.
-- `runx-core` was reserved at `0.0.1` and now contains the first real Rust
-  kernel surfaces: state-machine parity and policy parity. runx-core policy parity is not runtime-authoritative; it remains conformance evidence only
-  until a cutover spec replaces TypeScript consumers.
-- `runx-parser` was reserved at `0.0.1` and now contains parser parity for the
-  public TypeScript parser surfaces listed in its README. It remains
-  conformance evidence until a TypeScript parser sunset spec replaces current
-  consumers. It is marked `publish = false`, depends on the local
-  `runx-contracts` and `runx-core` crates for shared boundary types, and its
-  package check verifies those three crates together so Cargo does not resolve
-  stale placeholder reservations from crates.io.
-- Placeholder README and crate docs must clearly say they are placeholders and
-  do not provide native feature parity.
-- Placeholder publishing is governed by `rust-placeholder-crates-publish`.
-- The publish order must follow dependency direction: `runx-contracts`,
-  `runx-parser`, `runx-receipts`, `runx-runtime`, `runx-sdk`, with
-  `runx-core` versioned independently as parity lands and `runx-cli`
-  independent as the usable launcher package.
-- The first non-placeholder release of each crate requires its own
-  fixture-backed parity spec.
+Cargo manifests and the workspace lockfile are the only version and
+publishability source of truth. Do not duplicate live crate versions in
+architecture prose. The release workflow may publish only the crates and
+artifacts explicitly selected by the current release profile, in workspace
+dependency order.
 
 ## 15. Path-inconsistency note
 
-The repo-root `docs/trusted-kernel-package-truth.md` remains the broad package
-authority document for the full runx repository. The OSS workspace also keeps
-`oss/docs/trusted-kernel-package-truth.md` as a Rust-parity addendum so scafld
-specs executed from `oss/` have a stable local docs path.
+The repo-root `docs/trusted-kernel-package-truth.md` is a superseded migration
+record. The active OSS ownership boundary is
+`docs/ts-interop-boundary.md`; `docs/trusted-kernel-package-truth.md` summarizes
+its Rust package implications.
 
 ## 16. Open questions intentionally deferred
 
@@ -619,13 +623,12 @@ specs executed from `oss/` have a stable local docs path.
 
 ## 17. Current Rust Kernel Status
 
-`crates/runx-core` now implements state-machine and policy parity against the
-checked-in fixture set. For still-dual consumers, those fixtures remain
-conformance evidence. For advertised native runtime and CLI paths, Rust owns
-the local policy, authority, and configuration decisions. `crates/runx-contracts`
-now carries typed act-assignment and host-protocol contracts with parity
-fixtures. Parser, receipt, registry, tool, runtime, SDK, and CLI surfaces move
-from parity evidence to authority only through their named cutover specs.
+For advertised native runtime and CLI paths, Rust owns local parsing, policy,
+authority, configuration, graph execution, receipt, registry, tool, adapter,
+and process-supervision decisions. `crates/runx-contracts` carries the
+domain-neutral portable wire contracts and shared schema mechanics; domain
+crates contribute their own contract artifacts. Checked-in fixtures are
+conformance evidence, not an alternate implementation.
 External execution-adapter authors target language-neutral contracts and do not
 need Rust or a core fork to add integrations. Non-execution extension lanes have
 their own protocol contracts.
@@ -687,14 +690,22 @@ Async and blocking rules:
 
 - `runx-contracts`, `runx-core`, `runx-parser`, and `runx-receipts` do not
   depend on `tokio`, `async-trait`, HTTP clients, or subprocess libraries.
-- `runx-runtime` owns process management, network IO, MCP, sandbox
-  enforcement, built-in adapter execution, external execution-adapter
+- `runx-runtime` owns process management, network IO, MCP, permission delivery,
+  built-in adapter execution, external execution-adapter
   supervision, and adapter concurrency. It may own an async runtime or MCP/HTTP
   protocol crate only after a spec records the security rationale and updates
   `crates/deny.toml`; until then the workspace ban is deliberate.
+- Process ownership is kernel-backed before blocking external child code can
+  run: Unix executions start in a dedicated process group; Windows executions
+  start suspended, join a per-execution Job Object, and only then resume. Every
+  Windows adapter spawn is also beneath an outer Runx kill-on-close job so
+  abrupt CLI termination cannot orphan synchronous, worker, or MCP processes.
+  PID snapshots, `taskkill`, PowerShell tree walks, and skill-local process
+  wrappers are not containment mechanisms.
 - `runx-runtime` defaults to no adapter features. Built-in protocol host
-  families are opt-in: `cli-tool`, `mcp`, `mcp-http-server`, `a2a`, `agent`,
-  `catalog`, `external-adapter`, `http`, and `thread-outbox-provider`; `a2a` is
+  families are opt-in: `async-http`, `cli-tool`, `mcp`, `mcp-http-server`,
+  `a2a`, `agent`, `catalog`, `external-adapter`, and
+  `thread-outbox-provider`; `a2a` is
   contract-defined but not enabled in `runx-cli`.
 - `runx-sdk` v0 is explicitly a blocking CLI-backed client and depends on
   `runx-contracts`, not `runx-core` or `runx-runtime`. A future async SDK path
@@ -710,21 +721,20 @@ Workspace policy:
 - Commit the single workspace lockfile at `crates/Cargo.lock`. This workspace
   contains the `runx-cli` binary plus publishable library crates, so the lock
   file is part of reproducible CI.
-- `cargo-nextest` is not required for placeholder crates. It becomes a good
-  follow-up once the Rust workspace has enough tests for nextest to materially
-  improve CI feedback.
+- `cargo-nextest` runs the workspace integration suite in CI; doctests run
+  separately because nextest does not execute them.
 
 Enforcement:
 
 - `cargo fmt --all --check` is required.
 - `cargo clippy -p runx-core --all-targets -- -D warnings` is required.
-- `scripts/check-rust-core-style.mjs` checks repository-specific shape rules
-  that Clippy does not know: no public `serde_json::Value`, no `HashMap` in
-  `runx-core/src`, no wildcard re-exports, no dynamic error erasure, no macro
-  definitions, and line-count warnings for oversized files/functions.
-- `scripts/check-rust-crate-graph.mjs` checks crate membership, placeholder
-  reservation versioning, and dependency direction. Dependency relaxation is a
-  spec-level change.
+- Rust semantic rules are compiler-owned: workspace lints and Clippy reject
+  panic/debug shortcuts, wildcard imports, unsafe code, and warning drift.
+  Contract and parser fixture coverage is owned by the native generators and
+  Rust tests that execute those contracts; JavaScript does not parse Rust
+  source to infer semantics or coverage.
+- `scripts/check-rust-crate-graph.mjs` checks crate membership, publishability,
+  and dependency direction. Dependency relaxation is an architecture change.
 - `cargo-public-api` snapshots ensure "just make it pub" does not become the
   easy escape hatch.
 
@@ -733,7 +743,7 @@ lints are required; style churn is not.
 
 ## References
 
-- [docs/trusted-kernel-package-truth.md](../../docs/trusted-kernel-package-truth.md)
+- [docs/trusted-kernel-package-truth.md](trusted-kernel-package-truth.md)
   (repo-root docs)
 - [oss/scripts/check-boundaries.mjs](../scripts/check-boundaries.mjs)
 - [oss/crates/runx-core/src/state_machine.rs](../crates/runx-core/src/state_machine.rs)

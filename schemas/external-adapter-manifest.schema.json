@@ -289,35 +289,6 @@
         }
       ]
     },
-    "sandbox_intent": {
-      "additionalProperties": false,
-      "properties": {
-        "cwd_policy": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "network": {
-          "type": "boolean"
-        },
-        "profile": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "writable_paths": {
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "profile",
-        "network",
-        "cwd_policy"
-      ],
-      "type": "object"
-    },
     "schema": {
       "anyOf": [
         {
@@ -397,8 +368,7 @@
     "version",
     "supported_source_types",
     "transport",
-    "timeouts",
-    "sandbox_intent"
+    "timeouts"
   ],
   "type": "object",
   "x-runx-schema": "runx.external_adapter.manifest.v1"

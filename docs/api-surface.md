@@ -5,21 +5,11 @@
 This page lists the public package entry points from each `@runxhq/*` package `exports` map.
 The package manifests are authoritative; regenerate this page with `pnpm docs:api`.
 
-## @runxhq/authoring
-
-Runx authoring SDK - defineTool, definePacket, typed input parsers, harness runtime.
-
-Version: `0.2.0`
-
-| Import | Types | Runtime |
-| --- | --- | --- |
-| `@runxhq/authoring` | `./dist/index.d.ts` | `./dist/index.js` |
-
 ## @runxhq/cli
 
 Runx CLI - native governed runtime for agent skills, tools, graphs, and packets.
 
-Version: `0.6.0`
+Version: `0.8.2`
 
 | Import | Types | Runtime |
 | --- | --- | --- |
@@ -33,6 +23,16 @@ Version: `0.3.0`
 | Import | Types | Runtime |
 | --- | --- | --- |
 | `@runxhq/contracts` | `./dist/index.d.ts` | `./dist/index.js` |
+
+## @runxhq/extension-sdk
+
+Narrow SDK for Runx external process and protocol extensions.
+
+Version: `0.1.0`
+
+| Import | Types | Runtime |
+| --- | --- | --- |
+| `@runxhq/extension-sdk` | `./dist/index.d.ts` | `./dist/index.js` |
 
 ## @runxhq/host-adapters
 

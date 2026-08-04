@@ -13,11 +13,16 @@ back to runx:
 
 - **Claude** gets one `SKILL.md` shim per skill under `~/.claude/skills/<name>/`
   (or `./.claude/skills/` with `--project`). Each shim declares `allowed-tools`
-  locked to the runx binary, states that the agent must not do the work itself,
-  and carries the exact `runx skill ... --json` command with typed inputs.
-- **Codex** gets a single managed block, delimited by
-  `# >>> runx-export start (managed) >>>` and `# <<< runx-export end <<<`, added
-  to its rules file and listing the governed skills and how to invoke them.
+  locked to the runx binary and carries the exact `runx skill ... --json`
+  command with typed inputs.
+- **Codex** gets the same per-skill shims under `~/.codex/skills/<name>/` plus an
+  idempotent managed allow block in `~/.codex/rules/default.rules`. Project-scope
+  Codex export is deliberately refused until Codex project paths are stable.
+
+The repository-root `runx` guide is the one exception to delegation: exporting
+it copies its native operator instructions instead of recursively calling
+`runx skill <runx-repository>`. Provider/domain skills still delegate through
+the runtime.
 
 When the agent runs the skill it shells out to runx. Execution, authority
 admission, approvals, and the signed receipt all happen inside the runtime, so
@@ -26,14 +31,21 @@ the governance is real rather than narrated.
 ## Export
 
 ```bash
-runx export claude                          # all public skills -> ~/.claude/skills (global)
+runx export claude                          # current workspace's public skills -> ~/.claude/skills
 runx export claude --project                # -> ./.claude/skills (checked into a repo)
 runx export claude weather-forecast spend   # only the named skills
-runx export codex                           # Codex managed rules block
+runx export codex                           # ~/.codex/skills plus managed rules
 ```
 
 Add `--json` for machine-readable output. Only public skills export; hidden and
 builder-surface skills are skipped.
+
+A full export must run from a skill workspace containing a root `SKILL.md` or
+`skills/`. It synchronizes that workspace's managed catalog and removes only
+stale generated shims sourced from the same workspace; exports owned by other
+repositories remain intact. An unrelated directory fails closed without
+changing existing shims. Supplying one or more skill refs is additive: Runx
+updates those shims without removing any other managed skills.
 
 ## What A Claude Shim Looks Like
 
@@ -47,8 +59,7 @@ allowed-tools: Bash(/path/to/runx skill *)
 ---
 # spend - governed by runx
 
-This skill runs under runx governance. Do not perform the work yourself.
-Execution, policy enforcement, approvals, and the signed receipt happen inside runx.
+Run the declared runner through runx; do not bypass it by independently reproducing work that runner owns.
 
 ```bash
 /path/to/runx skill /path/to/skills/spend \
@@ -63,17 +74,22 @@ Then surface the returned receipt id, status, and artifact ids.
 <!-- runx-export:claude source=/path/to/skills/spend - generated, do not edit -->
 ````
 
-The `allowed-tools` line is the boundary: the skill can only invoke the runx
-binary, so the agent cannot quietly reimplement a governed flow in prose.
+For Claude, the `allowed-tools` line limits the shim to the runx binary. Codex
+uses the generated rules block. Runx remains the authority boundary on both
+surfaces.
 
 ## Requirements
 
 - **The runx binary.** The shim calls runx by path, so that binary must be
   present.
-- **Receipt-signing keys.** The shell must export `RUNX_RECEIPT_SIGN_KID`,
-  `RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64`, and `RUNX_RECEIPT_SIGN_ISSUER_TYPE`.
-  Without them runx fails closed instead of producing an unverifiable receipt.
-  See [Getting Started](./getting-started.md#production-receipt-signing).
+- **Receipt identity.** Local development uses Runx's local-development receipt
+  identity. Hosted and CI execution must configure the complete
+  `RUNX_RECEIPT_SIGN_*` tuple; a partial tuple fails closed. See
+  [Getting Started](./getting-started.md#production-receipt-signing).
+- **Declared provider credentials.** Configure them through `runx credential`
+  or the workspace `.env`. Exported shims do not add credential wrappers; the
+  invoked Runx skill performs the canonical readiness check. See
+  [Credential Resolution](./credentials.md).
 
 ## Regenerating
 
@@ -91,8 +107,7 @@ machines.
 
 ## The General Agent Bridge
 
-Per-skill exports are the right call for governed skills. For a looser "let the
-agent discover and drive runx" entry point, paste
-[runx.ai/SKILL.md](https://runx.ai/SKILL.md) into the agent: it teaches the agent
-to find skills in the [catalog](https://runx.ai/x), run them, and read the
-receipts.
+Per-skill exports are the right call for governed skills. The exported root
+`runx` guide is the looser discovery bridge: it teaches the agent to find skills
+in the [catalog](https://runx.ai/x), run them, and read the receipts without
+wrapping the runtime in itself.

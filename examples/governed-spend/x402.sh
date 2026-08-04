@@ -26,6 +26,6 @@ node scripts/x402-testnet-settle.mjs --demo --receipt-dir "$RDIR" >"$RDIR/x402-d
 cat "$RDIR/x402-demo-report.stdout.json"
 
 echo
-node examples/governed-spend/verify.mjs "$RDIR/x402-settlement.receipt.json"
+node tools/verify/verify.mjs "$RDIR/x402-settlement.receipt.json"
 echo
-node examples/governed-spend/verify.mjs "$RDIR/x402-refusal.receipt.json"
+node tools/verify/verify.mjs "$RDIR/x402-refusal.receipt.json"

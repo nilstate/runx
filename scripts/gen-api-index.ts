@@ -19,6 +19,7 @@ interface ExportEntry {
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packagesRoot = path.join(workspaceRoot, "packages");
 const outPath = path.join(workspaceRoot, "docs", "api-surface.md");
+const check = parseArgs(process.argv.slice(2));
 
 const packageDirs = await readdir(packagesRoot, { withFileTypes: true });
 const packages = [];
@@ -76,7 +77,17 @@ function asAscii(value: string): string {
   return value.replace(/\u2014/g, "-").replace(/\u2013/g, "-").replace(/\u2019/g, "'");
 }
 
-await writeFile(outPath, `${lines.join("\n").trimEnd()}\n`);
+const output = `${lines.join("\n").trimEnd()}\n`;
+if (check) {
+  const current = await readOptionalFile(outPath);
+  if (current !== output) {
+    console.error("docs/api-surface.md is stale; run pnpm docs:api");
+    process.exit(1);
+  }
+  console.log("docs/api-surface.md matches package manifests.");
+} else {
+  await writeFile(outPath, output);
+}
 
 function normalizeExports(exportsMap: unknown): readonly ExportEntry[] {
   if (!exportsMap || typeof exportsMap !== "object" || Array.isArray(exportsMap)) {
@@ -111,4 +122,14 @@ async function readOptionalFile(filePath: string): Promise<string | undefined> {
     }
     throw error;
   }
+}
+
+function parseArgs(args: readonly string[]): boolean {
+  if (args.length === 0) {
+    return false;
+  }
+  if (args.length === 1 && args[0] === "--check") {
+    return true;
+  }
+  throw new Error("Usage: tsx scripts/gen-api-index.ts [--check]");
 }

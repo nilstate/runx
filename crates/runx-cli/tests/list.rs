@@ -8,6 +8,10 @@ fn list_discovers_namespaced_repo_skills() -> Result<(), Box<dyn std::error::Err
     let skill = root.join("skills/acme/triage");
     fs::create_dir_all(&skill)?;
     fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: acme/triage\ndescription: Triage one bounded request.\n---\n\n# Triage\n\nReview the supplied request and return a bounded triage decision.\n",
+    )?;
+    fs::write(
         skill.join("X.yaml"),
         "skill: acme/triage\nversion: 1.0.0\nrunners:\n  triage:\n    default: true\n    type: agent-task\n    agent: reviewer\n    task: triage\n",
     )?;

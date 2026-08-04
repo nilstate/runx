@@ -23,20 +23,15 @@ name = "runx_contracts"
 path = "src/lib.rs"
 
 [dependencies]
+jsonschema = { version = "0.46.5", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 runx-contracts-derive.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
-jsonschema = { version = "0.46.5", default-features = false }
 serde_json.workspace = true
-
-[[bin]]
-name = "runx-contract-schemas"
-path = "src/bin/runx-contract-schemas.rs"
-test = false
-bench = false
 
 [[test]]
 name = "integration"

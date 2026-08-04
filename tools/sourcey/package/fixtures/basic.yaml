@@ -46,8 +46,6 @@ inputs:
 expect:
   status: success
   output:
-    matches_packet: runx.sourcey.packet.v1
     subset:
-      data:
-        verified: true
-        contains_doctype: true
+      verified: true
+      contains_doctype: true

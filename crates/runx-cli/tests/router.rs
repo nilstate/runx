@@ -28,6 +28,8 @@ fn plan(args: &[&str]) -> RouterAction {
 fn top_level_help_and_version_are_native() {
     assert_eq!(plan(&[]), RouterAction::PrintHelp);
     assert_eq!(plan(&["--help"]), RouterAction::PrintHelp);
+    assert_eq!(plan(&["--help", "--json"]), RouterAction::PrintHelpJson);
+    assert_eq!(plan(&["-j", "-h"]), RouterAction::PrintHelpJson);
     assert_eq!(plan(&["--version"]), RouterAction::PrintVersion);
     assert_eq!(
         plan(&["export", "--help"]),
@@ -41,7 +43,11 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]",
+        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [--inputs file|-] [-j] [--managed-agent [--managed-agent-rounds n]] [--full-operator-context] [--registry url|path] [--digest sha256] [--package-digest sha256 --execution-closure-digest sha256] [--flag value] [-R dir]",
+    );
+    assert_help_line(
+        &help,
+        "runx new <name> --objective text [--project-context text] [--directory dir] [-R dir] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [-j|--json]",
     );
     assert_help_line(
         &help,
@@ -49,7 +55,7 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx resume <run-id> <answers.json> [-R dir] [--non-interactive] [-j|--json]",
+        "runx resume <run-id> <answers.json> [-R dir] [--package-digest sha256] [--execution-closure-digest sha256] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [-j|--json]",
     );
     assert_help_line(
         &help,
@@ -71,7 +77,7 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx connect list|start|status|invoke|revoke ... [-j|--json]",
+        "runx connect list|start|status|revoke ... [-j|--json]",
     );
     assert!(
         !help.contains("runx harness <fixture.yaml|skill-dir|SKILL.md>"),
@@ -140,7 +146,7 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
 
     assert_help_line(
         &skill_help_text(),
-        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [-j] [--approve-operator-context digest] [--full-operator-context] [--skip-operator-context] [--registry url|path] [--digest sha256] [--flag value] [--credential descriptor --credential-scope scope --secret-env NAME] [-R dir]",
+        "runx skill <skill-ref|owner/name@version|skill-dir|SKILL.md> [runner] [-p profile] [-i key=value] [--input-json key=json] [--inputs file|-] [-j] [--managed-agent [--managed-agent-rounds n]] [--full-operator-context] [--registry url|path] [--digest sha256] [--package-digest sha256 --execution-closure-digest sha256] [--flag value] [-R dir]",
     );
     assert_help_line(
         &skill_help_text(),
@@ -148,11 +154,11 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
     );
     assert_help_line(
         &skill_help_text(),
-        "-p, --profile name       Use a local credential profile from .runx/credentials.json",
+        "-p, --profile name       Use a stored local credential profile",
     );
     assert_help_line(
         &history_help_text(),
-        "runx history [query] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--limit n] [--receipt-dir dir] [--json]",
+        "runx history [query] [--detail] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--limit n] [--receipt-dir dir] [--json]",
     );
     assert_help_line(
         &verify_help_text(),
@@ -220,7 +226,10 @@ fn filesystem_paths_do_not_require_utf8() {
             run_id: "gx_test".to_owned(),
             answers_path: path_buf.clone(),
             receipt_dir: None,
+            expected_package_digest: None,
+            expected_execution_closure_digest: None,
             json: false,
+            managed_agent: Default::default(),
         })
     );
     let action = route_args(vec!["skill".into(), path.clone()]);
@@ -282,9 +291,12 @@ fn documented_command_help_is_native() {
         &login_help_text(),
         "runx login [--provider github|google|gitlab] [--for default|publish] [--from-gh] [--api-base-url url] [--allow-local-api] [-j|--json]",
     );
-    assert_help_line(
-        &connect_help_text(),
-        "runx connect invoke --grant <grant-id> --operation <operation> [--input <json-object>] [-j|--json]",
+    assert!(!connect_help_text().contains("connect invoke"));
+    let resume_help = command_help_text("resume").unwrap_or_default();
+    assert!(resume_help.contains("Put agent/task responses under"));
+    assert!(
+        resume_help
+            .contains("this is a host attestation that a human approved the exact pending gate")
     );
     assert_help_line(
         &registry_help_text(),
@@ -506,11 +518,12 @@ fn routes_canonical_skill_run_to_native_plan() {
             answers: None,
             registry: None,
             expected_digest: None,
+            expected_package_digest: None,
+            expected_execution_closure_digest: None,
             json: true,
             non_interactive: true,
-            skip_operator_context: false,
+            trusted_command_execution: false,
             full_operator_context: false,
-            approve_operator_context: None,
             inputs: [
                 (
                     "thread_title".to_owned(),
@@ -523,7 +536,9 @@ fn routes_canonical_skill_run_to_native_plan() {
             ]
             .into_iter()
             .collect(),
-            local_credential: None,
+            input_document: None,
+            credential_profile: None,
+            managed_agent: Default::default(),
         })
     );
 }
@@ -564,7 +579,7 @@ fn skill_rejects_resolver_flags_for_management_actions() {
         assert_eq!(
             plan(&["skill", action, "--registry", "fixtures/registry"]),
             RouterAction::Error(
-                "runx skill --registry and --digest are only supported when running a skill ref"
+                "runx skill --registry, --digest, --package-digest, and --execution-closure-digest are only supported when running a skill ref"
                     .to_owned()
             ),
             "{action}"
@@ -572,7 +587,7 @@ fn skill_rejects_resolver_flags_for_management_actions() {
         assert_eq!(
             plan(&["skill", action, "--digest", "sha256:abc"]),
             RouterAction::Error(
-                "runx skill --registry and --digest are only supported when running a skill ref"
+                "runx skill --registry, --digest, --package-digest, and --execution-closure-digest are only supported when running a skill ref"
                     .to_owned()
             ),
             "{action}"
@@ -656,6 +671,7 @@ fn routes_config_to_native_plan() {
             action: ConfigAction::Set,
             key: Some("agent.model".to_owned()),
             value: Some("gpt-test".to_owned()),
+            value_from_stdin: false,
             json: true,
         })
     );
@@ -746,7 +762,10 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
             run_id: "run_123".to_owned(),
             answers_path: PathBuf::from("answers.json"),
             receipt_dir: Some(PathBuf::from("receipts")),
+            expected_package_digest: None,
+            expected_execution_closure_digest: None,
             json: true,
+            managed_agent: Default::default(),
         })
     );
     assert_eq!(
@@ -758,11 +777,29 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
         })
     );
     assert_eq!(
-        plan(&["new", "docs-demo", "--directory", "tmp/docs-demo", "--json"]),
+        plan(&[
+            "new",
+            "docs-demo",
+            "--objective",
+            "Create a bounded documentation decision skill",
+            "--project-context",
+            "Keep the package declarative",
+            "--directory",
+            "tmp/docs-demo",
+            "--receipt-dir",
+            "tmp/receipts",
+            "--non-interactive",
+            "--json",
+        ]),
         RouterAction::RunNew(NewPlan {
             name: "docs-demo".to_owned(),
+            objective: "Create a bounded documentation decision skill".to_owned(),
+            project_context: Some("Keep the package declarative".to_owned()),
             directory: Some(PathBuf::from("tmp/docs-demo")),
+            receipt_dir: Some(PathBuf::from("tmp/receipts")),
             json: true,
+            non_interactive: true,
+            managed_agent: runx_runtime::ManagedAgentPolicy::HostDriven,
         })
     );
     assert_eq!(
@@ -776,7 +813,47 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
 }
 
 #[test]
-fn routes_dev_to_native_plan_with_scaffolded_lane_shape() {
+fn new_requires_an_objective_and_explicit_managed_agent_consent() {
+    assert_eq!(
+        plan(&["new", "docs-demo"]),
+        RouterAction::Error("runx new requires --objective".to_owned())
+    );
+    assert_eq!(
+        plan(&[
+            "new",
+            "docs-demo",
+            "--objective",
+            "Create a docs skill",
+            "--managed-agent-rounds",
+            "2",
+        ]),
+        RouterAction::Error("runx new --managed-agent-rounds requires --managed-agent".to_owned())
+    );
+    assert_eq!(
+        plan(&[
+            "new",
+            "docs-demo",
+            "--objective",
+            "Create a docs skill",
+            "--managed-agent",
+            "--managed-agent-rounds",
+            "2",
+        ]),
+        RouterAction::RunNew(NewPlan {
+            name: "docs-demo".to_owned(),
+            objective: "Create a docs skill".to_owned(),
+            project_context: None,
+            directory: None,
+            receipt_dir: None,
+            json: false,
+            non_interactive: false,
+            managed_agent: runx_runtime::ManagedAgentPolicy::Inline { max_rounds: 2 },
+        })
+    );
+}
+
+#[test]
+fn routes_dev_to_native_plan_with_declared_lane_shape() {
     assert_eq!(
         plan(&["dev", "--lane", "deterministic", "--json"]),
         RouterAction::RunDev(DevPlan {
@@ -855,6 +932,41 @@ fn routes_registry_to_native_plan() {
             upsert: false,
             json: true,
         })
+    );
+    assert_eq!(
+        plan(&[
+            "registry",
+            "package",
+            "skills/example",
+            "--profile",
+            "profiles/X.yaml",
+            "--json",
+        ]),
+        RouterAction::RunRegistry(RegistryPlan {
+            action: RegistryAction::Package,
+            subject: "skills/example".to_owned(),
+            registry: None,
+            registry_dir: None,
+            version: None,
+            expected_digest: None,
+            destination: None,
+            owner: None,
+            profile: Some(PathBuf::from("profiles/X.yaml")),
+            trust_tier: None,
+            limit: None,
+            upsert: false,
+            json: true,
+        })
+    );
+    assert_eq!(
+        plan(&[
+            "registry",
+            "package",
+            "skills/example",
+            "--registry",
+            "https://runx.example",
+        ]),
+        RouterAction::Error("runx registry package accepts only --profile and --json".to_owned())
     );
 }
 

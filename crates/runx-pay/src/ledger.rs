@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the x402 payment ledger projection,
+// Module rationale: the x402 payment ledger projection,
 // idempotent local event append, and receipt artifact assembly remain one
 // audited boundary until the payment state modules are split.
 use std::collections::HashSet;
@@ -6,7 +6,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use runx_contracts::{ClosureDisposition, JsonValue, Receipt, Reference, sha256_prefixed};
+use runx_contracts::{ClosureDisposition, Receipt, Reference, sha256_prefixed};
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonWireValue, json};
 use thiserror::Error;
@@ -210,7 +210,7 @@ impl From<PaymentPacketError> for PaymentLedgerProjectionError {
     }
 }
 
-// rust-style-allow: long-function because the projection validates reservation,
+// Function rationale: the projection validates reservation,
 // settlement/refusal evidence, child receipts, and accrual in one audited pass.
 pub fn build_payment_ledger_projection(
     input: PaymentLedgerProjectionInput<'_>,
@@ -289,7 +289,7 @@ pub fn build_payment_ledger_projection(
     })
 }
 
-// rust-style-allow: long-function because artifact path derivation, JSON
+// Function rationale: artifact path derivation, JSON
 // serialization, hashing, and reference construction must stay byte-aligned.
 pub fn write_payment_ledger_projection_artifact(
     receipt_dir: impl AsRef<Path>,
@@ -428,7 +428,7 @@ pub fn build_x402_payment_ledger_projection_from_steps(
     })
 }
 
-// rust-style-allow: long-function because append is the idempotency boundary:
+// Function rationale: append is the idempotency boundary:
 // read existing events, compare semantic identity, reject conflicts, then write.
 pub fn append_payment_ledger_projected_event(
     receipt_dir: impl AsRef<Path>,
@@ -751,7 +751,7 @@ fn settlement_evidence(
                 })?,
             proof_ref: proof.proof_ref,
             idempotency_key: proof.idempotency_key,
-            supervisor_proof: payment_supervisor_proof_from_metadata(&step.output.metadata)
+            supervisor_proof: payment_supervisor_proof_from_metadata(&step.outcome.metadata)
                 .map_err(
                     |source| PaymentLedgerProjectionError::SupervisorProofMismatch {
                         message: source.to_string(),
@@ -794,14 +794,7 @@ fn with_step_outputs<T>(
     step: &StepRun,
     extract: impl Fn(&runx_contracts::JsonObject) -> Result<Option<T>, PaymentLedgerProjectionError>,
 ) -> Result<Option<T>, PaymentLedgerProjectionError> {
-    if let Some(value) = extract(&step.outputs)? {
-        return Ok(Some(value));
-    }
-    let Ok(JsonValue::Object(parsed)) = serde_json::from_str::<JsonValue>(&step.output.stdout)
-    else {
-        return Ok(None);
-    };
-    extract(&parsed)
+    extract(&step.contract)
 }
 
 fn validate_run_ledger_id(run_id: &str) -> Result<(), PaymentLedgerProjectionError> {

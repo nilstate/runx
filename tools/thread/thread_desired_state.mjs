@@ -207,7 +207,16 @@ function locatedThreadFrame(t, issueRef, sourceId) {
 }
 
 function buildFrame({ pushId, idempotencyKey, adapterId, threadLocator, outboxEntryId, thread, outboxEntry }) {
-  const body = JSON.stringify({ thread, outbox_entry: outboxEntry });
+  // The reconciler has already compared a live provider snapshot before it
+  // emits a mutation frame. Mutation primitives still perform the narrow reads
+  // they need for idempotency, but the provider must not hydrate the complete
+  // GitHub thread before and after every write. Those hydrations use GraphQL and
+  // make an otherwise REST-backed board sync depend on a shared GraphQL quota.
+  const body = JSON.stringify({
+    thread,
+    outbox_entry: outboxEntry,
+    provider_readback: "mutation_only",
+  });
   return {
     protocol_version: PROTOCOL_VERSION,
     push_id: pushId,

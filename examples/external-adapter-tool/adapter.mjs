@@ -1,6 +1,15 @@
-// Minimal external adapter: echoes its inputs. The runx.external_adapter.v1
-// protocol frame is handled by the shared adapter kit; this file is just the
-// adapter's logic.
-import { runAdapter } from "../adapter-kit/adapter.mjs";
+// Minimal external adapter: echoes its inputs. The extension SDK owns the
+// runx.external_adapter.v1 process protocol; this file owns only adapter logic.
+import {
+  defineExternalAdapter,
+  materializeExternalAdapterInputs,
+} from "@runxhq/extension-sdk";
 
-runAdapter(({ inputs }) => ({ ok: true, inputs }));
+const adapter = defineExternalAdapter({
+  adapterId: "adapter.example.echo",
+  invoke({ invocation }) {
+    return { ok: true, inputs: materializeExternalAdapterInputs(invocation) };
+  },
+});
+
+await adapter.main();

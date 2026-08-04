@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the native config slice keeps parse,
+// Module rationale: the native config slice keeps parse,
 // execute, render, and parity tests together for one audited CLI surface.
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -26,6 +26,7 @@ pub struct ConfigPlan {
     pub action: ConfigAction,
     pub key: Option<String>,
     pub value: Option<String>,
+    pub value_from_stdin: bool,
     pub json: bool,
 }
 
@@ -79,7 +80,7 @@ impl From<serde_json::Error> for ConfigCliError {
     }
 }
 
-// rust-style-allow: long-function because config set/get/list share one small
+// Function rationale: config set/get/list share one small
 // flag grammar and keeping it adjacent avoids divergent command parsing.
 pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
     let command = os_arg(args, 0, "config")?;
@@ -98,6 +99,7 @@ pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
     };
 
     let mut json = false;
+    let mut value_from_stdin = false;
     let mut positionals = Vec::new();
     let mut index = 2;
     while index < args.len() {
@@ -117,12 +119,22 @@ pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
                 json = true;
                 index += 1;
             }
+            "--from-stdin" => {
+                if inline_value.is_some() {
+                    return Err("--from-stdin does not take a value".to_owned());
+                }
+                value_from_stdin = true;
+                index += 1;
+            }
             _ => return Err(format!("unknown config flag {flag}")),
         }
     }
 
     match action {
         ConfigAction::List => {
+            if value_from_stdin {
+                return Err("runx config list does not accept --from-stdin".to_owned());
+            }
             if !positionals.is_empty() {
                 return Err("runx config list does not accept extra arguments".to_owned());
             }
@@ -130,10 +142,14 @@ pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
                 action,
                 key: None,
                 value: None,
+                value_from_stdin: false,
                 json,
             })
         }
         ConfigAction::Get => {
+            if value_from_stdin {
+                return Err("runx config get does not accept --from-stdin".to_owned());
+            }
             let [key] = positionals.as_slice() else {
                 return Err("runx config get requires exactly one key".to_owned());
             };
@@ -141,24 +157,45 @@ pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
                 action,
                 key: Some(normalize_config_key(key).to_owned()),
                 value: None,
+                value_from_stdin: false,
                 json,
             })
         }
         ConfigAction::Set => {
             let [key, values @ ..] = positionals.as_slice() else {
-                return Err("runx config set requires a key and value".to_owned());
+                return Err("runx config set requires a key".to_owned());
             };
-            if values.is_empty() {
+            let key = normalize_config_key(key);
+            if is_secret_config_key(key) {
+                if !values.is_empty() {
+                    return Err(
+                        "secret config values must be provided through --from-stdin".to_owned()
+                    );
+                }
+                if !value_from_stdin {
+                    return Err("secret config values require --from-stdin".to_owned());
+                }
+            } else if value_from_stdin {
+                return Err("--from-stdin is only valid for secret config values".to_owned());
+            } else if values.is_empty() {
                 return Err("runx config set requires a value".to_owned());
             }
             Ok(ConfigPlan {
                 action,
-                key: Some(normalize_config_key(key).to_owned()),
-                value: Some(values.join(" ")),
+                key: Some(key.to_owned()),
+                value: (!values.is_empty()).then(|| values.join(" ")),
+                value_from_stdin,
                 json,
             })
         }
     }
+}
+
+pub fn is_secret_config_key(key: &str) -> bool {
+    matches!(
+        normalize_config_key(key),
+        "agent.api_key" | "public.api_token"
+    )
 }
 
 fn normalize_config_key(key: &str) -> &str {
@@ -324,13 +361,42 @@ mod tests {
                 action: ConfigAction::Set,
                 key: Some("agent.model".to_owned()),
                 value: Some("gpt test".to_owned()),
+                value_from_stdin: false,
                 json: true,
             })
         );
     }
 
     #[test]
-    // rust-style-allow: long-function because one temp config lifecycle proves
+    fn secret_config_values_require_stdin_and_never_accept_argv() {
+        assert_eq!(
+            parse_config_plan(&[
+                "config".into(),
+                "set".into(),
+                "api-key".into(),
+                "secret-on-argv".into(),
+            ]),
+            Err("secret config values must be provided through --from-stdin".to_owned())
+        );
+        assert_eq!(
+            parse_config_plan(&[
+                "config".into(),
+                "set".into(),
+                "api-key".into(),
+                "--from-stdin".into(),
+            ]),
+            Ok(ConfigPlan {
+                action: ConfigAction::Set,
+                key: Some("agent.api_key".to_owned()),
+                value: None,
+                value_from_stdin: true,
+                json: false,
+            })
+        );
+    }
+
+    #[test]
+    // Function rationale: one temp config lifecycle proves
     // set/get/list masking against the same encrypted local state.
     fn config_set_get_list_masks_api_key() -> Result<(), ConfigTestError> {
         let temp = tempfile_dir()?;
@@ -344,18 +410,21 @@ mod tests {
             action: ConfigAction::Set,
             key: Some("agent.provider".to_owned()),
             value: Some("openai".to_owned()),
+            value_from_stdin: false,
             json: true,
         };
         let set_key = ConfigPlan {
             action: ConfigAction::Set,
             key: Some("agent.api_key".to_owned()),
             value: Some("sk-secret-test".to_owned()),
+            value_from_stdin: true,
             json: true,
         };
         let set_public_token = ConfigPlan {
             action: ConfigAction::Set,
             key: Some("public.api_token".to_owned()),
             value: Some("rxk-secret-test".to_owned()),
+            value_from_stdin: true,
             json: true,
         };
         run_config_command(&set_provider, &env, &temp)?;
@@ -371,6 +440,7 @@ mod tests {
                 action: ConfigAction::Get,
                 key: Some("agent.api_key".to_owned()),
                 value: None,
+                value_from_stdin: false,
                 json: false,
             },
             &env,
@@ -385,6 +455,7 @@ mod tests {
                 action: ConfigAction::List,
                 key: None,
                 value: None,
+                value_from_stdin: false,
                 json: false,
             },
             &env,

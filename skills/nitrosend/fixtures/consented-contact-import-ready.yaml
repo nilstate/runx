@@ -1,7 +1,7 @@
 name: consented-contact-import-ready
 kind: skill
 target: ..
-runner: import-contacts
+runner: plan-import
 inputs:
   objective: Import the 12 webinar signups into a new Webinar 2026 list, tagged webinar-attendee.
   source_brief: Email addresses collected from our own webinar registration form with opt-in consent.

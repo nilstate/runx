@@ -7,24 +7,17 @@ inputs:
   granted_scopes:
     - web:read
     - repo:read
-  usage_summary: {}
-  objective: Audit a freshly published skill that has not run yet.
-caller:
-  answers:
-    agent_task.least-privilege.output:
-      audit_report:
-        subject: research/deep-research
-        scope_diff: []
-      attenuation_proposals: []
-      verdict: needs_more_evidence
-      residual_risk: No receipts attribute usage to this subject yet. Narrowing now would guess the grant to nothing; wait for usage evidence before proposing attenuation.
+  receipt_ids: []
+  receipt_rows: []
+  usage_summary:
+    observed: []
+  objective: Audit a newly published skill with no runs.
 expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
-    state: sealed
-    disposition: closed
 metadata:
   public_skill: least-privilege
   source_case: empty-usage-stops-for-evidence
   source: skills-fixture
+  runner_kind: graph

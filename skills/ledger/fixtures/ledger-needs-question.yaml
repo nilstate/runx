@@ -1,27 +1,8 @@
 name: ledger-needs-question
 kind: skill
 target: ..
-runner: ledger
+runner: read
 inputs: {}
-caller:
-  answers:
-    agent_task.ledger.output:
-      ledger_answer:
-        decision: needs_agent
-        question: ""
-        query:
-          principal: ""
-          skill_ref: ""
-          status: []
-          time_range:
-            from: ""
-            to: ""
-      matched_receipts: []
-      chain_verification:
-        checked: false
-        intact: null
-        breaks: []
-      summary: No audit question was provided, so there is nothing to query against the ledger.
 expect:
   status: sealed
   receipt:
@@ -30,3 +11,4 @@ metadata:
   public_skill: ledger
   source_case: ledger-needs-question
   source: skills-fixture
+  runner_kind: cli-tool

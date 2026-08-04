@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/reflect/digest/v1.json",
+  "x-runx-packet-id": "runx.reflect.digest.v1",
+  "x-runx-generated-from": "skills/reflect-digest/X.yaml#root.runners.digest.graph.steps.4",
+  "type": "object",
+  "required": [
+    "proposals",
+    "skill_lab_handoffs"
+  ],
+  "properties": {
+    "proposals": {
+      "type": "array"
+    },
+    "skill_lab_handoffs": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

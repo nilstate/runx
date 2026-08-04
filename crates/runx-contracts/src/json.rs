@@ -8,7 +8,12 @@ use serde_json::{Value, json};
 
 use crate::schema::RunxSchema;
 
+mod deserializer;
+
 pub type JsonObject = BTreeMap<String, JsonValue>;
+
+/// Largest integer that survives every supported JSON boundary without loss.
+pub const MAX_PORTABLE_INTEGER: u64 = 9_007_199_254_740_991;
 
 impl RunxSchema for JsonValue {
     fn json_schema() -> Value {
@@ -24,7 +29,7 @@ impl RunxSchema for JsonNumber {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum JsonValue {
     Null,
@@ -35,7 +40,27 @@ pub enum JsonValue {
     Object(JsonObject),
 }
 
+impl<'de> Deserialize<'de> for JsonValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(deserializer::JsonValueVisitor)
+    }
+}
+
 impl JsonValue {
+    /// Deserialize directly from the canonical Runx JSON tree.
+    ///
+    /// This avoids constructing a parallel `serde_json::Value` tree at typed
+    /// runtime boundaries while preserving serde's normal validation rules.
+    pub fn deserialize_into<T>(self) -> Result<T, de::value::Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        deserializer::from_json_value(self)
+    }
+
     #[must_use]
     pub fn as_object(&self) -> Option<&JsonObject> {
         match self {
@@ -113,6 +138,16 @@ impl JsonNumber {
     }
 }
 
+pub(super) fn normalized_f64(value: f64) -> Option<JsonNumber> {
+    if !value.is_finite() {
+        return None;
+    }
+    if value.fract() == 0.0 && value.abs() <= MAX_PORTABLE_INTEGER as f64 {
+        return Some(JsonNumber::I64(value as i64));
+    }
+    Some(JsonNumber::F64(value))
+}
+
 impl Serialize for JsonNumber {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -181,11 +216,7 @@ impl Visitor<'_> for JsonNumberVisitor {
     where
         E: de::Error,
     {
-        if value.is_finite() {
-            Ok(JsonNumber::F64(value))
-        } else {
-            Err(E::custom("non-finite numbers are not valid JSON"))
-        }
+        normalized_f64(value).ok_or_else(|| E::custom("non-finite numbers are not valid JSON"))
     }
 }
 
@@ -205,7 +236,45 @@ impl fmt::Display for JsonNumber {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
+    use serde::Deserialize;
+
     use super::{JsonNumber, JsonValue};
+
+    #[derive(Debug, Deserialize, PartialEq, Eq)]
+    #[serde(deny_unknown_fields)]
+    struct TypedFixture {
+        name: String,
+        flags: Vec<bool>,
+    }
+
+    #[test]
+    fn json_value_deserializes_directly_into_typed_inputs() {
+        let value = JsonValue::Object(
+            [
+                ("name".to_owned(), JsonValue::String("runx".to_owned())),
+                (
+                    "flags".to_owned(),
+                    JsonValue::Array(vec![JsonValue::Bool(true), JsonValue::Bool(false)]),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        let decoded = value
+            .deserialize_into::<TypedFixture>()
+            .expect("canonical JSON should deserialize without a second tree");
+
+        assert_eq!(
+            decoded,
+            TypedFixture {
+                name: "runx".to_owned(),
+                flags: vec![true, false],
+            }
+        );
+    }
 
     #[test]
     fn json_value_round_trips_objects_with_sorted_keys() -> Result<(), serde_json::Error> {
@@ -245,6 +314,16 @@ mod tests {
         let json = serde_json::to_string(&value)?;
 
         assert_eq!(json, "1");
+        Ok(())
+    }
+
+    #[test]
+    fn json_value_normalizes_whole_floats_for_typed_integer_inputs()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let value: JsonValue = serde_json::from_str("2.0")?;
+
+        assert_eq!(value, JsonValue::Number(JsonNumber::I64(2)));
+        assert_eq!(value.deserialize_into::<u64>()?, 2);
         Ok(())
     }
 

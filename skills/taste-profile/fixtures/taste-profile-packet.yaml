@@ -1,4 +1,4 @@
-name: taste-profile-packet
+name: taste-profile-binds-preferences
 kind: skill
 target: ..
 runner: profile
@@ -7,50 +7,52 @@ inputs:
   surface: developer-tool product UI
   audience: advanced software builders
   evidence:
-    - likes dense operational surfaces with visible proof
-    - rejects decorative marketing cards and vague claims
-    - prefers concise engineering prose with clear stop conditions
+    - kind: liked
+      content: Dense operational surfaces with visible proof.
+    - kind: disliked
+      content: Decorative marketing cards that hide the workflow.
 caller:
   answers:
-    agent_task.taste-profile.output:
-      decision: ready
-      subject: runx maintainer
-      applicability:
-        surfaces:
-          - developer-tool product UI
-        audience: advanced software builders
-        expires_when:
-          - evidence shifts to consumer marketing or legal copy
-      taste_profile:
-        principles:
-          - Make the actual workflow visible before promotional language.
-          - Prefer dense, useful surfaces over decorative layout.
-        likes:
-          - visible receipts and proof
-          - terse engineering copy
-        dislikes:
-          - generic hero claims
-          - decorative cards that hide the product
-        decision_rules:
-          - If a choice trades clarity for flourish, choose clarity.
-        examples_to_emulate: []
-        examples_to_avoid: []
-      evidence:
-        summary:
-          - Three supplied preference notes point toward operational clarity.
-        provenance:
-          - caller.evidence
-      redactions: []
-      stop_conditions:
-        - Do not apply this profile to legal, medical, or support copy without fresh examples.
-      receipt_notes:
-        authority: context-only
-        mutation: false
+    agent_task.taste-profile-synthesize.output:
+      taste_profile_draft:
+        decision: ready
+        subject: runx maintainer
+        applicability:
+          surfaces: [developer-tool product UI]
+          audience: advanced software builders
+          expires_when: [The evidence set changes materially.]
+        taste_profile:
+          principles: [Make the workflow visible before promotional language.]
+          likes: [Dense operational surfaces with visible proof.]
+          dislikes: [Decorative marketing cards that hide the workflow.]
+          decision_rules: [Choose operational clarity over decorative flourish.]
+          examples_to_emulate: []
+          examples_to_avoid: []
+        evidence_bindings:
+          - rule: Make the workflow visible before promotional language.
+            source_refs: [source:1]
+            confidence: inferred
+          - rule: Dense operational surfaces with visible proof.
+            source_refs: [source:1]
+            confidence: observed
+          - rule: Decorative marketing cards that hide the workflow.
+            source_refs: [source:2]
+            confidence: observed
+          - rule: Choose operational clarity over decorative flourish.
+            source_refs: [source:1, source:2]
+            confidence: inferred
+        redactions: []
+        stop_conditions: [Do not apply this packet outside the declared surface.]
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
-metadata:
-  public_skill: taste-profile
-  source_case: taste-profile-packet
-  source: skills-fixture
+  steps: [index, digest, synthesize, finalize]
+  step_outputs:
+    finalize:
+      subset:
+        taste_profile_packet:
+          data:
+            decision: ready
+            receipt_notes: { authority: context-only, mutation: false }
+            validation: { status: pass }
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: taste-profile, source_case: bound-preferences, source: skills-fixture }

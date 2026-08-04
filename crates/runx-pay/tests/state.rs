@@ -22,9 +22,9 @@ use runx_pay::effect_state::{
 };
 use runx_pay::supervisor::{PAYMENT_RAIL_SUPERVISOR_VERIFIER_ID, PaymentSupervisorProof};
 use runx_pay::{INFERENCE_EFFECT_FAMILY, PAYMENT_EFFECT_FAMILY};
+use runx_runtime::InvocationOutput;
 use runx_runtime::RUNX_RECEIPT_DIR_ENV;
 use runx_runtime::receipts::step_receipt;
-use runx_runtime::{InvocationStatus, SkillOutput};
 use serde_json::json;
 
 const MESSAGE_EFFECT_FAMILY: &str = "message";
@@ -1355,19 +1355,14 @@ fn receipt_for_outputs(
     step_id: &str,
     outputs: &JsonObject,
 ) -> Result<Receipt, Box<dyn std::error::Error>> {
-    let output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: serde_json::to_string(&JsonValue::Object(outputs.clone()))?,
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 1,
-        metadata: JsonObject::new(),
-    };
+    let output =
+        InvocationOutput::runtime_success(JsonValue::Object(outputs.clone()), 1, JsonObject::new());
     Ok(step_receipt(
         graph_name,
         step_id,
         1,
         &output,
+        outputs,
         "2026-05-18T00:00:00Z",
     )?)
 }

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because trust projection keeps source,
+// Module rationale: trust projection keeps source,
 // publisher, and local registry search/readback signals together for stable
 // registry parity output.
 use runx_contracts::{JsonObject, JsonValue};

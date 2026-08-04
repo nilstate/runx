@@ -1,22 +1,26 @@
 # runx-parser
 
-Pure Rust parser parity crate for runx parser boundaries.
+Canonical pure parser and validation crate for Runx package boundaries. Every
+runtime consumer receives its package model from this crate; JavaScript test
+and generator code may call the native parser but does not reimplement it.
 
-The TypeScript parser remains the authoring reference while this crate proves
-fixture parity. The Rust implementation currently covers:
+The implementation covers:
 
 - execution graphs
 - skill markdown frontmatter and body preservation
 - runner manifests and harness cases
 - tool manifests from YAML and JSON
 - skill install envelopes
+- aggregate validated skill packages, including manuals, executable bundles,
+  references, digests, and harness definitions
 
 The crate intentionally stays pure: it parses and validates typed intermediate
 representations, uses `runx_contracts::JsonValue` and the
 `runx_contracts::execution` semantic types at public parser boundaries, reuses
-`runx_core::policy` sandbox normalization, and has no filesystem,
+pure execution-requirement validation, and has no filesystem,
 environment, network, or provider SDK dependencies.
 
-Fixture generation is TypeScript-authored and checked by
-`scripts/generate-rust-parser-fixtures.ts`; Rust tests assert byte-level shape
-parity against `fixtures/parser/**`.
+`scripts/generate-rust-parser-fixtures.ts` batches fixture documents through
+the native parser and records its owned output. Rust tests assert byte-level
+stability against `fixtures/parser/**`; the script is transport and artifact
+generation, not a second parser.

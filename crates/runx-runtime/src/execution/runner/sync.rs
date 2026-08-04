@@ -2,28 +2,6 @@ use runx_contracts::{
     FanoutReceiptDecision, FanoutReceiptStrategy, FanoutReceiptSyncPoint, JsonObject,
 };
 use runx_core::state_machine::{FanoutSyncDecision, FanoutSyncOutcome, FanoutSyncStrategy};
-use runx_parser::ExecutionGraph;
-
-use super::StepRun;
-
-pub(super) fn latest_fanout_receipt_ids(
-    runs: &[StepRun],
-    graph: &ExecutionGraph,
-    group_id: &str,
-) -> Vec<String> {
-    graph
-        .steps
-        .iter()
-        .filter(|step| step.fanout_group.as_deref() == Some(group_id))
-        .filter_map(|step| {
-            runs.iter()
-                .rev()
-                .find(|run| run.step_id == step.id)
-                .map(|run| run.receipt.id.to_string())
-        })
-        .collect()
-}
-
 pub(super) fn fanout_sync_point(
     decision: &FanoutSyncDecision,
     branch_receipts: &[String],

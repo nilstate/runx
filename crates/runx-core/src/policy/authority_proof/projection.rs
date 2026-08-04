@@ -5,15 +5,14 @@ use crate::policy::{
     AuthorityProofCredentialMaterial, AuthorityProofCredentialMaterialStatus,
     AuthorityProofMetadata, AuthorityProofRedaction, AuthorityProofRedactionSecretMaterial,
     AuthorityProofRedactionStatus, AuthorityProofRedactionStream, AuthorityProofRequested,
-    AuthorityProofSandbox, AuthorityProofSchemaVersion, BuildAuthorityProofOptions,
-    CredentialEnvelope, LocalScopeAdmissionOptions, ScopeAdmission, ScopeAdmissionStatus,
+    AuthorityProofSchemaVersion, BuildAuthorityProofOptions, CredentialEnvelope,
+    LocalScopeAdmissionOptions, ScopeAdmission, ScopeAdmissionStatus,
     credential_grant::{CredentialGrantRequirement, credential_grant_requirement},
     scope::unique_strings,
 };
 
 use super::{
     admission::build_local_scope_admission,
-    sandbox_summary::summarize_authority_sandbox,
     util::{non_empty_option, non_empty_vec},
 };
 
@@ -32,25 +31,19 @@ pub fn build_authority_proof(options: &BuildAuthorityProofOptions) -> AuthorityP
             },
         )
     });
-    let sandbox = summarize_authority_sandbox(
-        options.sandbox_metadata.as_ref(),
-        options.sandbox_declaration.as_ref(),
-        options.approval.as_ref(),
-    );
-
     AuthorityProof {
         schema_version: AuthorityProofSchemaVersion::V1,
         run_id: non_empty_option(options.run_id.clone()),
         skill_name: options.skill_name.clone().into(),
         source_type: options.source_type.clone().into(),
-        requested: authority_proof_requested(&requirement, &sandbox, options),
+        requested: authority_proof_requested(&requirement, options),
         scope_admission: scope_admission.clone(),
         credential_material: credential_material_proof(
             options.credential.as_ref(),
             requirement.as_ref(),
             &scope_admission,
         ),
-        sandbox,
+        execution_boundary: options.execution_boundary,
         approval_gate: options.approval.as_ref().map(approval_decision),
         redaction: authority_redaction(),
     }
@@ -67,14 +60,15 @@ pub fn build_authority_proof_metadata(
 
 fn authority_proof_requested(
     requirement: &Option<CredentialGrantRequirement>,
-    sandbox: &Option<AuthorityProofSandbox>,
     options: &BuildAuthorityProofOptions,
 ) -> AuthorityProofRequested {
+    let mut requested_scopes = options.scopes.clone();
+    if let Some(requirement) = requirement {
+        requested_scopes.extend(requirement.scopes.iter().cloned());
+    }
     AuthorityProofRequested {
         connected_auth: requirement.is_some(),
-        scopes: requirement.as_ref().map_or_else(Vec::new, |value| {
-            non_empty_vec(unique_strings(&value.scopes))
-        }),
+        scopes: non_empty_vec(unique_strings(&requested_scopes)),
         mutating: options.mutating.unwrap_or(false),
         scope_family: requirement
             .as_ref()
@@ -88,7 +82,6 @@ fn authority_proof_requested(
         target_locator: requirement
             .as_ref()
             .and_then(|value| non_empty_option(value.target_locator.clone())),
-        sandbox_profile: sandbox.as_ref().map(|value| value.profile.clone()),
     }
 }
 

@@ -1,8 +1,10 @@
 # Security Authority Proof
 
 Runx receipts must explain the authority boundary without becoming a secret
-side channel. The compact proof lives in receipt metadata under
-`authority_proof` and validates against `runx.authority-proof.v1`.
+side channel. The compact policy projection lives under `authority_proof` and
+validates against `runx.authority-proof.v1`. The adapter-observed execution
+boundary is also copied into `receipt.authority.enforcement` before sealing, so
+it is part of the signed receipt body rather than unsigned read metadata.
 
 Allowed public fields:
 
@@ -10,7 +12,7 @@ Allowed public fields:
 - requested connected-auth scopes and whether the skill declared mutating work
 - scope admission status, granted scopes, grant id, and decision summary
 - provider, connection id, grant reference, and `material_ref` hash
-- sandbox profile, declared enforcement, runtime enforcer, and approval result
+- typed execution-boundary observation and approval result
 - redaction policy status
 
 Banned fields:
@@ -26,29 +28,34 @@ Credential material is represented by hashed opaque handles such as
 passed through the receipt redactor before signing. Hosted workers and local
 runners use the same `authority_proof` schema name; consuming repos add policy
 for source channels, assignees, and target repositories outside the core proof.
-Runtime secret handoff is owned by `credential-broker-delivery-contract-v1`:
-secret values may cross only the trusted broker/supervisor delivery channel, not
-authority proofs, receipts, invocation metadata, adapter observations, or public
-provider evidence.
+Local secret handoff is owned by the declared skill-credential contract and the
+Rust `CredentialDelivery` boundary. Hosted provider execution continues to use
+the credential-broker contract and opaque handles. In both paths, secret values
+may cross only the trusted adapter/supervisor delivery channel, not authority
+proofs, receipts, invocation metadata, adapter observations, or public provider
+evidence. See [Credential Resolution](./credentials.md).
 
 ## Ownership Boundary
 
-The Rust `AuthorityProof` wire structs are policy-owned in `runx-core`, not
-promoted into `runx-contracts`. The proof is produced only by the policy kernel,
-shares admission support types such as `ScopeAdmission`, `AuthorityKind`, and
-`CredentialGrantReference`, and is validated as a contract through generated
-schema checks in `runx-contracts`. Future contract-spine work should treat this
-as an explicit exception unless it can move the full boundary without changing
-the `runx.authority-proof.v1` JSON shape.
+The Rust `AuthorityProof` wire structs and
+`ExecutionBoundaryObservation` live in `runx-contracts`, which owns their
+portable JSON shape and generated schemas. `runx-core` alone owns the policy
+projection that constructs an authority proof from admission decisions. The
+runtime adapter alone owns the observed execution-boundary value and binds it
+into the receipt at seal time. Neither a skill nor an agent may self-attest that
+observation.
 
-The local kernel resolves authority in this order:
+The local runner applies authority in this order:
 
-1. Structural policy admission runs before connected auth resolution.
-2. Grant resolution returns only grant descriptors.
-3. Sandbox approval gates run before execution.
-4. Credential resolution returns an opaque credential envelope only after
-   admission.
-5. The signed receipt records the proof, hashes outputs, and omits raw secrets.
+1. Manifest validation identifies the selected runner and its declared
+   credential requirement.
+2. The credential resolver selects one profile, project binding, hosted handle,
+   or declared workspace source and constructs a redacted delivery.
+3. Structural policy admission resolves the exact authority grant.
+4. The adapter delivers only the resolved environment and credential material,
+   executes through the lane's canonical boundary, and redacts captured output.
+5. The signed receipt records the observed boundary, public observations, and
+   output hashes without raw material.
 
 ## Provider-Permission Grants
 
@@ -56,14 +63,31 @@ The local kernel resolves authority in this order:
 grant id, and the authority verb. It must not declare `granted_scopes`; granted
 scopes come only from operator-carried runtime grant evidence.
 
-Provider-permission steps fail closed unless the operator supplies both:
+Legacy provider-permission and MCP host steps fail closed unless the operator
+supplies:
 
 - `RUNX_PROVIDER_PERMISSION_GRANT_ID`
-- `RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES`
+- `RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES`, encoded as a JSON array of exact
+  capability strings (for example `["repo.read","issues.write"]`)
 
-This is intentional. Older local runs that relied on an implicit grant id must
-set `RUNX_PROVIDER_PERMISSION_GRANT_ID` explicitly before executing
-provider-permission steps.
+Native `provider.read` and `provider.mutate` steps use the same evidence model
+without requiring that setup in the common Connect path. They authenticate the
+operator, read active grant metadata from Connect, and select the unique grant
+whose provider and authoritative scopes cover the declared step. The selection
+is cached for the run. No provider token or credential body crosses into the
+skill. A host-injected native grant is a complete evidence tuple: the two
+variables above plus `RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF`. Partial tuples
+never report ready.
+
+The native boundary can also require exact `expected_result` identity fields
+and project only declared `result_fields` before the result enters a receipt.
+This prevents a correctly scoped call from being mistaken for the wrong
+resource and keeps undeclared secret-adjacent material out of skill output.
+
+When more than one active grant matches, resolution fails as ambiguous. Set
+`RUNX_PROVIDER_PERMISSION_GRANT_ID` to select one; Runx then reads that grant's
+current scopes from Connect. A host may inject the complete three-variable
+tuple to carry already-resolved native grant evidence without a discovery call.
 
 When a provider-permission effect is admitted, the sealed step receipt records
 the operator grant as a typed `runx:grant:*` reference under
@@ -119,7 +143,12 @@ canonical body digests, content-addressed ids, linked-tree parent/child
 integrity, scope adherence for privileged effects, and — when
 `RUNX_RECEIPT_VERIFY_KID` and
 `RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64` are set — production Ed25519
-signatures against the operator-trusted key. Store mode groups receipts into
+signatures against the operator-trusted key. When those explicit verifier
+variables are absent, a complete `RUNX_RECEIPT_SIGN_*` identity supplies its
+own public verifier; explicit verifier configuration always takes precedence.
+This lets the signing operator verify its own local store without duplicating
+key configuration while independent verifiers need only the public key. Store
+mode groups receipts into
 trees by lineage; a chain that points at a receipt missing from the store is
 reported as incomplete and fails verification. Single-receipt mode emits one
 `runx.verify_verdict.v1` JSON verdict suitable for hosted notaries and other
@@ -148,15 +177,16 @@ view before exercising privileged effects. It reports:
 - receipt signer readiness, naming `RUNX_RECEIPT_SIGN_KID`,
   `RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64`, and
   `RUNX_RECEIPT_SIGN_ISSUER_TYPE`
-- receipt verification readiness, naming `RUNX_RECEIPT_VERIFY_KID` and
-  `RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64`
+- receipt verification readiness and whether it resolves from the explicit
+  `RUNX_RECEIPT_VERIFY_*` pair or the complete signing identity
 - the resolved effect-state path when configured
 - the consequence when `RUNX_EFFECT_STATE_PATH` is unset: cross-run spend caps,
   payment idempotency, and effect replay recovery are not durable without a
   configured state path
-- provider-permission grant readiness, naming
-  `RUNX_PROVIDER_PERMISSION_GRANT_ID` and
-  `RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES`
+- provider-permission grant readiness, reporting either authenticated Connect
+  discovery or the complete host-injected `RUNX_PROVIDER_PERMISSION_GRANT_ID`,
+  JSON-array `RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES`, and
+  `RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF` path
 
 The diagnostic may show key ids and resolved filesystem paths. It must not show
 signing seeds, public key material, provider scope values, grant ids, or

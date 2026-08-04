@@ -1,6 +1,9 @@
-// rust-style-allow: large-file because skill-source validation keeps the source-kind
+// Module rationale: skill-source validation keeps the source-kind
 // parsing, the artifact/mint coherence rules, and their error construction as one
 // cohesive unit; splitting it would scatter the source contract across files.
+use std::path::{Component, Path};
+
+use runx_contracts::javascript_worker::MAX_INPUT_BYTES;
 use runx_contracts::{JsonObject, JsonValue};
 
 use crate::ValidationError;
@@ -9,8 +12,8 @@ use crate::graph::{RawGraphIr, validate_graph_document};
 use crate::graph::MintScopeSource;
 
 use super::{
-    ActDeclaration, FIELDS, InputMode, SkillHttpSource, SkillMcpServer, SkillSource, SourceKind,
-    field_value, first_value, validate_sandbox,
+    ActDeclaration, FIELDS, InputMode, SkillExternalAdapterManifest, SkillMcpServer, SkillSource,
+    SourceKind, validate_environment_requirements,
 };
 
 const SOURCE_FIELDS: &[&str] = &[
@@ -18,39 +21,34 @@ const SOURCE_FIELDS: &[&str] = &[
     "agent",
     "agent_card_url",
     "agent_identity",
-    "allow_private_network",
     "args",
     "arguments",
-    "catalog_ref",
     "command",
     "cwd",
+    "environment",
     "external_adapter",
-    "external_adapter_manifest",
-    "external_adapter_manifest_path",
+    "export",
     "graph",
-    "headers",
-    "hook",
-    "http",
     "input_mode",
-    "invocation_id",
-    "method",
+    "module",
     "outputs",
-    "run_id",
-    "sandbox",
+    "pages",
     "server",
-    "skill_ref",
     "task",
+    "thread_outbox_provider",
     "timeout_seconds",
     "tool",
     "type",
-    "url",
 ];
 
-pub fn validate_skill_source(
+pub fn validate_skill_source(source: &JsonObject) -> Result<SkillSource, ValidationError> {
+    validate_source(source)
+}
+
+pub(crate) fn validate_inline_graph_source(
     source: &JsonObject,
-    runx: Option<&JsonObject>,
 ) -> Result<SkillSource, ValidationError> {
-    validate_source(source, runx)
+    validate_source_with_context(source, SourceValidationContext::InlineGraph)
 }
 
 pub(super) fn validate_source_fields(
@@ -60,11 +58,36 @@ pub(super) fn validate_source_fields(
     FIELDS.reject_unknown_fields(source, field, SOURCE_FIELDS)
 }
 
-pub(super) fn validate_source(
+pub(super) fn flattened_source_record(record: &JsonObject) -> JsonObject {
+    record
+        .iter()
+        .filter(|(field, _)| SOURCE_FIELDS.contains(&field.as_str()))
+        .map(|(field, value)| (field.clone(), value.clone()))
+        .collect()
+}
+
+pub(super) fn validate_source(source: &JsonObject) -> Result<SkillSource, ValidationError> {
+    validate_source_with_context(source, SourceValidationContext::Skill)
+}
+
+#[derive(Clone, Copy)]
+enum SourceValidationContext {
+    Skill,
+    InlineGraph,
+}
+
+fn validate_source_with_context(
     source: &JsonObject,
-    runx: Option<&JsonObject>,
+    context: SourceValidationContext,
 ) -> Result<SkillSource, ValidationError> {
     let source_type = FIELDS.required_string(source.get("type"), "source.type")?;
+    if source_type == "http" {
+        return Err(retired_http_source_error("source.type"));
+    }
+    if source_type == "catalog" {
+        return Err(retired_catalog_source_error("source.type"));
+    }
+    validate_source_fields(source, "source")?;
     let args = FIELDS
         .optional_string_array(source.get("args"), "source.args")?
         .unwrap_or_default();
@@ -75,36 +98,364 @@ pub(super) fn validate_source(
     if source_type == "cli-tool" {
         FIELDS.required_string(source.get("command"), "source.command")?;
     }
+    let (module, javascript_export) = validate_javascript_source(source, &source_type)?;
     validate_agent_command_boundary(source, &source_type)?;
     let source_kind = parse_source_kind(&source_type, "source.type")?;
-
+    validate_source_timeout(&source_kind, timeout_seconds)?;
+    let external_adapter = validate_external_adapter_manifest(source, source_kind)?;
+    let thread_outbox_provider = validate_thread_outbox_provider(source, source_kind)?;
+    let outputs = FIELDS.optional_object(source.get("outputs"), "source.outputs")?;
+    if let Some(outputs) = &outputs {
+        runx_contracts::parse_output_contract(outputs).map_err(|error| {
+            FIELDS.validation_error(format!("source.outputs is invalid: {error}"))
+        })?;
+    }
     Ok(SkillSource {
         command: FIELDS.optional_string(source.get("command"), "source.command")?,
+        module,
+        javascript_export,
+        pages: validate_artifact_pages(source.get("pages"), &source_kind)?,
         args,
         cwd: FIELDS.optional_string(source.get("cwd"), "source.cwd")?,
         timeout_seconds,
         input_mode,
-        sandbox: validate_sandbox(first_value(
-            source.get("sandbox"),
-            field_value(runx, "sandbox"),
-        ))?,
+        environment: validate_environment_requirements(source.get("environment"))?,
         server: validate_mcp_server(source, &source_type)?,
-        catalog_ref: validate_catalog_ref(source, &source_type)?,
         tool: validate_mcp_tool(source, &source_type)?,
         arguments: FIELDS.optional_object(source.get("arguments"), "source.arguments")?,
         agent_card_url: validate_a2a_url(source, &source_type)?,
         agent_identity: FIELDS
             .optional_string(source.get("agent_identity"), "source.agent_identity")?,
-        agent: validate_agent(source, &source_type)?,
-        task: validate_task(source, &source_type)?,
-        hook: validate_hook(source, &source_type)?,
-        outputs: FIELDS.optional_object(source.get("outputs"), "source.outputs")?,
+        agent: validate_agent(source, &source_type, context)?,
+        task: validate_task(source, &source_type, context)?,
+        outputs,
         graph: validate_graph_source(source, &source_type)?,
-        http: validate_http_source(source, &source_type)?,
+        external_adapter,
+        thread_outbox_provider,
         act: validate_act_declaration(source.get("act"))?,
         raw: source.clone(),
         source_type: source_kind,
     })
+}
+
+fn validate_artifact_pages(
+    value: Option<&JsonValue>,
+    source_kind: &SourceKind,
+) -> Result<Option<super::ArtifactPageSource>, ValidationError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if *source_kind != SourceKind::JavaScript {
+        return Err(FIELDS
+            .validation_error("source.pages is only valid for deterministic javascript sources."));
+    }
+    let value = FIELDS.required_object(Some(value), "source.pages")?;
+    FIELDS.reject_unknown_fields(
+        value,
+        "source.pages",
+        &[
+            "framing",
+            "media_type",
+            "page_bytes",
+            "path_from",
+            "path_scope_from",
+        ],
+    )?;
+    let path_from = page_input_name(value, "path_from")?;
+    let path_scope_from = FIELDS
+        .optional_string(value.get("path_scope_from"), "source.pages.path_scope_from")?
+        .map(|name| validate_page_input_name(&name, "source.pages.path_scope_from"))
+        .transpose()?;
+    if path_from == "runx_page" || path_scope_from.as_deref() == Some("runx_page") {
+        return Err(FIELDS.validation_error(
+            "source.pages input names cannot use the runtime-reserved runx_page field.",
+        ));
+    }
+    if path_scope_from.as_deref() == Some(path_from.as_str()) {
+        return Err(FIELDS.validation_error(
+            "source.pages.path_from and path_scope_from must name different inputs.",
+        ));
+    }
+    let media_type = FIELDS.required_string(value.get("media_type"), "source.pages.media_type")?;
+    let framing = match FIELDS
+        .required_string(value.get("framing"), "source.pages.framing")?
+        .as_str()
+    {
+        "json_array" => super::ArtifactPageFraming::JsonArray,
+        other => {
+            return Err(FIELDS.validation_error(format!(
+                "source.pages.framing {other:?} is unsupported; expected json_array."
+            )));
+        }
+    };
+    let page_bytes = FIELDS
+        .optional_u64(value.get("page_bytes"), "source.pages.page_bytes")?
+        .unwrap_or(1024 * 1024);
+    let maximum_page_bytes = u64::try_from(MAX_INPUT_BYTES).unwrap_or(u64::MAX);
+    if page_bytes == 0 || page_bytes > maximum_page_bytes {
+        return Err(FIELDS.validation_error(format!(
+            "source.pages.page_bytes must be between 1 and {maximum_page_bytes}."
+        )));
+    }
+    Ok(Some(super::ArtifactPageSource {
+        path_from,
+        path_scope_from,
+        media_type,
+        framing,
+        page_bytes,
+    }))
+}
+
+fn page_input_name(value: &JsonObject, field: &str) -> Result<String, ValidationError> {
+    let qualified = format!("source.pages.{field}");
+    let name = FIELDS.required_string(value.get(field), &qualified)?;
+    validate_page_input_name(&name, &qualified)
+}
+
+fn validate_page_input_name(name: &str, field: &str) -> Result<String, ValidationError> {
+    if !name
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
+    {
+        return Err(FIELDS.validation_error(format!(
+            "{field} must name one declared input using letters, digits, '_' or '-'."
+        )));
+    }
+    Ok(name.to_owned())
+}
+
+fn validate_external_adapter_manifest(
+    source: &JsonObject,
+    source_kind: SourceKind,
+) -> Result<Option<SkillExternalAdapterManifest>, ValidationError> {
+    let declaration = source.get("external_adapter");
+    if source_kind != SourceKind::ExternalAdapter {
+        if declaration.is_some() {
+            return Err(FIELDS.validation_error(
+                "source.external_adapter is only valid for external-adapter sources.",
+            ));
+        }
+        return Ok(None);
+    }
+    let declaration = FIELDS.required_object(declaration, "source.external_adapter")?;
+    FIELDS.reject_unknown_fields(
+        declaration,
+        "source.external_adapter",
+        &["manifest", "manifest_path"],
+    )?;
+    match (
+        declaration.get("manifest"),
+        declaration.get("manifest_path"),
+    ) {
+        (Some(_), Some(_)) => Err(FIELDS.validation_error(
+            "source.external_adapter must declare exactly one of manifest or manifest_path.",
+        )),
+        (None, None) => Err(FIELDS.validation_error(
+            "source.external_adapter must declare exactly one of manifest or manifest_path.",
+        )),
+        (Some(manifest), None) => {
+            let value = serde_json::to_value(manifest).map_err(|error| {
+                FIELDS.validation_error(format!(
+                    "source.external_adapter.manifest could not be serialized: {error}"
+                ))
+            })?;
+            let manifest = serde_json::from_value(value).map_err(|error| {
+                FIELDS.validation_error(format!(
+                    "source.external_adapter.manifest is invalid: {error}"
+                ))
+            })?;
+            Ok(Some(SkillExternalAdapterManifest::Inline(Box::new(
+                manifest,
+            ))))
+        }
+        (None, Some(path)) => {
+            let path =
+                FIELDS.required_string(Some(path), "source.external_adapter.manifest_path")?;
+            if !safe_external_adapter_manifest_path(&path) {
+                return Err(FIELDS.validation_error(format!(
+                    "source.external_adapter.manifest_path must be a relative path below the skill directory: '{path}'"
+                )));
+            }
+            Ok(Some(SkillExternalAdapterManifest::Path(path)))
+        }
+    }
+}
+
+fn safe_external_adapter_manifest_path(value: &str) -> bool {
+    let path = Path::new(value);
+    !value.trim().is_empty()
+        && path.is_relative()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
+fn validate_thread_outbox_provider(
+    source: &JsonObject,
+    source_kind: SourceKind,
+) -> Result<Option<super::SkillThreadOutboxProviderSource>, ValidationError> {
+    let declaration = source.get("thread_outbox_provider");
+    if source_kind != SourceKind::ThreadOutboxProvider {
+        if declaration.is_some() {
+            return Err(FIELDS.validation_error(
+                "source.thread_outbox_provider is only valid for thread-outbox-provider sources.",
+            ));
+        }
+        return Ok(None);
+    }
+    let declaration = FIELDS.required_object(declaration, "source.thread_outbox_provider")?;
+    FIELDS.reject_unknown_fields(
+        declaration,
+        "source.thread_outbox_provider",
+        &["operation", "manifest_path", "push_path", "fetch_path"],
+    )?;
+    let operation = match FIELDS
+        .required_string(
+            declaration.get("operation"),
+            "source.thread_outbox_provider.operation",
+        )?
+        .as_str()
+    {
+        "push" => runx_contracts::ThreadOutboxProviderOperation::Push,
+        "fetch" => runx_contracts::ThreadOutboxProviderOperation::Fetch,
+        other => {
+            return Err(FIELDS.validation_error(format!(
+                "source.thread_outbox_provider.operation must be push or fetch, got '{other}'."
+            )));
+        }
+    };
+    let manifest_path = required_thread_outbox_path(declaration, "manifest_path")?;
+    let push_path = optional_thread_outbox_path(declaration, "push_path")?;
+    let fetch_path = optional_thread_outbox_path(declaration, "fetch_path")?;
+    match operation {
+        runx_contracts::ThreadOutboxProviderOperation::Push if fetch_path.is_some() => {
+            return Err(FIELDS.validation_error(
+                "source.thread_outbox_provider.fetch_path is only valid for fetch operations.",
+            ));
+        }
+        runx_contracts::ThreadOutboxProviderOperation::Fetch if push_path.is_some() => {
+            return Err(FIELDS.validation_error(
+                "source.thread_outbox_provider.push_path is only valid for push operations.",
+            ));
+        }
+        runx_contracts::ThreadOutboxProviderOperation::Fetch if fetch_path.is_none() => {
+            return Err(FIELDS.validation_error(
+                "source.thread_outbox_provider.fetch_path is required for fetch operations.",
+            ));
+        }
+        _ => {}
+    }
+    Ok(Some(super::SkillThreadOutboxProviderSource {
+        operation,
+        manifest_path,
+        push_path,
+        fetch_path,
+    }))
+}
+
+fn required_thread_outbox_path(
+    declaration: &JsonObject,
+    field: &str,
+) -> Result<String, ValidationError> {
+    let qualified = format!("source.thread_outbox_provider.{field}");
+    let path = FIELDS.required_string(declaration.get(field), &qualified)?;
+    validate_thread_outbox_path(&qualified, &path)?;
+    Ok(path)
+}
+
+fn optional_thread_outbox_path(
+    declaration: &JsonObject,
+    field: &str,
+) -> Result<Option<String>, ValidationError> {
+    let qualified = format!("source.thread_outbox_provider.{field}");
+    let path = FIELDS.optional_string(declaration.get(field), &qualified)?;
+    if let Some(path) = path.as_deref() {
+        validate_thread_outbox_path(&qualified, path)?;
+    }
+    Ok(path)
+}
+
+fn validate_thread_outbox_path(qualified: &str, path: &str) -> Result<(), ValidationError> {
+    if !safe_external_adapter_manifest_path(path) {
+        return Err(FIELDS.validation_error(format!(
+            "{qualified} must be a relative path below the skill directory: '{path}'"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_javascript_source(
+    source: &JsonObject,
+    source_type: &str,
+) -> Result<(Option<String>, Option<String>), ValidationError> {
+    if source_type == "javascript" {
+        validate_javascript_fields(source)?;
+        return Ok((
+            Some(validate_javascript_module(source.get("module"))?),
+            validate_javascript_export(source.get("export"))?,
+        ));
+    }
+    if source.contains_key("module") || source.contains_key("export") {
+        return Err(FIELDS.validation_error(
+            "source.module and source.export are only valid for javascript sources.",
+        ));
+    }
+    Ok((None, None))
+}
+
+fn validate_javascript_fields(source: &JsonObject) -> Result<(), ValidationError> {
+    const FORBIDDEN: &[&str] = &[
+        "agent",
+        "agent_card_url",
+        "agent_identity",
+        "allow_private_network",
+        "args",
+        "arguments",
+        "command",
+        "cwd",
+        "external_adapter",
+        "graph",
+        "headers",
+        "hook",
+        "http",
+        "input_mode",
+        "method",
+        "server",
+        "task",
+        "tool",
+        "url",
+    ];
+    let present = FORBIDDEN
+        .iter()
+        .copied()
+        .filter(|field| source.contains_key(*field))
+        .collect::<Vec<_>>();
+    if present.is_empty() {
+        return Ok(());
+    }
+    Err(FIELDS.validation_error(format!(
+        "javascript sources are pure domain modules and cannot declare effect or process fields: {}.",
+        present.join(", ")
+    )))
+}
+
+fn validate_source_timeout(
+    source_kind: &SourceKind,
+    timeout_seconds: Option<u64>,
+) -> Result<(), ValidationError> {
+    if *source_kind != SourceKind::JavaScript {
+        return Ok(());
+    }
+    let Some(timeout_seconds) = timeout_seconds else {
+        return Ok(());
+    };
+    let maximum = runx_contracts::javascript_worker::MAX_WALL_MILLISECONDS / 1_000;
+    if timeout_seconds == 0 || timeout_seconds > maximum {
+        return Err(FIELDS.validation_error(format!(
+            "source.timeout_seconds for javascript must be between 1 and {maximum}."
+        )));
+    }
+    Ok(())
 }
 
 /// Validate a declared `act:` block at load: deserialize it into the typed
@@ -166,20 +517,68 @@ fn validate_act_authority_coherence(act: &ActDeclaration) -> Result<(), Validati
 fn parse_source_kind(value: &str, field: &str) -> Result<SourceKind, ValidationError> {
     match value {
         "cli-tool" => Ok(SourceKind::CliTool),
+        "javascript" => Ok(SourceKind::JavaScript),
         "mcp" => Ok(SourceKind::Mcp),
-        "catalog" => Ok(SourceKind::Catalog),
         "a2a" => Ok(SourceKind::A2a),
         "agent" => Ok(SourceKind::Agent),
         "agent-task" => Ok(SourceKind::AgentStep),
-        "harness-hook" => Ok(SourceKind::HarnessHook),
         "graph" => Ok(SourceKind::Graph),
-        "http" => Ok(SourceKind::Http),
         "external-adapter" => Ok(SourceKind::ExternalAdapter),
         "thread-outbox-provider" => Ok(SourceKind::ThreadOutboxProvider),
+        "http" => Err(retired_http_source_error(field)),
+        "catalog" => Err(retired_catalog_source_error(field)),
         other => {
             Err(FIELDS.validation_error(format!("{field} {other} is not a supported source type.")))
         }
     }
+}
+
+fn retired_http_source_error(field: &str) -> ValidationError {
+    FIELDS.validation_error(format!(
+        "{field} http was removed; compose http.read, http.query, or http.execute in a graph."
+    ))
+}
+
+fn retired_catalog_source_error(field: &str) -> ValidationError {
+    FIELDS.validation_error(format!(
+        "{field} catalog was removed; invoke catalog tools from a graph tool step."
+    ))
+}
+
+fn validate_javascript_module(value: Option<&JsonValue>) -> Result<String, ValidationError> {
+    let module = FIELDS.required_string(value, "source.module")?;
+    let segments = module.split('/').collect::<Vec<_>>();
+    if module.starts_with('/')
+        || module.contains('\\')
+        || segments
+            .iter()
+            .any(|segment| segment.is_empty() || matches!(*segment, "." | ".."))
+        || !matches!(segments.last(), Some(name) if name.ends_with(".mjs") || name.ends_with(".js"))
+    {
+        return Err(FIELDS.validation_error(
+            "source.module must be a portable relative .mjs or .js path without '.', '..', or backslash segments.",
+        ));
+    }
+    Ok(module)
+}
+
+fn validate_javascript_export(
+    value: Option<&JsonValue>,
+) -> Result<Option<String>, ValidationError> {
+    let Some(name) = FIELDS.optional_string(value, "source.export")? else {
+        return Ok(None);
+    };
+    let mut chars = name.chars();
+    let valid_start = chars
+        .next()
+        .is_some_and(|character| character.is_ascii_alphabetic() || matches!(character, '_' | '$'));
+    if !valid_start
+        || !chars
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '$'))
+    {
+        return Err(FIELDS.validation_error("source.export must be a JavaScript identifier."));
+    }
+    Ok(Some(name))
 }
 
 fn optional_input_mode(value: Option<&JsonValue>) -> Result<Option<InputMode>, ValidationError> {
@@ -229,19 +628,6 @@ fn validate_mcp_tool(
     FIELDS.optional_string(source.get("tool"), "source.tool")
 }
 
-fn validate_catalog_ref(
-    source: &JsonObject,
-    source_type: &str,
-) -> Result<Option<String>, ValidationError> {
-    if source_type == "catalog" {
-        return Ok(Some(FIELDS.required_string(
-            source.get("catalog_ref"),
-            "source.catalog_ref",
-        )?));
-    }
-    FIELDS.optional_string(source.get("catalog_ref"), "source.catalog_ref")
-}
-
 fn validate_a2a_url(
     source: &JsonObject,
     source_type: &str,
@@ -258,8 +644,9 @@ fn validate_a2a_url(
 fn validate_agent(
     source: &JsonObject,
     source_type: &str,
+    context: SourceValidationContext,
 ) -> Result<Option<String>, ValidationError> {
-    if source_type == "agent-task" {
+    if source_type == "agent-task" && matches!(context, SourceValidationContext::Skill) {
         return Ok(Some(
             FIELDS.required_string(source.get("agent"), "source.agent")?,
         ));
@@ -270,25 +657,16 @@ fn validate_agent(
 fn validate_task(
     source: &JsonObject,
     source_type: &str,
+    context: SourceValidationContext,
 ) -> Result<Option<String>, ValidationError> {
-    if matches!(source_type, "agent-task" | "a2a") {
+    if source_type == "a2a"
+        || (source_type == "agent-task" && matches!(context, SourceValidationContext::Skill))
+    {
         return Ok(Some(
             FIELDS.required_string(source.get("task"), "source.task")?,
         ));
     }
     FIELDS.optional_string(source.get("task"), "source.task")
-}
-
-fn validate_hook(
-    source: &JsonObject,
-    source_type: &str,
-) -> Result<Option<String>, ValidationError> {
-    if source_type == "harness-hook" {
-        return Ok(Some(
-            FIELDS.required_string(source.get("hook"), "source.hook")?,
-        ));
-    }
-    FIELDS.optional_string(source.get("hook"), "source.hook")
 }
 
 fn validate_graph_source(
@@ -304,68 +682,11 @@ fn validate_graph_source(
     validate_graph_document(graph.clone(), Some(RawGraphIr { document: graph })).map(Some)
 }
 
-fn validate_http_source(
-    source: &JsonObject,
-    source_type: &str,
-) -> Result<Option<SkillHttpSource>, ValidationError> {
-    if source_type != "http" {
-        return Ok(None);
-    }
-    let http = FIELDS
-        .optional_object(source.get("http"), "source.http")?
-        .unwrap_or_else(|| source.clone());
-    let url = FIELDS.required_string(http.get("url"), "source.url")?;
-    let method = match FIELDS.optional_string(http.get("method"), "source.method")? {
-        Some(method) => {
-            if !matches!(
-                method.to_ascii_uppercase().as_str(),
-                "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
-            ) {
-                return Err(FIELDS.validation_error(format!(
-                    "source.method {method} is not supported; use GET, POST, PUT, PATCH, or DELETE."
-                )));
-            }
-            Some(method)
-        }
-        None => None,
-    };
-    Ok(Some(SkillHttpSource {
-        url,
-        method,
-        headers: validate_http_headers(http.get("headers"))?,
-        allow_private_network: FIELDS.optional_bool(
-            http.get("allow_private_network"),
-            "source.allow_private_network",
-        )?,
-    }))
-}
-
-fn validate_http_headers(
-    value: Option<&JsonValue>,
-) -> Result<Option<std::collections::BTreeMap<String, String>>, ValidationError> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    let object = value.as_object().ok_or_else(|| {
-        FIELDS.validation_error(
-            "source.headers must be an object of header name to value.".to_owned(),
-        )
-    })?;
-    let mut headers = std::collections::BTreeMap::new();
-    for (name, value) in object {
-        let value = value.as_str().ok_or_else(|| {
-            FIELDS.validation_error(format!("source.headers.{name} must be a string."))
-        })?;
-        headers.insert(name.clone(), value.to_owned());
-    }
-    Ok(Some(headers))
-}
-
 fn validate_agent_command_boundary(
     source: &JsonObject,
     source_type: &str,
 ) -> Result<(), ValidationError> {
-    if matches!(source_type, "agent-task" | "harness-hook")
+    if source_type == "agent-task"
         && (source.contains_key("command") || source.contains_key("args"))
     {
         return Err(FIELDS.validation_error(format!(

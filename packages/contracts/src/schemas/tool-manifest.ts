@@ -1,50 +1,52 @@
 import type { DeepReadonly, JsonSchema, UnknownRecord } from "../internal.js";
 import { runxSchemaArtifacts } from "../schema-artifacts.js";
 
-export type ToolManifestSourceTypeContract = "cli-tool" | "mcp" | "a2a" | "catalog" | "http";
+export type ToolManifestSourceTypeContract = "cli-tool" | "javascript" | "mcp" | "a2a";
 export type ToolCommandInputModeContract = "args" | "stdin" | "none";
 
-export type ToolManifestHttpSourceContract = DeepReadonly<{
-  url: string;
-  method?: string;
-  headers?: Readonly<Record<string, string>>;
-  allow_private_network?: boolean;
+export type ToolManifestMcpServerContract = DeepReadonly<{
+  command: string;
+  args?: readonly string[];
+  cwd?: string;
 }>;
 
 export type ToolManifestSourceContract = DeepReadonly<{
   type: ToolManifestSourceTypeContract;
   command?: string;
+  module?: string;
+  export?: string;
   args?: readonly string[];
   cwd?: string;
   input_mode?: ToolCommandInputModeContract;
-  sandbox?: UnknownRecord;
-  server?: string;
-  catalog_ref?: string;
+  timeout_seconds?: number;
+  environment?: {
+    required?: readonly string[];
+    optional?: readonly string[];
+  };
+  server?: ToolManifestMcpServerContract;
   tool?: string;
   arguments?: UnknownRecord;
   agent_card_url?: string;
   agent_identity?: string;
-  http?: ToolManifestHttpSourceContract;
-}>;
-
-export type ToolManifestRuntimeContract = DeepReadonly<{
-  command: string;
-  args?: readonly string[];
-  cwd?: string;
-  env?: Readonly<Record<string, string>>;
 }>;
 
 export type ToolManifestInputContract = DeepReadonly<{
-  type: string;
+  type: "array" | "boolean" | "integer" | "json" | "number" | "object" | "string";
   required: boolean;
   description?: string;
   default?: unknown;
+  artifact?: boolean;
+  packet?: string;
+  schema?: UnknownRecord;
 }>;
 
-export type ToolManifestOutputContract = DeepReadonly<{
+export type ToolManifestArtifactContract = DeepReadonly<{
+  emits?: readonly string[];
+  named_emits?: Readonly<Record<string, string>>;
+  packets?: Readonly<Record<string, string>>;
   packet?: string;
   wrap_as?: string;
-} & UnknownRecord>;
+}>;
 
 export type ToolRetryPolicyContract = DeepReadonly<{
   max_attempts: number;
@@ -63,15 +65,10 @@ export type ToolManifestContract = DeepReadonly<{
   inputs?: Readonly<Record<string, ToolManifestInputContract>>;
   scopes?: readonly string[];
   risk?: unknown;
-  runx?: UnknownRecord;
-  runtime: ToolManifestRuntimeContract;
-  output: ToolManifestOutputContract;
+  artifacts?: ToolManifestArtifactContract;
   retry?: ToolRetryPolicyContract;
   idempotency?: ToolIdempotencyPolicyContract;
   mutating?: boolean;
-  source_hash: string;
-  schema_hash: string;
-  toolkit_version?: string;
 }>;
 
 export const toolManifestV1Schema = runxSchemaArtifacts[

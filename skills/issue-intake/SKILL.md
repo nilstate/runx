@@ -174,6 +174,8 @@ Prefer conservative routing:
   or refreshes
 - `signal` (optional): provider-neutral `runx.signal.v1` observation gathered
   by the source adapter before decision
+- `artifact` (optional): bounded, reviewer-safe source evidence supplied by the
+  source adapter; provider fetching and redaction must already be complete
 - `product_context` (optional): product-specific constraints or routing hints
 - `operator_context` (optional): maintainer or support posture guidance
 - `source_event` (optional): admitted Slack, Sentry, GitHub, file, API, or

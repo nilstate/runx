@@ -193,13 +193,8 @@ pub(super) fn tool_manifest_corpus() -> Vec<(&'static str, Value)> {
             "command": "node",
             "args": ["tool.mjs"],
             "input_mode": "stdin",
-            "sandbox": {
-                "profile": "readonly",
-                "cwd_policy": "skill-directory",
-                "env_allowlist": ["HOME"],
-                "network": false,
-                "writable_paths": [],
-                "require_enforcement": true
+            "environment": {
+                "optional": ["HOME"]
             }
         },
         "inputs": {
@@ -622,11 +617,12 @@ pub(super) fn authority_proof_corpus() -> Vec<(&'static str, Value)> {
             "decision_summary": "granted",
         },
         "credential_material": authority_proof_credential_material(),
+        "execution_boundary": { "kind": "remote_provider" },
         "redaction": authority_proof_redaction(),
     });
     vec![
         ("minimal valid", valid.clone()),
-        ("full valid (sandbox + approval + targeting)", {
+        ("full valid (approval + targeting)", {
             let mut v = valid.clone();
             v["run_id"] = json!("run_1");
             v["requested"] = json!({
@@ -637,7 +633,6 @@ pub(super) fn authority_proof_corpus() -> Vec<(&'static str, Value)> {
                 "authority_kind": "constructive",
                 "target_repo": "acme/widgets",
                 "target_locator": "issue/1",
-                "sandbox_profile": "workspace-write",
             });
             v["credential_material"] = json!({
                 "status": "resolved",
@@ -651,15 +646,6 @@ pub(super) fn authority_proof_corpus() -> Vec<(&'static str, Value)> {
                     "scope_family": "github",
                     "authority_kind": "constructive",
                 },
-            });
-            v["sandbox"] = json!({
-                "profile": "workspace-write",
-                "cwd_policy": "skill-directory",
-                "require_enforcement": true,
-                "network": { "declared": false },
-                "filesystem": { "readonly_paths": true, "private_tmp": true },
-                "runtime": { "enforcer": "seatbelt" },
-                "approval_required": false,
             });
             v["approval_gate"] = json!({
                 "gate_id": "gate_1",
@@ -1749,6 +1735,109 @@ fn authority_term() -> Value {
     })
 }
 
+pub(super) fn orchestrator_execution_context_corpus() -> Vec<(&'static str, Value)> {
+    vec![
+        ("caller origin", json!({ "caller": "runx-cli" })),
+        (
+            "full binding",
+            json!({
+                "workflow_ref": "workflow:demo",
+                "platform": "n8n",
+                "event_id": "evt_demo_001",
+                "idempotency_key": "evt_demo_001",
+                "handoff_scope": "orchestrator.n8n.workflow.invoke",
+                "handoff_audience": "n8n:workflow:demo",
+                "environment": "local",
+            }),
+        ),
+        (
+            "provider extension",
+            json!({ "principal": "operator:1", "trace_id": 42 }),
+        ),
+        ("invalid known field type", json!({ "caller": 42 })),
+    ]
+}
+
+pub(super) fn orchestrator_handoff_context_corpus() -> Vec<(&'static str, Value)> {
+    let valid = json!({
+        "status": "ready",
+        "platform": "n8n",
+        "event_id": "evt_demo_001",
+        "idempotency": { "key": "evt_demo_001", "receiver_should_dedupe": true },
+        "handoff": {
+            "scope": "orchestrator.n8n.workflow.invoke",
+            "audience": "n8n:workflow:demo",
+            "source": "runx",
+        },
+        "delivery": {
+            "event_id": "evt_demo_001",
+            "handoff_scope": "orchestrator.n8n.workflow.invoke",
+            "handoff_audience": "n8n:workflow:demo",
+            "execution_context": { "caller": "runx-cli", "platform": "n8n" },
+            "payload": { "hello": "workflow" },
+            "source": "runx",
+            "idempotency_key": "evt_demo_001",
+        },
+        "receiver_validation": {
+            "require_bearer": true,
+            "require_scope": "orchestrator.n8n.workflow.invoke",
+            "require_audience": "n8n:workflow:demo",
+            "require_event_id": "evt_demo_001",
+            "reject_duplicate_event_id": true,
+        },
+        "receipt_expectations": {
+            "context_artifact": "handoff_context",
+            "outbound_effect_must_be_receipted": true,
+            "receiver_response_must_be_captured": true,
+            "delivered_credential_material_absent": true,
+        },
+        "stop_conditions": [],
+    });
+    vec![
+        ("valid preflight", valid.clone()),
+        ("missing delivery", drop_field(valid.clone(), "delivery")),
+        (
+            "invalid request method type",
+            set_field(
+                valid.clone(),
+                "requests",
+                json!([{
+                    "id": "n8n-handoff",
+                    "method": 42,
+                    "url": "https://{host}/webhook/{slug}",
+                    "path": { "host": "n8n.example.com", "slug": "demo" },
+                    "headers": { "content-type": "application/json" },
+                    "body": valid["delivery"],
+                }]),
+            ),
+        ),
+        (
+            "additional property",
+            set_field(valid, "credential", json!("secret")),
+        ),
+    ]
+}
+
+pub(super) fn authority_term_corpus() -> Vec<(&'static str, Value)> {
+    let valid = authority_term();
+    vec![
+        ("minimal valid", valid.clone()),
+        ("missing term_id", drop_field(valid.clone(), "term_id")),
+        (
+            "empty term_id rejected",
+            set_field(valid.clone(), "term_id", json!("")),
+        ),
+        (
+            "unknown resource family",
+            set_field(valid.clone(), "resource_family", json!("payment")),
+        ),
+        (
+            "additional property",
+            set_field(valid, "authority_ref", json!("authority:payment:test")),
+        ),
+    ]
+}
+
 pub(super) fn authority_corpus() -> Vec<(&'static str, Value)> {
     let valid = json!({
         "schema": "runx.authority.v1",
@@ -2208,7 +2297,6 @@ pub(super) fn external_adapter_manifest_corpus() -> Vec<(&'static str, Value)> {
         "supported_source_types": ["github_issue"],
         "transport": { "kind": "process", "command": "node" },
         "timeouts": { "startup_ms": 1000, "invocation_ms": 5000 },
-        "sandbox_intent": { "profile": "readonly", "network": false, "cwd_policy": "workspace" },
     });
     vec![
         ("minimal valid", valid.clone()),
@@ -2478,7 +2566,7 @@ pub(super) fn approval_gate_corpus() -> Vec<(&'static str, Value)> {
         ("minimal valid", valid.clone()),
         ("full valid", {
             let mut v = valid.clone();
-            v["type"] = json!("sandbox");
+            v["type"] = json!("filesystem_write");
             v["summary"] = json!({ "k": 1 });
             v
         }),

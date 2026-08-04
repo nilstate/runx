@@ -24,16 +24,11 @@ interface PlatformSpec {
   readonly os: "darwin" | "linux" | "win32";
   readonly cpu: "arm64" | "x64";
   readonly binary: "bin/runx" | "bin/runx.exe";
+  readonly worker: "bin/runx-js-worker" | "bin/runx-js-worker.exe";
 }
 
 const selectorPackageName = "@runxhq/cli";
-const supportedPlatforms: readonly PlatformSpec[] = [
-  { key: "darwin-arm64", os: "darwin", cpu: "arm64", binary: "bin/runx" },
-  { key: "darwin-x64", os: "darwin", cpu: "x64", binary: "bin/runx" },
-  { key: "linux-arm64", os: "linux", cpu: "arm64", binary: "bin/runx" },
-  { key: "linux-x64", os: "linux", cpu: "x64", binary: "bin/runx" },
-  { key: "win32-x64", os: "win32", cpu: "x64", binary: "bin/runx.exe" },
-];
+const supportedPlatforms = loadSupportedPlatforms();
 
 const options = parseArgs(process.argv.slice(2));
 const artifactDir = path.resolve(workspaceRoot, options.artifactDir);
@@ -129,6 +124,7 @@ function inspectPackageDir(packageDir: string, output: Finding[]): void {
         readonly selectorPackage?: string;
         readonly platform?: string;
         readonly binary?: string;
+        readonly worker?: string;
       };
     };
     readonly dependencies?: Record<string, string>;
@@ -179,10 +175,23 @@ function inspectPackageDir(packageDir: string, output: Finding[]): void {
       output.push(finding("native_binary_not_executable", binaryPath, "native binary target is not executable"));
     }
   }
+  const workerPath = path.resolve(packageDir, spec.worker);
+  if (!isInside(workerPath, packageDir)) {
+    output.push(finding("worker_binary_escapes", manifestPath, `JavaScript worker points outside the package: ${spec.worker}`));
+    return;
+  }
+  if (!existsSync(workerPath)) {
+    output.push(finding("worker_binary_missing", workerPath, "JavaScript worker target is missing"));
+  } else {
+    const entry = statSync(workerPath);
+    if (!entry.isFile() || (process.platform !== "win32" && (entry.mode & 0o111) === 0)) {
+      output.push(finding("worker_binary_not_executable", workerPath, "JavaScript worker target is not executable"));
+    }
+  }
 
   inspectDependencySections(manifest, manifestPath, output);
-  inspectChecksum(packageDir, spec.binary, output);
-  inspectSignature(packageDir, spec.binary, output);
+  inspectChecksum(packageDir, spec.binary, spec.worker, output);
+  inspectSignature(packageDir, spec.binary, spec.worker, output);
   const packedFiles = inspectPackList(packageDir, output);
 
   if (options.noJsDelegation) {
@@ -303,7 +312,7 @@ function inspectSelectorTopology(
   const topology = readJson<{
     readonly schema?: string;
     readonly selectorPackage?: string;
-    readonly nativePackages?: Record<string, { readonly package?: string; readonly os?: string; readonly cpu?: string; readonly binary?: string }>;
+    readonly nativePackages?: Record<string, { readonly package?: string; readonly os?: string; readonly cpu?: string; readonly binary?: string; readonly worker?: string }>;
   }>(topologyPath, output, "selector_topology_manifest_malformed");
   if (!topology) {
     return;
@@ -320,7 +329,7 @@ function inspectSelectorTopology(
       output.push(finding("selector_topology_platform_missing", topologyPath, `topology manifest is missing ${spec.key}`));
       continue;
     }
-    if (entry.package !== nativePackageName(spec.key) || entry.os !== spec.os || entry.cpu !== spec.cpu || entry.binary !== spec.binary) {
+    if (entry.package !== nativePackageName(spec.key) || entry.os !== spec.os || entry.cpu !== spec.cpu || entry.binary !== spec.binary || entry.worker !== spec.worker) {
       output.push(finding("selector_topology_platform_invalid", topologyPath, `topology manifest has invalid metadata for ${spec.key}`));
     }
   }
@@ -339,6 +348,7 @@ function inspectNativePackageManifest(
         readonly selectorPackage?: string;
         readonly platform?: string;
         readonly binary?: string;
+        readonly worker?: string;
       };
     };
   },
@@ -371,6 +381,9 @@ function inspectNativePackageManifest(
   if (native?.binary !== spec.binary) {
     output.push(finding("native_package_binary_invalid", manifestPath, `runx.nativePackage.binary must be ${spec.binary}`));
   }
+  if (native?.worker !== spec.worker) {
+    output.push(finding("native_package_worker_invalid", manifestPath, `runx.nativePackage.worker must be ${spec.worker}`));
+  }
 }
 
 function inspectDependencySections(
@@ -387,7 +400,7 @@ function inspectDependencySections(
     const section = manifest[sectionName];
     if (!section) continue;
     for (const [name, spec] of Object.entries(section)) {
-      if (["@runxhq/adapters", "@runxhq/authoring", "@runxhq/contracts", "@runxhq/runtime-local"].includes(name)) {
+      if (["@runxhq/adapters", "@runxhq/contracts", "@runxhq/extension-sdk", "@runxhq/runtime-local"].includes(name)) {
         output.push(finding("ts_runtime_dependency", manifestPath, `${sectionName}.${name} is not allowed in the Rust CLI artifact`));
       }
       if (spec.startsWith("workspace:")) {
@@ -414,20 +427,26 @@ function inspectForbiddenManifestEntrypoints(
   }
 }
 
-function inspectChecksum(packageDir: string, bin: string, output: Finding[]): void {
+function inspectChecksum(packageDir: string, bin: string, worker: string, output: Finding[]): void {
   const checksumPath = path.join(packageDir, "native", "checksums.json");
   if (!existsSync(checksumPath)) {
     output.push(finding("checksum_manifest_missing", checksumPath, "native/checksums.json is required"));
     return;
   }
   const checksum = readJson<{
+    readonly schema?: string;
     readonly package?: string;
     readonly platform?: string;
     readonly binary?: string;
     readonly sha256?: string;
+    readonly worker?: string;
+    readonly worker_sha256?: string;
   }>(checksumPath, output, "checksum_manifest_malformed");
   if (!checksum) {
     return;
+  }
+  if (checksum.schema !== "runx.rust_cli_artifact_checksums.v1") {
+    output.push(finding("checksum_schema_invalid", checksumPath, "checksum schema must be runx.rust_cli_artifact_checksums.v1"));
   }
   if (checksum.binary !== stripDotSlash(bin)) {
     output.push(finding("checksum_binary_mismatch", checksumPath, `checksum binary ${checksum.binary ?? "<missing>"} does not match ${bin}`));
@@ -453,9 +472,21 @@ function inspectChecksum(packageDir: string, bin: string, output: Finding[]): vo
   if (existsSync(binaryPath) && checksum.sha256 !== sha256(readFileSync(binaryPath))) {
     output.push(finding("checksum_mismatch", checksumPath, "binary sha256 does not match native/checksums.json"));
   }
+  if (checksum.worker !== worker) {
+    output.push(finding("checksum_worker_mismatch", checksumPath, `checksum worker ${checksum.worker ?? "<missing>"} does not match ${worker}`));
+    return;
+  }
+  if (!checksum.worker_sha256 || !/^[0-9a-f]{64}$/u.test(checksum.worker_sha256)) {
+    output.push(finding("checksum_worker_sha256_invalid", checksumPath, "worker_sha256 must be a 64-character lowercase hex digest"));
+    return;
+  }
+  const workerPath = path.resolve(packageDir, worker);
+  if (existsSync(workerPath) && checksum.worker_sha256 !== sha256(readFileSync(workerPath))) {
+    output.push(finding("checksum_worker_mismatch", checksumPath, "worker sha256 does not match native/checksums.json"));
+  }
 }
 
-function inspectSignature(packageDir: string, bin: string, output: Finding[]): void {
+function inspectSignature(packageDir: string, bin: string, worker: string, output: Finding[]): void {
   const signaturePath = path.join(packageDir, "native", "signatures.json");
   if (!existsSync(signaturePath)) {
     if (options.verifySignatures) {
@@ -470,6 +501,8 @@ function inspectSignature(packageDir: string, bin: string, output: Finding[]): v
     readonly platform?: string;
     readonly binary?: string;
     readonly sha256?: string;
+    readonly worker?: string;
+    readonly worker_sha256?: string;
     readonly signatures?: readonly unknown[];
   }>(signaturePath, output, "signature_manifest_malformed");
   if (!signature) {
@@ -496,9 +529,18 @@ function inspectSignature(packageDir: string, bin: string, output: Finding[]): v
   if (!signature.sha256 || !/^[0-9a-f]{64}$/u.test(signature.sha256)) {
     output.push(finding("signature_sha256_invalid", signaturePath, "signature sha256 must be a 64-character lowercase hex digest"));
   }
-  const checksum = readJson<{ readonly sha256?: string }>(path.join(packageDir, "native", "checksums.json"), [], "checksum_manifest_malformed");
+  if (signature.worker !== worker) {
+    output.push(finding("signature_worker_mismatch", signaturePath, `signature worker ${signature.worker ?? "<missing>"} does not match ${worker}`));
+  }
+  if (!signature.worker_sha256 || !/^[0-9a-f]{64}$/u.test(signature.worker_sha256)) {
+    output.push(finding("signature_worker_sha256_invalid", signaturePath, "signature worker_sha256 must be a 64-character lowercase hex digest"));
+  }
+  const checksum = readJson<{ readonly sha256?: string; readonly worker_sha256?: string }>(path.join(packageDir, "native", "checksums.json"), [], "checksum_manifest_malformed");
   if (checksum?.sha256 && signature.sha256 && checksum.sha256 !== signature.sha256) {
     output.push(finding("signature_checksum_mismatch", signaturePath, "signature sha256 does not match native/checksums.json"));
+  }
+  if (checksum?.worker_sha256 && signature.worker_sha256 && checksum.worker_sha256 !== signature.worker_sha256) {
+    output.push(finding("signature_worker_checksum_mismatch", signaturePath, "signature worker_sha256 does not match native/checksums.json"));
   }
   if (!Array.isArray(signature.signatures) || signature.signatures.length === 0) {
     output.push(finding("signature_entries_missing", signaturePath, "signature manifest must include at least one signature entry"));
@@ -586,6 +628,47 @@ function inspectPublishTargets(packageDirs: readonly string[], output: Finding[]
 
 function isSelectorPackage(manifest: { readonly name?: string; readonly runx?: { readonly nativeSelector?: unknown } }): boolean {
   return manifest.name === selectorPackageName && Boolean(manifest.runx?.nativeSelector);
+}
+
+function loadSupportedPlatforms(): readonly PlatformSpec[] {
+  const topologyPath = path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json");
+  const topology = JSON.parse(readFileSync(topologyPath, "utf8")) as {
+    readonly schema?: string;
+    readonly nativePackages?: Record<string, {
+      readonly os?: PlatformSpec["os"];
+      readonly cpu?: PlatformSpec["cpu"];
+      readonly binary?: string;
+      readonly worker?: string;
+    }>;
+  };
+  if (topology.schema !== "runx.rust_cli_selector_topology.v1" || !topology.nativePackages) {
+    throw new Error("Rust CLI selector topology is missing or unsupported");
+  }
+  return Object.entries(topology.nativePackages).map(([key, entry]) => {
+    if (!isPlatformOs(entry.os) || !isPlatformCpu(entry.cpu) || !entry.binary || !entry.worker) {
+      throw new Error(`Rust CLI selector topology entry ${key} is incomplete`);
+    }
+    if (!matchesBinary(entry.binary) || !matchesWorker(entry.worker)) {
+      throw new Error(`Rust CLI selector topology entry ${key} has invalid executable paths`);
+    }
+    return { key, os: entry.os, cpu: entry.cpu, binary: entry.binary, worker: entry.worker };
+  });
+}
+
+function matchesBinary(value: string): value is PlatformSpec["binary"] {
+  return value === "bin/runx" || value === "bin/runx.exe";
+}
+
+function isPlatformOs(value: unknown): value is PlatformSpec["os"] {
+  return value === "darwin" || value === "linux" || value === "win32";
+}
+
+function isPlatformCpu(value: unknown): value is PlatformSpec["cpu"] {
+  return value === "arm64" || value === "x64";
+}
+
+function matchesWorker(value: string): value is PlatformSpec["worker"] {
+  return value === "bin/runx-js-worker" || value === "bin/runx-js-worker.exe";
 }
 
 function nativePackageName(platform: string): string {

@@ -1,51 +1,125 @@
 skill: knowledge-router
-version: "0.1.0"
+version: "0.2.2"
 
 catalog:
-  kind: skill
+  kind: graph
   audience: operator
   visibility: public
   role: context
+  execution: plan
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+
 harness:
   cases:
-    - name: knowledge-router-source-plan
+    - name: knowledge-router-validates-source-owner-and-skill
       inputs:
-        question: A customer asks whether API keys can be scoped to read-only campaign analytics.
+        question: Can API keys be scoped to read-only campaign analytics?
         available_sources:
-          docs:
+          sources:
             - id: auth-docs
+              kind: docs
               summary: Authentication and API key scopes.
             - id: campaigns-docs
+              kind: docs
               summary: Campaign analytics fields and export limits.
           owners:
-            auth: security-team
-            campaigns: growth-team
-        constraints:
-          avoid_billing_changes: true
+            - id: security-team
+              domains:
+                - authentication
+            - id: growth-team
+              domains:
+                - campaigns
+          skills:
+            - id: research
+              purpose: Resolve a bounded source-backed question.
       caller:
         answers:
-          agent_task.knowledge-router.output:
-            route:
-              primary_source_refs:
-                - auth-docs
-                - campaigns-docs
-              owner_refs:
-                - security-team
-                - growth-team
-              next_skill: research
-            source_matches:
-              - source_ref: auth-docs
-                reason: API key scope behavior is the core question.
-              - source_ref: campaigns-docs
-                reason: The answer depends on analytics read surfaces.
-            escalation_queue:
-              - owner_ref: security-team
-                reason: Confirm whether read-only analytics scope exists.
-            verdict: routed
+          agent_task.knowledge-router-propose.output:
+            route_proposal:
+              verdict: routed
+              route:
+                domain: authentication
+                rationale: The question joins API-key scope policy with analytics access.
+                source_refs:
+                  - auth-docs
+                  - campaigns-docs
+              source_matches:
+                - source_ref: auth-docs
+                  matching_signal: API keys scoped to read-only
+                  reason: Defines key scope behavior.
+                - source_ref: campaigns-docs
+                  matching_signal: campaign analytics
+                  reason: Defines the requested read surface.
+              owner_recommendation:
+                owner_ref: security-team
+                rationale: Authentication scope ownership is primary.
+                escalation_required: false
+              next_skill:
+                skill_ref: research
+                rationale: Resolve the bounded answer from both validated sources.
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
+        steps:
+          - digest
+          - propose
+          - validate
+        step_outputs:
+          validate:
+            subset:
+              knowledge_route:
+                data:
+                  verdict: routed
+                  route:
+                    domain: authentication
+                    source_refs:
+                      - auth-docs
+                      - campaigns-docs
+                  owner_recommendation:
+                    owner_ref: security-team
+                  next_skill:
+                    skill_ref: research
+                  validation:
+                    valid: true
+                    invalid_refs: []
+
+    - name: knowledge-router-rejects-invented-reference
+      inputs:
+        question: Where is the retention policy documented?
+        available_sources:
+          sources:
+            - id: policy-docs
+              kind: docs
+              summary: Product policy documentation.
+          owners: []
+          skills: []
+      caller:
+        answers:
+          agent_task.knowledge-router-propose.output:
+            route_proposal:
+              verdict: routed
+              route:
+                domain: policy
+                rationale: Use the retention documentation.
+                source_refs:
+                  - invented-docs
+              source_matches:
+                - source_ref: invented-docs
+                  matching_signal: retention policy
+                  reason: Invented source must be rejected.
+              owner_recommendation: {}
+              next_skill: {}
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - digest
+          - propose
+          - validate
 
     - name: knowledge-router-needs-sources
       inputs:
@@ -56,29 +130,114 @@ harness:
 runners:
   route:
     default: true
-    type: agent-task
-    agent: router
-    task: knowledge-router
-    outputs:
-      route: object
-      source_matches: array
-      escalation_queue: array
-      verdict: string
-    artifacts:
-      wrap_as: knowledge_route
-      packet: runx.ops.knowledge_route.v1
-    runx:
-      category: ops
+    type: graph
     inputs:
       question:
         type: string
         required: true
-        description: "Question, source event, or thread summary to route."
+        description: Question, source event, or thread summary to route.
       available_sources:
         type: json
         required: true
-        description: "Source catalog, docs, systems, owner map, or retrieval options."
+        description: Explicit sources, owners, and skills collections.
       constraints:
         type: json
         required: false
-        description: "Allowed systems, sensitivity flags, and preferred owners."
+        description: Allowed sources, sensitivity, excluded systems, and preferred owners.
+    graph:
+      name: knowledge-router
+      result_from: [validate]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: $input.available_sources
+
+        - id: propose
+          label: propose bounded knowledge route
+          run:
+            type: agent-task
+            agent: router
+            task: knowledge-router-propose
+            outputs:
+              route_proposal: object
+          artifacts:
+            named_emits:
+              route_proposal: route_proposal
+        - id: validate
+          label: validate all catalog references
+          inputs:
+            available_sources: $input.available_sources
+            constraints: $input.constraints
+          context:
+            route_proposal: propose.route_proposal.data
+            catalog_digest: digest.digest_result.data.digest
+          run:
+            type: javascript
+            module: knowledge-router.mjs
+            outputs:
+              knowledge_route:
+                type: object
+                schema:
+                  required: [schema, verdict, route, source_matches, owner_recommendation, next_skill, validation]
+                  additionalProperties: false
+                  properties:
+                    schema: { const: runx.ops.knowledge_route.v1 }
+                    verdict: { type: string, enum: [routed, needs_more_context, manual_review, refused] }
+                    route:
+                      type: object
+                      required: [domain, rationale, source_refs]
+                      additionalProperties: false
+                      properties:
+                        domain: { type: [string, 'null'], maxLength: 500 }
+                        rationale: { type: string, minLength: 1, maxLength: 4000 }
+                        source_refs: { type: array, maxItems: 500, uniqueItems: true, items: { type: string, minLength: 1, maxLength: 1000 } }
+                    source_matches:
+                      type: array
+                      maxItems: 500
+                      items:
+                        type: object
+                        required: [source_ref, matching_signal, reason]
+                        additionalProperties: false
+                        properties:
+                          source_ref: { type: string, minLength: 1, maxLength: 1000 }
+                          matching_signal: { type: string, maxLength: 4000 }
+                          reason: { type: string, maxLength: 4000 }
+                    owner_recommendation:
+                      type: [object, 'null']
+                      required: [owner_ref, rationale, escalation_required]
+                      additionalProperties: false
+                      properties:
+                        owner_ref: { type: string, minLength: 1, maxLength: 1000 }
+                        rationale: { type: string, maxLength: 4000 }
+                        escalation_required: { type: boolean }
+                    next_skill:
+                      type: [object, 'null']
+                      required: [skill_ref, rationale]
+                      additionalProperties: false
+                      properties:
+                        skill_ref: { type: string, minLength: 1, maxLength: 1000 }
+                        rationale: { type: string, maxLength: 4000 }
+                    validation:
+                      type: object
+                      required: [valid, catalog_digest, invalid_refs, constraints_applied]
+                      additionalProperties: false
+                      properties:
+                        valid: { type: boolean }
+                        catalog_digest: { type: [string, 'null'], pattern: '^sha256:[0-9a-f]{64}$' }
+                        invalid_refs:
+                          type: array
+                          maxItems: 1000
+                          items:
+                            type: object
+                            required: [kind, ref]
+                            additionalProperties: false
+                            properties:
+                              kind: { type: string, enum: [source, owner, skill] }
+                              ref: { type: string, minLength: 1, maxLength: 1000 }
+                        constraints_applied: {}
+          artifacts:
+            named_emits:
+              knowledge_route: knowledge_route
+            packets:
+              knowledge_route: runx.ops.knowledge_route.v1

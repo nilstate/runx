@@ -9,11 +9,9 @@ import {
   validateExternalAdapterResponseContract,
 } from "./external-adapter.js";
 
-// The example adapters in examples/ are authored against the shared adapter kit
-// (examples/adapter-kit/adapter.mjs), which hand-builds the response frame. These
-// tests spawn the real adapters the way the runtime does and validate the frame
-// they emit against the same external-adapter response contract the Rust runtime
-// enforces, so the kit cannot silently drift from the protocol.
+// The examples consume the canonical extension SDK. These tests still spawn the
+// real adapters the way the runtime does so package exports and wire framing are
+// exercised together rather than only through an in-process helper test.
 const examplesRoot = new URL("../../../../examples/", import.meta.url);
 
 function runExampleAdapter(
@@ -31,28 +29,41 @@ function runExampleAdapter(
   return JSON.parse(result.stdout) as unknown;
 }
 
+function invocation(
+  invocationId: string,
+  adapterId: string,
+  inputs: Readonly<Record<string, unknown>>,
+): unknown {
+  return {
+    schema: "runx.external_adapter.invocation.v1",
+    protocol_version: "runx.external_adapter.v1",
+    invocation_id: invocationId,
+    adapter_id: adapterId,
+    run_id: `run_${invocationId}`,
+    step_id: "adapter",
+    source_type: "external-adapter",
+    skill_ref: "runx/example-external-adapter",
+    harness_ref: { type: "harness", uri: `runx:harness:${invocationId}` },
+    host_ref: { type: "host", uri: "runx:host:test" },
+    inputs,
+  };
+}
+
 describe("example external adapters emit contract-conformant response frames", () => {
-  it("the openapi adapter manifest declares network intent honestly", () => {
+  it("the openapi adapter manifest validates without self-attested authority", () => {
     const manifest = JSON.parse(
       readFileSync(new URL("../../../../examples/openapi-tool/manifest.json", import.meta.url), "utf8"),
     ) as unknown;
     const validated = validateExternalAdapterManifestContract(manifest);
     expect(validated.adapter_id).toBe("adapter.example.openapi");
-    expect(validated.sandbox_intent).toMatchObject({
-      profile: "network",
-      network: true,
-    });
+    expect(validated.transport.kind).toBe("process");
   });
 
-  it("the echo adapter (via the shared kit) emits a valid response frame", () => {
-    const frame = runExampleAdapter("external-adapter-tool/adapter.mjs", {
-      schema: "runx.external_adapter.invocation.v1",
-      protocol_version: "runx.external_adapter.v1",
-      invocation_id: "test-echo",
-      adapter_id: "adapter.example.echo",
-      source_type: "external-adapter",
-      inputs: { message: "hi" },
-    });
+  it("the echo adapter emits a valid response frame", () => {
+    const frame = runExampleAdapter(
+      "external-adapter-tool/adapter.mjs",
+      invocation("test-echo", "adapter.example.echo", { message: "hi" }),
+    );
     const validated = validateExternalAdapterResponseContract(frame);
     expect(validated.schema).toBe("runx.external_adapter.response.v1");
     expect(validated.invocation_id).toBe("test-echo");
@@ -62,14 +73,10 @@ describe("example external adapters emit contract-conformant response frames", (
   it("the openapi adapter emits a valid response frame offline (dry-resolve fallback)", () => {
     const frame = runExampleAdapter(
       "openapi-tool/openapi-adapter.mjs",
-      {
-        schema: "runx.external_adapter.invocation.v1",
-        protocol_version: "runx.external_adapter.v1",
-        invocation_id: "test-openapi",
-        adapter_id: "adapter.example.openapi",
-        source_type: "external-adapter",
-        inputs: { operation_id: "getPet", petId: "p-7" },
-      },
+      invocation("test-openapi", "adapter.example.openapi", {
+        operation_id: "getPet",
+        petId: "p-7",
+      }),
       { RUNX_OPENAPI_BASE_URL: "http://127.0.0.1:9/v1" },
     );
     const validated = validateExternalAdapterResponseContract(frame);
@@ -86,14 +93,12 @@ describe("example external adapters emit contract-conformant response frames", (
   });
 
   it("a failing adapter still emits a contract-conformant failed frame", () => {
-    const frame = runExampleAdapter("openapi-tool/openapi-adapter.mjs", {
-      schema: "runx.external_adapter.invocation.v1",
-      protocol_version: "runx.external_adapter.v1",
-      invocation_id: "test-openapi-fail",
-      adapter_id: "adapter.example.openapi",
-      source_type: "external-adapter",
-      inputs: { operation_id: "doesNotExist" },
-    });
+    const frame = runExampleAdapter(
+      "openapi-tool/openapi-adapter.mjs",
+      invocation("test-openapi-fail", "adapter.example.openapi", {
+        operation_id: "doesNotExist",
+      }),
+    );
     const validated = validateExternalAdapterResponseContract(frame);
     expect(validated.schema).toBe("runx.external_adapter.response.v1");
     expect(validated.status).toBe("failed");

@@ -1,0 +1,36 @@
+name: issue-to-pr-native-boundaries
+kind: graph
+target: ../harness/native-boundaries.graph.yaml
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - write-spec
+    - read-spec
+    - cleanup-spec
+  step_outputs:
+    write-spec:
+      subset:
+        file_write:
+          data:
+            path: .runx-tmp/issue-to-pr-native-boundary.md
+    read-spec:
+      subset:
+        file_read:
+          data:
+            path: .runx-tmp/issue-to-pr-native-boundary.md
+            truncated: false
+            contents: |
+              # Native boundary proof
+
+              The issue-to-PR filesystem lane is runtime-owned.
+    cleanup-spec:
+      subset:
+        file_bundle_apply:
+          data:
+            delete_count: 1
+metadata:
+  public_skill: issue-to-pr
+  source_case: native-boundaries
+  source: skills-fixture

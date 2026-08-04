@@ -1,12 +1,17 @@
-use runx_contracts::{ClosureDisposition, Receipt, ReceiptSchema};
+use runx_contracts::{ClosureDisposition, JsonValue, Receipt, ReceiptSchema};
 use runx_receipts::{
     ReceiptProofContextProvider, canonical_receipt_body_digest, canonical_receipt_digest,
     verify_receipt_proof,
 };
 
 use crate::execution::harness::fixtures::{HarnessExpectedStatus, ReceiptExpectation};
+use crate::execution::harness::json_assertions::assert_json_expectation;
 use crate::execution::harness::runner::{HarnessReplayError, HarnessReplayOutput};
 use crate::receipts::{RuntimeReceiptProofContextProvider, RuntimeReceiptSignaturePolicy};
+
+mod replayed_answers;
+
+use replayed_answers::assert_caller_answers_replayed;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HarnessReplayReceipt {
@@ -33,7 +38,7 @@ pub(super) fn assert_expectations(
         )?;
     }
     if let Some(expected_receipt) = &output.fixture.expect.receipt {
-        assert_receipt(expected_receipt, &output.receipt, signature_policy)?;
+        assert_receipt_expectation(expected_receipt, &output.receipt, signature_policy)?;
     }
     if !output.fixture.expect.steps.is_empty() {
         let actual = output
@@ -45,6 +50,28 @@ pub(super) fn assert_expectations(
             "expect.steps",
             output.fixture.expect.steps.join(","),
             actual.join(","),
+        )?;
+    }
+    assert_caller_answers_replayed(output)?;
+    if let Some(expectation) = &output.fixture.expect.output {
+        let actual = output
+            .skill_output
+            .as_ref()
+            .map_or(JsonValue::Null, |skill_output| skill_output.value.clone());
+        assert_json_expectation(expectation, &actual, "expect.output")?;
+    }
+    for (step_id, expectation) in &output.fixture.expect.step_outputs {
+        let actual = output
+            .steps
+            .iter()
+            .find(|step| step.step_id == *step_id)
+            .map_or(JsonValue::Null, |step| {
+                JsonValue::Object(step.contract.clone())
+            });
+        assert_json_expectation(
+            expectation,
+            &actual,
+            &format!("expect.step_outputs.{step_id}"),
         )?;
     }
     Ok(())
@@ -67,7 +94,7 @@ pub(super) fn status_from_disposition(disposition: &ClosureDisposition) -> Harne
 // human can paste them back into fixtures; it is a developer regen path, not
 // runtime logging, so the workspace print ban is lifted for this function only.
 #[allow(clippy::print_stderr)]
-fn assert_receipt(
+pub(crate) fn assert_receipt_expectation(
     expected: &ReceiptExpectation,
     actual: &Receipt,
     signature_policy: RuntimeReceiptSignaturePolicy<'_>,
@@ -98,6 +125,13 @@ fn assert_receipt(
     let summary = summarize_receipt(actual);
     assert_receipt_identity(expected, &summary)?;
     assert_receipt_lists(expected, &summary)?;
+    if let Some(expected_count) = expected.child_receipt_count {
+        assert_equal(
+            "expect.receipt.child_receipt_count",
+            expected_count.to_string(),
+            summary.child_receipt_refs.len().to_string(),
+        )?;
+    }
     assert_receipt_digests(expected, actual)
 }
 
@@ -266,7 +300,7 @@ fn assert_optional_list(
 }
 
 fn assert_equal(
-    field: &'static str,
+    field: impl Into<String>,
     expected: impl AsRef<str>,
     actual: impl AsRef<str>,
 ) -> Result<(), HarnessReplayError> {
@@ -276,7 +310,7 @@ fn assert_equal(
         return Ok(());
     }
     Err(HarnessReplayError::Mismatch {
-        field,
+        field: field.into(),
         expected: expected.to_owned(),
         actual: actual.to_owned(),
     })
@@ -301,7 +335,7 @@ fn disposition_name(disposition: &ClosureDisposition) -> &'static str {
     }
 }
 
-fn status_name(status: &HarnessExpectedStatus) -> &'static str {
+pub(crate) fn status_name(status: &HarnessExpectedStatus) -> &'static str {
     match status {
         HarnessExpectedStatus::Sealed => "sealed",
         HarnessExpectedStatus::Failure => "failure",

@@ -18,7 +18,7 @@ use runx_pay::supervisor::{
     payment_supervisor_evidence_reference,
 };
 use runx_runtime::receipts::{graph_receipt, step_receipt, step_receipt_with_authority_grant_refs};
-use runx_runtime::{InvocationStatus, SkillOutput, StepRun, insert_effect_verification_ref};
+use runx_runtime::{InvocationOutput, StepOutcome, StepRun, insert_effect_verification_ref};
 use serde_json::Value;
 
 const CREATED_AT: &str = "2026-05-18T00:00:00Z";
@@ -306,7 +306,7 @@ fn x402_projection_event_persists_after_sealed_graph_receipt()
         r#"{"effect_evidence_packet":{"data":{"rail_result":{"status":"fulfilled","rail":"mock","amount_minor":125,"currency":"USD"},"rail_proof":{"proof_ref":"receipt-proof:mock:paid-echo-001","idempotency_key":"payment:paid-echo-001"},"credential_envelope":{"form":"paid_tool_credential","credential_ref":"credential:mock:paid-echo-001"}}}}"#,
     )?;
     insert_payment_supervisor_proof_metadata(
-        &mut fulfill.output.metadata,
+        &mut fulfill.outcome.metadata,
         &paid_echo_supervisor_proof(&fulfill.receipt),
     )?;
     let echo = step_run(
@@ -461,16 +461,14 @@ fn graph(graph_name: &str, steps: &[StepRun]) -> Result<Receipt, Box<dyn std::er
 fn step_run(
     graph_name: &str,
     step_id: &str,
-    stdout: &str,
+    output_json: &str,
 ) -> Result<StepRun, Box<dyn std::error::Error>> {
-    let mut output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: stdout.to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 1,
-        metadata: JsonObject::new(),
+    let value = serde_json::from_str::<runx_contracts::JsonValue>(output_json)?;
+    let contract = match &value {
+        runx_contracts::JsonValue::Object(object) => object.clone(),
+        _ => JsonObject::new(),
     };
+    let mut output = InvocationOutput::runtime_success(value, 1, JsonObject::new());
     if step_id == "fulfill" {
         let evidence = paid_echo_supervisor_evidence();
         output.metadata.insert(
@@ -488,29 +486,24 @@ fn step_run(
             step_id,
             1,
             &output,
+            &contract,
             paid_echo_authority_refs(),
             CREATED_AT,
         )?
     } else {
-        step_receipt(graph_name, step_id, 1, &output, CREATED_AT)?
+        step_receipt(graph_name, step_id, 1, &output, &contract, CREATED_AT)?
     };
     let admission_witness = StepAdmissionWitness::local_runtime(step_id, receipt.id.as_str());
-    let outputs = serde_json::from_str::<runx_contracts::JsonValue>(&output.stdout)
-        .ok()
-        .and_then(|value| match value {
-            runx_contracts::JsonValue::Object(object) => Some(object),
-            _ => None,
-        })
-        .unwrap_or_default();
     Ok(StepRun {
         step_id: step_id.to_owned(),
         attempt: 1,
         skill: step_id.to_owned(),
         runner: None,
         fanout_group: None,
-        output,
-        outputs,
+        contract,
+        outcome: StepOutcome::from(output),
         receipt,
+        nested_receipts: Vec::new(),
         admission_witness,
     })
 }

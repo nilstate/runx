@@ -8,14 +8,14 @@
 use std::path::{Component, Path, PathBuf};
 
 use runx_contracts::{
-    JsonObject, JsonValue, ThreadOutboxProviderFetch, ThreadOutboxProviderManifest,
+    JsonValue, ThreadOutboxProviderFetch, ThreadOutboxProviderManifest,
     ThreadOutboxProviderOperation,
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
 use crate::RuntimeError;
-use crate::adapter::{SkillAdapter, SkillInvocation, SkillOutput};
+use crate::adapter::{InvocationOutput, SkillAdapter, SkillInvocation};
 use crate::outbox_provider::{
     ThreadOutboxProviderProcessSupervisor, ThreadOutboxProviderSupervisorError,
     ThreadOutboxProviderSupervisorOptions,
@@ -27,9 +27,7 @@ use dynamic_push::{dynamic_push_from_inputs, skipped_dynamic_push_outcome};
 use output::skill_output_from_outcome;
 
 const THREAD_OUTBOX_PROVIDER: &str = "thread-outbox-provider";
-const CONFIG_FIELD: &str = "thread_outbox_provider";
 const MANIFEST_PATH_FIELD: &str = "manifest_path";
-const OPERATION_FIELD: &str = "operation";
 const PUSH_PATH_FIELD: &str = "push_path";
 const FETCH_PATH_FIELD: &str = "fetch_path";
 #[derive(Clone, Debug, Default)]
@@ -42,7 +40,7 @@ impl SkillAdapter for ThreadOutboxProviderSkillAdapter {
         THREAD_OUTBOX_PROVIDER
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
+    fn invoke(&self, request: SkillInvocation) -> Result<InvocationOutput, RuntimeError> {
         if request.source.source_type != runx_parser::SourceKind::ThreadOutboxProvider {
             return Err(RuntimeError::UnsupportedAdapter {
                 adapter_type: request.source.source_type.as_str().to_owned(),
@@ -62,14 +60,8 @@ impl SkillAdapter for ThreadOutboxProviderSkillAdapter {
 pub enum ThreadOutboxProviderSkillAdapterError {
     #[error("thread-outbox-provider source is missing source.thread_outbox_provider")]
     MissingConfig,
-    #[error("thread-outbox-provider source.thread_outbox_provider must be an object")]
-    InvalidConfigShape,
     #[error("thread-outbox-provider source.thread_outbox_provider.{field} is required")]
     MissingConfigField { field: &'static str },
-    #[error("thread-outbox-provider source.thread_outbox_provider.{field} must be a string")]
-    InvalidConfigField { field: &'static str },
-    #[error("thread-outbox-provider operation must be push or fetch, got '{operation}'")]
-    InvalidOperation { operation: String },
     #[error(
         "thread-outbox-provider {field} must be a relative path below the skill directory: '{path}'"
     )]
@@ -111,32 +103,36 @@ pub enum ThreadOutboxProviderSkillAdapterError {
     },
     #[error(transparent)]
     Supervisor(#[from] ThreadOutboxProviderSupervisorError),
-}
-
-#[derive(Clone, Debug)]
-struct ThreadOutboxProviderConfig {
-    manifest_path: String,
-    operation: ThreadOutboxProviderOperation,
-    push_path: Option<String>,
-    fetch_path: Option<String>,
+    #[error(transparent)]
+    Runtime(#[from] RuntimeError),
 }
 
 fn invoke_thread_outbox_provider_skill(
     request: SkillInvocation,
     supervisor_options: &ThreadOutboxProviderSupervisorOptions,
-) -> Result<SkillOutput, ThreadOutboxProviderSkillAdapterError> {
-    let config = config_from_source(&request.source.raw)?;
+) -> Result<InvocationOutput, ThreadOutboxProviderSkillAdapterError> {
+    let config = request
+        .source
+        .thread_outbox_provider
+        .as_ref()
+        .ok_or(ThreadOutboxProviderSkillAdapterError::MissingConfig)?;
     let manifest: ThreadOutboxProviderManifest = contract_from_skill_file(
         &request.skill_directory,
         MANIFEST_PATH_FIELD,
         &config.manifest_path,
     )?;
+    let mut environment = crate::execution_environment::process_baseline_environment(&request.env);
+    environment.extend(crate::execution_environment::resolve_declared_environment(
+        &request.requirements,
+        &request.env,
+    )?);
     let supervisor =
         ThreadOutboxProviderProcessSupervisor::new(ThreadOutboxProviderSupervisorOptions {
             cwd: Some(canonical_skill_directory(
                 &request.skill_directory,
                 MANIFEST_PATH_FIELD,
             )?),
+            environment,
             ..supervisor_options.clone()
         });
     let outcome = match config.operation {
@@ -174,52 +170,6 @@ fn invoke_thread_outbox_provider_skill(
         }
     };
     skill_output_from_outcome(outcome)
-}
-
-fn config_from_source(
-    source: &JsonObject,
-) -> Result<ThreadOutboxProviderConfig, ThreadOutboxProviderSkillAdapterError> {
-    let config = match source.get(CONFIG_FIELD) {
-        Some(JsonValue::Object(config)) => config,
-        Some(_) => return Err(ThreadOutboxProviderSkillAdapterError::InvalidConfigShape),
-        None => return Err(ThreadOutboxProviderSkillAdapterError::MissingConfig),
-    };
-    let manifest_path = required_config_string(config, MANIFEST_PATH_FIELD)?;
-    let operation_raw = required_config_string(config, OPERATION_FIELD)?;
-    let operation = match operation_raw.as_str() {
-        "push" => ThreadOutboxProviderOperation::Push,
-        "fetch" => ThreadOutboxProviderOperation::Fetch,
-        other => {
-            return Err(ThreadOutboxProviderSkillAdapterError::InvalidOperation {
-                operation: other.to_owned(),
-            });
-        }
-    };
-    Ok(ThreadOutboxProviderConfig {
-        manifest_path,
-        operation,
-        push_path: optional_config_string(config, PUSH_PATH_FIELD)?,
-        fetch_path: optional_config_string(config, FETCH_PATH_FIELD)?,
-    })
-}
-
-fn required_config_string(
-    config: &JsonObject,
-    field: &'static str,
-) -> Result<String, ThreadOutboxProviderSkillAdapterError> {
-    optional_config_string(config, field)?
-        .ok_or(ThreadOutboxProviderSkillAdapterError::MissingConfigField { field })
-}
-
-fn optional_config_string(
-    config: &JsonObject,
-    field: &'static str,
-) -> Result<Option<String>, ThreadOutboxProviderSkillAdapterError> {
-    match config.get(field) {
-        Some(JsonValue::String(value)) => Ok(Some(value.clone())),
-        Some(_) => Err(ThreadOutboxProviderSkillAdapterError::InvalidConfigField { field }),
-        None => Ok(None),
-    }
 }
 
 fn contract_from_skill_file<T>(

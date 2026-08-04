@@ -1,0 +1,23 @@
+skill: moltbook
+version: "0.0.0"
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+runners:
+  scan:
+    default: true
+    type: graph
+    graph:
+      name: moltbook-fixture
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: moltbook-fixture

@@ -1,131 +1,28 @@
 skill: work-plan
-version: "0.1.2"
-
+version: "0.2.2"
 catalog:
-  kind: skill
+  kind: graph
   audience: builder
   visibility: public
   role: context
+  execution: plan
+  completion: plan
+  requires_adapter: false
+  approval: none
 harness:
+  files:
+    - fixtures/workspace/skills/issue-to-pr/SKILL.md
+    - fixtures/workspace/skills/issue-to-pr/X.yaml
   cases:
-    - name: work-plan-bounded-plan
+    - name: work-plan-ready-from-issue-intake
       inputs:
-        objective: Launch a governed ecosystem-brief briefing flow
-        project_context: OSS skill package catalog
-        change_set:
-          change_set_id: change_set_ecosystem_brief
-          thread_locator: objective://ecosystem-brief
-          summary: Launch a governed ecosystem-brief briefing flow.
-          category: other
-          severity: medium
-          recommended_lane: work-plan
-          commence_decision: approve
-          action_decision: proceed_to_plan
-          target_surfaces:
-            - surface: runx-ops
-              kind: other
-              mutating: false
-              rationale: The flow is an internal governed content lane.
-          shared_invariants:
-            - Keep the flow research-backed and approval-gated.
-          success_criteria:
-            - One bounded governed content plan is produced.
-      caller:
-        answers:
-          agent_task.work-plan.output:
-            change_set:
-              change_set_id: change_set_ecosystem_brief
-              thread_locator: objective://ecosystem-brief
-              summary: Launch a governed ecosystem-brief briefing flow.
-              category: other
-              severity: medium
-              recommended_lane: work-plan
-              commence_decision: approve
-              action_decision: proceed_to_plan
-              target_surfaces:
-                - surface: runx-ops
-                  kind: other
-                  mutating: false
-                  rationale: The flow is an internal governed content lane.
-              shared_invariants:
-                - Keep the flow research-backed and approval-gated.
-              success_criteria:
-                - One bounded governed content plan is produced.
-            objective_summary: Launch a governed ecosystem-brief briefing flow.
-            workspace_change_plan:
-              plan_id: workspace_plan_ecosystem_brief
-              change_set_id: change_set_ecosystem_brief
-              objective_summary: Launch a governed ecosystem-brief briefing flow.
-              shared_invariants:
-                - Keep the flow research-backed and approval-gated.
-              success_criteria:
-                - One bounded governed content plan is produced.
-              phases:
-                - id: phase-research-and-draft
-                  name: Research and draft
-                  depends_on: []
-                  parallelizable: false
-                  repo_change_requests:
-                    - id: ecosystem-brief-content
-                      repo: runx-ops
-                      task_id: ecosystem-brief-content
-                      objective: Produce research and draft a publishable briefing.
-                      depends_on: []
-                      shared_context_refs:
-                        - change_set.target_surfaces[0]
-                      validation_commands:
-                        - pnpm --dir oss test tests/external-skill-proving-ground.test.ts
-                      mutating: false
-              integration_checks:
-                - The resulting content lane remains approval-gated before publication.
-              open_questions: []
-            orchestration_steps:
-              - id: research-brief
-                skill: ../research
-                scopes:
-                  - runx:research:read
-                mutating: false
-                inputs: {}
-                context_from: []
-                description: Produce a bounded research packet on the ecosystem topic.
-              - id: draft-brief
-                skill: ../ghostwrite
-                scopes:
-                  - runx:content:draft
-                mutating: false
-                inputs: {}
-                context_from:
-                  - research-brief.research_packet
-                description: Draft the publishable briefing from verified evidence.
-              - id: approve
-                skill: approval
-                scopes:
-                  - runx:content:approve
-                mutating: false
-                inputs: {}
-                context_from:
-                  - draft-brief.content_draft_packet
-                description: Route the draft through the publishing approval gate.
-            required_skills:
-              - name: research
-                exists: true
-              - name: ghostwrite
-                exists: true
-            open_questions: []
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-    - name: work-plan-phased-workspace-plan
-      inputs:
-        objective: Roll out abandoned cart recovery across api, app, and mcp
-        project_context: Example workspace with repo-local worker lanes
+        objective: Roll out abandoned cart recovery across api and app.
+        project_context: Example product workspace
+        repo_root: fixtures/workspace
         change_set:
           change_set_id: change_set_abandoned_cart_982
           thread_locator: support://request/982
-          summary: Add abandoned cart recovery across api, app, and mcp.
+          summary: Add abandoned cart recovery across api and app.
           category: feature_request
           severity: medium
           recommended_lane: work-plan
@@ -135,199 +32,371 @@ harness:
             - surface: api
               kind: repo
               mutating: true
-              rationale: Backend flow rules and event handling must change first.
+              rationale: Backend event handling changes first.
             - surface: app
               kind: repo
               mutating: true
-              rationale: Operator and user-visible surfaces need coordinated updates.
-            - surface: mcp
-              kind: repo
-              mutating: true
-              rationale: Tool contracts must stay aligned with api and app behavior.
+              rationale: The app consumes the frozen backend contract.
           shared_invariants:
-            - Preserve current checkout and cart event semantics.
-            - Child workers must share one governed abandoned-cart objective.
+            - Preserve current checkout event semantics.
           success_criteria:
-            - Cross-repo rollout happens through one phased workspace plan.
-            - Integration checks verify api, app, and mcp remain aligned.
+            - Api and app agree on the abandoned-cart contract.
       caller:
         answers:
-          agent_task.work-plan.output:
-            change_set:
-              change_set_id: change_set_abandoned_cart_982
-              thread_locator: support://request/982
-              summary: Add abandoned cart recovery across api, app, and mcp.
-              category: feature_request
-              severity: medium
-              recommended_lane: work-plan
-              commence_decision: approve
-              action_decision: proceed_to_plan
-              target_surfaces:
-                - surface: api
-                  kind: repo
+          agent_task.work-plan-draft.output:
+            work_plan_draft:
+              decision: ready
+              plan_kind: workspace_change
+              change_set:
+                change_set_id: change_set_abandoned_cart_982
+                thread_locator: support://request/982
+                summary: Add abandoned cart recovery across api and app.
+                category: feature_request
+                severity: medium
+                recommended_lane: work-plan
+                commence_decision: approve
+                action_decision: proceed_to_plan
+                target_surfaces:
+                  - surface: api
+                    kind: repo
+                    mutating: true
+                    rationale: Backend event handling changes first.
+                  - surface: app
+                    kind: repo
+                    mutating: true
+                    rationale: The app consumes the frozen backend contract.
+                shared_invariants:
+                  - Preserve current checkout event semantics.
+                success_criteria:
+                  - Api and app agree on the abandoned-cart contract.
+              objective_summary: Roll out abandoned cart recovery across api and app.
+              workspace_change_plan:
+                plan_id: plan_abandoned_cart_982
+                change_set_id: change_set_abandoned_cart_982
+                objective_summary: Roll out abandoned cart recovery across api and app.
+                shared_invariants:
+                  - Preserve current checkout event semantics.
+                success_criteria:
+                  - Api and app agree on the abandoned-cart contract.
+                phases:
+                  - id: freeze-api-contract
+                    name: Freeze api contract
+                    depends_on: []
+                    parallelizable: false
+                    repo_change_requests:
+                      - id: implement-api
+                        repo: api
+                        task_id: abandoned-cart-api
+                        objective: Implement and publish the backend contract.
+                        depends_on: []
+                        shared_context_refs:
+                          - change_set.shared_invariants
+                        validation_commands:
+                          - bundle exec rspec spec/services/abandoned_cart_spec.rb
+                        mutating: true
+                  - id: update-consumer
+                    name: Update app consumer
+                    depends_on:
+                      - freeze-api-contract
+                    parallelizable: false
+                    repo_change_requests:
+                      - id: implement-app
+                        repo: app
+                        task_id: abandoned-cart-app
+                        objective: Update the app against the frozen contract.
+                        depends_on:
+                          - implement-api
+                        shared_context_refs:
+                          - freeze-api-contract
+                        validation_commands:
+                          - npm test
+                        mutating: true
+                integration_checks:
+                  - Api and app contract fixtures agree.
+                open_questions: []
+              orchestration_steps:
+                - id: implement-api
+                  skill: ../issue-to-pr
+                  scopes:
+                    - git.write
                   mutating: true
-                  rationale: Backend flow rules and event handling must change first.
-                - surface: app
-                  kind: repo
+                  inputs:
+                    target_repo: api
+                  context_from:
+                    - change_set
+                  description: Implement and verify the backend contract.
+                - id: implement-app
+                  skill: ../issue-to-pr
+                  scopes:
+                    - git.write
                   mutating: true
-                  rationale: Operator and user-visible surfaces need coordinated updates.
-                - surface: mcp
-                  kind: repo
-                  mutating: true
-                  rationale: Tool contracts must stay aligned with api and app behavior.
-              shared_invariants:
-                - Preserve current checkout and cart event semantics.
-                - Child workers must share one governed abandoned-cart objective.
-              success_criteria:
-                - Cross-repo rollout happens through one phased workspace plan.
-                - Integration checks verify api, app, and mcp remain aligned.
-            objective_summary: Roll out abandoned cart recovery across api, app, and mcp.
-            workspace_change_plan:
-              plan_id: workspace_plan_abandoned_cart_982
-              change_set_id: change_set_abandoned_cart_982
-              objective_summary: Roll out abandoned cart recovery across api, app, and mcp.
-              shared_invariants:
-                - Preserve current checkout and cart event semantics.
-                - Child workers must share one governed abandoned-cart objective.
-              success_criteria:
-                - Cross-repo rollout happens through one phased workspace plan.
-                - Integration checks verify api, app, and mcp remain aligned.
-              phases:
-                - id: phase-contract-freeze
-                  name: Freeze backend contract
-                  depends_on: []
-                  parallelizable: false
-                  repo_change_requests:
-                    - id: api-abandoned-cart
-                      repo: acme/api
-                      task_id: issue-982-api
-                      objective: Implement backend abandoned cart flow rules and emit the contract surface.
-                      depends_on: []
-                      shared_context_refs:
-                        - change_set.shared_invariants
-                      validation_commands:
-                        - bundle exec rspec spec
-                      mutating: true
-                - id: phase-consumers
-                  name: Update consumers against frozen contract
-                  depends_on:
-                    - phase-contract-freeze
-                  parallelizable: true
-                  repo_change_requests:
-                    - id: app-abandoned-cart
-                      repo: acme/app
-                      task_id: issue-982-app
-                      objective: Update operator and user-facing app surfaces to match the backend flow contract.
-                      depends_on:
-                        - api-abandoned-cart
-                      shared_context_refs:
-                        - phase-contract-freeze.repo_change_requests[0]
-                      validation_commands:
-                        - pnpm test
-                      mutating: true
-                    - id: mcp-abandoned-cart
-                      repo: acme/mcp
-                      task_id: issue-982-mcp
-                      objective: Align MCP capabilities and exposed operations with the frozen backend contract.
-                      depends_on:
-                        - api-abandoned-cart
-                      shared_context_refs:
-                        - phase-contract-freeze.repo_change_requests[0]
-                      validation_commands:
-                        - pnpm test
-                      mutating: true
-              integration_checks:
-                - api contract and downstream consumers agree on abandoned cart flow semantics
-                - all child PRs reference the same change_set_id and phased plan
-              open_questions:
-                - Should rollout remain behind an explicit feature flag for the first release?
-            orchestration_steps:
-              - id: freeze-contract
-                skill: ../issue-to-pr
-                scopes:
-                  - git.write
-                mutating: true
-                inputs:
-                  target_repo: acme/api
-                context_from:
-                  - change_set
-                description: Implement the backend contract first and freeze the shared interface.
-              - id: update-app
-                skill: ../issue-to-pr
-                scopes:
-                  - git.write
-                mutating: true
-                inputs:
-                  target_repo: acme/app
-                context_from:
-                  - freeze-contract
-                description: Update the app against the frozen backend contract.
-              - id: update-mcp
-                skill: ../issue-to-pr
-                scopes:
-                  - git.write
-                mutating: true
-                inputs:
-                  target_repo: acme/mcp
-                context_from:
-                  - freeze-contract
-                description: Update the MCP layer against the frozen backend contract.
-            required_skills:
-              - name: issue-to-pr
-                exists: true
-              - name: issue-intake
-                exists: true
-            open_questions:
-              - Should rollout remain behind an explicit feature flag for the first release?
+                  inputs:
+                    target_repo: app
+                  context_from:
+                    - implement-api.pull_request
+                  description: Update the app after the backend contract is frozen.
+              required_skills:
+                - name: issue-to-pr
+                  exists: true
+              open_questions: []
       expect:
         status: sealed
+        steps:
+          - inspect
+          - draft
+          - validate
+        step_outputs:
+          validate:
+            subset:
+              decision: ready
+              plan_kind: workspace_change
+              change_set:
+                change_set_id: change_set_abandoned_cart_982
+              validation:
+                status: pass
+                findings: []
+              evidence:
+                source_change_set_preserved: true
+                catalog_skills:
+                  - issue-to-pr
         receipt:
           schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-
+    - name: work-plan-invalid-phase-holds
+      inputs:
+        objective: Plan a bounded docs update.
+      caller:
+        answers:
+          agent_task.work-plan-draft.output:
+            work_plan_draft:
+              decision: ready
+              plan_kind: workspace_change
+              change_set:
+                change_set_id: change_set_docs
+                thread_locator: objective://docs
+                summary: Plan a bounded docs update.
+                category: docs
+                severity: low
+                recommended_lane: work-plan
+                commence_decision: approve
+                action_decision: proceed_to_plan
+                target_surfaces: []
+                shared_invariants: []
+                success_criteria:
+                  - Documentation is updated.
+              objective_summary: Plan a bounded docs update.
+              workspace_change_plan:
+                plan_id: plan_docs
+                change_set_id: change_set_docs
+                objective_summary: Plan a bounded docs update.
+                shared_invariants: []
+                success_criteria:
+                  - Documentation is updated.
+                phases:
+                  - id: update-docs
+                    name: Update docs
+                    depends_on:
+                      - missing-phase
+                    parallelizable: false
+                    repo_change_requests: []
+                integration_checks:
+                  - Documentation build passes.
+                open_questions: []
+              orchestration_steps: []
+              required_skills: []
+              open_questions: []
+      expect:
+        status: sealed
+        step_outputs:
+          validate:
+            subset:
+              decision: blocked
+              workspace_change_plan: {}
+              orchestration_steps: []
+              validation:
+                status: hold
+                findings:
+                  - code: phase.unknown_dependency
+                    path: workspace_change_plan.phases[0].depends_on[0]
+    - name: work-plan-skill-package-requires-skill-lab
+      inputs:
+        objective: Add a new Runx operator skill.
+        repo_root: fixtures/workspace
+      caller:
+        answers:
+          agent_task.work-plan-draft.output:
+            work_plan_draft:
+              decision: ready
+              plan_kind: skill_package
+              change_set:
+                change_set_id: change_set_new_skill
+                thread_locator: objective://new-skill
+                summary: Add a new Runx operator skill.
+                category: feature_request
+                severity: medium
+                recommended_lane: work-plan
+                commence_decision: approve
+                action_decision: proceed_to_plan
+                target_surfaces:
+                  - surface: skills/new-skill
+                    kind: package
+                    mutating: true
+                    rationale: A skill package must be authored.
+                shared_invariants:
+                  - Use the canonical Runx authoring lane.
+                success_criteria:
+                  - The skill has focused harness proof.
+              objective_summary: Add a new Runx operator skill.
+              workspace_change_plan:
+                plan_id: plan_new_skill
+                change_set_id: change_set_new_skill
+                objective_summary: Add a new Runx operator skill.
+                shared_invariants:
+                  - Use the canonical Runx authoring lane.
+                success_criteria:
+                  - The skill has focused harness proof.
+                phases:
+                  - id: author-skill
+                    name: Author skill
+                    depends_on: []
+                    parallelizable: false
+                    repo_change_requests: []
+                integration_checks:
+                  - Focused harness passes.
+                open_questions: []
+              orchestration_steps:
+                - id: generic-repo-change
+                  skill: ../issue-to-pr
+                  scopes:
+                    - git.write
+                  mutating: true
+                  inputs: {}
+                  context_from:
+                    - change_set
+                  description: Use a generic repo lane to author the skill.
+              required_skills:
+                - name: issue-to-pr
+                  exists: true
+              open_questions: []
+      expect:
+        status: sealed
+        step_outputs:
+          validate:
+            subset:
+              decision: blocked
+              validation:
+                status: hold
+                findings:
+                  - code: skill_package.skill_lab_required
+                    path: orchestration_steps
 runners:
   work-plan-agent:
     default: true
-    type: agent-task
-    agent: builder
-    task: work-plan
-    outputs:
-      change_set: object
-      harness_context:
-        type: object
-        required: false
-        description: Preserved harness context when one was supplied.
-      objective_summary: string
-      workspace_change_plan: object
-      orchestration_steps: array
-      required_skills: array
-      open_questions: array
-    artifacts:
-      wrap_as: work_plan
-      packet: runx.builder.work_plan.v1
+    type: graph
     inputs:
       objective:
         type: string
         required: true
-        description: "The build or skill objective to decompose."
+        description: Build or automation objective to decompose.
       project_context:
         type: string
         required: false
-        description: "Optional repo, product, or user context for the objective."
+        description: Repository, product, and operator constraints.
       thread_locator:
         type: string
         required: false
-        description: "Canonical locator for the bounded thread behind the objective."
+        description: Canonical locator for the bounded source thread.
       thread:
         type: object
         required: false
-        description: "Portable thread when the objective came from an existing thread."
+        description: Portable source thread when the objective came from an existing conversation.
+        schema:
+          additionalProperties: true
       change_set:
         type: object
         required: false
-        description: "Optional parent change set from issue-intake or a workspace supervisor."
+        description: Parent change artifact from issue-intake or a workspace supervisor.
+        schema:
+          required: [change_set_id, shared_invariants, success_criteria]
+          properties:
+            change_set_id: { type: string, minLength: 1, maxLength: 256 }
+            action_decision: { type: string, enum: [proceed_to_plan, needs_clarification, hold] }
+            commence_decision: { type: string, enum: [approve, hold] }
+            thread_locator: { type: string, minLength: 1, maxLength: 2048 }
+            shared_invariants:
+              type: array
+              maxItems: 100
+              items: { type: string, minLength: 1, maxLength: 4000 }
+            success_criteria:
+              type: array
+              maxItems: 100
+              items: { type: string, minLength: 1, maxLength: 4000 }
+          additionalProperties: true
       harness_context:
         type: object
         required: false
-        description: "Optional runx.receipt.v1 packet; preserve it when planning a source-thread change."
+        description: Optional captured control context to pass through unchanged.
+        schema:
+          additionalProperties: true
+      repo_root:
+        type: string
+        required: false
+        default: .
+        description: Workspace root used for native skill-catalog inspection.
+    graph:
+      name: work-plan
+      result_from: [validate]
+      steps:
+        - id: inspect
+          label: inspect the local skill catalog
+          tool: runx.skill.inspect
+          scopes:
+            - fs.read
+          inputs:
+            repo_root: $input.repo_root
+        - id: draft
+          label: decompose objective at governance boundaries
+          run:
+            type: agent-task
+            agent: builder
+            task: work-plan-draft
+            outputs:
+              work_plan_draft: object
+          inputs:
+            objective: $input.objective
+            project_context: $input.project_context
+            thread_locator: $input.thread_locator
+            thread: $input.thread
+            change_set: $input.change_set
+          context:
+            catalog_skills: inspect.authoring_context.data.catalog_skills
+          artifacts:
+            named_emits:
+              work_plan_draft: work_plan_draft
+        - id: validate
+          label: validate plan graph and evidence bindings
+          inputs:
+            objective: $input.objective
+            thread_locator: $input.thread_locator
+            change_set: $input.change_set
+            harness_context: $input.harness_context
+          context:
+            work_plan_draft: draft.work_plan_draft.data
+            catalog_skills: inspect.authoring_context.data.catalog_skills
+          run:
+            type: javascript
+            module: work-plan.mjs
+            outputs:
+              decision: string
+              plan_kind: string
+              change_set: object
+              harness_context: object
+              objective_summary: string
+              workspace_change_plan: object
+              orchestration_steps: array
+              required_skills: array
+              open_questions: array
+              evidence: object
+              validation: object
+          artifacts:
+            wrap_as: work_plan
+            packet: runx.builder.work_plan.v1

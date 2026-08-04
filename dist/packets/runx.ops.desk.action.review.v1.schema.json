@@ -9,6 +9,89 @@
   ],
   "properties": {
     "action_review": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_required": {
+          "type": "boolean"
+        },
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "consequence": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "ready",
+            "awaiting_approval",
+            "needs_input",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "execution_handoff": {
+          "additionalProperties": false,
+          "properties": {
+            "approval_gate": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "interface": {
+              "type": "string"
+            },
+            "lane_ref": {
+              "type": "string"
+            },
+            "verifier_ref": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "interface",
+            "lane_ref",
+            "verifier_ref"
+          ],
+          "type": "object"
+        },
+        "verification": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_effect": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expected_receipt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "readback": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_receipt",
+            "readback"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "decision",
+        "consequence",
+        "approval_required",
+        "blockers",
+        "execution_handoff",
+        "verification"
+      ],
       "type": "object"
     }
   },

@@ -22,6 +22,36 @@ expect:
   steps:
     - append
     - readback
+  step_outputs:
+    append:
+      subset:
+        data_operation_result:
+          data:
+            schema: runx.data.operation_result.v1
+            operation: append_event
+            aggregate_id: default-sqlite-posting-123
+            after_version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    readback:
+      subset:
+        data_operation_result:
+          data:
+            schema: runx.data.operation_result.v1
+            operation: read_projection
+            aggregate_id: default-sqlite-posting-123
+            after_version: 1
+            projection:
+              aggregate_id: default-sqlite-posting-123
+              event_count: 1
+              last_event_type: posting.created
+              version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
 metadata:
   public_skill: data-store
   source_case: append-read-default-sqlite-event

@@ -1,0 +1,189 @@
+#![allow(clippy::expect_used, clippy::panic)]
+
+use std::collections::BTreeSet;
+
+#[cfg(feature = "catalog")]
+use std::collections::BTreeMap;
+
+#[cfg(feature = "catalog")]
+use runx_contracts::{JsonObject, JsonValue};
+
+use super::{core_capabilities, definition};
+#[cfg(feature = "catalog")]
+use crate::credentials::CredentialDelivery;
+#[cfg(feature = "catalog")]
+use crate::effects::RuntimeEffectRegistry;
+
+#[test]
+fn capability_registry_definitions_are_unique_and_valid() {
+    let capabilities = core_capabilities().collect::<Vec<_>>();
+    let ids = capabilities
+        .iter()
+        .map(|capability| capability.definition().id)
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(ids.len(), capabilities.len());
+    for capability in capabilities {
+        crate::capability::validate_capability_contract(capability)
+            .unwrap_or_else(|error| panic!("{}: {error}", capability.definition().id));
+        let output_schema = capability.output_schema();
+        assert!(output_schema.is_object());
+        assert_eq!(
+            definition(capability.definition().id)
+                .expect("registered capability should resolve")
+                .definition(),
+            capability.definition()
+        );
+    }
+}
+
+#[test]
+fn capability_registry_defaults_keep_declared_json_types() {
+    let capability = definition("evidence.index_sources")
+        .expect("native evidence capability should be registered");
+    let default = capability
+        .catalog_inputs()
+        .expect("catalog inputs should derive from the typed definition")
+        .get("max_sources")
+        .and_then(|input| input.default.as_ref())
+        .cloned()
+        .expect("max_sources should have a typed default");
+
+    assert_eq!(
+        serde_json::to_value(default).expect("serialize default"),
+        20
+    );
+}
+
+#[cfg(feature = "catalog")]
+#[test]
+fn capability_registry_owns_inspect_search_and_artifacts() {
+    let effects =
+        RuntimeEffectRegistry::with_effect(crate::effects::ProviderPermissionEffect::default())
+            .expect("provider permission effect should register");
+    let inspected = super::inspect("runx.skill.apply", std::path::Path::new("."), &effects)
+        .expect("native capability should inspect");
+    assert_eq!(inspected.tool.execution_source_type, "native");
+    assert!(super::artifacts("runx.skill.apply", &effects).is_some());
+    assert!(
+        super::search("skill", 20, &effects)
+            .iter()
+            .any(|tool| tool.name == "runx.skill.apply")
+    );
+    assert_eq!(
+        super::execution_boundary("provider.read", &effects),
+        Some(runx_contracts::ExecutionBoundaryKind::RemoteProvider)
+    );
+}
+
+#[cfg(feature = "catalog")]
+#[test]
+fn capability_registry_dispatch_projects_only_declared_inputs() {
+    let inputs = JsonObject::from([
+        ("value".to_owned(), JsonValue::String("hello".to_owned())),
+        ("undeclared".to_owned(), JsonValue::Bool(true)),
+    ]);
+    let result = super::invoke(super::NativeToolInvocation {
+        tool_ref: "data.digest",
+        observed_at: "2026-07-20T00:00:00Z",
+        inputs,
+        scopes: &[],
+        data_source_binding: None,
+        env: &BTreeMap::new(),
+        skill_directory: std::path::Path::new("."),
+        credential_delivery: &CredentialDelivery::none(),
+        local_artifacts: super::fixture_local_artifacts(),
+        effect_admission: None,
+        effects: &RuntimeEffectRegistry::default(),
+    })
+    .expect("capability should resolve");
+
+    assert_eq!(
+        result.execution_boundary,
+        runx_contracts::ExecutionBoundaryKind::NativeCapability
+    );
+    let output = result
+        .result
+        .expect("ambient graph inputs must not enter the typed handler");
+    assert!(
+        output
+            .as_object()
+            .is_some_and(|output| output.contains_key("digest_result"))
+    );
+}
+
+#[test]
+fn capability_registry_exposes_one_input_schema() {
+    let capability = definition("fs.read").expect("fs.read should be registered");
+    let schema = capability
+        .input_schema()
+        .expect("typed schema should derive");
+    let catalog = capability.catalog_inputs().expect("catalog should derive");
+    let properties = schema
+        .get("properties")
+        .and_then(serde_json::Value::as_object)
+        .expect("input schema should expose properties");
+
+    assert_eq!(
+        properties.keys().cloned().collect::<BTreeSet<_>>(),
+        catalog.keys().cloned().collect::<BTreeSet<_>>()
+    );
+}
+
+#[cfg(feature = "catalog")]
+#[test]
+fn native_output_contract_is_exact_and_rejects_invalid_inner_fields() {
+    let capability = definition("data.digest").expect("data.digest should be registered");
+    let schema = capability.output_schema();
+    let digest_result = schema
+        .get("properties")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|properties| properties.get("digest_result"))
+        .and_then(serde_json::Value::as_object)
+        .expect("digest_result should have a typed schema");
+    let algorithm = digest_result
+        .get("properties")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|properties| properties.get("algorithm"))
+        .expect("algorithm should be declared");
+    assert_eq!(
+        algorithm.get("type").and_then(serde_json::Value::as_str),
+        Some("string")
+    );
+
+    let invalid = JsonValue::Object(JsonObject::from([(
+        "digest_result".to_owned(),
+        JsonValue::Object(JsonObject::from([
+            (
+                "algorithm".to_owned(),
+                JsonValue::Number(runx_contracts::JsonNumber::U64(1)),
+            ),
+            (
+                "digest".to_owned(),
+                JsonValue::String(
+                    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                        .to_owned(),
+                ),
+            ),
+        ])),
+    )]));
+    assert!(capability.validate_output(&invalid).is_err());
+}
+
+#[test]
+fn data_operation_schemas_expose_domain_inputs_not_runtime_bindings() {
+    for tool_ref in [
+        "data.append_event",
+        "data.read_events",
+        "data.read_projection",
+        "data.list_stream_heads",
+    ] {
+        let inputs = definition(tool_ref)
+            .unwrap_or_else(|| panic!("{tool_ref} should be registered"))
+            .catalog_inputs()
+            .unwrap_or_else(|error| panic!("{tool_ref} should derive inputs: {error}"));
+        assert!(inputs.contains_key("data_source_ref"));
+        assert!(!inputs.contains_key("data_source_binding"));
+        assert!(!inputs.contains_key("operation"));
+    }
+}

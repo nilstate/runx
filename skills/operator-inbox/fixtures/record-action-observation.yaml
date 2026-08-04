@@ -4,7 +4,6 @@ target: ..
 runner: record_action_observation
 inputs:
   data_source_ref: local://runx/operator-inbox/record-action-observation
-  action_id: action-04a315f3a0af034c1c2022c0a15eb6b6b2819a63839f02f77187fd30163d1cd1
   expected_version: 0
   observed_at: "2026-07-14T00:00:00.000Z"
   triage:
@@ -24,8 +23,19 @@ inputs:
       display_name: General
       type: channel
     occurred_at: "2026-07-13T23:59:00.000Z"
-    preview: Please review the analytics result.
-    context: []
+    preview: |
+      Please review the analytics result.
+      The relevant evidence is in the thread.
+    context:
+      - relation: before
+        message_locator: fixture://workspace-1/general/99
+        author:
+          external_id: user-1
+          display_name: Teammate
+        occurred_at: "2026-07-13T23:58:00.000Z"
+        preview: |
+          Earlier context can contain line breaks.
+          The queue keeps the bounded semantic preview.
 expect:
   status: sealed
   receipt:

@@ -112,7 +112,7 @@ describe("GitHub issue-to-PR dogfood script", () => {
 	        },
 	        mutation_gates: expect.arrayContaining([
             "target repo is in the explicit proving-ground allowlist",
-            "explicit GitHub token env is present for the provider-push sandbox",
+            "explicit GitHub token env is present for the provider process",
 	          "human merge remains outside the harness",
 	        ]),
 	      });
@@ -241,7 +241,7 @@ describe("GitHub issue-to-PR dogfood script", () => {
     }
   });
 
-  it("blocks live publication without explicit GitHub token env for the push sandbox", async () => {
+  it("blocks live publication without explicit GitHub token env for the provider process", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-dogfood-token-"));
 
     try {

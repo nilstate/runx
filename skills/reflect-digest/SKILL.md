@@ -1,40 +1,52 @@
 ---
 name: reflect-digest
-description: Aggregate projected reflect knowledge into bounded skill improvement proposals.
+description: Read durable reflect projections, group repeated signals by skill, and emit validated handoffs to skill-lab improve when the evidence clears configured floors.
 runx:
   category: authoring
 ---
 
 # Reflect Digest
 
-Read projected reflect events through the provider-neutral data-store skill,
-group them by skill, and draft bounded improvement proposals only when the
-grouped evidence clears the configured floors. Unbound local sources use the
-same durable project-local SQLite default as every other stateful skill.
+Turn repeated post-run reflection signals into bounded improvement work without
+re-diagnosing one receipt or drafting a parallel pull-request artifact.
 
-This is the explicit cognition lane for reflection. It does not mutate a repo,
-push a branch, or publish a pull request. It emits provider-agnostic PR draft
-handoffs for later governed review and push.
+The graph reads durable reflect events through `data-store`, admits explicit
+replay projections when supplied, applies deterministic confidence and support
+floors, then asks one bounded agent act to describe at most one improvement per
+skill. A final deterministic step verifies every cited receipt belongs to that
+skill's group and emits a `skill-lab improve` handoff.
 
+The skill does not write a package, open a pull request, publish, or invoke the
+mutating improvement runner. The handoff preserves the target, objective,
+receipt evidence, and non-goals for later governed execution.
 
-## Output
+## Composes
 
-- `proposals`: an array of grouped proposal packets. Each item includes:
-  - `skill_ref`
-  - `supporting_receipt_ids`
-  - `draft_pull_request`
-  - `outbox_entry`
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `data-store#list_stream_heads`
 
 ## Inputs
 
-- `reflect_projections` (optional): explicit reflect projection entries. Useful for harness
-  replay and controlled evaluation.
-- `data_source_ref` (optional): logical state source; defaults to
-  `local://runx/reflect`.
-- `state_resource` (optional): reflect event resource; defaults to
-  `reflect_projections`.
-- `skill_filter` (optional): only consider one skill ref.
-- `since` (optional): only consider projections recorded at or after this ISO time.
-- `min_support` (optional): minimum grouped projection count required to draft.
-- `min_confidence` (optional): minimum per-projection confidence required to include
-  a reflect projection in grouping.
+- `reflect_projections`: explicit projections for replay; otherwise durable
+  state is read from `data_source_ref` and `state_resource`.
+- `skill_filter`, `since`: optional read bounds.
+- `min_support`: minimum number of admitted projections for one skill.
+- `min_confidence`: minimum confidence for each admitted projection.
+
+## Outputs
+
+- `proposals`: validated skill-specific improvement opportunities.
+- `skill_lab_handoffs`: executable request packets naming `skill-lab`, runner
+  `improve`, target directory, objective, primary receipt, evidence summary,
+  and supporting receipt ids.
+
+## Agent task contracts
+
+### `reflect-digest`
+
+Review each grouped reflection independently. Return at most one proposal per skill_ref, and
+return an empty proposals array when no group supports a bounded fix. Every proposal must
+contain skill_ref, repo-relative target_dir, objective, evidence_summary,
+supporting_receipt_ids, and boundaries. Receipt ids must come from that group. Do not diagnose a
+single run again, author code, draft a pull request, publish, or mutate the target package.

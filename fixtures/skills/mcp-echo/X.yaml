@@ -1,0 +1,19 @@
+skill: mcp-echo
+version: "0.1.0"
+runners:
+  default:
+    default: true
+    type: mcp
+    server:
+      command: node
+      args:
+        - ./stdio-server.mjs
+    tool: echo
+    arguments:
+      message: "{{message}}"
+    timeout_seconds: 15
+    inputs:
+      message:
+        type: string
+        required: true
+        description: Message to echo through MCP.

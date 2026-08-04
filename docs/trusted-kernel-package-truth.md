@@ -1,11 +1,10 @@
 # Trusted Kernel Package Truth
 
-Status: accepted OSS addendum for the Rust cutover track.
+Status: current OSS package-authority summary.
 
-The repo-root `docs/trusted-kernel-package-truth.md` remains the broad package
-authority document for the full runx repository. This OSS-local addendum
-records the Rust parity boundary in the same docs tree as the Rust architecture
-plan, so scafld specs that run from `oss/` have a stable local path.
+The repo-root document is a superseded migration record. The active ownership
+boundary is [TypeScript Interop Boundary](./ts-interop-boundary.md); this
+document summarizes its Rust package implications.
 
 ## Rust Cutover Rule
 
@@ -19,10 +18,10 @@ Rust crates that are still in parity-only mode remain conformance evidence
 until a separate cutover spec changes a consumer and passes the relevant gate.
 
 Local Rust kernel parity is checked with `pnpm rust:check`, which runs Cargo
-formatting, clippy, workspace tests, crate graph/style guards, `cargo-deny`,
-and the `runx-core` public API snapshot. In CI this remains advisory during
-Phase A; it becomes blocking only through the `rust-kernel-blocking-promotion`
-spec after five clean kernel-touching PRs.
+formatting, Clippy, workspace tests, crate dependency guards, `cargo-deny`,
+and the `runx-core` public API snapshot. The native Rust workspace is also a
+blocking CI and release surface: formatting, all-feature Clippy, workspace
+tests, doctests, dependency policy, and the public API snapshot must pass.
 
 Kernel parity fixtures live under `fixtures/kernel/`. They are generated from
 the TypeScript implementation and act as conformance evidence for the Rust
@@ -43,12 +42,12 @@ CLI-tool inline-code admission consistent across POSIX and Windows runners;
 for example, `C:\Tools\node.exe -e ...` normalizes to `node` and is denied
 under the strict inline-code policy.
 
-The original pure-kernel Rust parity surface was:
+The original pure-kernel Rust parity surface, before the native runtime
+cutover, was:
 
 - Rust-owned state-machine kernel inputs
 - retired TypeScript policy helpers now owned by Rust
-- graph-scope, retry, connected-auth, local-admission, and sandbox policy
-  helpers
+- graph-scope, retry, connected-auth, local-admission, and grant-policy helpers
 
 Parser, receipts, runtime, adapters, and CLI cutover are separate specs.
 For any still-dual command, full CLI/runtime cutover still requires the

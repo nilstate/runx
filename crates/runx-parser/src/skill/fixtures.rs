@@ -4,8 +4,11 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::ValidationError;
+pub use crate::harness_fixture::{HarnessExpectation, ReceiptExpectation};
 
 use super::FIELDS;
+
+const RUNTIME_OWNED_HARNESS_ENV: &[&str] = &["RUNX_CWD", "RUNX_RECEIPT_DIR"];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HarnessCallerFixture {
@@ -13,32 +16,6 @@ pub struct HarnessCallerFixture {
     pub answers: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approvals: Option<BTreeMap<String, bool>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ReceiptExpectation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skill_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub graph_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub owner: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HarnessExpectation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub receipt: Option<ReceiptExpectation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub steps: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,6 +31,8 @@ pub struct RunnerHarnessCase {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RunnerHarnessManifest {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub files: Vec<String>,
     pub cases: Vec<RunnerHarnessCase>,
 }
 
@@ -64,6 +43,9 @@ pub(crate) fn validate_harness_manifest(
     let Some(value) = value else {
         return Ok(None);
     };
+    let files = FIELDS
+        .optional_string_array(value.get("files"), &format!("{field}.files"))?
+        .unwrap_or_default();
     let cases = FIELDS
         .required_plain_array(value.get("cases"), &format!("{field}.cases"))?
         .iter()
@@ -75,7 +57,7 @@ pub(crate) fn validate_harness_manifest(
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(Some(RunnerHarnessManifest { cases }))
+    Ok(Some(RunnerHarnessManifest { files, cases }))
 }
 
 fn validate_harness_case(
@@ -114,9 +96,16 @@ fn validate_string_object(
 ) -> Result<BTreeMap<String, String>, ValidationError> {
     value
         .into_iter()
-        .map(|(key, value)| match value {
-            JsonValue::String(value) => Ok((key, value)),
-            _ => Err(FIELDS.validation_error(format!("{field}.{key} must be a string."))),
+        .map(|(key, value)| {
+            if RUNTIME_OWNED_HARNESS_ENV.contains(&key.as_str()) {
+                return Err(FIELDS.validation_error(format!(
+                    "{field}.{key} is owned by the isolated harness runtime and cannot be overridden."
+                )));
+            }
+            match value {
+                JsonValue::String(value) => Ok((key, value)),
+                _ => Err(FIELDS.validation_error(format!("{field}.{key} must be a string."))),
+            }
         })
         .collect()
 }
@@ -153,77 +142,50 @@ fn validate_harness_expectation(
     value: &JsonObject,
     field: &str,
 ) -> Result<HarnessExpectation, ValidationError> {
-    Ok(HarnessExpectation {
-        status: optional_harness_status(value.get("status"), &format!("{field}.status"))?,
-        receipt: validate_receipt_expectation(
-            FIELDS.optional_object(value.get("receipt"), &format!("{field}.receipt"))?,
-            &format!("{field}.receipt"),
-        )?,
-        steps: FIELDS.optional_string_array(value.get("steps"), &format!("{field}.steps"))?,
-    })
+    crate::harness_fixture::parse_harness_expectation(value.clone())
+        .map_err(|error| FIELDS.validation_error(format!("{field}: {error}")))
 }
 
-fn validate_receipt_expectation(
-    value: Option<JsonObject>,
-    field: &str,
-) -> Result<Option<ReceiptExpectation>, ValidationError> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    Ok(Some(ReceiptExpectation {
-        kind: optional_receipt_kind(value.get("kind"), &format!("{field}.kind"))?,
-        status: optional_receipt_status(value.get("status"), &format!("{field}.status"))?,
-        skill_name: FIELDS
-            .optional_string(value.get("skill_name"), &format!("{field}.skill_name"))?,
-        source_type: FIELDS
-            .optional_string(value.get("source_type"), &format!("{field}.source_type"))?,
-        graph_name: FIELDS
-            .optional_string(value.get("graph_name"), &format!("{field}.graph_name"))?,
-        owner: FIELDS.optional_string(value.get("owner"), &format!("{field}.owner"))?,
-    }))
-}
+#[cfg(test)]
+mod tests {
+    use crate::{parse_runner_manifest_yaml, validate_runner_manifest};
 
-fn optional_harness_status(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<String>, ValidationError> {
-    validate_enum(
-        value,
-        field,
-        &[
-            "sealed",
-            "failure",
-            "needs_agent",
-            "policy_denied",
-            "escalated",
-        ],
-    )
-}
+    #[test]
+    fn inline_harness_cannot_override_runtime_owned_isolation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for key in ["RUNX_CWD", "RUNX_RECEIPT_DIR"] {
+            let raw = parse_runner_manifest_yaml(&format!(
+                r#"
+skill: fixture
+harness:
+  cases:
+    - name: escape
+      env:
+        {key}: "."
+      inputs: {{}}
+      expect:
+        status: sealed
+runners:
+  fixture:
+    default: true
+    type: graph
+    graph:
+      name: fixture
+      result_from:
+        - digest
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: fixture
+"#
+            ))?;
+            let Err(error) = validate_runner_manifest(raw) else {
+                return Err("runtime-owned harness environment was accepted".into());
+            };
 
-fn optional_receipt_status(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<String>, ValidationError> {
-    validate_enum(value, field, &["sealed", "failure"])
-}
-
-fn optional_receipt_kind(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<String>, ValidationError> {
-    validate_enum(value, field, &["receipt"])
-}
-
-fn validate_enum(
-    value: Option<&JsonValue>,
-    field: &str,
-    allowed: &[&str],
-) -> Result<Option<String>, ValidationError> {
-    let Some(value) = FIELDS.optional_string(value, field)? else {
-        return Ok(None);
-    };
-    if allowed.iter().any(|allowed| *allowed == value) {
-        return Ok(Some(value));
+            assert!(error.to_string().contains("isolated harness runtime"));
+        }
+        Ok(())
     }
-    Err(FIELDS.validation_error(format!("{field} must be {}.", allowed.join(", "))))
 }

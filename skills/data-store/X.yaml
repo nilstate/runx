@@ -1,5 +1,5 @@
 skill: data-store
-version: "0.2.0"
+version: "0.3.0"
 
 catalog:
   kind: skill
@@ -7,6 +7,10 @@ catalog:
   visibility: public
   role: canonical
   runtime_path: data-adapter
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: true
+  approval: conditional
 
 policy:
   allow:
@@ -35,10 +39,6 @@ runners:
         type: string
         required: true
         description: Stable logical ref bound by the project or hosted operator to a provider adapter.
-      store_id:
-        type: string
-        required: false
-        description: Opt into the bundled data.local fixture store with this deterministic store id; omit for durable local SQLite.
       resource:
         type: string
         required: true
@@ -62,18 +62,17 @@ runners:
       observed_at:
         type: string
         required: false
-        description: Caller-observed ISO-8601 commit ordering time; defaults to the adapter epoch when omitted.
+        description: Caller-observed ISO-8601 commit ordering time; defaults to the runtime observation time when omitted.
     graph:
       name: data-store-append-event
+      result_from: [append]
       steps:
         - id: append
-          tool: data.source
+          tool: data.append_event
           scopes:
             - runx:data:append
           inputs:
-            operation: append_event
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
             expected_version: "$input.expected_version"
@@ -88,10 +87,6 @@ runners:
         type: string
         required: true
         description: Stable logical ref bound by the project or hosted operator to a provider adapter.
-      store_id:
-        type: string
-        required: false
-        description: Opt into the bundled data.local fixture store with this deterministic store id; omit for durable local SQLite.
       resource:
         type: string
         required: true
@@ -111,15 +106,14 @@ runners:
         description: When present, return the next ascending page strictly after this stream version; omission retains the latest-tail read.
     graph:
       name: data-store-read-events
+      result_from: [read]
       steps:
         - id: read
-          tool: data.source
+          tool: data.read_events
           scopes:
             - runx:data:read
           inputs:
-            operation: read_events
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
             limit: "$input.limit"
@@ -132,10 +126,6 @@ runners:
         type: string
         required: true
         description: Stable logical ref bound by the project or hosted operator to a provider adapter.
-      store_id:
-        type: string
-        required: false
-        description: Opt into the bundled data.local fixture store with this deterministic store id; omit for durable local SQLite.
       resource:
         type: string
         required: true
@@ -146,15 +136,14 @@ runners:
         description: Event stream or partition key.
     graph:
       name: data-store-read-projection
+      result_from: [read]
       steps:
         - id: read
-          tool: data.source
+          tool: data.read_projection
           scopes:
             - runx:data:read
           inputs:
-            operation: read_projection
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
 
@@ -165,10 +154,6 @@ runners:
         type: string
         required: true
         description: Stable logical ref bound by the project or hosted operator to a provider adapter.
-      store_id:
-        type: string
-        required: false
-        description: Opt into the bundled data.local fixture store with this deterministic store id; omit for durable local SQLite.
       resource:
         type: string
         required: true
@@ -188,15 +173,14 @@ runners:
         description: Opaque cursor returned by the previous page.
     graph:
       name: data-store-list-stream-heads
+      result_from: [read]
       steps:
         - id: read
-          tool: data.source
+          tool: data.list_stream_heads
           scopes:
             - runx:data:read
           inputs:
-            operation: list_stream_heads
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             event_types: "$input.event_types"
             limit: "$input.limit"
@@ -209,10 +193,6 @@ runners:
         type: string
         required: true
         description: Stable logical ref bound by the project or hosted operator to a provider adapter.
-      store_id:
-        type: string
-        required: false
-        description: Opt into the bundled data.local fixture store with this deterministic store id; omit for durable local SQLite.
       resource:
         type: string
         required: true
@@ -239,15 +219,14 @@ runners:
         description: Caller-observed ISO-8601 commit ordering time.
     graph:
       name: data-store-append-and-readback
+      result_from: [append, readback]
       steps:
         - id: append
-          tool: data.source
+          tool: data.append_event
           scopes:
             - runx:data:append
           inputs:
-            operation: append_event
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"
             expected_version: "$input.expected_version"
@@ -255,12 +234,10 @@ runners:
             event: "$input.event"
             observed_at: "$input.observed_at"
         - id: readback
-          tool: data.source
+          tool: data.read_projection
           scopes:
             - runx:data:read
           inputs:
-            operation: read_projection
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: "$input.resource"
             aggregate_id: "$input.aggregate_id"

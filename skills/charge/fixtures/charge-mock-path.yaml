@@ -5,83 +5,33 @@ runner: mock
 inputs:
   mcp_tool_call:
     tool: search.paid
-    arguments:
-      query: runx
+    arguments: { query: runx }
   provider_policy:
+    policy_ref: policy:provider-demo
     price_minor: 125
     currency: USD
-    accepted_settlement_families:
-      - mock
+    accepted_settlement_families: [mock]
     counterparty: provider:demo
+    realm: test
   returned_credential:
     family: mock
     credential_ref: credential:mock:paid-search-001
   verify_capability_ref: capability:charge-verify:paid-search-001
   idempotency_seed: paid-search-001
-caller:
-  answers:
-    agent_task.charge-price.output:
-      charge_price:
-        price_id: charge_price_demo_001
-        amount_minor: 125
-        currency: USD
-        settlement_families:
-          - mock
-      requested_payment_authority:
-        authority_ref: authority:payment:charge-price-demo-001
-      price_evidence:
-        source_refs:
-          - policy:provider-demo
-          - tool-call:search.paid
-        redactions: []
-      policy_metadata:
-        provider_realm: test
-        direction: provider_charge
-      open_questions: []
-    agent_task.charge-challenge.output:
-      effect_required_signal:
-        signal_type: effect_required
-        challenge_id: charge_challenge_demo_001
-      charge_challenge:
-        challenge_id: charge_challenge_demo_001
-        receipt_before_forward_required: true
-      idempotency:
-        key: charge:paid-search-001
-      accepted_settlement_families:
-        - mock
-      open_questions: []
-    agent_task.charge-verify.output:
-      verification_result:
-        status: verified
-        settlement_family: mock
-      settlement_proof:
-        proof_ref: receipt-proof:charge:mock:paid-search-001
-        idempotency_key: charge:paid-search-001
-      sealed_receipt_ref: receipt:charge:mock:paid-search-001
-      redactions:
-        - credential_material
-      recovery_hint:
-        status: sealed
-    agent_task.seal.output:
-      sealed: true
-      receipt_ref: receipt:charge:mock:paid-search-001
-    agent_task.forward.output:
-      forwarded: true
-      result_ref: result:search:paid-search-001
-  approvals: {}
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
-    state: sealed
-    disposition: closed
-    reason_code: graph_closed
-  steps:
-    - price
-    - challenge
-    - verify
-    - seal
-    - forward
+  steps: [price, challenge, verify, finalize]
+  step_outputs:
+    finalize:
+      subset:
+        charge_plan:
+          data:
+            decision: ready_for_provider_verification
+            provider_status: not_called
+            receipt_status: not_sealed
+            forwarding_status: not_forwarded
+            runtime_forwarding_enabled: false
+  receipt: { schema: runx.receipt.v1 }
 metadata:
   public_skill: charge
   source_case: charge-mock-path

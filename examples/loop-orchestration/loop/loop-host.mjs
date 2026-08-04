@@ -43,7 +43,6 @@ function runTurn({ runx, receiptDir, loopId, turnIndex, maxTurns, objective, pre
   const result = runCommand(runx, [
     "skill",
     EXAMPLE,
-    "--runner",
     "turn",
     "--receipt-dir",
     receiptDir,
@@ -72,7 +71,6 @@ function runContextPreview({ runx, receiptDir }) {
     [
       "skill",
       EXAMPLE,
-      "--runner",
       "context-gate",
       "--receipt-dir",
       receiptDir,
@@ -85,15 +83,15 @@ function runContextPreview({ runx, receiptDir }) {
   return JSON.parse(result.stdout);
 }
 
-function payloadFrom(result) {
-  if (!result || result.status !== "sealed" || !result.payload) {
-    throw new Error(`expected sealed runx skill result, got ${JSON.stringify(result)}`);
+function resultFrom(envelope) {
+  if (!envelope || envelope.status !== "sealed" || !envelope.result) {
+    throw new Error(`expected sealed runx skill result, got ${JSON.stringify(envelope)}`);
   }
-  return result.payload;
+  return envelope.result;
 }
 
 function printTurn(result) {
-  const payload = payloadFrom(result);
+  const payload = resultFrom(result);
   console.log(
     [
       `turn ${payload.turn_index}`,

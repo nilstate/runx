@@ -1,7 +1,6 @@
-use std::collections::BTreeMap;
 use std::path::Path;
 
-use runx_runtime::export::{RunxExportSkill, RunxExportSkillInput};
+use runx_runtime::export::{RunxExportMode, RunxExportRunner, RunxExportSkill};
 
 use super::{GeneratedFile, Target, display_path};
 
@@ -40,6 +39,9 @@ fn render_shim(
     command_target: &str,
     runx_bin: &Path,
 ) -> String {
+    if skill.mode == RunxExportMode::NativeInstructions {
+        return render_native_instructions(target, skill, runx_bin);
+    }
     let mut output = String::new();
     output.push_str("---\n");
     output.push_str(&format!("name: {}\n", yaml_plain_or_quoted(&skill.name)));
@@ -64,16 +66,39 @@ fn render_shim(
 If any `RUNX_RECEIPT_SIGN_*` variable is present, the complete signer tuple must be present or \
 runx fails closed. Never invent, copy, or print signing keys.\n\n",
     );
-    output.push_str("```bash\n");
-    output.push_str(&render_command(
-        command_target,
-        &skill.inputs,
-        &display_path(runx_bin),
-    ));
-    output.push_str("\n```\n\n");
-    output.push_str(&render_inputs(&skill.inputs));
+    output.push_str(&render_source_manual(skill));
+    for runner in &skill.runners {
+        output.push_str(&render_runner(
+            command_target,
+            runner,
+            &display_path(runx_bin),
+        ));
+    }
     output.push('\n');
     output.push_str(&render_continuation(&display_path(runx_bin)));
+    output.push_str(&format!(
+        "<!-- {} source={} package-digest={} - generated, do not edit -->\n",
+        target.marker(),
+        display_path(&skill.abs_dir),
+        skill.package_digest,
+    ));
+    output
+}
+
+fn render_native_instructions(target: Target, skill: &RunxExportSkill, runx_bin: &Path) -> String {
+    let mut output = String::new();
+    output.push_str("---\n");
+    output.push_str(&format!("name: {}\n", yaml_plain_or_quoted(&skill.name)));
+    output.push_str("description: |-\n");
+    output.push_str(&indent_block(&skill.description));
+    if target == Target::Claude {
+        output.push_str(&format!(
+            "allowed-tools: Bash({} *)\n",
+            shell_quote(&display_path(runx_bin))
+        ));
+    }
+    output.push_str("---\n");
+    output.push_str(&render_source_manual(skill));
     output.push_str(&format!(
         "<!-- {} source={} - generated, do not edit -->\n",
         target.marker(),
@@ -82,41 +107,89 @@ runx fails closed. Never invent, copy, or print signing keys.\n\n",
     output
 }
 
-fn render_command(
+fn render_source_manual(skill: &RunxExportSkill) -> String {
+    format!(
+        "<!-- runx-source-manual-begin digest={} package-digest={} bytes={} -->\n{}<!-- runx-source-manual-end -->\n\n",
+        skill.manual_digest,
+        skill.package_digest,
+        skill.manual_markdown.len(),
+        skill.manual_markdown
+    )
+}
+
+fn render_runner(command_target: &str, runner: &RunxExportRunner, runx_bin: &str) -> String {
+    let mut output = String::new();
+    let title = runner.name.as_deref().unwrap_or("default");
+    let default = if runner.default { " (default)" } else { "" };
+    output.push_str(&format!("## Runner `{title}`{default}\n\n"));
+    output.push_str("Inspect this exact contract from the source package:\n\n```bash\n");
+    output.push_str(&render_inspect_command(command_target, runner, runx_bin));
+    output.push_str("\n```\n\nInput contract:\n\n```json\n");
+    let schema =
+        runx_contracts::input_contract_schema_with_examples(&runner.inputs, &runner.examples);
+    output.push_str(
+        &serde_json::to_string_pretty(&schema)
+            .unwrap_or_else(|_| "{\"type\":\"object\"}".to_owned()),
+    );
+    output.push_str("\n```\n\n");
+    if !runner.examples.is_empty() {
+        output.push_str("Validated invocation example:\n\n");
+    } else {
+        output.push_str("Invocation template (replace placeholders before running):\n\n");
+    }
+    output.push_str("```bash\n");
+    output.push_str(&render_command(command_target, runner, runx_bin));
+    output.push_str("\n```\n\n");
+    output
+}
+
+fn render_inspect_command(
     command_target: &str,
-    inputs: &BTreeMap<String, RunxExportSkillInput>,
+    runner: &RunxExportRunner,
     runx_bin: &str,
 ) -> String {
-    let mut lines = vec![format!(
+    let mut command = format!(
+        "{} skill inspect {}",
+        shell_quote(runx_bin),
+        shell_quote(command_target),
+    );
+    if let Some(name) = &runner.name {
+        command.push(' ');
+        command.push_str(&shell_quote(name));
+    }
+    command.push_str(" --json");
+    command
+}
+
+fn render_command(command_target: &str, runner: &RunxExportRunner, runx_bin: &str) -> String {
+    let mut command = format!(
         "{} skill {}",
         shell_quote(runx_bin),
         shell_quote(command_target)
-    )];
-    for name in inputs.keys() {
-        lines.push(format!("  --{name} \"<{name}>\""));
+    );
+    if let Some(name) = &runner.name {
+        command.push(' ');
+        command.push_str(&shell_quote(name));
+    }
+    let mut lines = vec![command];
+    if let Some(example) = runner.examples.first() {
+        for (name, value) in example {
+            let encoded = serde_json::to_string(value).unwrap_or_else(|_| "null".to_owned());
+            lines.push(format!(
+                "  --input-json {} {}",
+                shell_quote(name),
+                shell_quote(&encoded)
+            ));
+        }
+    } else {
+        for (name, input) in &runner.inputs {
+            if input.required && input.default.is_none() {
+                lines.push(format!("  --{name} \"<{name}>\""));
+            }
+        }
     }
     lines.push("  --json".to_owned());
     lines.join(" \\\n")
-}
-
-fn render_inputs(inputs: &BTreeMap<String, RunxExportSkillInput>) -> String {
-    if inputs.is_empty() {
-        return "Inputs: none.\n".to_owned();
-    }
-    let mut lines = vec!["Inputs:".to_owned()];
-    for (name, input) in inputs {
-        let requirement = if input.required {
-            "required"
-        } else {
-            "optional"
-        };
-        let description = input
-            .description
-            .as_deref()
-            .unwrap_or("No description provided.");
-        lines.push(format!("- {name} ({requirement}) - {description}"));
-    }
-    format!("{}\n", lines.join("\n"))
 }
 
 fn render_continuation(runx_bin: &str) -> String {
@@ -124,7 +197,7 @@ fn render_continuation(runx_bin: &str) -> String {
         "\
 Interpret the runx JSON result exactly:
 - If `status` is `sealed`, surface the receipt id, status, and artifact ids.
-- If runx returns `status` `needs_agent`, inspect `requests[]`. For each request with `kind` `agent_act`, treat `request.invocation.envelope` as the only task packet: use its `inputs`, `current_context`, `historical_context`, `instructions`, and `output` contract; do not use tools outside `allowed_tools`.
+- If runx returns `status` `needs_agent`, inspect `requests[]`. For each request with `kind` `agent_act`, treat `request.invocation.envelope` as the only task packet: verify `instructions` against `instructions_sha256`, use its `inputs`, progressive `current_context` summaries, `historical_context`, exact `instructions`, and `output` contract; do not use tools outside `allowed_tools`.
 - Write an answers JSON file outside the skill package with one key per request id:
 
 ```json

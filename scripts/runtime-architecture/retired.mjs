@@ -1,0 +1,166 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+import {
+  isArchitectureCheckFile,
+  relative,
+  rustFiles,
+  splitIdentifierParts,
+  walk,
+  workspaceRoot,
+} from "./context.mjs";
+
+export function checkRetiredRuntimeSurfaces(findings) {
+  for (const relPath of [
+    "crates/runx-runtime/src/adapters/catalog.rs",
+    "crates/runx-runtime/src/adapters/http.rs",
+    "fixtures/runtime/adapters/catalog",
+    "fixtures/parser/tool-manifests/catalog-tool-json.json",
+    "examples/http-tool-catalog",
+    "examples/orchestrator-webhooks",
+    "tools/orchestrators/n8n_handoff",
+    "tools/orchestrators/zapier_handoff",
+    "scripts/check-orchestrator-webhook-templates.mjs",
+  ]) {
+    if (existsSync(path.join(workspaceRoot, relPath))) {
+      findings.push(`${relPath} is a retired parallel runtime surface`);
+    }
+  }
+  for (const root of ["tools", "examples", "skills"]) {
+    const absoluteRoot = path.join(workspaceRoot, root);
+    for (const filePath of existsSync(absoluteRoot) ? walk(absoluteRoot) : []) {
+      if (path.basename(filePath) !== "manifest.json") continue;
+      let manifest;
+      try {
+        manifest = JSON.parse(readFileSync(filePath, "utf8"));
+      } catch {
+        continue;
+      }
+      if (["http", "catalog"].includes(manifest?.source?.type)) {
+        findings.push(
+          `${relative(filePath)} retains retired source.type ${manifest.source.type}; use a graph tool step`,
+        );
+      }
+    }
+  }
+  const toolParserPath = path.join(workspaceRoot, "crates/runx-parser/src/tool.rs");
+  const toolParser = existsSync(toolParserPath) ? readFileSync(toolParserPath, "utf8") : "";
+  if (/normalize_tool_manifest_shape|"catalog"\s*\|/u.test(toolParser)) {
+    findings.push(`${relative(toolParserPath)} retains retired tool-source normalization or admission`);
+  }
+  const toolContractPath = path.join(
+    workspaceRoot,
+    "packages/contracts/src/schemas/tool-manifest.ts",
+  );
+  const toolContract = existsSync(toolContractPath) ? readFileSync(toolContractPath, "utf8") : "";
+  if (/ToolManifestHttpSourceContract|"catalog"|"http"|catalog_ref/u.test(toolContract)) {
+    findings.push(`${relative(toolContractPath)} drifts from the generated canonical tool-source schema`);
+  }
+  for (const filePath of rustFiles("crates/runx-runtime/src")) {
+    const source = readFileSync(filePath, "utf8");
+    if (/\bCatalogAdapter\b|\badapters::catalog\b/u.test(source)) {
+      findings.push(`${relative(filePath)} retains the displaced catalog adapter`);
+    }
+  }
+  const runnerFiles = [
+    ...rustFiles("crates/runx-runtime/src/execution/runner"),
+    path.join(workspaceRoot, "crates/runx-runtime/src/execution/runner.rs"),
+  ].filter(existsSync);
+  for (const filePath of runnerFiles) {
+    const source = readFileSync(filePath, "utf8");
+    for (const pattern of [
+      /\bpayment_supervisor\b/u,
+      /\b(?:crate|runx_runtime)::payment::state\b/u,
+      /\b(?:use\s+)?crate::payment::/u,
+    ]) {
+      if (pattern.test(source)) {
+        findings.push(`${relative(filePath)} retains retired payment orchestration ${pattern}`);
+      }
+    }
+  }
+
+  const domainTokens = new Set(["payment", "settlement", "spend", "x402", "rail"]);
+  for (const root of [
+    "crates/runx-runtime/src",
+    "crates/runx-core/src",
+    "crates/runx-contracts/src",
+  ]) {
+    for (const filePath of rustFiles(root)) {
+      const lines = readFileSync(filePath, "utf8").split(/\r?\n/u);
+      lines.forEach((line, index) => {
+        for (const token of line.matchAll(/[A-Za-z_][A-Za-z0-9_]*/gu)) {
+          const banned = splitIdentifierParts(token[0]).find((part) => domainTokens.has(part));
+          if (banned) {
+            findings.push(`${relative(filePath)}:${index + 1} contains domain token '${banned}' in '${token[0]}'`);
+          }
+        }
+      });
+    }
+  }
+
+  for (const relPath of [
+    "crates/runx-runtime/src/execution/target_runner.rs",
+    "crates/runx-runtime/src/execution/target_runner",
+    "crates/runx-runtime/src/post_merge_observer.rs",
+    "crates/runx-runtime/src/post_merge_observer",
+    "crates/runx-contracts/src/target_runner.rs",
+    "crates/runx-contracts/src/target_runner",
+    "crates/runx-contracts/src/post_merge_observer.rs",
+    "crates/runx-contracts/src/post_merge_observer",
+  ]) {
+    if (existsSync(path.join(workspaceRoot, relPath))) {
+      findings.push(`${relPath} reintroduces retired provider orchestration`);
+    }
+  }
+
+  const providerClientMarkers = [/\breqwest\b/u, /\bapi\.github\.com\b/u, /\bGITHUB_TOKEN\b/u, /\bbearer_auth\b/u];
+  for (const root of ["crates/runx-runtime/src/adapters", "crates/runx-runtime/src/outbox_provider"]) {
+    for (const filePath of rustFiles(root)) {
+      const source = readFileSync(filePath, "utf8");
+      const marker = providerClientMarkers.find((pattern) => pattern.test(source));
+      if (marker) {
+        findings.push(`${relative(filePath)} contains outbound GitHub provider client marker ${marker}`);
+      }
+    }
+  }
+
+  const retiredWirePatterns = [
+    /PaymentAuthorityBounds/u,
+    /PaymentCredentialForm/u,
+    /\bbounds\.payment\b/u,
+    /max_spend_usd/u,
+    /max_per_call_minor/u,
+    /max_per_run_minor/u,
+    /max_per_period_minor/u,
+    /payment_single_use_spend/u,
+    /single_use_spend_capability/u,
+    /ProofKind::PaymentRail/u,
+    /"payment_rail"/u,
+    /\bpayment_rail\b/u,
+    /EffectSettlementReceipt/u,
+    /\beffect_settlement\b/u,
+    /\beffect-settlement\b/u,
+    /\bpayment_required\b/u,
+    /payment_rail_packet/u,
+    /runx\.payment\.rail\.v1/u,
+    /\bquote_required\b/u,
+    /\breservation_required\b/u,
+    /\bcredential_form\b/u,
+    /\bsingle_use_spend\b/u,
+    /resource_family:\s*payment/u,
+    /"resource_family"\s*:\s*"payment"/u,
+  ];
+  const roots = ["crates/runx-contracts", "packages/contracts/src", "schemas", "fixtures", "skills", "examples", "scripts", "docs"];
+  const extensions = new Set([".rs", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".yaml", ".yml", ".md"]);
+  for (const root of roots) {
+    const absoluteRoot = path.join(workspaceRoot, root);
+    for (const filePath of existsSync(absoluteRoot) ? walk(absoluteRoot) : []) {
+      if (!extensions.has(path.extname(filePath)) || isArchitectureCheckFile(filePath)) continue;
+      const source = readFileSync(filePath, "utf8");
+      const pattern = retiredWirePatterns.find((candidate) => candidate.test(source));
+      if (pattern) {
+        findings.push(`${relative(filePath)} contains retired generic-contract wire name ${pattern}`);
+      }
+    }
+  }
+}

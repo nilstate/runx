@@ -1,7 +1,7 @@
 name: scheduled-campaign-ready
 kind: skill
 target: ..
-runner: send-campaign
+runner: plan-campaign
 inputs:
   objective: Schedule our weekly newsletter to the subscribers list for next Tuesday at 9am.
   account_status_json: '{"status":"healthy","account":{"tier":"pro","can_send":true,"domain_verified":true,"using_sandbox":false,"contact_count":4200,"campaign_count":7},"brand":{"setup_complete":true,"company_name":"Acme Co"},"config":{"from_email":"news@acme.com"},"issues":[],"recommendations":[]}'

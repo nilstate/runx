@@ -12,7 +12,7 @@ The surface is contract-only:
   objects.
 - `act`: governed act payloads and act assignment envelopes.
 - `receipt`: signed governed proof records.
-- `authority`, `decision`, `signal`, `verification`, and Aster objects:
+- `authority`, `decision`, `signal`, `verification`, and governance objects:
   spine contracts used at governed boundaries.
 - `schema_artifacts`: the Rust-owned manifest that emits `oss/schemas/*.json`
   and the generated TypeScript schema artifact table.

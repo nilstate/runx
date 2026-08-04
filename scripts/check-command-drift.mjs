@@ -29,8 +29,6 @@ const retiredSurfaces = [
 ];
 const failures = [];
 
-checkCommandRegistryParity(failures);
-
 for (const relativePath of scannedRoots.flatMap((entry) => textFiles(entry))) {
   const source = readFileSync(path.join(root, relativePath), "utf8");
   for (const retired of retiredSurfaces) {
@@ -46,62 +44,6 @@ if (failures.length > 0) {
 }
 
 console.log("command drift check ok");
-
-function checkCommandRegistryParity(output) {
-  const registrySource = readFileSync(
-    path.join(root, "crates/runx-cli/src/command_spec/catalog.rs"),
-    "utf8",
-  );
-  const registryNames = new Set(
-    [...registrySource.matchAll(/CommandSpec \{\s*name: "([a-z][a-z0-9-]*)"/gu)]
-      .map((match) => match[1]),
-  );
-  const matrix = JSON.parse(readFileSync(path.join(root, "fixtures/cli-parity/commands.json"), "utf8"));
-  const matrixNames = new Set(
-    matrix.commands
-      .filter((command) => command.id !== "cli.help")
-      .map((command) => command.id.split(".")[0]),
-  );
-  for (const name of registryNames) {
-    if (!matrixNames.has(name)) {
-      output.push(`command registry '${name}' is missing from fixtures/cli-parity/commands.json`);
-    }
-  }
-  for (const name of matrixNames) {
-    if (!registryNames.has(name)) {
-      output.push(`CLI parity command '${name}' has no crates/runx-cli command registry entry`);
-    }
-  }
-
-  const registryFlags = new Map(
-    [...registrySource.matchAll(/CommandSpec \{([\s\S]*?)\n    \},/gu)].map((match) => {
-      const name = match[1].match(/\bname: "([a-z][a-z0-9-]*)"/u)?.[1];
-      const flags = new Set(
-        [...match[1].matchAll(/(?:^|[\s"[,|])(--[a-z][a-z0-9-]*|-[A-Za-z])(?=[\s",|\]=]|$)/gmu)]
-          .map((flagMatch) => flagMatch[1]),
-      );
-      return [name, flags];
-    }).filter(([name]) => name),
-  );
-  const parityFlags = new Map();
-  for (const command of matrix.commands) {
-    if (command.id === "cli.help") continue;
-    const name = command.id.split(".")[0];
-    const flags = parityFlags.get(name) ?? new Set();
-    for (const flag of command.flags) {
-      if (flag !== "--help" && flag !== "-h") flags.add(flag);
-    }
-    parityFlags.set(name, flags);
-  }
-  for (const [name, flags] of parityFlags) {
-    const documented = registryFlags.get(name) ?? new Set();
-    for (const flag of flags) {
-      if (!documented.has(flag)) {
-        output.push(`CLI parity flag '${name} ${flag}' is missing from native command help`);
-      }
-    }
-  }
-}
 
 function textFiles(relativePath) {
   if (isIgnoredPath(relativePath)) return [];

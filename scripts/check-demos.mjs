@@ -39,7 +39,7 @@ for (const demo of cases) {
   for (const receipt of demo.receipts) {
     run(
       `${demo.name}:${receipt}`,
-      [node, "examples/governed-spend/verify.mjs", path.join(receiptDir, receipt)],
+      [node, "tools/verify/verify.mjs", path.join(receiptDir, receipt)],
       {},
     );
   }

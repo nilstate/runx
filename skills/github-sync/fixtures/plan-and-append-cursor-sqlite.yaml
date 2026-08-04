@@ -1,4 +1,4 @@
-name: github-sync-plan-and-append-cursor-sqlite
+name: github-sync-persists-cursor-through-native-data-operation
 kind: skill
 target: ..
 runner: plan_and_append_cursor
@@ -9,45 +9,36 @@ inputs:
   resource: github_sync_events
   aggregate_id: runxhq/runx:triage-open
   expected_version: 0
-  idempotency_key: runxhq/runx:triage-open:pull:v1
+  idempotency_key: runxhq/runx:triage-open:pull:v2
   repo: runxhq/runx
   direction: pull
   resources:
     kind: issues
-    filters:
-      state: open
-      label: triage
-      limit: 25
+    filters: { state: open, labels: [triage], limit: 25 }
   scope: read
-caller:
-  answers:
-    agent_task.github-sync.output:
-      sync_plan:
-        decision: ready
-        repo: runxhq/runx
-        direction: pull
-        resources_touched:
-          - kind: issue
-            ref: issue:triage-filter
-            selected_by: state:open label:triage limit:25
-        diff_summary: []
-        scope_used: repo:read
-        gates:
-          approval_required: false
-          approval_ref: null
-        blockers: []
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
-  steps:
-    - read-cursor
-    - plan
-    - append-cursor-event
-    - readback
-metadata:
-  public_skill: github-sync
-  source_case: plan-and-append-cursor-sqlite
-  source: skills-fixture
-  runner_kind: graph
-  graph_shape: sync_cursor
+  steps: [read-cursor, plan, append-cursor-event, readback]
+  step_outputs:
+    plan:
+      subset:
+        sync_plan:
+          data:
+            decision: ready
+            provider_status: not_called
+    append-cursor-event:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            provider_evidence:
+              adapter: data.sqlite
+    readback:
+      subset:
+        data_operation_result:
+          data:
+            operation: read_projection
+            provider_evidence:
+              adapter: data.sqlite
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: github-sync, source_case: cursor-operation-proof, source: skills-fixture }

@@ -1,118 +1,104 @@
 skill: charge
-version: "0.1.1"
+version: "0.3.1"
 catalog:
   kind: graph
   audience: operator
   visibility: public
   role: canonical
+  execution: plan
+  completion: plan
+  requires_adapter: false
+  approval: none
+input_definitions:
+  mcp_tool_call:
+    type: json
+    packet: runx.payment.tool_call.v1
+    required: true
+    description: Inbound MCP operation request.
+  provider_policy:
+    type: json
+    packet: runx.payment.charge_policy.v1
+    required: true
+    description: Provider-owned price and settlement-family policy.
+  returned_credential:
+    type: json
+    packet: runx.payment.credential_reference.v1
+    required: true
+    description: Settlement family and one opaque credential reference.
+  verify_capability_ref:
+    type: string
+    required: true
+    description: Single-use provider verification capability reference.
+    schema: { minLength: 1, maxLength: 512 }
+  idempotency_seed:
+    type: string
+    required: true
+    description: Stable caller-owned challenge idempotency material.
+    schema: { minLength: 1, maxLength: 256 }
 runners:
   mock:
     default: true
     type: graph
     inputs:
       mcp_tool_call:
-        type: object
-        required: true
-        description: Inbound MCP operation request.
+        definition: mcp_tool_call
       provider_policy:
-        type: object
-        required: true
-        description: Provider price and settlement family policy.
+        definition: provider_policy
       returned_credential:
-        type: object
-        required: true
-        description: Returned mock payment credential.
-      parent_payment_authority:
-        type: object
-        required: false
-        description: Parent payment authority term or ref.
+        definition: returned_credential
       verify_capability_ref:
-        type: string
-        required: true
-        description: Single-use verification capability reference.
+        definition: verify_capability_ref
       idempotency_seed:
-        type: string
-        required: false
-        description: Stable challenge idempotency seed.
+        definition: idempotency_seed
+    examples:
+      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+        provider_policy:
+          price_minor: 125
+          currency: USD
+          accepted_settlement_families: [mock]
+          counterparty: provider:demo
+          realm: test
+        returned_credential: { family: mock, credential_ref: credential:mock:paid-search-001 }
+        verify_capability_ref: capability:charge-verify:paid-search-001
+        idempotency_seed: paid-search-001
     graph:
-      name: charge
+      name: charge-mock-plan
+      result_from: [finalize]
       steps:
         - id: price
           skill: graph/charge-price
           runner: price
-          scopes:
-            - payment:quote
           inputs:
-            mcp_tool_call: "$input.mcp_tool_call"
-            provider_policy: "$input.provider_policy"
-            parent_payment_authority: "$input.parent_payment_authority"
-            idempotency_seed: "$input.idempotency_seed"
+            mcp_tool_call: $input.mcp_tool_call
+            provider_policy: $input.provider_policy
         - id: challenge
           skill: graph/charge-challenge
           runner: challenge
-          scopes:
-            - payment:quote
           inputs:
-            provider_policy: "$input.provider_policy"
-            idempotency_seed: "$input.idempotency_seed"
+            idempotency_seed: $input.idempotency_seed
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
           skill: graph/charge-verify
           runner: verify
-          scopes:
-            - payment:verify
-          mutation: true
-          idempotency_key: charge-verify
           inputs:
-            returned_credential: "$input.returned_credential"
-            verify_capability_ref: "$input.verify_capability_ref"
+            returned_credential: $input.returned_credential
+            verify_capability_ref: $input.verify_capability_ref
             settlement_family: mock
           context:
             charge_price_packet: price.charge_price_packet.data
             charge_challenge_packet: challenge.charge_challenge_packet.data
-            priced_payment_authority: price.charge_price_packet.data.requested_payment_authority
             idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: seal
-          run:
-            type: agent-task
-            agent: operator
-            task: seal
-            outputs:
-              sealed: boolean
-              receipt_ref: string
-          inputs:
-            required: true
+        - id: finalize
+          tool: payment.charge_plan
           context:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
-            settlement_proof: verify.charge_verification_packet.data.settlement_proof
-          artifacts:
-            wrap_as: charge_seal
-            packet: runx.payment.charge_seal.v1
-        - id: forward
-          run:
-            type: agent-task
-            agent: operator
-            task: forward
-            outputs:
-              forwarded: boolean
-              result_ref: string
-          inputs:
-            operation: "$input.mcp_tool_call"
-          context:
-            sealed_receipt_ref: seal.charge_seal.data.receipt_ref
-          artifacts:
-            wrap_as: forwarded_result
-      policy:
-        guards:
-          - step: forward
-            field: seal.charge_seal.data.sealed
-            equals: true
+            charge_price_packet: price.charge_price_packet.data
+            charge_challenge_packet: challenge.charge_challenge_packet.data
+            charge_verification_request: verify.charge_verification_request.data
     runx:
       payment_authority:
         direction: provider_charge
-        phase: graph
-        resource_family: effect
+        phase: plan
         settlement_family: mock
         receipt_before_forward_required: true
         runtime_forwarding_enabled: false
@@ -121,108 +107,64 @@ runners:
     type: graph
     inputs:
       mcp_tool_call:
-        type: object
-        required: true
-        description: Inbound MCP operation request.
+        definition: mcp_tool_call
       provider_policy:
-        type: object
-        required: true
-        description: Provider price and settlement family policy.
+        definition: provider_policy
       returned_credential:
-        type: object
-        required: true
-        description: Returned MPP payment credential reference.
-      parent_payment_authority:
-        type: object
-        required: false
-        description: Parent payment authority term or ref.
+        definition: returned_credential
       verify_capability_ref:
-        type: string
-        required: true
-        description: Single-use verification capability reference.
+        definition: verify_capability_ref
       idempotency_seed:
-        type: string
-        required: false
-        description: Stable challenge idempotency seed.
+        definition: idempotency_seed
+    examples:
+      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+        provider_policy:
+          price_minor: 125
+          currency: USD
+          accepted_settlement_families: [mpp]
+          counterparty: provider:demo
+          realm: test
+        returned_credential: { family: mpp, credential_ref: credential:mpp:paid-search-001 }
+        verify_capability_ref: capability:charge-verify:paid-search-001
+        idempotency_seed: paid-search-001
     graph:
-      name: charge
+      name: charge-mpp-plan
+      result_from: [finalize]
       steps:
         - id: price
           skill: graph/charge-price
           runner: price
-          scopes:
-            - payment:quote
           inputs:
-            mcp_tool_call: "$input.mcp_tool_call"
-            provider_policy: "$input.provider_policy"
-            parent_payment_authority: "$input.parent_payment_authority"
-            idempotency_seed: "$input.idempotency_seed"
+            mcp_tool_call: $input.mcp_tool_call
+            provider_policy: $input.provider_policy
         - id: challenge
           skill: graph/charge-challenge
           runner: challenge
-          scopes:
-            - payment:quote
           inputs:
-            provider_policy: "$input.provider_policy"
-            idempotency_seed: "$input.idempotency_seed"
+            idempotency_seed: $input.idempotency_seed
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
           skill: graph/charge-verify
           runner: verify
-          scopes:
-            - payment:verify
-          mutation: true
-          idempotency_key: charge-verify
           inputs:
-            returned_credential: "$input.returned_credential"
-            verify_capability_ref: "$input.verify_capability_ref"
+            returned_credential: $input.returned_credential
+            verify_capability_ref: $input.verify_capability_ref
             settlement_family: mpp
           context:
             charge_price_packet: price.charge_price_packet.data
             charge_challenge_packet: challenge.charge_challenge_packet.data
-            priced_payment_authority: price.charge_price_packet.data.requested_payment_authority
             idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: seal
-          run:
-            type: agent-task
-            agent: operator
-            task: seal
-            outputs:
-              sealed: boolean
-              receipt_ref: string
-          inputs:
-            required: true
+        - id: finalize
+          tool: payment.charge_plan
           context:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
-            settlement_proof: verify.charge_verification_packet.data.settlement_proof
-          artifacts:
-            wrap_as: charge_seal
-            packet: runx.payment.charge_seal.v1
-        - id: forward
-          run:
-            type: agent-task
-            agent: operator
-            task: forward
-            outputs:
-              forwarded: boolean
-              result_ref: string
-          inputs:
-            operation: "$input.mcp_tool_call"
-          context:
-            sealed_receipt_ref: seal.charge_seal.data.receipt_ref
-          artifacts:
-            wrap_as: forwarded_result
-      policy:
-        guards:
-          - step: forward
-            field: seal.charge_seal.data.sealed
-            equals: true
+            charge_price_packet: price.charge_price_packet.data
+            charge_challenge_packet: challenge.charge_challenge_packet.data
+            charge_verification_request: verify.charge_verification_request.data
     runx:
       payment_authority:
         direction: provider_charge
-        phase: graph
-        resource_family: effect
+        phase: plan
         settlement_family: mpp
         receipt_before_forward_required: true
         runtime_forwarding_enabled: false
@@ -231,108 +173,64 @@ runners:
     type: graph
     inputs:
       mcp_tool_call:
-        type: object
-        required: true
-        description: Inbound MCP operation request.
+        definition: mcp_tool_call
       provider_policy:
-        type: object
-        required: true
-        description: Provider price and settlement family policy.
+        definition: provider_policy
       returned_credential:
-        type: object
-        required: true
-        description: Returned Stripe payment credential reference.
-      parent_payment_authority:
-        type: object
-        required: false
-        description: Parent payment authority term or ref.
+        definition: returned_credential
       verify_capability_ref:
-        type: string
-        required: true
-        description: Single-use verification capability reference.
+        definition: verify_capability_ref
       idempotency_seed:
-        type: string
-        required: false
-        description: Stable challenge idempotency seed.
+        definition: idempotency_seed
+    examples:
+      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+        provider_policy:
+          price_minor: 125
+          currency: USD
+          accepted_settlement_families: [stripe]
+          counterparty: provider:demo
+          realm: test
+        returned_credential: { family: stripe, credential_ref: credential:stripe:paid-search-001 }
+        verify_capability_ref: capability:charge-verify:paid-search-001
+        idempotency_seed: paid-search-001
     graph:
-      name: charge
+      name: charge-stripe-plan
+      result_from: [finalize]
       steps:
         - id: price
           skill: graph/charge-price
           runner: price
-          scopes:
-            - payment:quote
           inputs:
-            mcp_tool_call: "$input.mcp_tool_call"
-            provider_policy: "$input.provider_policy"
-            parent_payment_authority: "$input.parent_payment_authority"
-            idempotency_seed: "$input.idempotency_seed"
+            mcp_tool_call: $input.mcp_tool_call
+            provider_policy: $input.provider_policy
         - id: challenge
           skill: graph/charge-challenge
           runner: challenge
-          scopes:
-            - payment:quote
           inputs:
-            provider_policy: "$input.provider_policy"
-            idempotency_seed: "$input.idempotency_seed"
+            idempotency_seed: $input.idempotency_seed
           context:
             charge_price_packet: price.charge_price_packet.data
         - id: verify
           skill: graph/charge-verify
           runner: verify
-          scopes:
-            - payment:verify
-          mutation: true
-          idempotency_key: charge-verify
           inputs:
-            returned_credential: "$input.returned_credential"
-            verify_capability_ref: "$input.verify_capability_ref"
+            returned_credential: $input.returned_credential
+            verify_capability_ref: $input.verify_capability_ref
             settlement_family: stripe
           context:
             charge_price_packet: price.charge_price_packet.data
             charge_challenge_packet: challenge.charge_challenge_packet.data
-            priced_payment_authority: price.charge_price_packet.data.requested_payment_authority
             idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: seal
-          run:
-            type: agent-task
-            agent: operator
-            task: seal
-            outputs:
-              sealed: boolean
-              receipt_ref: string
-          inputs:
-            required: true
+        - id: finalize
+          tool: payment.charge_plan
           context:
-            receipt_ref: verify.charge_verification_packet.data.sealed_receipt_ref
-            settlement_proof: verify.charge_verification_packet.data.settlement_proof
-          artifacts:
-            wrap_as: charge_seal
-            packet: runx.payment.charge_seal.v1
-        - id: forward
-          run:
-            type: agent-task
-            agent: operator
-            task: forward
-            outputs:
-              forwarded: boolean
-              result_ref: string
-          inputs:
-            operation: "$input.mcp_tool_call"
-          context:
-            sealed_receipt_ref: seal.charge_seal.data.receipt_ref
-          artifacts:
-            wrap_as: forwarded_result
-      policy:
-        guards:
-          - step: forward
-            field: seal.charge_seal.data.sealed
-            equals: true
+            charge_price_packet: price.charge_price_packet.data
+            charge_challenge_packet: challenge.charge_challenge_packet.data
+            charge_verification_request: verify.charge_verification_request.data
     runx:
       payment_authority:
         direction: provider_charge
-        phase: graph
-        resource_family: effect
+        phase: plan
         settlement_family: stripe
         receipt_before_forward_required: true
         runtime_forwarding_enabled: false

@@ -14,14 +14,13 @@ use runx_contracts::{
     ExternalAdapterHostResolutionFrame, ExternalAdapterHostResolutionSchema,
     ExternalAdapterInvocation, ExternalAdapterInvocationSchema, ExternalAdapterManifest,
     ExternalAdapterManifestSchema, ExternalAdapterProtocolVersion, ExternalAdapterResponse,
-    ExternalAdapterSandboxIntent, ExternalAdapterStatus, ExternalAdapterTimeouts,
-    ExternalAdapterTransport, ExternalAdapterTransportKind, JsonNumber, JsonObject, JsonValue,
-    Question, Reference, ReferenceType, ResolutionRequest, ResolutionResponse,
-    ResolutionResponseActor,
+    ExternalAdapterStatus, ExternalAdapterTimeouts, ExternalAdapterTransport,
+    ExternalAdapterTransportKind, JsonNumber, JsonObject, JsonValue, Question, Reference,
+    ReferenceType, ResolutionRequest, ResolutionResponse, ResolutionResponseActor,
 };
 use runx_core::policy::{CredentialBindingDecision, CredentialEnvelope};
 use runx_core::state_machine::GraphStatus;
-use runx_parser::SkillSource;
+use runx_parser::{SkillExternalAdapterManifest, SkillSource};
 use runx_runtime::adapters::external_adapter::{
     ExternalAdapterProcessSupervisor, ExternalAdapterSkillAdapter, ExternalAdapterSupervisorError,
 };
@@ -34,9 +33,6 @@ use runx_runtime::{
 const MANIFEST_SCHEMA: &str = "runx.external_adapter.manifest.v1";
 const RESPONSE_SCHEMA: &str = "runx.external_adapter.response.v1";
 const PROTOCOL_VERSION: &str = "runx.external_adapter.v1";
-const SANDBOX_FALLBACK_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
-const SANDBOX_FALLBACK_VALUE: &str = "local";
-
 #[test]
 fn external_adapter_process_supervisor_invokes_contract_process()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -52,9 +48,7 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
 /bin/cat "$RUNX_RESPONSE_PATH"
 "#,
     )?;
-    let mut manifest = manifest_for_script(&script)?;
-    manifest.sandbox_intent.profile = "workspace-write".into();
-    manifest.sandbox_intent.writable_paths = Some(vec!["captured-invocation.json".into()]);
+    let manifest = manifest_for_script(&script)?;
     let invocation = invocation_with_env([
         ("RUNX_CWD", path_string(temp.path())?),
         (
@@ -62,7 +56,6 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
             path_string(capture_path.as_path())?,
         ),
         ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
-        local_sandbox_fallback_env(),
     ]);
 
     let outcome = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation)?;
@@ -80,85 +73,6 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
 }
 
 #[test]
-fn external_adapter_process_supervisor_allows_network_sandbox_intent()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let response_path = temp.path().join("response.json");
-    fs::write(&response_path, serde_json::to_vec(&completed_response())?)?;
-    let script = write_cat_response_script(temp.path())?;
-    let mut manifest = manifest_for_script(&script)?;
-    manifest.sandbox_intent.profile = "network".into();
-    manifest.sandbox_intent.network = true;
-    let invocation = invocation_with_env([
-        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-        local_sandbox_fallback_env(),
-    ]);
-
-    let outcome = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation)?;
-
-    assert_eq!(outcome.response.status, ExternalAdapterStatus::Completed);
-    Ok(())
-}
-
-#[test]
-fn external_adapter_process_supervisor_rejects_unsupported_sandbox_profile_before_spawn()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let marker_path = temp.path().join("spawned");
-    let script = write_script(
-        temp.path(),
-        r#"set -eu
-printf 'spawned' > "$RUNX_SPAWNED_MARKER"
-"#,
-    )?;
-    let mut manifest = manifest_for_script(&script)?;
-    manifest.sandbox_intent.profile = "superuser".into();
-    let invocation = invocation_with_env([("RUNX_SPAWNED_MARKER", path_string(&marker_path)?)]);
-
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation) else {
-        return Err("unsupported sandbox profile must fail closed".into());
-    };
-
-    assert!(matches!(
-        error,
-        ExternalAdapterSupervisorError::SandboxDenied { message }
-            if message.contains("unsupported external adapter sandbox profile 'superuser'")
-    ));
-    assert!(!marker_path.exists());
-    Ok(())
-}
-
-#[test]
-fn external_adapter_process_supervisor_rejects_network_sandbox_writable_paths_before_spawn()
--> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let marker_path = temp.path().join("spawned");
-    let script = write_script(
-        temp.path(),
-        r#"set -eu
-printf 'spawned' > "$RUNX_SPAWNED_MARKER"
-"#,
-    )?;
-    let mut manifest = manifest_for_script(&script)?;
-    manifest.sandbox_intent.profile = "network".into();
-    manifest.sandbox_intent.network = true;
-    manifest.sandbox_intent.writable_paths = Some(vec!["out.json".into()]);
-    let invocation = invocation_with_env([("RUNX_SPAWNED_MARKER", path_string(&marker_path)?)]);
-
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation) else {
-        return Err("network sandbox with writable paths must fail closed".into());
-    };
-
-    assert!(matches!(
-        error,
-        ExternalAdapterSupervisorError::SandboxDenied { message }
-            if message.contains("network sandbox cannot declare writable paths")
-    ));
-    assert!(!marker_path.exists());
-    Ok(())
-}
-
-#[test]
 fn external_adapter_process_supervisor_rejects_mismatched_response_identity()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
@@ -167,10 +81,7 @@ fn external_adapter_process_supervisor_rejects_mismatched_response_identity()
     response.adapter_id = "adapter.other".to_owned();
     fs::write(&response_path, serde_json::to_vec(&response)?)?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([
-        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-        local_sandbox_fallback_env(),
-    ]);
+    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
 
     let Err(error) =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)
@@ -198,10 +109,7 @@ fn external_adapter_process_supervisor_rejects_unexpected_credential_request()
         br#"{"schema":"runx.external_adapter.credential_request.v1","protocol_version":"runx.external_adapter.v1","request_id":"cred_req_1","adapter_id":"adapter.github.issue-intake","invocation_id":"external_inv_123","credential_refs":[],"requested_at":"2026-05-21T15:00:01Z"}"#,
     )?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([
-        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-        local_sandbox_fallback_env(),
-    ]);
+    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
 
     let Err(error) =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)
@@ -230,7 +138,7 @@ IFS= read -r _invocation
     )?;
     let mut manifest = manifest_for_script(&script)?;
     manifest.timeouts.invocation_ms = 50;
-    let invocation = invocation_with_env([local_sandbox_fallback_env()]);
+    let invocation = invocation_with_env([]);
 
     let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation) else {
         return Err("timed out process must fail closed".into());
@@ -261,34 +169,31 @@ fn external_adapter_process_supervisor_timeout_kills_descendant_processes()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let sentinel_path = temp.path().join("descendant-survived");
-    let pid_path = temp.path().join("descendant-pid");
-    // The parent records the backgrounded descendant's pid via `$!`; the test
-    // polls that pid for death instead of sleeping a fixed window.
+    let started_path = temp.path().join("descendant-started");
+    // A nested PID namespace does not always expose the host PID in NSpid.
+    // Prove the descendant actually started, then wait past its sentinel
+    // deadline. This tests observable survival without confusing a
+    // namespace-local PID with an unrelated host process.
     let script = write_script(
         temp.path(),
         r#"set -eu
 IFS= read -r _invocation
 (
-  /bin/sleep 3
+  printf started > "$RUNX_DESCENDANT_STARTED"
+  /bin/sleep 2
   printf survived > "$RUNX_DESCENDANT_SENTINEL"
 ) &
-echo $! > "$RUNX_DESCENDANT_PIDFILE"
 /bin/sleep 10
 "#,
     )?;
     let mut manifest = manifest_for_script(&script)?;
-    manifest.timeouts.invocation_ms = 1_000;
-    // Under the readonly intent the sandbox swallows the pid and sentinel writes,
-    // leaving the survived-descendant assertion vacuous; anchor the workspace at
-    // the test's temp dir (RUNX_CWD) and scope write access to it so both
-    // signals are observable.
-    manifest.sandbox_intent.profile = "workspace-write".into();
-    manifest.sandbox_intent.writable_paths = Some(vec![path_string(temp.path())?.into()]);
+    manifest.timeouts.invocation_ms = 500;
+    // Anchor the workspace at the test's temp dir so both process-tree signals
+    // are observable.
     let invocation = invocation_with_env([
         ("RUNX_DESCENDANT_SENTINEL", path_string(&sentinel_path)?),
-        ("RUNX_DESCENDANT_PIDFILE", path_string(&pid_path)?),
+        ("RUNX_DESCENDANT_STARTED", path_string(&started_path)?),
         ("RUNX_CWD", path_string(temp.path())?),
-        local_sandbox_fallback_env(),
     ]);
 
     let started = Instant::now();
@@ -299,9 +204,13 @@ echo $! > "$RUNX_DESCENDANT_PIDFILE"
     let ExternalAdapterSupervisorError::TimedOut { timeout_ms, .. } = error else {
         return Err(format!("unexpected timeout error: {error}").into());
     };
-    assert_eq!(timeout_ms, 1_000);
+    assert_eq!(timeout_ms, 500);
     assert!(started.elapsed() < Duration::from_secs(5));
-    crate::support::wait_for_recorded_pid_exit(&pid_path, Duration::from_secs(5))?;
+    assert!(
+        started_path.exists(),
+        "descendant never started before external adapter timeout"
+    );
+    std::thread::sleep(Duration::from_millis(1_750));
     assert!(
         !sentinel_path.exists(),
         "descendant process survived external adapter timeout"
@@ -321,10 +230,9 @@ exit 12
 "#,
     )?;
 
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
-        &manifest_for_script(&script)?,
-        &invocation_with_env([local_sandbox_fallback_env()]),
-    ) else {
+    let Err(error) = ExternalAdapterProcessSupervisor
+        .invoke(&manifest_for_script(&script)?, &invocation_with_env([]))
+    else {
         return Err("crashed process must fail closed".into());
     };
 
@@ -343,10 +251,8 @@ fn external_adapter_process_supervisor_rejects_spawn_failure()
     let missing_command = path_string(&temp.path().join("missing-shell"))?;
     manifest.transport.command = Some(missing_command.clone().into());
 
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
-        &manifest,
-        &invocation_with_env([local_sandbox_fallback_env()]),
-    ) else {
+    let Err(error) = ExternalAdapterProcessSupervisor.invoke(&manifest, &invocation_with_env([]))
+    else {
         return Err("spawn failure must fail closed".into());
     };
 
@@ -354,10 +260,6 @@ fn external_adapter_process_supervisor_rejects_spawn_failure()
         ExternalAdapterSupervisorError::Io { context, .. } => {
             assert!(context.starts_with("spawning external adapter process `"));
             assert!(context.contains(&missing_command));
-        }
-        ExternalAdapterSupervisorError::ProcessFailed { .. } => {
-            // A platform sandbox wrapper may spawn successfully and then fail
-            // inside the wrapper when the child command is missing.
         }
         error => {
             return Err(format!("unexpected spawn failure mapping: {error:?}").into());
@@ -374,19 +276,18 @@ fn external_adapter_process_supervisor_rejects_oversized_stdout()
         temp.path(),
         r#"set -eu
 IFS= read -r _invocation
-chunk=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+chunk=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 i=0
-while [ "$i" -lt 20000 ]; do
+while [ "$i" -lt 9000 ]; do
   printf '%s' "$chunk"
   i=$((i + 1))
 done
 "#,
     )?;
 
-    let Err(error) = ExternalAdapterProcessSupervisor.invoke(
-        &manifest_for_script(&script)?,
-        &invocation_with_env([local_sandbox_fallback_env()]),
-    ) else {
+    let Err(error) = ExternalAdapterProcessSupervisor
+        .invoke(&manifest_for_script(&script)?, &invocation_with_env([]))
+    else {
         return Err("oversized stdout must fail closed".into());
     };
 
@@ -402,18 +303,13 @@ fn external_adapter_process_supervisor_rejects_unknown_protocol_before_spawn()
 -> Result<(), Box<dyn std::error::Error>> {
     let manifest = serde_json::json!({
         "schema": MANIFEST_SCHEMA,
-        "protocol_version": "runx.external_adapter.v2",
+        "protocol_version": "runx.external_adapter.unsupported",
         "adapter_id": "adapter.github.issue-intake",
         "name": "GitHub issue intake adapter",
         "version": "0.1.0",
         "supported_source_types": ["external-adapter"],
         "transport": { "kind": "process", "command": "/bin/sh" },
-        "timeouts": { "startup_ms": 500, "invocation_ms": 2_000 },
-        "sandbox_intent": {
-            "profile": "readonly",
-            "network": false,
-            "cwd_policy": "skill-directory"
-        }
+        "timeouts": { "startup_ms": 500, "invocation_ms": 2_000 }
     });
     let error = match serde_json::from_value::<ExternalAdapterManifest>(manifest) {
         Ok(_) => {
@@ -489,15 +385,15 @@ esac
 
     let run = Runtime::new(
         ExternalAdapterSkillAdapter::default(),
-        local_runtime_options_with_sandbox_fallback(),
+        local_runtime_options(),
     )
     .run_graph_file(&graph_path)?;
 
     assert_eq!(run.state.status, GraphStatus::Succeeded);
     assert_eq!(run.steps.len(), 1);
     assert_eq!(
-        run.steps[0].output.stdout,
-        "{\"summary\":\"graph reached supervisor\"}"
+        run.steps[0].contract.get("summary"),
+        Some(&JsonValue::String("graph reached supervisor".to_owned()))
     );
     Ok(())
 }
@@ -520,10 +416,7 @@ fn external_adapter_manifest_path_resolves_below_skill_directory()
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
         temp.path(),
         skill_source_manifest_path("external-adapter.manifest.json")?,
-        [
-            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-            local_sandbox_fallback_env(),
-        ],
+        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
         CredentialDelivery::none(),
     )?)?;
 
@@ -532,13 +425,20 @@ fn external_adapter_manifest_path_resolves_below_skill_directory()
 }
 
 #[test]
-fn external_adapter_manifest_path_rejects_directory_escape()
+fn external_adapter_manifest_path_rejects_typed_directory_escape()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
+    let skill_dir = temp.path().join("skill");
+    fs::create_dir(&skill_dir)?;
+    fs::write(temp.path().join("external-adapter.manifest.json"), b"{}")?;
+    let mut source = skill_source_manifest_path("external-adapter.manifest.json")?;
+    source.external_adapter = Some(SkillExternalAdapterManifest::Path(
+        "../external-adapter.manifest.json".to_owned(),
+    ));
 
     let Err(error) = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
-        temp.path(),
-        skill_source_manifest_path("../external-adapter.manifest.json")?,
+        &skill_dir,
+        source,
         [],
         CredentialDelivery::none(),
     )?) else {
@@ -548,7 +448,7 @@ fn external_adapter_manifest_path_rejects_directory_escape()
     assert!(matches!(
         error,
         RuntimeError::SkillFailed { message, .. }
-            if message.contains("relative path below the skill directory")
+            if message.contains("escapes the skill directory")
     ));
     Ok(())
 }
@@ -611,10 +511,7 @@ esac
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
         temp.path(),
         skill_source(Some(manifest))?,
-        [
-            ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
-            local_sandbox_fallback_env(),
-        ],
+        [("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?)],
         credential_observation_only(),
     )?)?;
 
@@ -646,14 +543,11 @@ fn external_adapter_skill_adapter_preserves_response_stderr()
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
         temp.path(),
         Some(manifest),
-        [
-            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-            local_sandbox_fallback_env(),
-        ],
+        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
     )?)?;
 
     assert_eq!(output.status, runx_runtime::InvocationStatus::Success);
-    assert_eq!(output.stderr, "adapter warning");
+    assert_eq!(output.process_stderr(), Some("adapter warning"));
     Ok(())
 }
 
@@ -667,10 +561,7 @@ fn external_adapter_process_supervisor_maps_host_resolution_frame()
         serde_json::to_vec(&host_resolution_frame("external_inv_123"))?,
     )?;
     let script = write_cat_response_script(temp.path())?;
-    let invocation = invocation_with_env([
-        ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-        local_sandbox_fallback_env(),
-    ]);
+    let invocation = invocation_with_env([("RUNX_RESPONSE_PATH", path_string(&response_path)?)]);
 
     let outcome =
         ExternalAdapterProcessSupervisor.invoke(&manifest_for_script(&script)?, &invocation)?;
@@ -722,7 +613,7 @@ IFS= read -r _invocation
     let graph_path = temp.path().join("graph.yaml");
     fs::write(
         &graph_path,
-        "name: external-adapter-host-resolution\nsteps:\n  - id: invoke\n    skill: ./external-skill\n",
+        "name: external-adapter-host-resolution\nsteps:\n  - id: invoke\n    skill: ./external-skill\n    inputs:\n      issue_number: 77\n",
     )?;
     let mut host = RecordingHost::with_responses([Some(ResolutionResponse {
         actor: ResolutionResponseActor::Human,
@@ -731,7 +622,7 @@ IFS= read -r _invocation
 
     let result = Runtime::new(
         ExternalAdapterSkillAdapter::default(),
-        local_runtime_options_with_sandbox_fallback(),
+        local_runtime_options(),
     )
     .run_graph_file_with_host(&graph_path, &mut host);
 
@@ -755,20 +646,25 @@ IFS= read -r _invocation
 }
 
 #[test]
-fn external_adapter_skill_adapter_fails_closed_without_inline_manifest()
+fn external_adapter_skill_adapter_fails_closed_without_typed_manifest()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
+    let mut source = skill_source_manifest_path("external-adapter.manifest.json")?;
+    source.external_adapter = None;
 
-    let Err(error) =
-        ExternalAdapterSkillAdapter::default().invoke(skill_invocation(temp.path(), None, [])?)
-    else {
+    let Err(error) = ExternalAdapterSkillAdapter::default().invoke(skill_invocation_with_source(
+        temp.path(),
+        source,
+        [],
+        CredentialDelivery::none(),
+    )?) else {
         return Err("external-adapter source without manifest must fail closed".into());
     };
 
     assert!(matches!(
         error,
         RuntimeError::SkillFailed { message, .. }
-            if message.contains("missing a manifest")
+            if message.contains("is missing source.external_adapter")
     ));
     Ok(())
 }
@@ -788,10 +684,7 @@ fn external_adapter_skill_adapter_preserves_supervisor_fail_closed_response_mism
     let Err(error) = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
         temp.path(),
         Some(manifest),
-        [
-            ("RUNX_RESPONSE_PATH", path_string(&response_path)?),
-            local_sandbox_fallback_env(),
-        ],
+        [("RUNX_RESPONSE_PATH", path_string(&response_path)?)],
     )?) else {
         return Err("mismatched response identity must fail closed through SkillAdapter".into());
     };
@@ -805,7 +698,7 @@ fn external_adapter_skill_adapter_preserves_supervisor_fail_closed_response_mism
 }
 
 #[test]
-fn external_adapter_skill_adapter_filters_ambient_env_from_invocation()
+fn external_adapter_skill_adapter_forwards_only_declared_environment()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let capture_path = temp.path().join("captured-invocation.json");
@@ -821,9 +714,7 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
 /bin/cat "$RUNX_RESPONSE_PATH"
 "#,
     )?;
-    let mut manifest = manifest_for_script(&script)?;
-    manifest.sandbox_intent.profile = "workspace-write".into();
-    manifest.sandbox_intent.writable_paths = Some(vec!["captured-invocation.json".into()]);
+    let manifest = manifest_for_script(&script)?;
 
     let output = ExternalAdapterSkillAdapter::default().invoke(skill_invocation(
         temp.path(),
@@ -835,7 +726,6 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
                 path_string(capture_path.as_path())?,
             ),
             ("RUNX_RESPONSE_PATH", path_string(response_path.as_path())?),
-            local_sandbox_fallback_env(),
             ("RUNX_API_TOKEN", "do-not-forward-runx-token".to_owned()),
             ("SECRET_TOKEN", "do-not-forward".to_owned()),
         ],
@@ -847,7 +737,7 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
     let scoped_env = captured
         .env
         .as_ref()
-        .ok_or("expected RUNX control env in external adapter invocation")?;
+        .ok_or("expected declared environment in external adapter invocation")?;
     assert!(scoped_env.contains_key("RUNX_RESPONSE_PATH"));
     assert!(
         !scoped_env.contains_key("SECRET_TOKEN"),
@@ -855,12 +745,43 @@ printf '%s' "$invocation" > "$RUNX_CAPTURE_INVOCATION"
     );
     assert!(
         !scoped_env.contains_key("RUNX_API_TOKEN"),
-        "secret-like RUNX env must not be forwarded to external adapters"
+        "undeclared RUNX env must not be forwarded to external adapters"
     );
     assert!(
         !serde_json::to_string(&captured)?.contains("do-not-forward"),
         "ambient secret value must not be serialized into adapter stdin"
     );
+    Ok(())
+}
+
+#[test]
+fn external_adapter_skill_adapter_fails_before_spawn_when_required_environment_is_missing()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let script = write_script(
+        temp.path(),
+        r#"set -eu
+exit 99
+"#,
+    )?;
+    let manifest = manifest_for_script(&script)?;
+    let mut request = skill_invocation(temp.path(), Some(manifest), [])?;
+    let environment = runx_contracts::EnvironmentRequirements {
+        required: vec!["PROVIDER_REGION".to_owned()],
+        optional: Vec::new(),
+    };
+    request.source.environment = environment.clone();
+    request.requirements.environment = environment;
+
+    let Err(error) = ExternalAdapterSkillAdapter::default().invoke(request) else {
+        return Err("missing required external-adapter environment unexpectedly passed".into());
+    };
+
+    assert!(matches!(
+        error,
+        RuntimeError::SkillFailed { message, .. }
+            if message.contains("required environment variable(s) are unavailable: PROVIDER_REGION")
+    ));
     Ok(())
 }
 
@@ -904,17 +825,8 @@ IFS= read -r _invocation
     )
 }
 
-fn local_runtime_options_with_sandbox_fallback() -> RuntimeOptions {
-    let mut options = RuntimeOptions::local_development();
-    options.env.insert(
-        SANDBOX_FALLBACK_ENV.to_owned(),
-        SANDBOX_FALLBACK_VALUE.to_owned(),
-    );
-    options
-}
-
-fn local_sandbox_fallback_env() -> (&'static str, String) {
-    (SANDBOX_FALLBACK_ENV, SANDBOX_FALLBACK_VALUE.to_owned())
+fn local_runtime_options() -> RuntimeOptions {
+    RuntimeOptions::local_development(std::env::vars().collect())
 }
 
 fn write_script(dir: &Path, body: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -924,36 +836,41 @@ fn write_script(dir: &Path, body: &str) -> Result<PathBuf, Box<dyn std::error::E
 }
 
 fn write_external_adapter_skill(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    fs::write(
-        dir.join("SKILL.md"),
+    crate::support::write_test_skill_package(
+        dir,
         r#"---
 name: external-smoke
-source:
-  type: external-adapter
-  external_adapter:
-    manifest:
-      schema: runx.external_adapter.manifest.v1
-      protocol_version: runx.external_adapter.v1
-      adapter_id: adapter.github.issue-intake
-      name: GitHub issue intake adapter
-      version: 0.1.0
-      supported_source_types:
-        - external-adapter
-      transport:
-        kind: process
-        command: /bin/sh
-        args:
-          - adapter.sh
-      timeouts:
-        startup_ms: 500
-        invocation_ms: 2000
-      sandbox_intent:
-        profile: readonly
-        network: false
-        cwd_policy: skill-directory
 ---
 
 Exercise the external adapter runtime wiring path.
+"#,
+        r#"skill: external-smoke
+runners:
+  external-smoke:
+    default: true
+    type: external-adapter
+    inputs:
+      issue_number:
+        type: integer
+        required: true
+    outputs:
+      summary: string
+    external_adapter:
+      manifest_path: manifest.json
+"#,
+    )?;
+    fs::write(
+        dir.join("manifest.json"),
+        r#"{
+  "schema": "runx.external_adapter.manifest.v1",
+  "protocol_version": "runx.external_adapter.v1",
+  "adapter_id": "adapter.github.issue-intake",
+  "name": "GitHub issue intake adapter",
+  "version": "0.1.0",
+  "supported_source_types": ["external-adapter"],
+  "transport": { "kind": "process", "command": "sh", "args": ["adapter.sh"] },
+  "timeouts": { "startup_ms": 500, "invocation_ms": 2000 }
+}
 "#,
     )?;
     Ok(())
@@ -980,12 +897,6 @@ fn manifest_for_script(
             invocation_ms: 2_000,
         },
         credential_needs: None,
-        sandbox_intent: ExternalAdapterSandboxIntent {
-            profile: "readonly".into(),
-            network: false,
-            cwd_policy: "skill-directory".into(),
-            writable_paths: None,
-        },
         metadata: None,
     })
 }
@@ -1005,13 +916,36 @@ fn skill_invocation<const N: usize>(
 
 fn skill_invocation_with_source<const N: usize>(
     skill_dir: &Path,
-    source: SkillSource,
+    mut source: SkillSource,
     env: [(&str, String); N],
     credential_delivery: CredentialDelivery,
 ) -> Result<SkillInvocation, Box<dyn std::error::Error>> {
+    const DECLARED_ADAPTER_ENVIRONMENT: [&str; 5] = [
+        "RUNX_CAPTURE_INVOCATION",
+        "RUNX_DESCENDANT_SENTINEL",
+        "RUNX_DESCENDANT_STARTED",
+        "RUNX_RESPONSE_PATH",
+        "RUNX_SPAWNED_MARKER",
+    ];
+    let env = env
+        .into_iter()
+        .map(|(key, value)| (key.to_owned(), value))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let environment = runx_contracts::EnvironmentRequirements {
+        required: DECLARED_ADAPTER_ENVIRONMENT
+            .into_iter()
+            .filter(|name| env.contains_key(*name))
+            .map(str::to_owned)
+            .collect(),
+        optional: Vec::new(),
+    };
+    source.environment = environment.clone();
     Ok(SkillInvocation {
         skill_name: "external-smoke".to_owned(),
+        step_id: None,
         source,
+        artifacts: None,
+        allowed_tools: None,
         inputs: [(
             "issue_number".to_owned(),
             JsonValue::Number(JsonNumber::I64(77)),
@@ -1020,11 +954,13 @@ fn skill_invocation_with_source<const N: usize>(
         .collect(),
         resolved_inputs: JsonObject::new(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: skill_dir.to_path_buf(),
-        env: env
-            .into_iter()
-            .map(|(key, value)| (key.to_owned(), value))
-            .collect(),
+        env,
+        requirements: runx_contracts::ExecutionRequirements {
+            environment,
+            ..Default::default()
+        },
         credential_delivery,
     })
 }
@@ -1045,29 +981,7 @@ fn skill_source(
             JsonValue::Object(external_adapter),
         );
     }
-    Ok(SkillSource {
-        act: None,
-        source_type: runx_parser::SourceKind::ExternalAdapter,
-        command: None,
-        args: Vec::new(),
-        cwd: None,
-        timeout_seconds: None,
-        input_mode: None,
-        sandbox: None,
-        server: None,
-        catalog_ref: None,
-        tool: None,
-        arguments: None,
-        agent_card_url: None,
-        agent_identity: None,
-        agent: None,
-        task: None,
-        hook: None,
-        outputs: None,
-        graph: None,
-        http: None,
-        raw,
-    })
+    Ok(runx_parser::validate_skill_source(&raw)?)
 }
 
 fn skill_source_manifest_path(path: &str) -> Result<SkillSource, Box<dyn std::error::Error>> {
@@ -1085,29 +999,7 @@ fn skill_source_manifest_path(path: &str) -> Result<SkillSource, Box<dyn std::er
         "external_adapter".to_owned(),
         JsonValue::Object(external_adapter),
     );
-    Ok(SkillSource {
-        act: None,
-        source_type: runx_parser::SourceKind::ExternalAdapter,
-        command: None,
-        args: Vec::new(),
-        cwd: None,
-        timeout_seconds: None,
-        input_mode: None,
-        sandbox: None,
-        server: None,
-        catalog_ref: None,
-        tool: None,
-        arguments: None,
-        agent_card_url: None,
-        agent_identity: None,
-        agent: None,
-        task: None,
-        hook: None,
-        outputs: None,
-        graph: None,
-        http: None,
-        raw,
-    })
+    Ok(runx_parser::validate_skill_source(&raw)?)
 }
 
 fn invocation_with_env<const N: usize>(env: [(&str, String); N]) -> ExternalAdapterInvocation {
@@ -1316,5 +1208,9 @@ impl Host for RecordingHost {
     ) -> Result<Option<ResolutionResponse>, RuntimeError> {
         self.requests.borrow_mut().push(request);
         Ok(self.responses.borrow_mut().pop_front().flatten())
+    }
+
+    fn log(&mut self, _message: String) -> Result<(), RuntimeError> {
+        Ok(())
     }
 }

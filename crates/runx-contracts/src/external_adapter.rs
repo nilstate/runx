@@ -93,16 +93,6 @@ pub struct ExternalAdapterCredentialNeed {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ExternalAdapterSandboxIntent {
-    pub profile: NonEmptyString,
-    pub network: bool,
-    pub cwd_policy: NonEmptyString,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub writable_paths: Option<Vec<NonEmptyString>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(deny_unknown_fields)]
 pub struct ExternalAdapterTimeouts {
     pub startup_ms: u64,
     pub invocation_ms: u64,
@@ -122,7 +112,6 @@ pub struct ExternalAdapterManifest {
     pub timeouts: ExternalAdapterTimeouts,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_needs: Option<Vec<ExternalAdapterCredentialNeed>>,
-    pub sandbox_intent: ExternalAdapterSandboxIntent,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<JsonObject>,
 }

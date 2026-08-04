@@ -40,7 +40,6 @@ inputs:
 expect:
   status: success
   output:
-    matches_packet: runx.sourcey.build_report.v1
     subset:
       brand_name: Acme
       generated: true

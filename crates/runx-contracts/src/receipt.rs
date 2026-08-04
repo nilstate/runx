@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - receipt contracts keep the signed envelope,
+// Module rationale: receipt contracts keep the signed envelope,
 // lineage, and effect-finality schemas together for cross-language schema
 // generation.
 //! Governance receipt contracts: the flat `runx.receipt.v1` shape, seals,
@@ -176,6 +176,8 @@ pub struct Subject {
 #[serde(deny_unknown_fields)]
 pub struct ReceiptEnforcement {
     pub profile_hash: NonEmptyString,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_boundary: Option<crate::ExecutionBoundaryObservation>,
     #[serde(default)]
     pub redaction_refs: Vec<Reference>,
     #[serde(default)]

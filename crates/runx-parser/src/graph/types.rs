@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use runx_contracts::{JsonObject, JsonValue};
 
+use crate::ValidationError;
+use crate::skill::{SkillArtifactContract, SkillSource, SourceKind, validate_inline_graph_source};
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawGraphIr {
@@ -144,6 +147,96 @@ pub struct MintAuthorityDirective {
     pub source: MintScopeSource,
 }
 
+/// Parser-owned meaning of an inline graph `run:` target. The wire form stays
+/// the author-facing source object, while every consumer receives either the
+/// graph control step or a fully validated skill source.
+#[derive(Clone, Debug, PartialEq)]
+pub enum GraphRunTarget {
+    Approval,
+    Source(Box<SkillSource>),
+}
+
+impl GraphRunTarget {
+    pub(crate) fn validate(raw: JsonObject, field: &str) -> Result<Self, ValidationError> {
+        if raw.get("type").and_then(JsonValue::as_str) == Some("approval") {
+            if raw.len() == 1 {
+                return Ok(Self::Approval);
+            }
+            let fields = raw
+                .keys()
+                .filter(|key| key.as_str() != "type")
+                .cloned()
+                .collect::<Vec<_>>();
+            return Err(ValidationError::InvalidField {
+                field: field.to_owned(),
+                message: format!(
+                    "{field} approval control accepts only type; unsupported fields: {}",
+                    fields.join(", ")
+                ),
+            });
+        }
+        let source =
+            validate_inline_graph_source(&raw).map_err(|source| ValidationError::InvalidField {
+                field: field.to_owned(),
+                message: format!("{field} is not a valid inline source: {source}"),
+            })?;
+        if !matches!(
+            source.source_type,
+            SourceKind::AgentStep | SourceKind::CliTool | SourceKind::JavaScript
+        ) {
+            return Err(ValidationError::InvalidField {
+                field: field.to_owned(),
+                message: format!(
+                    "{field}.type '{}' is not an inline graph source; use a skill or tool target for supervised adapters",
+                    source.source_type
+                ),
+            });
+        }
+        Ok(Self::Source(Box::new(source)))
+    }
+
+    #[must_use]
+    pub fn source(&self) -> Option<&SkillSource> {
+        match self {
+            Self::Approval => None,
+            Self::Source(source) => Some(source.as_ref()),
+        }
+    }
+
+    #[must_use]
+    pub fn source_type(&self) -> &'static str {
+        match self {
+            Self::Approval => "approval",
+            Self::Source(source) => source.source_type.as_str(),
+        }
+    }
+}
+
+impl Serialize for GraphRunTarget {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Approval => {
+                JsonObject::from([("type".to_owned(), JsonValue::String("approval".to_owned()))])
+                    .serialize(serializer)
+            }
+            Self::Source(source) => source.raw.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for GraphRunTarget {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = JsonObject::deserialize(deserializer)?;
+        Self::validate(raw, "run").map_err(serde::de::Error::custom)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GraphStep {
@@ -155,11 +248,14 @@ pub struct GraphStep {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub run: Option<JsonObject>,
+    pub run: Option<GraphRunTarget>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub instructions: Option<String>,
+    pub artifacts: Option<SkillArtifactContract>,
+    /// Complete output declarations owned by this graph step. Preserve these
+    /// in typed IR so inspection, packet generation, and registry packaging do
+    /// not have to reparse the raw manifest.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub artifacts: Option<JsonObject>,
+    pub outputs: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner: Option<String>,
     pub inputs: JsonObject,
@@ -201,6 +297,11 @@ pub struct ExecutionGraph {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
+    /// Steps whose complete declared output contracts form the graph's public
+    /// result. Multiple entries support mutually exclusive terminal branches
+    /// and workflows that intentionally return both an act result and its
+    /// durable readback. Diagnostic/base fields are never exported.
+    pub result_from: Vec<String>,
     /// The input key carrying the parent charter authority term that steps with a
     /// `mint_authority` directive attenuate from. Declared once at the graph (or
     /// runner) level, replacing per-skill re-threading of the parent authority. A

@@ -1,57 +1,77 @@
 ---
 name: review-skill
-description: Assess a skill package for capability, trust, and operator readiness.
+description: Inspect, safely test, and assess one Runx skill package for capability, trust, and operator readiness. Use when deciding whether to adopt, improve, reject, install, or publish a skill; its evidence-only assess runner is available when native test evidence already exists.
 runx:
   category: authoring
 ---
 
 # Review Skill
 
-Judge whether a skill is ready to trust, adopt, or publish.
+Evaluate one skill from bounded evidence. The default runner passes a local
+package to native `runx.skill.validate`, which parses and inspects the exact
+package, runs read-only or planning harnesses with isolated receipts and no
+operator credentials, and forwards that evidence to the focused assessment
+runner. Execute-capable targets are inspected but never run automatically.
 
-This skill evaluates one bounded capability. It should identify what the skill
-does well, where it is incomplete, what evidence supports the trust level, and
-what tests or governance gaps block adoption.
+This skill does not mutate the package, publish a report, install a package, or
+manufacture missing evidence. Use `assess` directly when a caller already has a
+bounded evidence pack.
 
-Avoid generic praise. The output should help an operator decide whether to
-adopt, publish, sandbox, or reject the skill.
+## Procedure
 
+1. Resolve a workspace- or owning-skill-relative package path and capture its
+   native capability and readiness envelope. Registry or marketplace material
+   must first be installed or supplied as a bounded evidence pack; this skill
+   does not fetch it implicitly.
+2. Run the native harness only when catalog execution is `read` or `plan`.
+3. Compare the documented capability with the inspected runner and catalog
+   metadata in the evidence pack.
+4. Separate native harness results, provider readback, supplied assertions, and
+   unverified claims.
+5. Check the happy path, refusal or stop path, authority boundary, artifact or
+   effect, provenance, and recovery posture appropriate to the skill type.
+6. Return `needs_more_evidence` when the evidence cannot support a trust
+   decision. Never upgrade a parse result or prose claim into execution proof.
+7. Recommend `adopt`, `adopt_with_caveats`, `improve`, or `reject`,
+   naming the evidence and blocking gaps behind the decision.
 
-## Review Gates
+## Stop conditions
 
-Check these before recommending adoption or publication:
-
-- The `SKILL.md` states a bounded capability and does not promise more than the
-  execution profile implements.
-- The execution profile declares typed inputs, outputs, side-effect posture,
-  allowed refs/tools, authority or approval posture, receipt mapping when a
-  domain act occurs, and harness cases.
-- At least one meaningful happy path and one error or stop path are covered by
-  harness evidence or receipts. Local assertions without captured output are not
-  enough.
-- Any published URL, registry listing, docs site, or repo is durable and public.
-  Placeholder hosts, private previews, unrelated parent domains, and dead links
-  lower trust or block publication.
-- The evidence pack contains no secrets, private tokens, customer data, private
-  inbox content, or provider dumps.
-- The recommendation states who would use or trust the skill and why. If that
-  answer is weak, recommend rejection, sandboxing, or a narrower redesign.
-
-Return `needs_more_evidence` when the receipts, harness proof, or source record
-cannot support a trust decision. Reject a package that cannot be bounded or
-audited. A confident README and a green parse do not substitute for user value,
-failure-path evidence, and verifiable execution behavior.
+- Refuse evidence containing secrets, raw credentials, private customer data,
+  private inbox content, or provider dumps.
+- Do not recommend provider readiness without provider readback.
+- Do not recommend publication from private previews, placeholder hosts, dead
+  links, or unrelated parent domains.
+- Return `needs_more_evidence` when no native inspection, harness, receipt, or
+  equivalent bounded source evidence is supplied.
+- Reject capabilities that cannot be bounded, audited, or assigned a truthful
+  terminal state.
 
 ## Output
 
-- `capability_profile`: what the skill appears to do and how it executes.
-- `trust_assessment`: trust tier, caveats, and missing evidence.
-- `test_matrix`: concrete checks the skill should pass.
-- `recommendation_report`: adoption or publication recommendation.
+- `capability_profile`: bounded capability, execution shape, and claimed effect.
+- `trust_assessment`: evidence tier, caveats, and unsupported claims.
+- `test_matrix`: passed, failed, skipped, and still-required checks.
+- `recommendation_report`: decision, rationale, blockers, and next action.
 
 ## Inputs
 
-- `skill_ref` (required): skill package path, registry id, or marketplace id.
-- `objective` (optional): what the operator wants to know about this skill.
-- `evidence_pack` (optional): receipts, docs, harness output, or source notes.
+- `skill_ref` (required): local package path for the default runner; any stable
+  reference may label an evidence-only `assess` run.
+- `evidence_pack` (optional for the default runner, required for `assess`):
+  inspection, harness, receipts, docs, or source evidence. References are
+  preferable to copied private bodies.
+- `objective` (optional): decision the evaluation should support.
 - `test_constraints` (optional): time, environment, or safety limits.
+
+## Agent task contracts
+
+### `review-skill-assess`
+
+Assess only the supplied evidence for one skill. Separate declared capability, native
+inspection, harness evidence, provider readback, supplied assertions, and unverified claims.
+Check the happy path, stop or refusal path, authority, artifact or effect, provenance, and
+recovery posture appropriate to the capability. Return needs_more_evidence when the packet
+cannot support a decision. Never infer provider readiness from a parse result, local supplied
+answer, or prose claim. Recommend adopt, adopt_with_caveats, improve, or reject with
+concrete blockers.

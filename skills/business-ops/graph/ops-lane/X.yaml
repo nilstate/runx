@@ -12,10 +12,8 @@ catalog:
 runners:
   default:
     default: true
-    type: cli-tool
-    command: node
-    args:
-      - run.mjs
+    type: javascript
+    module: ops-lane.mjs
     artifacts:
       named_emits:
         lane_packet: lane_packet

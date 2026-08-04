@@ -41,13 +41,20 @@ describe("CLI package", () => {
     const topology = JSON.parse(topologyText) as {
       readonly schema: string;
       readonly selectorPackage: string;
-      readonly nativePackages: Record<string, { readonly package: string; readonly binary: string }>;
+      readonly nativePackages: Record<string, { readonly package: string; readonly binary: string; readonly worker: string }>;
     };
     const packageJson = JSON.parse(packageText) as {
       readonly name: string;
       readonly bin?: { readonly runx?: string };
       readonly files?: readonly string[];
-      readonly optionalDependencies: Record<string, string>;
+      readonly runx?: {
+        readonly nativeSelector?: {
+          readonly schema?: string;
+          readonly supportedPlatforms?: readonly string[];
+          readonly nativePackagePattern?: string;
+        };
+      };
+      readonly optionalDependencies?: Record<string, string>;
     };
 
     expect(topology).toMatchObject({
@@ -58,20 +65,28 @@ describe("CLI package", () => {
       name: "@runxhq/cli",
       bin: { runx: "./bin/runx" },
       files: ["LICENSE", "bin/runx", "native/supported-platforms.json"],
+      runx: {
+        nativeSelector: {
+          schema: "runx.rust_cli_selector_topology.v1",
+          nativePackagePattern: "@runxhq/cli-${platform}",
+        },
+      },
     });
-    for (const field of ["main", "types", "exports", "dependencies", "devDependencies", "peerDependencies", "scripts"]) {
+    for (const field of ["main", "types", "exports", "dependencies", "devDependencies", "peerDependencies", "optionalDependencies", "scripts"]) {
       expect(packageJson, `selector manifest contains stale ${field}`).not.toHaveProperty(field);
     }
-    expect(Object.keys(topology.nativePackages).sort()).toEqual([
+    const supportedPlatforms = [
       "darwin-arm64",
       "darwin-x64",
       "linux-arm64",
       "linux-x64",
       "win32-x64",
-    ]);
+    ];
+    expect(Object.keys(topology.nativePackages).sort()).toEqual(supportedPlatforms);
+    expect(packageJson.runx?.nativeSelector?.supportedPlatforms).toEqual(supportedPlatforms);
     for (const [platform, entry] of Object.entries(topology.nativePackages)) {
       expect(entry.package).toBe(`@runxhq/cli-${platform}`);
-      expect(packageJson.optionalDependencies[entry.package]).toBeDefined();
+      expect(entry.worker).toBe(platform === "win32-x64" ? "bin/runx-js-worker.exe" : "bin/runx-js-worker");
     }
   });
 

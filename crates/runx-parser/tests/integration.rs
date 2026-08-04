@@ -6,9 +6,12 @@
 //! See .scafld/specs/active/test-surface-build-consolidation.md.
 
 mod parser_catalog;
+mod parser_credentials;
+mod parser_dev_fixture;
 mod parser_fixtures;
 mod parser_graph_allowed_tools;
 mod parser_graph_context_edges;
+mod parser_packet;
 mod parser_rejections;
-mod parser_sandbox;
+mod parser_skill_package;
 mod parser_source_kind;

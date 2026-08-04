@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - the canonical entrypoint keeps request/result
+// Module rationale: the canonical entrypoint keeps request/result
 // types and prepared/unprepared execution dispatch in one reviewable boundary.
 //! Canonical local orchestration entrypoint.
 //!
@@ -13,11 +13,56 @@ use runx_contracts::{ClosureDisposition, JsonValue, Receipt};
 use thiserror::Error;
 
 use super::harness::{HarnessReplayError, HarnessReplayOutput};
-use super::prepared_skill::{PreparedEntryProvenance, PreparedSkillRun, prepare_skill_run};
+use super::prepared_skill::{
+    PreparedEntryProvenance, PreparedSkillRun, prepare_skill_run_with_effects,
+};
 #[cfg(feature = "cli-tool")]
 use super::runner::GraphRun;
-use super::skill_front::{PackageHarnessReport, SkillRunError};
+#[cfg(feature = "cli-tool")]
+use super::skill_front::PackageHarnessReport;
+use super::skill_front::SkillRunError;
 use crate::effects::RuntimeEffectRegistry;
+
+pub const DEFAULT_MANAGED_AGENT_MAX_ROUNDS: u32 = 4;
+pub const MANAGED_AGENT_MAX_ROUNDS_LIMIT: u32 = 32;
+
+/// Per-run consent for in-process model execution.
+///
+/// Model credentials configure availability; they never grant consent. The
+/// default remains caller-mediated `needs_agent` resolution.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum ManagedAgentPolicy {
+    #[default]
+    HostDriven,
+    Inline {
+        max_rounds: u32,
+    },
+}
+
+impl ManagedAgentPolicy {
+    pub fn inline(max_rounds: u32) -> Result<Self, String> {
+        if !(1..=MANAGED_AGENT_MAX_ROUNDS_LIMIT).contains(&max_rounds) {
+            return Err(format!(
+                "managed-agent rounds must be between 1 and {MANAGED_AGENT_MAX_ROUNDS_LIMIT}"
+            ));
+        }
+        Ok(Self::Inline { max_rounds })
+    }
+
+    #[must_use]
+    pub const fn max_rounds(&self) -> Option<u32> {
+        match self {
+            Self::HostDriven => None,
+            Self::Inline { max_rounds } => Some(*max_rounds),
+        }
+    }
+
+    #[must_use]
+    pub const fn is_inline(&self) -> bool {
+        matches!(self, Self::Inline { .. })
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkillRunRequest {
@@ -28,7 +73,10 @@ pub struct SkillRunRequest {
     pub inputs: BTreeMap<String, JsonValue>,
     pub env: BTreeMap<String, String>,
     pub cwd: PathBuf,
-    /// Optional one-shot, per-run local credential supplied at invocation.
+    /// Explicit consent for an in-process managed-agent loop. The default is
+    /// host-driven resolution even when model credentials are configured.
+    pub managed_agent: ManagedAgentPolicy,
+    /// Optional resolved local credential supplied for this run.
     ///
     /// When present, the runtime derives a `CredentialDelivery` from it for this
     /// single run. The secret value is never persisted and is redacted from
@@ -37,17 +85,23 @@ pub struct SkillRunRequest {
     pub local_credential: Option<LocalCredentialDescriptor>,
 }
 
-/// Structured per-run credential provision request.
+/// Structured per-run credential delivery descriptor.
 ///
 /// This is the local, no-network establishment surface for the OSS CLI: the
-/// caller supplies the non-secret binding fields plus the raw secret value, and
+/// resolver supplies the non-secret binding fields plus the raw secret value, and
 /// the runtime turns it into a `CredentialDelivery` through the existing opaque
 /// `MaterialResolver`. No secret state is persisted; the descriptor lives only
 /// for the duration of a single run.
 #[derive(Clone, PartialEq, Eq)]
 pub struct LocalCredentialDescriptor {
+    /// Stored profile selector. This is non-secret and may be checkpointed so a
+    /// resumed run re-resolves current material instead of persisting a secret.
+    pub profile: Option<String>,
     /// Provider the credential authenticates against (for example `github`).
     pub provider: String,
+    /// HTTPS audience declared by the resolved credential requirement. Native
+    /// authenticated HTTP may only attenuate this destination binding.
+    pub audience: Option<String>,
     /// Authentication mode label carried on the delivery profile/envelope.
     pub auth_mode: String,
     /// Environment variable the secret is delivered into for the skill process.
@@ -66,7 +120,9 @@ impl std::fmt::Debug for LocalCredentialDescriptor {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("LocalCredentialDescriptor")
+            .field("profile", &self.profile)
             .field("provider", &self.provider)
+            .field("audience", &self.audience)
             .field("auth_mode", &self.auth_mode)
             .field("env_var", &self.env_var)
             .field("material_ref", &self.material_ref)
@@ -84,6 +140,7 @@ pub struct GraphRunRequest {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HarnessRunRequest {
     pub fixture_path: PathBuf,
+    pub receipt_dir: Option<PathBuf>,
 }
 
 /// Request to run every harness case owned by a skill package. `skill_path` is
@@ -93,7 +150,6 @@ pub struct HarnessRunRequest {
 pub struct PackageHarnessRequest {
     pub skill_path: PathBuf,
     pub receipt_dir: Option<PathBuf>,
-    pub env: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -135,6 +191,8 @@ pub enum OrchestratorError {
     Runtime(#[from] crate::RuntimeError),
     #[error(transparent)]
     Harness(#[from] HarnessReplayError),
+    #[error(transparent)]
+    ReceiptStore(#[from] crate::receipts::store::ReceiptStoreError),
     #[error(
         "native graph orchestration is unavailable because runx-runtime was built without the cli-tool feature"
     )]
@@ -144,12 +202,35 @@ pub enum OrchestratorError {
 #[derive(Clone, Debug, Default)]
 pub struct LocalOrchestrator {
     effects: RuntimeEffectRegistry,
+    environment: BTreeMap<String, String>,
 }
 
 impl LocalOrchestrator {
     #[must_use]
     pub fn with_effects(effects: RuntimeEffectRegistry) -> Self {
-        Self { effects }
+        Self {
+            effects,
+            environment: BTreeMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_effects_and_environment(
+        effects: RuntimeEffectRegistry,
+        environment: BTreeMap<String, String>,
+    ) -> Self {
+        Self {
+            effects,
+            environment,
+        }
+    }
+
+    #[must_use]
+    pub fn with_environment(&self, environment: BTreeMap<String, String>) -> Self {
+        Self {
+            effects: self.effects.clone(),
+            environment,
+        }
     }
 
     pub fn run(&self, request: RunRequest) -> Result<RunResult, OrchestratorError> {
@@ -182,13 +263,39 @@ impl LocalOrchestrator {
         Ok(skill_result(output))
     }
 
+    pub fn run_skill_with_binding(
+        &self,
+        request: &SkillRunRequest,
+        runner: Option<&str>,
+        expected_package_digest: Option<&str>,
+        expected_execution_closure_digest: Option<&str>,
+    ) -> Result<RunResult, OrchestratorError> {
+        let overrides = super::skill_front::SkillRunOverrides {
+            runner: runner.map(str::to_owned),
+            seeded_answers: None,
+        };
+        let output = super::skill_front::execute_bound_skill_run_with_overrides(
+            request,
+            &overrides,
+            &self.effects,
+            expected_package_digest,
+            expected_execution_closure_digest,
+        )?;
+        Ok(skill_result(output))
+    }
+
     pub fn prepare_skill(
         &self,
         request: SkillRunRequest,
         runner: Option<&str>,
         entry: PreparedEntryProvenance,
     ) -> Result<PreparedSkillRun, OrchestratorError> {
-        Ok(prepare_skill_run(request, runner, entry)?)
+        Ok(prepare_skill_run_with_effects(
+            request,
+            runner,
+            entry,
+            &self.effects,
+        )?)
     }
 
     pub fn run_prepared_skill(
@@ -205,9 +312,9 @@ impl LocalOrchestrator {
             )
             .into());
         }
-        if prepared.approval().is_none() {
+        if !prepared.is_context_bound() {
             return Err(SkillRunError::Invalid(
-                "prepared skill run requires digest-bound operator approval".to_owned(),
+                "prepared skill run requires its context to be bound".to_owned(),
             )
             .into());
         }
@@ -217,12 +324,16 @@ impl LocalOrchestrator {
             seeded_answers: None,
         };
         let output = super::skill_front::execute_prepared_skill_run_with_resolved(
-            prepared.request(),
-            &overrides,
-            &self.effects,
-            &prepared.report().request.skill_path,
-            prepared.manifest(),
-            prepared.runner(),
+            super::skill_front::ResolvedSkillRun {
+                request: prepared.request(),
+                overrides: &overrides,
+                effects: &self.effects,
+                skill_dir: &prepared.report().request.skill_path,
+                manifest: prepared.manifest(),
+                runner: prepared.runner(),
+                package_digest: prepared.package_digest(),
+                execution_closure_digest: prepared.execution_closure_digest(),
+            },
         )?;
         Ok(skill_result(output))
     }
@@ -230,7 +341,7 @@ impl LocalOrchestrator {
     pub fn run_graph(&self, request: &GraphRunRequest) -> Result<RunResult, OrchestratorError> {
         #[cfg(feature = "cli-tool")]
         {
-            let mut options = super::runner::RuntimeOptions::from_process_env()?;
+            let mut options = super::runner::RuntimeOptions::from_env(self.environment.clone())?;
             options.effects = self.effects.clone();
             let runtime =
                 super::runner::Runtime::new(crate::adapters::cli_tool::CliToolAdapter, options);
@@ -238,7 +349,7 @@ impl LocalOrchestrator {
         }
         #[cfg(not(feature = "cli-tool"))]
         {
-            let _ = request;
+            let _ = (&self.environment, request);
             Err(OrchestratorError::CliToolFeatureDisabled)
         }
     }
@@ -255,7 +366,7 @@ impl LocalOrchestrator {
         Ok(super::skill_front::run_package_harness_with_effects(
             &request.skill_path,
             request.receipt_dir.as_deref(),
-            request.env.as_ref(),
+            &self.environment,
             &self.effects,
         )?)
     }
@@ -265,14 +376,16 @@ impl LocalOrchestrator {
         &self,
         request: &HarnessRunRequest,
     ) -> Result<HarnessReplayOutput, OrchestratorError> {
-        let mut options = super::runner::RuntimeOptions::from_process_env()?;
+        let (mut options, receipt_dir) = standalone_harness_options(request, &self.environment)?;
         options.created_at = crate::time::DEFAULT_CREATED_AT.to_owned();
         options.effects = self.effects.clone();
-        Ok(super::harness::run_harness_fixture_with_adapter(
+        let output = super::harness::run_harness_fixture_with_adapter(
             &request.fixture_path,
-            super::skill_front::SkillRunGraphAdapter::default(),
-            options,
-        )?)
+            super::skill_front::SkillSourceAdapter::default(),
+            options.clone(),
+        )?;
+        persist_harness_receipts(&output, &options, &receipt_dir)?;
+        Ok(output)
     }
 
     #[cfg(not(feature = "cli-tool"))]
@@ -284,6 +397,55 @@ impl LocalOrchestrator {
         let _ = request;
         Err(OrchestratorError::CliToolFeatureDisabled)
     }
+}
+
+#[cfg(feature = "cli-tool")]
+fn standalone_harness_options(
+    request: &HarnessRunRequest,
+    environment: &BTreeMap<String, String>,
+) -> Result<(super::runner::RuntimeOptions, PathBuf), OrchestratorError> {
+    use crate::receipts::paths::RUNX_RECEIPT_DIR_ENV;
+
+    let workspace = crate::WorkspaceEnv::from_admitted(environment.clone())
+        .map_err(crate::RuntimeError::from)?;
+    let mut env = workspace.env().clone();
+    let configured = request
+        .receipt_dir
+        .clone()
+        .or_else(|| env.get(RUNX_RECEIPT_DIR_ENV).map(PathBuf::from))
+        .unwrap_or_else(|| workspace.cwd().join(".runx").join("receipts"));
+    let receipt_dir = if configured.is_absolute() {
+        configured
+    } else {
+        workspace.cwd().join(configured)
+    };
+    env.insert(
+        RUNX_RECEIPT_DIR_ENV.to_owned(),
+        receipt_dir.to_string_lossy().into_owned(),
+    );
+    let options = super::runner::RuntimeOptions::from_env_or_local_development(env)?;
+    Ok((options, receipt_dir))
+}
+
+#[cfg(feature = "cli-tool")]
+fn persist_harness_receipts(
+    output: &HarnessReplayOutput,
+    options: &super::runner::RuntimeOptions,
+    receipt_dir: &std::path::Path,
+) -> Result<(), OrchestratorError> {
+    options.receipt_services().write_local_receipts(
+        output
+            .steps
+            .iter()
+            .flat_map(|step| {
+                step.nested_receipts
+                    .iter()
+                    .chain(std::iter::once(&step.receipt))
+            })
+            .chain(std::iter::once(&output.receipt)),
+        receipt_dir,
+    )?;
+    Ok(())
 }
 
 fn skill_result(output: JsonValue) -> RunResult {

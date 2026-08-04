@@ -7,27 +7,33 @@
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use crate::state_machine::{FanoutSyncDecision, FanoutSyncStrategy, SequentialGraphPlan};
+    use crate::state_machine::{
+        FanoutBranchPlan, FanoutSyncDecision, FanoutSyncStrategy, SequentialGraphPlan,
+    };
 
     #[test]
     fn state_machine_plan_uses_type_tag_and_camel_case_fields() -> Result<(), serde_json::Error> {
         let plan = SequentialGraphPlan::RunFanout {
             group_id: "advisors".to_owned(),
-            step_ids: vec!["market".to_owned(), "risk".to_owned()],
-            attempts: BTreeMap::from([("market".to_owned(), 1), ("risk".to_owned(), 1)]),
-            context_from: BTreeMap::from([
-                ("market".to_owned(), Vec::new()),
-                ("risk".to_owned(), Vec::new()),
-            ]),
+            branches: vec![
+                FanoutBranchPlan {
+                    step_id: "market".to_owned(),
+                    attempt: 1,
+                    context_from: Vec::new(),
+                },
+                FanoutBranchPlan {
+                    step_id: "risk".to_owned(),
+                    attempt: 1,
+                    context_from: Vec::new(),
+                },
+            ],
         };
 
         let json = serde_json::to_string(&plan)?;
 
         assert_eq!(
             json,
-            r#"{"type":"run_fanout","groupId":"advisors","stepIds":["market","risk"],"attempts":{"market":1,"risk":1},"contextFrom":{"market":[],"risk":[]}}"#,
+            r#"{"type":"run_fanout","groupId":"advisors","branches":[{"stepId":"market","attempt":1,"contextFrom":[]},{"stepId":"risk","attempt":1,"contextFrom":[]}]}"#,
         );
         Ok(())
     }

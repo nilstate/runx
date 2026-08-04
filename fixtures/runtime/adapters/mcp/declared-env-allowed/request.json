@@ -1,0 +1,30 @@
+{
+  "case": "declared-env-allowed",
+  "mode": "mcp-adapter",
+  "skillName": "declared-env-allowed",
+  "source": {
+    "type": "mcp",
+    "args": [],
+    "server": {
+      "command": "node",
+      "args": [
+        "fixtures/skills/mcp-echo/stdio-server.mjs"
+      ],
+      "cwd": "."
+    },
+    "tool": "env",
+    "arguments": {
+      "name": "ALLOWED_VALUE"
+    },
+    "timeoutSeconds": 5,
+    "raw": {
+      "type": "mcp"
+    },
+    "environment": {
+      "required": [
+        "ALLOWED_VALUE"
+      ]
+    }
+  },
+  "inputs": {}
+}

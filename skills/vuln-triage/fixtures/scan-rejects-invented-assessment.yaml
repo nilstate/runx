@@ -1,0 +1,54 @@
+name: scan-rejects-invented-assessment
+kind: skill
+target: ..
+runner: scan
+inputs:
+  target: example/service
+  cve_evidence:
+    receipt_ref: runx:receipt:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    audit_result:
+      schema: runx.security.exact_cve_audit.v1
+      target: { name: example/service }
+      dependency_scope: direct-production
+      findings:
+        - dependency: example-lib
+          exact_version: 1.2.3
+          advisory_id: GHSA-example-1234
+          advisory_url: https://osv.dev/vulnerability/GHSA-example-1234
+          direct: true
+          development: false
+          summary: Exact-version fixture advisory.
+    verification: { verified: true }
+caller:
+  answers:
+    agent_task.vuln-triage-assess.output:
+      risk_assessment_draft:
+        decision: remediate
+        advisory_assessments:
+          - dependency: invented-lib
+            exact_version: 9.9.9
+            advisory_id: CVE-INVENTED
+            priority: urgent
+            exposure: confirmed
+            confidence: high
+            rationale: Invented assessment must not enter the packet.
+        remediation_plan: {}
+        operator_summary: { verdict: remediate, summary: Invented. }
+expect:
+  status: sealed
+  step_outputs:
+    finalize:
+      subset:
+        vulnerability_scan_packet:
+          data:
+            decision: needs_more_evidence
+            validation:
+              status: fail
+              findings:
+                - code: vuln.assessment.unbound
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: vuln-triage
+  source_case: scan-rejects-invented-assessment
+  source: skills-fixture

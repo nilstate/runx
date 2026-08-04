@@ -7,26 +7,22 @@ import { fileURLToPath } from "node:url";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cargo = process.platform === "win32" ? "cargo.exe" : "cargo";
+const cargoTargetDir = process.env.CARGO_TARGET_DIR
+  ? path.resolve(workspaceRoot, process.env.CARGO_TARGET_DIR)
+  : path.join(workspaceRoot, "crates", "target");
 const rustKernelBin = path.join(
-  workspaceRoot,
-  "crates",
-  "target",
+  cargoTargetDir,
   "debug",
   process.platform === "win32" ? "runx.exe" : "runx",
 );
 const rustHarnessFixtureOracleBin = path.join(
-  workspaceRoot,
-  "crates",
-  "target",
+  cargoTargetDir,
   "debug",
   process.platform === "win32" ? "runx-harness-fixture-oracles.exe" : "runx-harness-fixture-oracles",
 );
 
 const evalBinEnv = {
-  RUNX_KERNEL_EVAL_BIN: rustKernelBin,
-  RUNX_PARSER_EVAL_BIN: rustKernelBin,
   RUNX_RUST_CLI_BIN: rustKernelBin,
-  RUNX_DEV_RUST_CLI_BIN: rustKernelBin,
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "verify-fast-test-key",
   RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
@@ -43,24 +39,27 @@ await runParallelGroup("source checks", [
   step("readiness structural guard", "node", ["scripts/check-readiness-structural.mjs"]),
   step("demo inventory guard", "node", ["scripts/check-demo-inventory.mjs"]),
   step("boundary:check", "pnpm", ["boundary:check"]),
+  step("runtime architecture", "pnpm", ["runtime:architecture-check"]),
   step("test:boundary", "pnpm", ["test:boundary"]),
   step("typecheck", "pnpm", ["typecheck"]),
   step("bindings:check", "pnpm", ["bindings:check"]),
-  step("catalog version drift", "pnpm", ["catalog:check"]),
   step("command drift", "pnpm", ["commands:check-drift"]),
   step("public domain URLs", "pnpm", ["domains:check"]),
   step("release version sync", "pnpm", ["release:version:check"]),
+  step("deterministic module engine decision", "node", [
+    "scripts/check-deterministic-module-engine-decision.mjs",
+    "docs/architecture/deterministic-module-engine.json",
+  ]),
   step("integration module guard", "node", ["scripts/check-integration-test-modules.mjs"]),
 ]);
 
 await runSerialGroup("rust structure checks", [
+  step("rustfmt", cargo, ["fmt", "--manifest-path", "crates/Cargo.toml", "--all", "--check"]),
   step("rust:crate-graph", "pnpm", ["rust:crate-graph"]),
-  step("rust:style", "pnpm", ["rust:style"]),
-  step("cutover:legacy-check", "pnpm", ["cutover:legacy-check"]),
 ]);
 
-// One invocation for both binaries: the resolver unifies runx-runtime's feature
-// set across the two packages, so its lib compiles once instead of twice with
+// One invocation for all shipping binaries: the resolver unifies runx-runtime's
+// feature set across the packages, so its lib compiles once instead of twice with
 // divergent feature fingerprints.
 const rustBuild = await runStep(
   step("build rust binaries", cargo, [
@@ -72,12 +71,16 @@ const rustBuild = await runStep(
     "runx-cli",
     "-p",
     "runx-runtime",
+    "-p",
+    "runx-js-worker",
     "--features",
     "runx-runtime/cli-tool",
     "--bin",
     "runx",
     "--bin",
     "runx-harness-fixture-oracles",
+    "--bin",
+    "runx-js-worker",
   ]),
   rustBuildEnv,
 );
@@ -86,21 +89,25 @@ if (rustBuild.status === 0) {
   await runSerialGroup(
     "generated artifacts and fixtures",
     [
+      step("catalog version drift", "pnpm", ["catalog:check"]),
+      step("official skill lock", "pnpm", ["official-lock:check"]),
       step("build workspace", "node", ["scripts/build-workspace.mjs"]),
-      step("authoring package contract", "node", ["scripts/check-authoring-package-contract.mjs"]),
+      step("extension SDK package contract", "node", ["scripts/check-extension-sdk-package-contract.mjs"]),
       step("publishable manifests", "node", ["scripts/check-publishable-package-manifests.mjs"]),
       step("fixtures:kernel:validate", "pnpm", ["fixtures:kernel:validate"]),
       step("fixtures:kernel:check", "pnpm", ["fixtures:kernel:check"]),
       step("fixtures:kernel:keys", "pnpm", ["fixtures:kernel:keys"]),
+      step("fixtures:parser:check", "pnpm", ["fixtures:parser:check"]),
       step("fixtures:contracts:check", "pnpm", ["fixtures:contracts:check"]),
       step("fixtures:contracts:keys", "pnpm", ["fixtures:contracts:keys"]),
       step("fixtures:harness:check", "pnpm", ["fixtures:harness:check"]),
       step("fixtures:harness:summary-check", "pnpm", ["fixtures:harness:summary-check"]),
-      step("fixtures:adapters:a2a:check", "pnpm", ["fixtures:adapters:a2a:check"]),
-      step("fixtures:adapters:agent:check", "pnpm", ["fixtures:adapters:agent:check"]),
-      step("fixtures:cli-parity:check", "pnpm", ["fixtures:cli-parity:check"]),
-      step("fixtures:cli-help:check", "pnpm", ["fixtures:cli-help:check"]),
+      step("fixtures:skills:check", "pnpm", ["fixtures:skills:check"]),
+      step("fixtures:doctor:check", "pnpm", ["fixtures:doctor:check"]),
+      step("fixtures:fanout:check", "pnpm", ["fixtures:fanout:check"]),
+      step("fixtures:tool-catalog:check", "pnpm", ["fixtures:tool-catalog:check"]),
       step("packet contracts", "pnpm", ["packet-schemas:check"]),
+      step("docs:api:check", "pnpm", ["docs:api:check"]),
       step("docs:exit-codes", "pnpm", ["docs:exit-codes"]),
       step("doctor json", rustKernelBin, ["doctor", "--json"]),
       step("test:fast", "pnpm", ["test:fast"]),

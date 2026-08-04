@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 
-use serde_json::{Map, Value};
+use runx_runtime::validate_provider_grant_id;
 
 use crate::cli_args::{flag_value, os_arg, split_flag};
 
@@ -19,7 +19,6 @@ pub enum ConnectAction {
     Start(ConnectStartPlan),
     Status { session_id: String },
     Revoke { grant_id: String },
-    Invoke(ConnectInvokePlan),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -31,13 +30,6 @@ pub struct ConnectStartPlan {
     pub target_repo: Option<String>,
     pub target_locator: Option<String>,
     pub binding_id: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ConnectInvokePlan {
-    pub grant_id: String,
-    pub operation: String,
-    pub input: Map<String, Value>,
 }
 
 #[derive(Default)]
@@ -52,9 +44,6 @@ struct ParsedConnectArgs {
     target_repo: Option<String>,
     target_locator: Option<String>,
     binding_id: Option<String>,
-    grant_id: Option<String>,
-    operation: Option<String>,
-    input: Option<Map<String, Value>>,
     positional: Vec<String>,
 }
 
@@ -62,7 +51,7 @@ pub fn parse_connect_plan(args: &[OsString]) -> Result<ConnectPlan, String> {
     let subcommand = args
         .get(1)
         .and_then(|value| value.to_str())
-        .ok_or_else(|| "runx connect requires list, start, status, invoke, or revoke".to_owned())?;
+        .ok_or_else(|| "runx connect requires list, start, status, or revoke".to_owned())?;
     let mut parsed = parse_args(args)?;
     let action = connect_action(subcommand, &mut parsed)?;
     Ok(ConnectPlan {
@@ -130,9 +119,6 @@ fn takes_value(flag: &str) -> bool {
             | "--target-repo"
             | "--target-locator"
             | "--binding"
-            | "--grant"
-            | "--operation"
-            | "--input"
     )
 }
 
@@ -140,28 +126,18 @@ fn apply_value(parsed: &mut ParsedConnectArgs, flag: &str, value: String) -> Res
     match flag {
         "--api-base-url" => parsed.api_base_url = Some(value),
         "--token" => parsed.token = Some(value),
-        "--scope" if !parsed.scopes.contains(&value) => parsed.scopes.push(value),
-        "--scope" => {}
+        "--scope" if value.trim().is_empty() => {
+            return Err("--scope requires a non-blank capability".to_owned());
+        }
+        "--scope" => parsed.scopes.push(value),
         "--scope-family" => parsed.scope_family = Some(value),
         "--authority-kind" => parsed.authority_kind = Some(value),
         "--target-repo" => parsed.target_repo = Some(value),
         "--target-locator" => parsed.target_locator = Some(value),
         "--binding" => parsed.binding_id = Some(value),
-        "--grant" => parsed.grant_id = Some(value),
-        "--operation" => parsed.operation = Some(value),
-        "--input" => parsed.input = Some(parse_input(&value)?),
         _ => return Err(format!("unknown connect flag {flag}")),
     }
     Ok(())
-}
-
-fn parse_input(value: &str) -> Result<Map<String, Value>, String> {
-    let parsed = serde_json::from_str::<Value>(value)
-        .map_err(|error| format!("--input must be valid JSON: {error}"))?;
-    let Value::Object(object) = parsed else {
-        return Err("--input must be a JSON object".to_owned());
-    };
-    Ok(object)
 }
 
 fn connect_action(
@@ -175,10 +151,9 @@ fn connect_action(
             session_id: path_identifier("session id", parsed.positional.remove(0))?,
         }),
         "revoke" if parsed.positional.len() == 1 => Ok(ConnectAction::Revoke {
-            grant_id: path_identifier("grant id", parsed.positional.remove(0))?,
+            grant_id: provider_grant_id(parsed.positional.remove(0))?,
         }),
-        "invoke" if parsed.positional.is_empty() => invoke_action(parsed),
-        "list" | "start" | "status" | "revoke" | "invoke" => {
+        "list" | "start" | "status" | "revoke" => {
             Err(format!("invalid arguments for runx connect {subcommand}"))
         }
         _ => Err(format!("unknown connect subcommand {subcommand}")),
@@ -200,22 +175,6 @@ fn start_action(parsed: &mut ParsedConnectArgs) -> Result<ConnectAction, String>
     }))
 }
 
-fn invoke_action(parsed: &mut ParsedConnectArgs) -> Result<ConnectAction, String> {
-    let grant_id = parsed
-        .grant_id
-        .take()
-        .ok_or_else(|| "runx connect invoke requires --grant".to_owned())?;
-    let operation = parsed
-        .operation
-        .take()
-        .ok_or_else(|| "runx connect invoke requires --operation".to_owned())?;
-    Ok(ConnectAction::Invoke(ConnectInvokePlan {
-        grant_id: path_identifier("grant id", grant_id)?,
-        operation: provider_operation(operation)?,
-        input: parsed.input.take().unwrap_or_default(),
-    }))
-}
-
 fn path_identifier(label: &str, value: String) -> Result<String, String> {
     let value = value.trim();
     if value.is_empty()
@@ -231,27 +190,8 @@ fn path_identifier(label: &str, value: String) -> Result<String, String> {
     Ok(value.to_owned())
 }
 
-fn provider_operation(value: String) -> Result<String, String> {
+fn provider_grant_id(value: String) -> Result<String, String> {
     let value = value.trim();
-    let mut segments = value.split('.');
-    let first = segments.next().unwrap_or_default();
-    if value.len() > 100
-        || !valid_operation_segment(first)
-        || !segments.next().is_some_and(valid_operation_segment)
-        || !segments.all(valid_operation_segment)
-    {
-        return Err(
-            "runx connect operation must use a dotted lowercase capability such as thread.reply"
-                .to_owned(),
-        );
-    }
+    validate_provider_grant_id(value).map_err(|error| error.to_string())?;
     Ok(value.to_owned())
-}
-
-fn valid_operation_segment(segment: &str) -> bool {
-    let mut characters = segment.chars();
-    characters
-        .next()
-        .is_some_and(|character| character.is_ascii_lowercase())
-        && characters.all(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
 }

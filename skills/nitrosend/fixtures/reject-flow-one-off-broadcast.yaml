@@ -1,7 +1,7 @@
 name: reject-flow-one-off-broadcast
 kind: skill
 target: ..
-runner: build-flow
+runner: plan-flow
 inputs:
   objective: Send our spring sale announcement to the whole list this afternoon.
   account_status_json: '{"status":"healthy","account":{"tier":"pro","can_send":true,"domain_verified":true,"using_sandbox":false,"contact_count":4200,"campaign_count":7},"brand":{"setup_complete":true,"company_name":"Acme Co"},"config":{"from_email":"news@acme.com"},"issues":[],"recommendations":[]}'

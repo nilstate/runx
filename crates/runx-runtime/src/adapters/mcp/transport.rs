@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the client-side transport keeps stdio
+// Module rationale: the client-side transport keeps stdio
 // framing, response buffering, and bounded read/write helpers adjacent to the
 // transport implementations they coordinate.
 use std::collections::{BTreeMap, VecDeque};
@@ -12,18 +12,22 @@ use std::time::{Duration, Instant};
 use runx_contracts::{JsonObject, JsonValue};
 use serde_json::{self, Value as JsonWireValue};
 
+use crate::process::{OwnedTokioProcess, TokioProcessSpec, spawn_tokio_process};
 #[cfg(unix)]
 use crate::process::{ProcessSignal, signal_process_group_id};
-use crate::process::{TokioProcessSpec, spawn_tokio_process};
-use crate::sandbox::SandboxPlan;
+use crate::process_invocation::PreparedProcessInvocation;
 
+use super::arguments::js_string;
 use super::rmcp_content_length::{RmcpContentLengthTransport, RmcpTransportErrorState};
-use super::templates::js_string;
 use super::types::{
     McpListToolsRequest, McpToolCallRequest, McpToolDescriptor, McpTransport, McpTransportError,
 };
 
-const MAX_CLIENT_RESPONSE_BYTES: usize = 1024 * 1024;
+// MCP may carry a fully serialized native data result plus JSON-RPC framing.
+// Keep that protocol envelope bounded without imposing the old 1 MiB ceiling
+// on otherwise valid operator results.
+const MAX_CLIENT_RESPONSE_BYTES: usize = 32 * 1024 * 1024;
+const MAX_CLIENT_STDERR_BYTES: usize = 256 * 1024;
 const FORCE_KILL_GRACE: Duration = Duration::from_millis(100);
 const MAX_POOLED_MCP_SESSIONS: usize = 8;
 const MAX_POOLED_MCP_SESSION_IDLE: Duration = Duration::from_secs(300);
@@ -61,7 +65,7 @@ impl McpTransport for FixtureMcpTransport {
 fn mcp_env_value(request: &McpToolCallRequest) -> String {
     let name = js_string(request.arguments.get("name"));
     request
-        .sandbox
+        .process
         .env
         .get(&name)
         .cloned()
@@ -160,7 +164,7 @@ struct McpSessionKey {
 }
 
 impl McpSessionKey {
-    fn from_plan(plan: &SandboxPlan) -> Self {
+    fn from_plan(plan: &PreparedProcessInvocation) -> Self {
         Self {
             command: plan.command.clone(),
             args: plan.args.clone(),
@@ -173,21 +177,35 @@ impl McpSessionKey {
 type RmcpClientService = rmcp::service::RunningService<rmcp::RoleClient, rmcp::model::ClientInfo>;
 
 struct McpSession {
-    child: tokio::process::Child,
+    child: OwnedTokioProcess,
     service: RmcpClientService,
     _stderr_drain: Option<McpStderrDrain>,
+    _active_process: crate::interrupt::ActiveProcessGroup,
 }
 
 impl McpSession {
-    async fn start(plan: &SandboxPlan, spawn_count: &AtomicU64) -> Result<Self, McpTransportError> {
-        let mut child = spawn_tokio_mcp_server(plan, spawn_count)?;
-        let stderr_drain = drain_tokio_stderr(child.stderr.take());
+    async fn start(
+        plan: &PreparedProcessInvocation,
+        spawn_count: &AtomicU64,
+    ) -> Result<Self, McpTransportError> {
+        let SpawnedMcpServer {
+            mut child,
+            active_process,
+        } = spawn_tokio_mcp_server(plan, spawn_count)?;
+        let stderr_drain = drain_tokio_stderr(child.take_stderr());
         let error_state = RmcpTransportErrorState::default();
-        let service = serve_rmcp_client(&mut child, error_state).await?;
+        let service = match serve_rmcp_client(&mut child, error_state).await {
+            Ok(service) => service,
+            Err(error) => {
+                terminate_tokio_child(&mut child).await;
+                return Err(error);
+            }
+        };
         Ok(Self {
             child,
             service,
             _stderr_drain: stderr_drain,
+            _active_process: active_process,
         })
     }
 
@@ -327,8 +345,11 @@ async fn list_tools_with_rmcp_async(
     request: McpListToolsRequest,
     spawn_count: Arc<AtomicU64>,
 ) -> Result<Vec<McpToolDescriptor>, McpTransportError> {
-    let mut child = spawn_tokio_mcp_server(&request.sandbox, &spawn_count)?;
-    let _stderr_drain = drain_tokio_stderr(child.stderr.take());
+    let SpawnedMcpServer {
+        mut child,
+        active_process: _active_process,
+    } = spawn_tokio_mcp_server(&request.process, &spawn_count)?;
+    let _stderr_drain = drain_tokio_stderr(child.take_stderr());
     let result = tokio::time::timeout(request.timeout, async {
         let error_state = RmcpTransportErrorState::default();
         let mut service = serve_rmcp_client(&mut child, error_state.clone()).await?;
@@ -352,21 +373,37 @@ async fn list_tools_with_rmcp_async(
 }
 
 async fn call_tool_with_rmcp_async(
-    request: McpToolCallRequest,
+    mut request: McpToolCallRequest,
     session_manager: Arc<Mutex<McpSessionManager>>,
     spawn_count: Arc<AtomicU64>,
 ) -> Result<JsonValue, McpTransportError> {
     if !request.secret_env.is_empty() {
-        return Err(McpTransportError::failed(
-            "MCP process credential delivery must use structured credential refs, not ambient child environment.",
-        ));
+        for (name, value) in request.secret_env.iter() {
+            request
+                .process
+                .env
+                .insert(name.to_owned(), value.to_owned());
+        }
+        let timeout = request.timeout;
+        return call_tool_with_timeout(
+            timeout,
+            call_tool_with_one_shot_rmcp_session(request, spawn_count),
+        )
+        .await;
     }
     let timeout = request.timeout;
-    let result = tokio::time::timeout(
+    call_tool_with_timeout(
         timeout,
         call_tool_with_pooled_rmcp_session(request, session_manager, spawn_count),
     )
-    .await;
+    .await
+}
+
+async fn call_tool_with_timeout(
+    timeout: Duration,
+    call: impl Future<Output = Result<JsonValue, McpTransportError>>,
+) -> Result<JsonValue, McpTransportError> {
+    let result = tokio::time::timeout(timeout, call).await;
     match result {
         Ok(result) => result,
         Err(_) => Err(McpTransportError::timeout(timeout)),
@@ -378,11 +415,11 @@ async fn call_tool_with_pooled_rmcp_session(
     session_manager: Arc<Mutex<McpSessionManager>>,
     spawn_count: Arc<AtomicU64>,
 ) -> Result<JsonValue, McpTransportError> {
-    if !request.sandbox.cleanup_paths.is_empty() {
+    if !request.process.cleanup_paths.is_empty() {
         return call_tool_with_one_shot_rmcp_session(request, spawn_count).await;
     }
 
-    let key = McpSessionKey::from_plan(&request.sandbox);
+    let key = McpSessionKey::from_plan(&request.process);
     let (session, stale) = {
         let mut manager = lock_session_manager(&session_manager)?;
         manager.take(&key)
@@ -391,7 +428,7 @@ async fn call_tool_with_pooled_rmcp_session(
 
     let mut session = match session {
         Some(session) => session,
-        None => McpSession::start(&request.sandbox, &spawn_count).await?,
+        None => McpSession::start(&request.process, &spawn_count).await?,
     };
     let result = session.call_tool(request.tool, request.arguments).await;
     match result {
@@ -414,7 +451,7 @@ async fn call_tool_with_one_shot_rmcp_session(
     request: McpToolCallRequest,
     spawn_count: Arc<AtomicU64>,
 ) -> Result<JsonValue, McpTransportError> {
-    let mut session = McpSession::start(&request.sandbox, &spawn_count).await?;
+    let mut session = McpSession::start(&request.process, &spawn_count).await?;
     let result = session.call_tool(request.tool, request.arguments).await;
     session.close().await;
     result
@@ -446,19 +483,17 @@ fn lock_session_manager(
 }
 
 async fn serve_rmcp_client(
-    child: &mut tokio::process::Child,
+    child: &mut OwnedTokioProcess,
     error_state: RmcpTransportErrorState,
 ) -> Result<
     rmcp::service::RunningService<rmcp::RoleClient, rmcp::model::ClientInfo>,
     McpTransportError,
 > {
     let stdout = child
-        .stdout
-        .take()
+        .take_stdout()
         .ok_or_else(|| McpTransportError::failed("MCP server stdout unavailable."))?;
     let stdin = child
-        .stdin
-        .take()
+        .take_stdin()
         .ok_or_else(|| McpTransportError::failed("MCP server stdin unavailable."))?;
     let transport = RmcpContentLengthTransport::new(
         stdout,
@@ -485,22 +520,34 @@ where
         .map_err(|error| rmcp_initialization_error(error, error_state))
 }
 
+struct SpawnedMcpServer {
+    child: OwnedTokioProcess,
+    active_process: crate::interrupt::ActiveProcessGroup,
+}
+
 fn spawn_tokio_mcp_server(
-    plan: &SandboxPlan,
+    plan: &PreparedProcessInvocation,
     spawn_count: &AtomicU64,
-) -> Result<tokio::process::Child, McpTransportError> {
+) -> Result<SpawnedMcpServer, McpTransportError> {
     let child = spawn_tokio_process(
         TokioProcessSpec::new("MCP server", plan.command.clone(), plan.cwd.clone())
             .args(plan.args.clone())
             .env(plan.env.clone()),
     )
     .map_err(|error| McpTransportError::failed(error.to_string()))?;
+    let process_id = child
+        .id()
+        .ok_or_else(|| McpTransportError::failed("MCP server process id unavailable."))?;
+    let active_process = crate::interrupt::ActiveProcessGroup::register(process_id);
     spawn_count.fetch_add(1, Ordering::SeqCst);
-    Ok(child)
+    Ok(SpawnedMcpServer {
+        child,
+        active_process,
+    })
 }
 
 #[cfg(unix)]
-async fn terminate_tokio_child(child: &mut tokio::process::Child) {
+async fn terminate_tokio_child(child: &mut OwnedTokioProcess) {
     signal_tokio_process_group(child, ProcessSignal::Terminate);
     if tokio::time::timeout(FORCE_KILL_GRACE, child.wait())
         .await
@@ -513,13 +560,13 @@ async fn terminate_tokio_child(child: &mut tokio::process::Child) {
 }
 
 #[cfg(not(unix))]
-async fn terminate_tokio_child(child: &mut tokio::process::Child) {
+async fn terminate_tokio_child(child: &mut OwnedTokioProcess) {
     let _ = child.start_kill();
     let _ = child.wait().await;
 }
 
 #[cfg(unix)]
-fn signal_tokio_process_group(child: &mut tokio::process::Child, signal: ProcessSignal) {
+fn signal_tokio_process_group(child: &mut OwnedTokioProcess, signal: ProcessSignal) {
     let Some(pid) = child.id() else {
         return;
     };
@@ -558,10 +605,10 @@ impl McpStderrDiagnostic {
         self.read_total = self
             .read_total
             .saturating_add(u64::try_from(chunk.len()).unwrap_or(u64::MAX));
-        if chunk.len() >= MAX_CLIENT_RESPONSE_BYTES {
+        if chunk.len() >= MAX_CLIENT_STDERR_BYTES {
             self.tail.clear();
             self.tail.extend(
-                chunk[chunk.len() - MAX_CLIENT_RESPONSE_BYTES..]
+                chunk[chunk.len() - MAX_CLIENT_STDERR_BYTES..]
                     .iter()
                     .copied(),
             );
@@ -571,7 +618,7 @@ impl McpStderrDiagnostic {
             .tail
             .len()
             .saturating_add(chunk.len())
-            .saturating_sub(MAX_CLIENT_RESPONSE_BYTES);
+            .saturating_sub(MAX_CLIENT_STDERR_BYTES);
         for _ in 0..excess {
             let _ = self.tail.pop_front();
         }
@@ -686,11 +733,11 @@ mod rmcp_transport_tests {
     use tokio::io::AsyncWriteExt;
 
     use super::{
-        MAX_CLIENT_RESPONSE_BYTES, RmcpContentLengthTransport, RmcpTransportErrorState,
-        serve_rmcp_transport, spawn_stderr_drain,
+        MAX_CLIENT_RESPONSE_BYTES, MAX_CLIENT_STDERR_BYTES, RmcpContentLengthTransport,
+        RmcpTransportErrorState, serve_rmcp_transport, spawn_stderr_drain,
     };
 
-    // rust-style-allow: long-function because these adjacent transport
+    // Function rationale: these adjacent transport
     // regression tests share one in-memory Content-Length fixture.
     #[test]
     fn rmcp_receive_records_malformed_json_as_transport_error() {
@@ -716,14 +763,12 @@ mod rmcp_transport_tests {
 
     #[test]
     fn rmcp_receive_records_oversized_body_as_transport_error() {
-        let message = receive_error_message(b"Content-Length: 1048577\r\n\r\n{}");
+        let message = receive_error_message_with_limit(b"Content-Length: 9\r\n\r\n{}", 8);
 
         assert_eq!(message.as_deref(), Some("MCP message exceeded size limit."));
     }
 
     #[test]
-    // rust-style-allow: long-function -- the style scanner counts the literal
-    // "{" in this malformed-frame fixture as an opening brace.
     fn rmcp_initialize_surfaces_recorded_transport_error() {
         let message = initialize_error_message(b"Content-Length: 1\r\n\r\n{");
 
@@ -736,7 +781,7 @@ mod rmcp_transport_tests {
     }
 
     #[test]
-    // rust-style-allow: long-function -- the stderr-drain test drives a bounded
+    // Function rationale: the stderr-drain test drives a bounded
     // async pipe end-to-end to prove bytes are drained beyond the retained tail.
     fn mcp_stderr_drain_continues_after_retained_tail_limit() -> Result<(), String> {
         tokio::runtime::Builder::new_current_thread()
@@ -747,7 +792,7 @@ mod rmcp_transport_tests {
             .block_on(async move {
                 let (mut writer, reader) = tokio::io::duplex(4096);
                 let drain = spawn_stderr_drain(reader);
-                let total_bytes = MAX_CLIENT_RESPONSE_BYTES + (64 * 1024);
+                let total_bytes = MAX_CLIENT_STDERR_BYTES + (64 * 1024);
                 let chunk = vec![b'x'; 8192];
                 let snapshot = tokio::time::timeout(Duration::from_secs(2), async move {
                     let mut remaining = total_bytes;
@@ -777,7 +822,7 @@ mod rmcp_transport_tests {
                     u64::try_from(total_bytes)
                         .map_err(|error| format!("test byte count fits in u64: {error}"))?
                 );
-                assert_eq!(snapshot.retained_bytes, MAX_CLIENT_RESPONSE_BYTES);
+                assert_eq!(snapshot.retained_bytes, MAX_CLIENT_STDERR_BYTES);
                 Ok(())
             })
     }
@@ -808,20 +853,25 @@ mod rmcp_transport_tests {
     }
 
     fn receive_error_message(bytes: &'static [u8]) -> Option<String> {
+        receive_error_message_with_limit(bytes, MAX_CLIENT_RESPONSE_BYTES)
+    }
+
+    fn receive_error_message_with_limit(bytes: &[u8], response_limit: usize) -> Option<String> {
+        let bytes = bytes.to_vec();
         tokio::runtime::Builder::new_current_thread()
             .enable_io()
             .build()
             .ok()?
             .block_on(async move {
                 let (mut writer, reader) = tokio::io::duplex(bytes.len().max(1));
-                writer.write_all(bytes).await.ok()?;
+                writer.write_all(&bytes).await.ok()?;
                 drop(writer);
 
                 let error_state = RmcpTransportErrorState::default();
                 let mut transport = RmcpContentLengthTransport::new(
                     reader,
                     tokio::io::sink(),
-                    MAX_CLIENT_RESPONSE_BYTES,
+                    response_limit,
                     error_state.clone(),
                 );
 

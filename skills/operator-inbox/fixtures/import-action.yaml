@@ -4,7 +4,6 @@ target: ..
 runner: import_action
 inputs:
   data_source_ref: local://runx/operator-inbox/import-action
-  action_id: action-b5355aa662f1a147791ba490356e5a083bf7814188eb52c5c1f0ebb0d06b903e
   expected_version: 0
   observed_at: "2026-07-14T00:10:00.000Z"
   action:

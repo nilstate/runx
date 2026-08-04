@@ -7,15 +7,16 @@ runx:
 
 # Data Store
 
-Operate a data source through a governed adapter contract. This skill gives an
-agent enough context to read, append, or project state without learning provider
-secrets, inventing SQL, or depending on one storage backend.
+Operate durable event state through Runx's typed data operations. This skill
+gives an agent enough context to append, read, and project state without
+learning provider secrets, inventing queries, or depending on one storage
+backend.
 
-The storage backend can be Postgres, SQLite, D1, Redis, DynamoDB, S3, a ledger,
-or a product API. The runx boundary is the same: a declared data source exposes
-typed operations; the graph supplies bounded params; the adapter executes the
-operation; the receipt records the resource, authority, idempotency, version,
-digest, and redaction evidence.
+Runx ships native SQLite and an external Redis adapter today. Other providers
+can implement the same exact operation contract. The boundary is stable: a
+declared data source exposes typed operations; the graph supplies bounded
+parameters; runtime configuration selects storage; and the receipt records the
+resource, authority, idempotency, version, digest, and redaction evidence.
 
 ## Adapter selection
 
@@ -27,18 +28,16 @@ that ref to the concrete adapter. A local development ref might be
 product-owned HTTP adapter.
 
 Do not put provider logic in the domain skill. Messageboard, CRM, support, and
-business-ops skills should ask for durable facts to be read or written; the data
-source binding decides whether those facts live in local JSON, SQL, Redis, D1,
-object storage, or a product API. Switching providers is a binding change, not a
-rewrite of the skill.
+business-ops skills ask for durable facts to be read or written; the data-source
+binding decides where those facts live. Switching a supported provider is a
+binding change, not a rewrite of the domain skill.
 
-The bundled OSS profile calls `data.source`. Unbound `local://...` refs default
-to durable local SQLite under `.runx/data/local-sources/`, with one source-scoped
-database file per logical ref, so stateful skills can be dogfooded without
-standing up hosted infrastructure. Pass `store_id` only when a fixture
-intentionally wants the deterministic `data.local` JSON store. The graph inputs
-stay the same when a project later binds the source to Postgres, Redis, D1,
-object storage, or a product API.
+Each runner calls one exact native operation: `data.append_event`,
+`data.read_events`, `data.read_projection`, or `data.list_stream_heads`.
+Unbound `local://...` refs default to native durable SQLite under
+`.runx/data/local-sources/`, with one source-scoped database file per logical
+ref. There is no generic router tool, JSON fixture store, or provider selector
+in the public input schema.
 
 Adapter preference is operator configuration, not model choice. To choose Redis,
 SQLite, or a hosted provider, bind the same `data_source_ref` through
@@ -47,8 +46,8 @@ the domain skill.
 
 ## What this skill does
 
-- Reads data through named queries or read operations declared by a data-source
-  adapter.
+- Reads bounded event pages, projections, and stream-head pages through exact
+  typed operations.
 - Appends state transitions with idempotency keys and expected versions.
 - Reads projections, event streams, or bounded latest-stream-head pages so
   loops can resume from explicit state without exporting full history.
@@ -56,21 +55,20 @@ the domain skill.
   row/event limits, versions, and output digests.
 - Keeps product semantics outside the data layer. Messageboards, CRMs, billing
   ledgers, and support desks define their own events and reducers.
-- Ships a fixture adapter (`data.local`), durable local SQLite adapter
-  (`data.sqlite`), and Redis adapter (`data.redis`) behind the same operation
-  envelope.
+- Ships native durable SQLite and a Redis provider adapter behind the same
+  operation envelope. SQLite append and projection reads use a constant-size
+  rolling stream head instead of rescanning full history.
 
 ## When to use this skill
 
 - A graph needs durable state between turns, such as queue position, board
   state, sync cursor, review status, or approval inbox state.
-- A skill must query a bounded slice of product data before deciding the next
+- A skill must read a bounded slice of event state before deciding the next
   action.
 - A workflow needs to append an auditable event or effect transition with
   optimistic concurrency.
-- An operator wants one provider-agnostic shape that can later move from local
-  JSON or SQLite to Postgres, Redis, D1, Supabase, Turso, DynamoDB, or another
-  store.
+- An operator wants one provider-agnostic shape that can move between native
+  SQLite and a configured conforming provider without changing domain graphs.
 
 ## When not to use this skill
 
@@ -89,9 +87,8 @@ the domain skill.
 2. Select the logical data source. Use `data_source_ref` to name the project or
    tenant source; let the project binding choose the adapter. Do not put raw
    database URLs, provider credentials, or SQL in the skill input.
-3. Select a declared operation: named read query, append event, read events,
-   read projection, or list stream heads. Do not synthesize raw provider
-   commands.
+3. Select one exact operation: append event, read events, read projection, or
+   list stream heads. Do not synthesize raw provider commands.
 4. Check authority. Reads need the narrow resource/query scope; writes need the
    transition scope, idempotency key, and expected version unless the operation
    is explicitly append-only without concurrency.
@@ -131,7 +128,7 @@ All runners return `runx.data.operation_result.v1`:
 {
   "schema": "runx.data.operation_result.v1",
   "data_source_ref": "local://example",
-  "provider": "local-json-event-store",
+  "provider": "sqlite-event-store",
   "operation": "append_event",
   "resource": "board_events",
   "aggregate_id": "posting-123",
@@ -177,8 +174,7 @@ state.
   profile.
 - `resource` (required): declared resource, stream, table, keyspace, or
   projection name.
-- `operation` (required for tool-level use): `append_event`, `read_events`,
-  `read_projection`, or `list_stream_heads`.
+- Runner name selects the exact operation; `operation` is not an input.
 - `aggregate_id` (required for event operations): stream or partition key.
 - `event` (required for `append_event`): domain event or transition packet.
 - `idempotency_key` (required for writes): stable retry key.
@@ -193,9 +189,6 @@ state.
   event types. No pattern or arbitrary field queries are accepted.
 - `cursor` (optional for `list_stream_heads`): opaque cursor returned by the
   previous page. Limits are capped at 100.
-- `store_id` (local fixture adapter only): deterministic local store id that
-  opts into the bundled `data.local` proof adapter. Omit it for durable local
-  SQLite. Production adapters should ignore it.
 
 ## Invocation examples
 
@@ -212,20 +205,6 @@ runx skill data-store append_event \
   --json
 ```
 
-Fixture-only dogfood can still use `store_id` to select the JSON fixture store:
-
-```bash
-runx skill data-store append_event \
-  -i data_source_ref=local://runx-data-store/dev-board \
-  -i store_id=dev-board \
-  -i resource=board_events \
-  -i aggregate_id=posting-123 \
-  --input-json expected_version=0 \
-  -i idempotency_key=posting-123:create:v1 \
-  --input-json event='{"type":"posting.created","payload":{"title":"fixture proof"}}' \
-  --json
-```
-
 Production graph shape is the same at the skill boundary:
 
 ```bash
@@ -239,11 +218,13 @@ runx skill data-store append_event \
   --json
 ```
 
-The second command only works once `tenant://acme/board` is bound to an
+The production command only works once `tenant://acme/board` is bound to an
 installed provider adapter. That binding is operator configuration and may name a
 credential profile or hosted grant; it must not carry raw secrets.
 
-Project-specific SQLite uses the same command shape after binding the source:
+Project-specific native SQLite uses the same command shape after binding the
+source. `data.sqlite` is a runtime binding identifier, not a second executable
+tool surface:
 
 ```json
 {

@@ -51,7 +51,7 @@ jobs:
             ${{ runner.os }}-oss-checks-
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup show
 
       - name: Cargo cache
         # verify:fast builds the debug runx + fixture-oracle binaries; without this
@@ -98,7 +98,7 @@ jobs:
             ${{ runner.os }}-oss-checks-
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup show
 
       - name: Cargo cache
         # test:heavy:graph builds the debug runx binary via test-workspace.mjs;
@@ -132,9 +132,7 @@ jobs:
           node-version: 24
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+        run: rustup show
 
       - name: Setup Rust nightly
         uses: dtolnay/rust-toolchain@nightly
@@ -175,17 +173,64 @@ jobs:
           cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges
 
       - name: Cargo policy
-        run: cargo deny --manifest-path crates/Cargo.toml check bans licenses sources
+        run: cargo deny --manifest-path crates/Cargo.toml check advisories bans licenses sources
 
       - name: Rust public API snapshot
         run: node scripts/check-rust-kernel-parity.mjs --api-only
 
-  authoring-smoke:
-    # Drift guard: scaffold -> harness end to end. Reds the build the moment the
-    # `runx new` native scaffold breaks (broken templates, harness regressions),
-    # so the authoring path can never silently rot. Native skills carry no npm
-    # deps and no build step, so this is scaffold then harness, nothing else.
+  skill-harness:
+    # One catalog-wide behavioral sweep. Skill Lab is the sole authoring path,
+    # so there is no parallel template-generator smoke lane.
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.2
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Setup Rust
+        run: rustup show
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build workspace packages
+        run: node scripts/build-workspace.mjs
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: Build runtime binaries
+        working-directory: crates
+        run: |
+          cargo build -p runx-cli
+          cargo build -p runx-js-worker
+      - name: Audit official skill operator value
+        run: node scripts/audit-core-skills.mjs --check --json
+      - name: Catalog harness sweep
+        # The official lock is the catalog source of truth. The sweep fails on
+        # every unallowed harness failure, so a duplicate hard-coded skill count
+        # would only drift from that owner.
+        env:
+          RUNX_RECEIPT_SIGN_KID: ci-skill-harness
+          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
+          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
+        run: |
+          set -euo pipefail
+          node scripts/harness-sweep.mjs \
+            --runx-bin crates/target/debug/runx --no-build
+
+  windows-process-lifecycle:
+    # The Windows Job Object boundary cannot be proved by Linux emulation.
+    # Keep this lane deliberately narrow: two runtime ownership tests and the
+    # platform watchdog self-test, not another workspace-wide matrix build.
+    runs-on: windows-latest
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -194,37 +239,16 @@ jobs:
         with:
           node-version: 24
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup show
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
-      - name: Build runx
+      - name: Prove Windows process-tree ownership
         working-directory: crates
-        run: cargo build -p runx-cli
-      - name: Scaffold and harness
-        env:
-          RUNX_RECEIPT_SIGN_KID: ci-authoring-smoke
-          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
-          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
-        run: |
-          set -euo pipefail
-          RUNX="$GITHUB_WORKSPACE/crates/target/debug/runx"
-          "$RUNX" new authoring-smoke --directory "$RUNNER_TEMP/authoring-smoke"
-          "$RUNX" harness "$RUNNER_TEMP/authoring-smoke" --json
-      - name: Catalog harness sweep
-        # Gate every official skill's declared harness. Reds the build the moment
-        # a catalog case regresses, so a mis-authored fixture can never silently
-        # rot again. --require floors the passing count; any unallowed failure
-        # fails the gate. Add --allow <skill> only for a genuinely flaky case.
-        env:
-          RUNX_RECEIPT_SIGN_KID: ci-authoring-smoke
-          RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
-          RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
-        run: |
-          set -euo pipefail
-          node scripts/harness-sweep.mjs \
-            --runx-bin crates/target/debug/runx --no-build --require 78
+        run: cargo test -p runx-runtime --features cli-tool,mcp windows_ -- --test-threads=1 --nocapture
+      - name: Prove watchdog timeout semantics
+        run: node scripts/harness-sweep.mjs --self-test
 
   checks:
     runs-on: ubuntu-latest
@@ -232,7 +256,8 @@ jobs:
       - js-checks
       - demo-checks
       - rust-checks
-      - authoring-smoke
+      - skill-harness
+      - windows-process-lifecycle
     steps:
       - name: Done
         run: echo "All CI lanes passed."

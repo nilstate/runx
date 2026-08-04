@@ -43,7 +43,7 @@ runners and owner routes exist, target repos are covered, source-thread
 publishing fails closed, and available runners can perform the declared target
 actions.
 
-Use `projectOperationalPolicyReadback` for Aster/admin displays. It exposes
+Use `projectOperationalPolicyReadback` for operator and admin displays. It exposes
 source ids, locator counts, runner state, target repos, owner coverage, outcome
 settings, permissions, and validation findings without echoing raw provider
 locators.
@@ -64,8 +64,8 @@ Required policy fields:
   `api`, or `other`), locator allowlist, allowed actions, source-thread
   policy, optional confidence threshold, and provider-specific filters such as
   Sentry production/unresolved/regressed gates
-- `runners[]`: runner id, kind (`local`, `github-actions`, `aster`, or
-  `other`), availability state, allowed actions, target repos, and whether
+- `runners[]`: runner id, kind (`local`, `github-actions`, or another
+  product-defined identifier), availability state, allowed actions, target repos, and whether
   scafld is required
 - `owner_routes[]`: owner sets and the target repos they cover
 - `targets[]`: repo slug, allowed runners, allowed actions, default owner

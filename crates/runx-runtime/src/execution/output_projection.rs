@@ -1,15 +1,12 @@
 use runx_contracts::operational_policy_source_provider;
 use runx_contracts::{JsonObject, JsonValue, Reference, ReferenceType};
 
-use crate::adapter::SkillOutput;
-
 pub(crate) struct StepOutputProjection {
     pub(crate) outputs: JsonObject,
-    pub(crate) claim: JsonObject,
     pub(crate) refs: StepOutputRefs,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub(crate) struct StepOutputRefs {
     pub(crate) signal_refs: Vec<Reference>,
     pub(crate) source_refs: Vec<Reference>,
@@ -19,80 +16,27 @@ pub(crate) struct StepOutputRefs {
     pub(crate) verification_refs: Vec<Reference>,
 }
 
-/// The diagnostic/base fields `project_step_output` injects into a step's `outputs`
-/// map. Re-exported from `runx_contracts::output` so the runtime projection/resolver
-/// and the parser's parse-time context-edge validation share one source of truth and
-/// the addressable surface cannot drift between layers.
-pub(crate) use runx_contracts::output::BASE_OUTPUT_FIELDS;
-
-#[must_use]
-pub(crate) fn project_step_output(output: &SkillOutput) -> StepOutputProjection {
-    let mut outputs = JsonObject::new();
-    let parsed_stdout = serde_json::from_slice::<JsonValue>(output.stdout.as_bytes()).ok();
-    let refs = stdout_refs(parsed_stdout.as_ref());
-    let stdout = JsonValue::String(output.stdout.clone());
-    if let Some(parsed) = parsed_stdout.as_ref() {
-        outputs.insert("raw".to_owned(), stdout.clone());
-        outputs.insert("skill_claim".to_owned(), parsed.clone());
-    }
-    outputs.insert("stdout".to_owned(), stdout);
-    outputs.insert(
-        "stderr".to_owned(),
-        JsonValue::String(output.stderr.clone()),
-    );
-    outputs.insert(
-        "status".to_owned(),
-        JsonValue::String(if output.succeeded() {
-            "success".to_owned()
-        } else {
-            "failure".to_owned()
-        }),
-    );
-    let claim = match parsed_stdout {
-        Some(JsonValue::Object(object)) => object,
-        _ => JsonObject::new(),
-    };
-    StepOutputProjection {
-        outputs,
-        claim,
-        refs,
-    }
-}
-
-/// Wrap a value in the canonical `{ "data": ... }` artifact envelope, idempotently.
+/// Build the durable graph/receipt projection from one already-verified claim.
 ///
-/// This is the single owner of the envelope convention: a value that is already an
-/// object carrying a `data` key is returned untouched, so the envelope is applied at
-/// most once no matter how many layers (catalog adapter, step projection) handle the
-/// same payload. Without this guard a payload wrapped by one layer is re-wrapped by the
-/// next, producing the `data.data` depth drift that silently breaks context-edge paths.
+/// Raw adapter values and diagnostics never enter this boundary. References
+/// are derived only from fields the producer declared and the runtime admitted
+/// into `claim`, keeping graph state and receipt identity on one exact surface.
 #[must_use]
-pub(crate) fn data_envelope(value: JsonValue) -> JsonValue {
-    match value {
-        JsonValue::Object(object) if object.contains_key("data") => JsonValue::Object(object),
-        other => {
-            let mut wrapper = JsonObject::new();
-            wrapper.insert("data".to_owned(), other);
-            JsonValue::Object(wrapper)
-        }
-    }
+pub(crate) fn project_step_claim(outputs: JsonObject) -> StepOutputProjection {
+    let refs = claim_refs(&outputs);
+    StepOutputProjection { outputs, refs }
 }
 
-fn stdout_refs(value: Option<&JsonValue>) -> StepOutputRefs {
+#[must_use]
+pub(crate) fn claim_refs(outputs: &JsonObject) -> StepOutputRefs {
     let mut refs = StepOutputRefs::default();
-    let Some(value) = value else {
-        return refs;
-    };
-    collect_stdout_artifact_refs(value, &mut refs);
-    collect_stdout_signal_refs(value, &mut refs);
-    collect_stdout_change_set_refs(value, &mut refs);
+    collect_output_artifact_refs(outputs, &mut refs);
+    collect_output_signal_refs(outputs, &mut refs);
+    collect_output_change_set_refs(outputs, &mut refs);
     refs
 }
 
-fn collect_stdout_artifact_refs(value: &JsonValue, refs: &mut StepOutputRefs) {
-    let Some(object) = value.as_object() else {
-        return;
-    };
+fn collect_output_artifact_refs(object: &JsonObject, refs: &mut StepOutputRefs) {
     if let Some(artifact) = object.get("artifact") {
         collect_artifact_reference(artifact, refs);
     }
@@ -133,10 +77,7 @@ fn collect_artifact_reference(value: &JsonValue, refs: &mut StepOutputRefs) {
     }
 }
 
-fn collect_stdout_signal_refs(value: &JsonValue, refs: &mut StepOutputRefs) {
-    let Some(object) = value.as_object() else {
-        return;
-    };
+fn collect_output_signal_refs(object: &JsonObject, refs: &mut StepOutputRefs) {
     if let Some(signal) = object.get("signal") {
         collect_signal_reference(signal, refs);
     }
@@ -145,10 +86,7 @@ fn collect_stdout_signal_refs(value: &JsonValue, refs: &mut StepOutputRefs) {
     }
 }
 
-fn collect_stdout_change_set_refs(value: &JsonValue, refs: &mut StepOutputRefs) {
-    let Some(object) = value.as_object() else {
-        return;
-    };
+fn collect_output_change_set_refs(object: &JsonObject, refs: &mut StepOutputRefs) {
     if let Some(change_set) = object.get("change_set") {
         collect_change_set_reference(change_set, refs);
     }
@@ -285,5 +223,30 @@ fn reference_type_for_source(provider: Option<&str>, locator: &str) -> Reference
         _ if locator.starts_with("slack://") => ReferenceType::SlackThread,
         _ if locator.starts_with("sentry://") => ReferenceType::SentryEvent,
         _ => ReferenceType::ExternalUrl,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::project_step_claim;
+    use runx_contracts::{JsonObject, JsonValue};
+
+    #[test]
+    fn references_are_derived_from_the_admitted_claim() {
+        let claim = JsonObject::from([(
+            "artifact".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "artifact_id".to_owned(),
+                JsonValue::String("artifact_1".to_owned()),
+            )])),
+        )]);
+
+        let projection = project_step_claim(claim);
+
+        assert_eq!(projection.refs.artifact_refs.len(), 1);
+        assert_eq!(
+            projection.refs.artifact_refs[0].uri.as_str(),
+            "runx:artifact:artifact_1"
+        );
     }
 }

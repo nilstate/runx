@@ -55,7 +55,7 @@ NODE
   exit 1
 }
 
-node "$OSS/examples/governed-spend/verify.mjs" "$DENIAL_RECEIPT"
+node "$OSS/tools/verify/verify.mjs" "$DENIAL_RECEIPT"
 
 echo "------------------------------------------------------------"
 echo "receipts: $RDIR"

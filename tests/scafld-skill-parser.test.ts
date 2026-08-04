@@ -6,7 +6,10 @@ import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
-import { validateRunnerManifestYaml, validateSkillMarkdown } from "./parser-eval.js";
+import {
+  validateRunnerManifestYaml,
+  validateSkillMarkdown,
+} from "../scripts/lib/native-parser.mjs";
 
 const execFile = promisify(execFileCallback);
 const scafldStageDir = path.resolve("skills/issue-to-pr/graph/scafld");
@@ -14,8 +17,8 @@ const scafldStageDir = path.resolve("skills/issue-to-pr/graph/scafld");
 describe("scafld graph stage contract", () => {
   it("keeps the portable stage standard while X stays a thin native scafld consumer", async () => {
     const skillPath = path.join(scafldStageDir, "SKILL.md");
-    const wrapperPath = path.join(scafldStageDir, "run.mjs");
-    const skill = validateSkillMarkdown(await readFile(skillPath, "utf8"), { mode: "strict" });
+    const wrapperPath = path.join(scafldStageDir, "tools", "scafld-cli.mjs");
+    const skill = validateSkillMarkdown(await readFile(skillPath, "utf8"));
     const manifest = validateRunnerManifestYaml(await readFile(path.join(scafldStageDir, "X.yaml"), "utf8"));
     const wrapper = await readFile(wrapperPath, "utf8");
     const runner = manifest.runners["scafld-cli"];
@@ -27,7 +30,7 @@ describe("scafld graph stage contract", () => {
     expect(runner?.default).toBe(true);
     expect(runner?.source.type).toBe("cli-tool");
     expect(runner?.source.command).toBe("node");
-    expect(runner?.source.args).toEqual(["./run.mjs"]);
+    expect(runner?.source.args).toEqual(["./tools/scafld-cli.mjs"]);
     expect(wrapper).toContain("const result = spawnSync(scafld, args");
     expect(wrapper).toContain('args.push("--json")');
     expect(wrapper).toContain("const command = String(inputs.command || \"\");");
@@ -66,7 +69,7 @@ describe("scafld graph stage contract", () => {
   it("recovers successful command-review results from status when review omits JSON", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-review-status-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-    const wrapperPath = path.join(scafldStageDir, "run.mjs");
+    const wrapperPath = path.join(scafldStageDir, "tools", "scafld-cli.mjs");
 
     try {
       await writeFile(
@@ -140,7 +143,7 @@ process.exit(1);
   it("fails closed when the resolved scafld is older than 2.4.0", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-scafld-old-version-"));
     const fakeScafld = path.join(tempDir, "fake-scafld.mjs");
-    const wrapperPath = path.join(scafldStageDir, "run.mjs");
+    const wrapperPath = path.join(scafldStageDir, "tools", "scafld-cli.mjs");
 
     try {
       await writeFile(

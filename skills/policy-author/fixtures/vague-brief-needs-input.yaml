@@ -7,44 +7,36 @@ inputs:
   objective: Author a policy from the brief.
 caller:
   answers:
-    agent_task.policy-author.output:
+    agent_task.policy-author-draft.output:
       policy_proposal:
         decision: needs_input
-        policy:
-          schema: runx.operational_policy.v1
-          target_repos: []
-          runner:
-            id: ""
-            kind: ""
-            requires: []
-          allowed_actions: []
-          sources: []
-          owner_routes: []
-          outcomes:
-            verification_required: true
-            close_source_issue: never
-            require_human_merge_gate: true
-            auto_merge: false
-        lint:
-          status: fail
-          findings:
-            - id: policy.owner.unrouted
-              severity: error
-              message: No target repos or owner routes were provided; cannot route work to a named owner.
-            - id: policy.source.no_confidence_floor
-              severity: error
-              message: No trusted sources or confidence floors were provided.
-        rationale: The brief names neither the repos, the trusted sources, nor the owners, so a fail-closed policy cannot be authored. Stopping for input rather than inventing owners or permissive defaults.
+        policy: null
+        rationale: The brief names neither repositories, trusted source locators, owners, nor a runner binding.
         blockers: []
         needs_input:
           - Which repositories should the policy govern?
-          - Which inbound sources are trusted (GitHub, Sentry, other), and at what confidence?
-          - Who owns each surface?
+          - Which source locators are trusted?
+          - Who owns each target and which runner is available?
         success_checkpoint:
           milestone: awaiting_governance_inputs
-          description: The skill stops for the repos, sources, and owners rather than emitting a policy that fails its own lint.
+          description: Stop before drafting an unbounded policy.
 expect:
   status: sealed
+  steps:
+    - draft
+    - prepare
+    - finalize-stop
+  step_outputs:
+    finalize-stop:
+      subset:
+        policy_proposal_packet:
+          data:
+            policy_proposal:
+              decision: needs_input
+              policy: null
+              validation:
+                status: not_run
+                engine: runx policy
   receipt:
     schema: runx.receipt.v1
     state: sealed
@@ -53,3 +45,4 @@ metadata:
   public_skill: policy-author
   source_case: vague-brief-needs-input
   source: skills-fixture
+  runner_kind: graph

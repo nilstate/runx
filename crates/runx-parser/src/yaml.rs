@@ -1,4 +1,4 @@
-// rust-style-allow: large-file the QuoteScanner state machine and its
+// Module rationale: the QuoteScanner state machine and its
 // quote-aware scanners belong next to the parity-subset rules they enforce;
 // splitting the scanner from the rules trades clarity for two-file traversal.
 use std::collections::HashSet;
@@ -443,7 +443,7 @@ fn split_plain_mapping_value(content: &str) -> Option<(&str, &str)> {
     Some((key, &trimmed[delimiter_index + 1..]))
 }
 
-// rust-style-allow: long-function because the scalar exemptions and
+// Function rationale: the scalar exemptions and
 // quote-aware colon scanner are one validation rule.
 fn plain_scalar_contains_colon_space(value: &str) -> bool {
     let trimmed = value.trim_start();

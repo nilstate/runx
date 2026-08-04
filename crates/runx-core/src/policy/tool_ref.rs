@@ -72,7 +72,7 @@ mod tests {
             "fs.read",
             "git.current_branch",
             "git.diff_name_only",
-            "shell.exec",
+            "command.execute",
             "cli.capture_help",
             "namespace.tool-name",
         ] {

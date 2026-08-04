@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the A2A parity slice keeps the transport
+// Module rationale: the A2A parity slice keeps the transport
 // contract, fixture transport, argument mapping, and receipt metadata in one
 // reviewable adapter surface until the live transport split lands.
 use std::collections::BTreeMap;
@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 use runx_contracts::{JsonObject, JsonValue, sha256_hex};
 
 use crate::RuntimeError;
-use crate::adapter::{InvocationStatus, SkillAdapter, SkillInvocation, SkillOutput};
-use crate::adapter_pipeline::{AdapterCapture, AdapterProjection};
+use crate::adapter::{InvocationOutput, InvocationStatus, SkillAdapter, SkillInvocation};
+use crate::adapter_pipeline::AdapterProjection;
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(10);
 const MIN_TIMEOUT: Duration = Duration::from_millis(50);
@@ -140,10 +140,14 @@ where
         "a2a"
     }
 
-    // rust-style-allow: long-function because the send, poll, timeout-cancel,
+    // Function rationale: the send, poll, timeout-cancel,
     // and receipt-metadata path is the governed A2A adapter boundary.
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
+    fn invoke(&self, request: SkillInvocation) -> Result<InvocationOutput, RuntimeError> {
         let started = Instant::now();
+        crate::execution_environment::resolve_declared_environment(
+            &request.requirements,
+            &request.env,
+        )?;
         let source = request.source;
         if source.source_type != runx_parser::SourceKind::A2a {
             return Err(RuntimeError::UnsupportedAdapter {
@@ -228,14 +232,13 @@ where
             ));
         }
 
-        Ok(AdapterProjection::from_started(started).output(
+        let metadata = metadata_for(&source, Some(&completed), Some(&message), None)?;
+        let value = completed.output.unwrap_or(JsonValue::Null);
+        Ok(AdapterProjection::from_started(started).runtime_output(
             InvocationStatus::Success,
-            AdapterCapture::new(
-                stringify_a2a_output(completed.output.as_ref())?,
-                String::new(),
-            ),
-            Some(0),
-            metadata_for(&source, Some(&completed), Some(&message), None)?,
+            value,
+            None,
+            metadata,
         ))
     }
 }
@@ -390,9 +393,7 @@ fn map_arguments(
         .collect()
 }
 
-// rust-style-allow: long-function because the style guard counts template
-// delimiter literals as braces; this parser intentionally handles the full
-// exact-template and embedded-template mapping path in one place.
+// Exact and embedded templates share one delimiter-aware mapping path.
 fn map_template_string(
     template: &str,
     inputs: &JsonObject,
@@ -445,16 +446,7 @@ fn stringify_input(value: Option<&JsonValue>) -> Result<String, RuntimeError> {
     }
 }
 
-fn stringify_a2a_output(output: Option<&JsonValue>) -> Result<String, RuntimeError> {
-    match output {
-        Some(JsonValue::String(value)) => Ok(value.clone()),
-        None | Some(JsonValue::Null) => Ok(String::new()),
-        Some(value) => serde_json::to_string(value)
-            .map_err(|source| RuntimeError::json("serializing A2A output", source)),
-    }
-}
-
-// rust-style-allow: long-function because A2A metadata construction keeps
+// Function rationale: A2A metadata construction keeps
 // every hash committed field adjacent to the exact source it summarizes.
 fn metadata_for(
     source: &runx_parser::SkillSource,
@@ -505,6 +497,9 @@ fn metadata_for(
     }
     let mut metadata = JsonObject::new();
     metadata.insert("a2a".to_owned(), JsonValue::Object(a2a));
+    metadata.extend(crate::process_invocation::boundary_metadata(
+        runx_contracts::ExecutionBoundaryKind::RemoteProvider,
+    )?);
     Ok(metadata)
 }
 
@@ -534,6 +529,6 @@ fn sha256_json(value: &JsonValue) -> Result<String, RuntimeError> {
     Ok(sha256_hex(json.as_bytes()))
 }
 
-fn failure(message: impl Into<String>, started: Instant, metadata: JsonObject) -> SkillOutput {
+fn failure(message: impl Into<String>, started: Instant, metadata: JsonObject) -> InvocationOutput {
     AdapterProjection::from_started(started).failure(message.into(), metadata)
 }

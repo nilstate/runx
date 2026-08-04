@@ -11,7 +11,11 @@ all-features = true
 # crates. Add reviewed, time-boxed exceptions to `ignore` with a tracking note.
 version = 2
 yanked = "deny"
-ignore = []
+# Boa 0.21.1 is the current upstream release and still uses `paste` solely as a
+# compile-time proc macro. RUSTSEC-2024-0436 reports maintenance status, not a
+# runtime vulnerability; replacing it locally would mean carrying a Boa fork or
+# an impostor `paste` shim. Remove this exception when Boa removes that edge.
+ignore = ["RUSTSEC-2024-0436"]
 
 [bans]
 multiple-versions = "allow"
@@ -30,7 +34,7 @@ deny = [
   # keeps rmcp out of pure crates and the CLI.
   { name = "serde_yaml", reason = "Unapproved YAML backend; the parser backend is serde_norway." },
   { name = "serde_yml", reason = "Retired YAML backend candidate; the parser backend is serde_norway." },
-  { name = "tokio", wrappers = ["runx-runtime", "reqwest", "rmcp", "async-compression", "h2", "hyper", "hyper-rustls", "hyper-util", "tokio-rustls", "tokio-stream", "tokio-util", "tower", "tower-http"], reason = "Approved only inside runx-runtime async-http/MCP adapter boundaries and reviewed transport internals; pure crates must not depend on tokio." },
+  { name = "tokio", wrappers = ["runx-runtime", "process-wrap", "reqwest", "rmcp", "async-compression", "h2", "hyper", "hyper-rustls", "hyper-util", "tokio-rustls", "tokio-stream", "tokio-util", "tower", "tower-http"], reason = "Approved only inside runx-runtime async-http/MCP and Windows owned-process boundaries and their reviewed transport/process wrappers; pure crates must not depend on tokio." },
   { name = "ureq", reason = "No HTTP client exception is approved; adapter-side HTTP needs a scoped spec first." },
 ]
 

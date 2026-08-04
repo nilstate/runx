@@ -4,8 +4,66 @@ target: ..
 runner: audit
 inputs:
   receipt_id: rcpt_doc_bot_5582
-  receipt_summary: "Sealed run of a docs bot. Authority proof granted repo.read only. Acts: one observation that read files, and one act that exercised repo.write to push a commit. No approval gate recorded for the write. Material referenced by hash."
-  granted_scopes: '["repo.read"]'
+  receipt_rows:
+    - receipt_id: rcpt_doc_bot_5582
+      skill_ref: docs-bot
+      status: closed
+      created_at: "2026-07-16T00:00:00Z"
+      verification_status: verified
+  receipt_details:
+    - id: rcpt_doc_bot_5582
+      receipt_ref: runx:receipt:rcpt_doc_bot_5582
+      subject_kind: skill
+      subject_ref: docs-bot
+      created_at: "2026-07-16T00:00:00Z"
+      status: closed
+      verification:
+        status: verified
+      authority:
+        actor_ref: runx:principal:docs-bot
+        grant_refs:
+          - runx:grant:repo-read
+        scope_refs:
+          - runx:scope_admission:repo.read
+          - runx:scope_admission:repo.write
+        exercised_scopes:
+          - scope: repo:read
+            source: scope_ref
+            term_id: null
+            resource_ref: runx:scope_admission:repo.read
+          - scope: repo:write
+            source: scope_ref
+            term_id: null
+            resource_ref: runx:scope_admission:repo.write
+        authority_proof_refs: []
+        approval_refs: []
+        term_count: 0
+        parent_authority_ref: null
+        subset_proof_present: false
+        enforcement_profile_hash: sha256:profile
+        redaction_refs: []
+        credential_ref_count: 0
+      decisions: []
+      acts:
+        - id: act_push
+          form: revision
+          purpose: Push a commit.
+          legitimacy: Claimed repository authority.
+          summary: Pushed a commit.
+          disposition: closed
+          reason_code: process_closed
+          source_refs: []
+          target_refs:
+            - runx:repository:docs
+          artifact_refs: []
+          criterion_statuses: []
+          context_ref_present: false
+      artifact_refs: []
+      lineage_refs: []
+      seal_reason_code: process_closed
+      seal_summary: Commit pushed.
+  granted_scopes:
+    - repo:read
   objective: Audit whether the run exceeded its grant.
 caller:
   answers:
@@ -14,22 +72,22 @@ caller:
         decision: ready
         run_ref: rcpt_doc_bot_5582
         granted_scopes:
-          - repo.read
+          - repo:read
         exercised_scopes:
-          - repo.read
-          - repo.write
+          - repo:read
+          - repo:write
         refusals: []
         findings:
           - id: receipt.authority.over_reach
             severity: error
-            message: "The run exercised repo.write, which the authority proof did not grant (granted: repo.read)."
+            message: "The run exercised repo:write, which the authority proof did not grant (granted: repo:read)."
           - id: receipt.mutation.ungated
             severity: error
-            message: The repo.write mutation ran with no approval gate recorded in the receipt.
+            message: The repo:write mutation ran with no approval gate recorded in the receipt.
         verdict: anomaly
-        rationale: The receipt shows repo.write exercised against a proof that granted only repo.read, and the mutation has no approval gate. Both are governance violations recorded in the run's own evidence.
+        rationale: The receipt shows repo:write exercised against a proof that granted only repo:read, and the mutation has no approval gate. Both are governance violations recorded in the run's own evidence.
         recommendations:
-          - Revoke this run's grant and investigate how repo.write was exercised against a repo.read proof.
+          - Revoke this run's grant and investigate how repo:write was exercised against a repo:read proof.
           - Require an approval gate on any mutating act before re-enabling the skill.
         success_checkpoint:
           milestone: audit_anomaly

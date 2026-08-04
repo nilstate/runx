@@ -18,7 +18,7 @@ const validArtifactEnvelope = {
     artifact_id: "art_abc",
     run_id: "run_def",
     step_id: null,
-    producer: { skill: "evolve", runner: "evolve" },
+    producer: { skill: "work-plan", runner: "work-plan-agent" },
     created_at: "2026-04-28T07:00:00Z",
     hash: "sha256:abc",
     size_bytes: 12,
@@ -67,7 +67,7 @@ async function appendValidLedgerEntry(receiptDir: string, runId: string): Promis
     entries: [
       createRunEventEntry({
         runId,
-        producer: { skill: "evolve", runner: "evolve" },
+        producer: { skill: "work-plan", runner: "work-plan-agent" },
         kind: "run_started",
         status: "started",
         createdAt: "2026-04-28T07:00:00Z",

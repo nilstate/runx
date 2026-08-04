@@ -117,8 +117,8 @@ function writeDemoReceipts(directory, paid, refusal) {
   return {
     paid: paidPath,
     refusal: refusalPath,
-    verify_paid: `node examples/governed-spend/verify.mjs ${paidPath}`,
-    verify_refusal: `node examples/governed-spend/verify.mjs ${refusalPath}`,
+    verify_paid: `node tools/verify/verify.mjs ${paidPath}`,
+    verify_refusal: `node tools/verify/verify.mjs ${refusalPath}`,
   };
 }
 

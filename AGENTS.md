@@ -114,8 +114,9 @@ These rules must not be violated. See `config.yaml` for the canonical invariant 
 ### Rust Trusted Runtime
 
 Rust owns trusted local execution, receipt sealing, runtime policy, harness
-replay, MCP, payment gates, and sandbox planning. TypeScript packages may wrap
-or present those paths, but must not reintroduce local execution fallback logic.
+replay, MCP, payment gates, process supervision, and typed execution-boundary
+evidence. TypeScript packages may wrap or present those paths, but must not
+reintroduce local execution fallback logic.
 
 ### Operator Ownership
 
@@ -126,6 +127,21 @@ resolve grants, and execute bounded provider API calls, but they do not own the
 operator or its state. If an operator surface is missing, add it here rather
 than extending a Cloud dogfood script. Runx-company deployment and
 control-plane administration are not domain-operator surfaces.
+
+### Connector and Tenant Neutrality
+
+Runx is tenant-agnostic and connector-neutral. Skills, manifests, packets, and
+public provider-operation contracts must target stable provider capabilities,
+not a Runx-company tenant or one credential backend. Never expose Nango
+connection ids, provider-config keys, hosted tenant ids, connector URLs, or
+Runx-owned credential assumptions in a portable skill contract.
+
+The operator selects and binds the connector at runtime. It may be local,
+self-hosted, third-party, or Runx-hosted. A Runx-hosted connector is an optional
+implementation of the same contract, not the authoritative path and not a
+prerequisite for using the skill. If a skill works only with Runx Cloud when a
+user-owned connector could satisfy the same bounded operation, the design is
+wrong.
 
 ### Pure Kernel Boundaries
 
@@ -151,6 +167,14 @@ enums or bespoke runtime branches.
 ### No Legacy Fallbacks
 
 No dual-reads, dual-writes, or runtime fallbacks. When changing schemas or identifiers, adopt the new scheme immediately. Use one-off migration scripts, not runtime code.
+
+### Architecture Admission
+
+Use the canonical `skill-lab` skill for skill design, creation, improvement, and
+harness work. Its `SKILL.md` is the complete operating contract supplied to the
+authoring agent; do not duplicate that contract here or in `X.yaml`. Apply the
+same ownership test to native/core work and keep one source of truth for every
+contract. See `docs/skill-quality-standard.md` for the review bar.
 
 ### Loop Orchestration
 
@@ -243,14 +267,15 @@ CLI release may stamp and publish only:
 - native npm packages used by the CLI selector
 - `crates/runx-cli/Cargo.toml` and the `runx-cli` lockfile entry
 
-Do not stamp or publish internal Rust crates (`runx-core`, `runx-runtime`,
+Do not publish `runx-cli` or internal Rust crates (`runx-core`, `runx-runtime`,
 `runx-parser`, `runx-contracts`, `runx-pay`, `runx-receipts`, `runx-sdk`, or
-`runx-contracts-derive`) during a CLI release unless the operator explicitly
-requests a separate library-crate release.
+`runx-contracts-derive`) during a CLI release. Cargo publication requires an
+explicit, coordinated library-crate release because the CLI consumes those
+internal APIs.
 
 Never bump a new patch version just to repair package-channel drift. Fix the
 existing release asset, channel manifest, or workflow in place. Before declaring
-Homebrew, Scoop, winget, AUR, npm, crates.io, or GHCR healthy, validate the
+Homebrew, Scoop, winget, AUR, npm, or GHCR healthy, validate the
 generated channel manifest against the actual archive contents and run the
 workflow dry-run/dispatch path where available.
 

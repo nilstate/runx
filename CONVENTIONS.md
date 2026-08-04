@@ -28,13 +28,67 @@ Package names carry trust claims:
 - Rust `runx-core` owns pure state-machine and policy decisions.
 - Deleted TypeScript core packages must not be restored as compatibility shims
   or build-only fallbacks.
-- `runx-runtime` coordinates local execution, adapters, sandbox planning,
-  caller interaction, and receipts.
+- `runx-runtime` coordinates local execution, adapters, exact process
+  invocation and supervision, caller interaction, and receipts.
 - host adapters and protocol adapters touch external processes and protocols.
 - `runx-cli` is the native command shell over the runtime.
 
 OSS packages must not import cloud code. Core must not import runtime, adapter,
 CLI, host-adapter, filesystem, network, or subprocess concerns.
+
+## Connector and Tenant Neutrality
+
+Portable Runx behavior targets provider capabilities, not connector vendors or
+Runx-company tenancy. Skills and public contracts must not contain Nango
+connection ids, provider-config keys, hosted tenant ids, connector endpoints,
+or assumptions that credentials are held by Runx Cloud. The operator binds an
+eligible local, self-hosted, third-party, or Runx-hosted connector at runtime.
+
+Provider operations therefore have stable names, typed inputs, bounded result
+projections, target-resource constraints, access classification, idempotency,
+and readback semantics independent of the adapter that executes them. Hosted
+adapters are optional implementations of those contracts. They must never
+become prerequisites for an otherwise portable skill.
+
+## Ownership Before Abstraction
+
+Promote behavior into native code only for a runtime/security invariant or two
+independent existing consumers. Keep domain policy in its owning skill, delete
+the displaced path in the same cutover, and never expose fixture or package
+layout through a generic API. `skills/skill-lab/SKILL.md` owns the full skill
+authoring contract; `docs/skill-quality-standard.md` owns the review standard.
+
+## Packet Artifact Eligibility
+
+Every public runner must expose a complete inspectable input and output
+contract. That does not make every runner or skill a global packet owner.
+
+- Keep runner-specific nested values in `X.yaml` as ordinary JSON Schema.
+- Put nested output shape in the producing output declaration's `schema`; the
+  parser and runtime validate that same declaration and packet generation
+  projects it without a second schema owner.
+- Declare `packet: <packet-id>` only when the complete value crosses a named,
+  reusable skill, runtime, SDK, provider, receipt, or registry boundary.
+- Keep graph intermediates and one-run implementation values as typed step
+  inputs or outputs; do not mint packet ids to make inspection work.
+- A canonical Rust contract uses `public_packet_artifact` only when a native
+  producer or public cross-language boundary requires distribution without an
+  `X.yaml` producer. Existence in `runx-contracts` is not enough.
+- One packet id has one schema owner. Consumers reference it and never copy its
+  schema. Generated packet files are distribution outputs and must disappear
+  when their last declaration or explicit public native owner disappears.
+- A named packet schema describes its semantic fields or references another
+  canonical contract. Bare `type: object`, unconstrained `{}`, and an opaque
+  `additionalProperties` bag are not substitutes for a contract. An open JSON
+  value is valid only as an explicitly named protocol extension or generic data
+  payload inside an otherwise bounded semantic envelope.
+- This rule is recursive. Every `type: object` in an input or distributed
+  packet must declare structure or an explicit `additionalProperties` policy.
+  Use `type: json` when the value is intentionally arbitrary JSON rather than
+  disguising that intent as an object contract.
+
+Review the active producer and consumer before adding or retaining a packet
+artifact. An orphaned schema is legacy code, not compatibility evidence.
 
 ## Rust Bar
 
@@ -50,6 +104,48 @@ cargo deny --manifest-path crates/Cargo.toml check bans licenses sources
 Workspace lints deny unsafe code and common escape hatches such as unwrap,
 expect, panic, todo, unimplemented, dbg, and print macros. Do not work around
 these with broad allows.
+
+## Tests
+
+The default test for operator-visible behavior is an operator journey through
+the outermost stable interface. For the CLI, spawn the native `runx` binary and
+exercise the coherent lifecycle an operator actually follows: discover,
+inspect, run or pause, resume when needed, seal, verify, and read history. Keep
+human output, JSON output, exit codes, persisted state, and receipt evidence in
+the same journey when they belong to the same promise.
+
+Use focused unit or boundary tests when they prove a distinct invariant that a
+journey should not enumerate: pure algorithms, parser diagnostics, security
+rejections, wire compatibility, fault injection, and hard-to-reach platform
+edges. Do not add a narrow test merely to repeat an assertion already owned by
+a journey. When a journey absorbs existing coverage, delete the superseded
+test only after the replacement proves the same behavior at a stronger
+boundary.
+
+For skill behavior, the default is a replayable operator-story fixture through
+the skill's public runner. Composite-skill harnesses own the business scenario
+matrix: routing decisions, authority attenuation, approval and refusal stops,
+downstream handoffs, provider-evidence requirements, receipt lineage, durable
+readback, and replay or recovery. Use fixture agents and local or fake adapters;
+live-provider smoke tests are separate and opt-in. CLI journeys prove that Runx
+can drive a representative composite flow, but must not duplicate the skill's
+full scenario matrix.
+
+A sealed status is engine coverage, not operator-value proof. Every kept public
+skill must have at least one semantic oracle through `expect.output`,
+`expect.step_outputs`, or replayed `caller.answers`. Stateful workflows put the
+whole transition and readback in one graph fixture. Individual fixtures must be
+independent: never share hidden state through filename order or reuse a
+single-use idempotency or capability key across cases.
+
+Harness scratch state is project-owned under `.runx/harness` and is removed
+after the run. Durable receipts remain under `.runx/receipts` or the explicit
+receipt directory. Catalog sweeps and core-skill trials likewise isolate
+disposable work under `.runx`; `/tmp` is reserved for an outer test framework
+that deliberately supplies a disposable project root.
+
+Rust integration modules remain consolidated into one test binary per crate.
+Adding more files must not create additional Cargo integration binaries.
 
 ## Specs
 

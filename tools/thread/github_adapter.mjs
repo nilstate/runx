@@ -1432,12 +1432,11 @@ export function readGitHubThreadSnapshot({ adapterRef, env, cwd }) {
       env,
       acceptedStatuses: [200],
     }));
-    const comments = parseGitHubRestArray(runGitHubRest({
-      method: "GET",
-      path: `${gitHubIssueApiPath(issueRef.repo_slug, issueRef.issue_number)}/comments?per_page=100`,
+    const comments = listGitHubIssueCommentsRest({
+      repoSlug: issueRef.repo_slug,
+      issueNumber: issueRef.issue_number,
       env,
-      acceptedStatuses: [200],
-    }));
+    });
     return buildGitHubThreadSnapshot(issue.state, issue.labels, comments.map((comment) => comment.body), {
       title: issue.title,
       body: issue.body,
@@ -1538,6 +1537,22 @@ function listGitHubIssuesByLabelRest({ repoSlug, label, env, limit }) {
     if (pageIssues.length < 100) break;
   }
   return issues.slice(0, limit);
+}
+
+function listGitHubIssueCommentsRest({ repoSlug, issueNumber, env }) {
+  const comments = [];
+  for (let page = 1; ; page += 1) {
+    const response = runGitHubRest({
+      method: "GET",
+      path: `${gitHubIssueApiPath(repoSlug, issueNumber)}/comments?per_page=100&page=${page}`,
+      env,
+      acceptedStatuses: [200],
+    });
+    const pageComments = parseGitHubRestArray(response);
+    comments.push(...pageComments);
+    if (pageComments.length < 100) break;
+  }
+  return comments;
 }
 
 function buildGitHubThreadSnapshot(state, labels, commentBodies, issue = {}) {

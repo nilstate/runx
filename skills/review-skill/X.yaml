@@ -1,64 +1,146 @@
 skill: review-skill
-version: "0.1.1"
+version: "0.2.3"
 
 catalog:
-  kind: skill
+  kind: graph
   audience: builder
   visibility: public
-  role: context
+  role: canonical
+  execution: read
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+
 harness:
   cases:
-    - name: review-skill-produces-trust-audit
+    - name: review-skill-collects-native-evidence
+      runner: review
       inputs:
-        skill_ref: sourcey/sourcey
-        objective: Decide whether Sourcey is ready for evaluator-facing demos
-        evidence_pack:
-          receipts:
-            - kind: harness
-              status: sealed
-              note: Sourcey inline harness passes in OSS CI.
-          docs:
-            - path: docs/skill-profile-model.md
-              reason: Confirms the enforced package-only SKILL standard.
-        test_constraints: Keep the evaluation bounded to repo-visible evidence and local harness signals.
+        skill_ref: ../review-receipt
+        objective: Decide whether receipt diagnosis has bounded evidence and stop behavior
+        test_constraints: Run only local read-only harnesses.
       caller:
         answers:
-          agent_task.review-skill.output:
+          agent_task.review-skill-assess.output:
             capability_profile:
-              skill_ref: sourcey/sourcey
-              summary: Generates a bounded docs site with approval and verification steps.
+              skill_ref: ../review-receipt
+              summary: Diagnoses one receipt or harness failure into a bounded recommendation.
             trust_assessment:
-              tier: first_party
+              tier: local_harness
               caveats:
-                - Needs better path-contract documentation.
+                - Provider effects are outside this skill's claim.
             test_matrix:
-              - check: inline harness passes
-                status: required
-              - check: output directory contract documented
-                status: required
+              - check: native harness
+                status: passed
             recommendation_report:
               recommendation: adopt_with_caveats
-              rationale: Strong structure, but docs and public examples need tightening.
+              rationale: The bounded read-only contract and local harness are proven.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+        steps:
+          - collect-evidence
+          - assess
+        step_outputs:
+          collect-evidence:
+            subset:
+              skill_validation:
+                data:
+                  verdict: tested
+                  inspect:
+                    status: ok
+                    name: review-receipt
+                  harness:
+                    status: passed
+
+    - name: review-skill-assesses-supplied-evidence
+      runner: assess
+      inputs:
+        skill_ref: example/skill
+        evidence_pack:
+          inspect:
+            status: ok
+          harness:
+            status: passed
+      caller:
+        answers:
+          agent_task.review-skill-assess.output:
+            capability_profile:
+              skill_ref: example/skill
+              summary: Bounded example capability.
+            trust_assessment:
+              tier: supplied_local_evidence
+              caveats: []
+            test_matrix:
+              - check: supplied harness
+                status: passed
+            recommendation_report:
+              recommendation: improve
+              rationale: Supplied evidence is useful but lacks independent provider proof.
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
 
-    - name: review-skill-needs-skill-ref
-      inputs: {}
+    - name: review-skill-assess-needs-evidence
+      runner: assess
+      inputs:
+        skill_ref: example/skill
       expect:
-        status: failure
-
+        status: needs_agent
 
 runners:
-  evaluate:
+  review:
     default: true
+    type: graph
+    inputs:
+      skill_ref:
+        type: string
+        required: true
+        description: Workspace- or owning-skill-relative local package path.
+      objective:
+        type: string
+        required: false
+        description: Specific decision the evaluation should support.
+      evidence_pack:
+        type: json
+        required: false
+        description: Additional receipts, docs, provider evidence, or source notes.
+      test_constraints:
+        type: string
+        required: false
+        description: Time, environment, or safety constraints on evaluation.
+    graph:
+      name: review-skill
+      result_from: [assess]
+      steps:
+        - id: collect-evidence
+          label: inspect target and run safe native harness
+          tool: runx.skill.validate
+          scopes:
+            - fs.read
+          inputs:
+            skill_ref: $input.skill_ref
+            allow_execute_harness: false
+        - id: assess
+          skill: .
+          runner: assess
+          inputs:
+            skill_ref: $input.skill_ref
+            objective: $input.objective
+            evidence_pack: $input.evidence_pack
+            test_constraints: $input.test_constraints
+          context:
+            native_validation: collect-evidence.skill_validation.data
+
+  assess:
     type: agent-task
     runx:
       post_run:
         reflect: never
     agent: reviewer
-    task: review-skill
+    task: review-skill-assess
     outputs:
       capability_profile: object
       trust_assessment: object
@@ -71,16 +153,20 @@ runners:
       skill_ref:
         type: string
         required: true
-        description: "Skill package path, registry id, or marketplace id."
+        description: Skill package path, registry id, or marketplace id.
       objective:
         type: string
         required: false
-        description: "Specific decision the evaluation should support."
+        description: Specific decision the evaluation should support.
       evidence_pack:
         type: json
         required: false
-        description: "Receipts, docs, harness outputs, or source notes."
+        description: Native inspection, harness, receipts, docs, or source notes.
+      native_validation:
+        type: json
+        required: false
+        description: Native runx.skill.validate evidence collected by the default runner.
       test_constraints:
         type: string
         required: false
-        description: "Time, environment, or safety constraints on evaluation."
+        description: Time, environment, or safety constraints on evaluation.

@@ -4,7 +4,6 @@ target: ..
 runner: list_stream_heads
 inputs:
   data_source_ref: local://runx-data-store/list-stream-heads-fixture
-  store_id: data-store-list-stream-heads-v1
   resource: generic_events
   event_types:
     - item.created

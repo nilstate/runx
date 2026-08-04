@@ -7,7 +7,7 @@
 //! reproduces the committed shape: fully inlined, closed string enums as
 //! `anyOf` of `const`, `additionalProperties: false`, and the `$id` /
 //! `x-runx-schema` identity.
-// rust-style-allow: large-file - the schema emitter keeps shared JSON Schema
+// Module rationale: the schema emitter keeps shared JSON Schema
 // construction helpers and primitive type impls together so generated contract
 // shapes are reviewable as one boundary.
 
@@ -158,7 +158,7 @@ pub fn object_schema(
 /// apply). `flattened` entries that are not plain objects (e.g. a flattened
 /// map) relax the parent to accept additional properties, matching serde's
 /// open-ended flatten capture.
-// rust-style-allow: long-function - flatten merging mirrors serde's object
+// Function rationale: flatten merging mirrors serde's object
 // projection rules and is easier to audit as one schema-construction path.
 pub fn object_schema_with_flatten(
     properties: Vec<Property>,
@@ -379,6 +379,12 @@ macro_rules! integer_schema {
 }
 integer_schema!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
+impl RunxSchema for std::num::NonZeroU64 {
+    fn json_schema() -> Value {
+        json!({ "type": "integer", "minimum": 1 })
+    }
+}
+
 impl<T: RunxSchema> RunxSchema for Vec<T> {
     fn json_schema() -> Value {
         json!({ "type": "array", "items": T::json_schema() })
@@ -580,6 +586,91 @@ impl<'de> Deserialize<'de> for NonEmptyString {
 impl RunxSchema for NonEmptyString {
     fn json_schema() -> Value {
         json!({ "minLength": 1, "type": "string" })
+    }
+}
+
+/// A non-empty string with a contract-visible maximum length.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[serde(transparent)]
+pub struct BoundedString<const MAX_LENGTH: usize>(String);
+
+impl<const MAX_LENGTH: usize> BoundedString<MAX_LENGTH> {
+    pub fn new(value: impl Into<String>) -> Option<Self> {
+        let value = value.into();
+        (!value.is_empty() && value.chars().count() <= MAX_LENGTH).then_some(Self(value))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<'de, const MAX_LENGTH: usize> Deserialize<'de> for BoundedString<MAX_LENGTH> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::new(value).ok_or_else(|| {
+            de::Error::custom(format!(
+                "string length must be between 1 and {MAX_LENGTH} characters"
+            ))
+        })
+    }
+}
+
+impl<const MAX_LENGTH: usize> RunxSchema for BoundedString<MAX_LENGTH> {
+    fn json_schema() -> Value {
+        json!({ "minLength": 1, "maxLength": MAX_LENGTH, "type": "string" })
+    }
+}
+
+/// An array whose inclusive item bounds are enforced on the wire and emitted
+/// into the same JSON Schema inspected by operators and agents.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+pub struct BoundedVec<T, const MIN_ITEMS: usize, const MAX_ITEMS: usize>(Vec<T>);
+
+impl<T, const MIN_ITEMS: usize, const MAX_ITEMS: usize> BoundedVec<T, MIN_ITEMS, MAX_ITEMS> {
+    pub fn new(value: Vec<T>) -> Option<Self> {
+        (MIN_ITEMS..=MAX_ITEMS)
+            .contains(&value.len())
+            .then_some(Self(value))
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.0
+    }
+}
+
+impl<'de, T, const MIN_ITEMS: usize, const MAX_ITEMS: usize> Deserialize<'de>
+    for BoundedVec<T, MIN_ITEMS, MAX_ITEMS>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Vec::<T>::deserialize(deserializer)?;
+        Self::new(value).ok_or_else(|| {
+            de::Error::custom(format!(
+                "array length must be between {MIN_ITEMS} and {MAX_ITEMS} items"
+            ))
+        })
+    }
+}
+
+impl<T: RunxSchema, const MIN_ITEMS: usize, const MAX_ITEMS: usize> RunxSchema
+    for BoundedVec<T, MIN_ITEMS, MAX_ITEMS>
+{
+    fn json_schema() -> Value {
+        json!({
+            "type": "array",
+            "minItems": MIN_ITEMS,
+            "maxItems": MAX_ITEMS,
+            "items": T::json_schema(),
+        })
     }
 }
 

@@ -1,7 +1,7 @@
 {
   "schema": "runx.tool.manifest.v1",
   "name": "data.redis",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Redis event-store adapter for the provider-agnostic runx data operation envelope.",
   "source": {
     "type": "cli-tool",
@@ -14,94 +14,11 @@
       "required": true,
       "description": "append_event, read_events, read_projection, or list_stream_heads."
     },
-    "data_source_ref": {
-      "type": "string",
-      "required": true,
-      "description": "Stable logical data-source reference."
-    },
     "data_source_binding": {
       "type": "json",
-      "required": false,
-      "description": "Non-secret data-source binding injected by data.source."
-    },
-    "redis_url": {
-      "type": "string",
-      "required": false,
-      "description": "Redis URL for direct harness use. Prefer data_source_binding.endpoint."
-    },
-    "key_prefix": {
-      "type": "string",
-      "required": false,
-      "description": "Redis key prefix for direct harness use. Redis Cluster bindings must include one safe hash tag, such as runx:{tenant-operator}. Prefer data_source_binding.key_prefix."
-    },
-    "resource": {
-      "type": "string",
       "required": true,
-      "description": "Declared event resource or stream family."
-    },
-    "aggregate_id": {
-      "type": "string",
-      "required": false,
-      "description": "Stream or partition key. Omit for list_stream_heads."
-    },
-    "expected_version": {
-      "type": "number",
-      "required": false,
-      "description": "Required current stream version for append_event."
-    },
-    "idempotency_key": {
-      "type": "string",
-      "required": false,
-      "description": "Stable retry key for append_event."
-    },
-    "event": {
-      "type": "json",
-      "required": false,
-      "description": "Domain event or transition packet for append_event."
-    },
-    "observed_at": {
-      "type": "string",
-      "required": false,
-      "description": "Caller-observed ISO-8601 commit ordering time."
-    },
-    "limit": {
-      "type": "number",
-      "required": false,
-      "default": 50,
-      "description": "Maximum events returned by read_events."
-    },
-    "after_version": {
-      "type": "number",
-      "required": false,
-      "description": "Return ascending read_events strictly after this version; omit for the latest tail."
-    },
-    "event_types": {
-      "type": "json",
-      "required": false,
-      "description": "Optional array of exact latest event types for list_stream_heads."
-    },
-    "cursor": {
-      "type": "string",
-      "required": false,
-      "description": "Opaque list_stream_heads cursor."
+      "description": "Non-secret data-source binding injected by the native data-operation router."
     }
   },
-  "scopes": ["runx:data:read", "runx:data:append"],
-  "runx": {
-    "artifacts": {
-      "named_emits": {
-        "data_operation_result": "runx.data.operation_result.v1"
-      },
-      "wrap_as": "data_operation_result"
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": ["./run.mjs"]
-  },
-  "output": {
-    "packet": "runx.data.operation_result.v1",
-    "wrap_as": "data_operation_result"
-  },
-  "toolkit_version": "0.1.4"
+  "scopes": ["runx:data:read", "runx:data:append"]
 }

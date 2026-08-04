@@ -80,6 +80,7 @@ if [ -z "$dir" ]; then
 fi
 mkdir -p "$dir"
 install -m 755 "${tmp}/runx-${version}-${target}/runx" "${dir}/runx"
+install -m 755 "${tmp}/runx-${version}-${target}/runx-js-worker" "${dir}/runx-js-worker"
 info "installed to ${dir}/runx"
 
 case ":$PATH:" in

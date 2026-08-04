@@ -1,136 +1,79 @@
 ---
 name: sign-receipt
-description: Prepare an evidence-bound attestation of an off-runtime action for a signed Runx receipt; never claims an external ledger append without adapter evidence.
+description: Bind an off-runtime action claim to opaque evidence references in a signed Runx receipt without pretending Runx verified the external action.
 runx:
   category: security
 ---
 
 # Sign Receipt
 
-Turn an action that happened outside a run into an attestation request a signed
-Runx receipt can carry.
+Record a bounded attestation about something that happened outside Runx so a
+later governed run can cite exactly what was claimed, by whom, on which evidence,
+and for what reliance scope. The native Runx receipt signature proves the
+attestation packet was sealed without later modification. It does **not** prove
+the external action itself happened.
 
-## What this skill does
+That distinction makes this skill useful without turning a signature into a
+fictional provider verifier. The actual proof remains in the referenced commit,
+provider object, approval record, transaction, or other evidence system.
 
-`sign-receipt` binds an actor, a claim, and the evidence that backs the claim
-into one attestation request, tests the claim against that evidence, and hands
-the runtime a payload it can include in its signed run receipt. The agent never
-claims that a signature or ledger append happened; those outcomes belong to the
-runtime receipt or a configured ledger adapter.
+## When to use it
 
-The runtime already signs every hop of work it executes itself; each act, each
-decision, each refusal lands in a sealed receipt without anyone asking. Work that
-happens elsewhere has no such record. A human approved a refund in the provider
-console. A partner service shipped a build. A reviewer signed off in a tool runx
-never touched. That work is real, but to the ledger it is a rumor. This skill
-makes the rumor citable.
+Use `sign-receipt` when an operator performed a legitimate off-runtime action
+and downstream automation needs a stable, auditable assertion about it. Examples
+include a manual console change, an externally approved decision, or a provider
+operation completed before a native adapter existed.
 
-It will not mark a claim ready when the evidence does not support it. An
-attestation with no binding evidence would ask the runtime to seal a guess, and
-a sealed guess is worse than no record at all.
+Do not use it to launder an unsupported claim, copy raw evidence into a receipt,
+or replace a provider readback surface that Runx can actually call. If the
+external record is available through a governed reader, prefer that stronger
+evidence path.
 
-**Distinctness:** it attests work that happened OUTSIDE a run; the runtime
-already signs every hop it executes itself. `audit-receipt` reads a sealed
-in-runtime receipt to check authority; `sign-receipt` prepares a new attestation,
-which the runtime seals into a receipt, for work the runtime never saw.
+## How it works
 
-## When to use this skill
+1. Supply the action, named principal, exact claim, optional reliance scope, and
+   bounded opaque evidence references.
+2. Each evidence item names only a stable ref, SHA-256 digest, and what that
+   evidence is asserted to prove. Raw messages, receipts, secrets, and personal
+   records are not accepted.
+3. Native `receipt.attest` validates completeness, rejects duplicates and
+   secret-shaped material, and computes a deterministic attestation digest.
+4. The normal Runx receipt signer seals that packet into the parent run.
+5. Later consumers can verify the receipt and decide whether its declared
+   reliance scope is sufficient for their own action.
 
-- A human or external service performed an action runx did not execute, and a
-  later run needs to depend on it with provenance.
-- An out-of-band approval, payment, build, or sign-off must enter the ledger so
-  an audit can trace it.
-- A partner attestation must be normalized into a runx-shaped, signed receipt.
+The skill never calls the provider named in the claim and never appends to an
+external ledger. Its signature mode and proof boundary are explicit in the
+result.
 
-## When not to use this skill
+## Inputs and result
 
-- To audit a run the runtime executed. That is `audit-receipt`, which reads an
-  existing sealed receipt rather than preparing a new attestation.
-- To execute the action itself. Use the action skill (`spend`, `send-as`,
-  `refund`); they seal their own receipts.
-- To attest a claim with no evidence, or with evidence you cannot reference
-  without inlining secret or personal data.
-- To store the evidence content. This skill stores references to it.
+- `action` describes the external act without overstating its result.
+- `principal` identifies the actor named by the attestation.
+- `claim` is the exact assertion a later run may rely on.
+- `evidence` contains at most the declared number of `{ref, digest, proves}`
+  records using lowercase `sha256:<64 hex>` digests.
+- `scope` narrows who or what may rely on the claim.
 
-## Procedure
+The `runx.attestation.v1` packet returns `ready_to_seal`, `needs_agent`, or
+`needs_more_evidence`, a deterministic digest, redactions, and the explicit
+statement that no provider or external ledger was called. The sealed parent
+receipt—not the ready plan—is the signature evidence.
 
-1. **Take the claim.** The caller states what was done (`action`), who did it
-   (`principal`), and exactly what is being asserted (`claim`). An attestation
-   asserts that a specific actor did a specific thing; an unnamed actor cannot be
-   attested.
-2. **Bind the evidence.** Evidence arrives as references and digests: a provider
-   transaction id, a commit sha, a signed approval handle, a content digest.
-   Record what each reference proves, never the underlying content. References,
-   digests, handles, ids, and spans only; raw content, secret values, card
-   numbers, and PII never appear.
-3. **Test claim against evidence.** Evidence sufficiency is the gate. The run
-   does not reach sealing readiness until each load-bearing part of the claim maps
-   to a binding reference. If the references do not support the claim, stop at
-   `needs_more_evidence` rather than claiming readiness. If the claim is broader than the
-   evidence, narrow it to what the references prove, or stop. The scope of the
-   signature is the scope of the claim, nothing wider.
-4. **Mark ready for runtime sealing.** On a supported claim, set
-   `decision: ready_to_seal` and hand the payload to the runtime. A sealed run
-   receipt proves that Runx accepted this payload; it does not prove an external
-   ledger append unless a ledger adapter also returns that evidence. Corrections
-   are new attestations that reference the prior one, never edits.
+## Stop conditions
 
-## Edge cases and stop conditions
+- Stop when action, principal, claim, or evidence identity is missing.
+- Reject malformed or duplicate refs and digests, raw evidence bodies,
+  secret-shaped strings, or evidence that cannot say what it proves.
+- Do not claim independent verification, provider acknowledgement, delivery,
+  settlement, or external ledger append.
+- Keep reliance scope narrow; a downstream skill still evaluates whether the
+  attestation is adequate for its own consequential action.
 
-- **Missing action, evidence, principal, or claim:** return `needs_agent`; the
-  attestation has no complete subject.
-- **Evidence does not support the claim:** return `needs_more_evidence` with the
-  specific gap named; do not mark a partial match ready.
-- **Evidence carries raw secret or personal data:** record its digest and span,
-  drop the raw value; if dropping it removes the proof, return
-  `needs_more_evidence`.
-- **Claim broader than the evidence:** narrow the claim to what the references
-  prove, or stop. A signature must not cover unproven ground.
-- **Conflicting references:** stop at `needs_more_evidence`; an attestation must
-  not paper over contradiction.
+## Example
 
-## Output schema
-
-```yaml
-attestation:
-  decision: ready_to_seal | needs_more_evidence | needs_agent
-  action: string          # what was done, in operational terms
-  claim: string           # the exact assertion the signature covers
-  principal: string       # the actor the attestation names
-  evidence_refs:          # bound references, refs and digests only, never content
-    - ref: string
-      digest: string
-      proves: string
-  gaps: array             # specific missing or contradictory evidence
-  scope:                  # optional, bound on what the attestation may be relied on for
-    rely_for: string
-```
-
-The runtime receipt carries the payload and runtime-owned receipt identity and
-signature evidence. It never carries the evidence content, a secret value, or
-any PII drawn from the evidence. A provider or external ledger identifier is
-only valid when returned by the adapter that performed that write.
-
-## Worked example
-
-Input: an operator (`ops:jordan`) issued a $40.00 goodwill refund for order
-ORD-7741 in the provider console. Evidence is two references: a provider refund
-transaction (`provider:refund/re_3PqL2x`, with digest) proving the refund
-settled, and a console approval handle (`approval:console-signoff/ap_5512`, with
-digest) proving sign-off preceded the refund.
-
-Output: each load-bearing part of the claim maps to a binding reference, so the
-gate passes. The attestation names the principal, carries both `evidence_refs`
-with their digests, and sets `decision: ready_to_seal`. The scope binds reliance
-to downstream dispute and reconciliation runs referencing ORD-7741. Had only
-the approval handle been supplied with no settlement reference, the decision
-would be `needs_more_evidence`, not a signature claim.
-
-## Inputs
-
-- `action` (required): what was done, off-runtime.
-- `evidence` (required): references and digests proving the action, each with
-  what it proves. References only; no raw content or secret values.
-- `principal` (required): the actor the attestation names.
-- `claim` (required): the exact assertion to be attested.
-- `scope` (optional): bound on what the attestation may be relied on for.
+An operator manually changed a DNS record and stores the provider audit-event
+ref plus a digest of the exported record. The skill can seal the claim “record X
+was changed by principal Y” with those opaque refs. It cannot claim DNS
+propagation or provider verification unless the cited evidence and a later
+reader actually prove them.

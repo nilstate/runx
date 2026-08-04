@@ -1,20 +1,18 @@
 {
+  "schema": "runx.tool.manifest.v1",
   "name": "acme.executable",
   "source": {
     "type": "cli-tool",
     "command": "sh",
     "args": [
       "-c",
-      "\"$RUNX_FIXTURE_ROOT/run.sh\""
+      "\"{{script_path}}\""
     ]
   },
-  "runtime": {
-    "command": "sh",
-    "args": [
-      "-c",
-      "\"$RUNX_FIXTURE_ROOT/run.sh\""
-    ]
-  },
-  "inputs": {},
-  "output": {}
+  "inputs": {
+    "script_path": {
+      "type": "string",
+      "required": true
+    }
+  }
 }

@@ -1,5 +1,6 @@
-use std::path::Path;
+use std::path::PathBuf;
 
+use runx_contracts::JsonObject;
 use runx_core::state_machine::GraphStatus;
 use runx_runtime::adapters::cli_tool::CliToolAdapter;
 use runx_runtime::{Runtime, RuntimeOptions};
@@ -11,7 +12,7 @@ struct ExpectedSummary {
     graph_name: String,
     state: String,
     step_ids: Vec<String>,
-    stdout: Vec<String>,
+    contracts: Vec<JsonObject>,
     created_at: String,
     graph_seal_digest: String,
     child_seal_digests: Vec<String>,
@@ -29,10 +30,13 @@ fn hello_graph_matches_post_cutover_fixture() -> Result<(), Box<dyn std::error::
         CliToolAdapter,
         RuntimeOptions {
             created_at: expected.created_at.clone(),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
-    let run = runtime.run_graph_file(Path::new("../../examples/hello-graph/graph.yaml"))?;
+    let graph_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/hello-graph/graph.yaml")
+        .canonicalize()?;
+    let run = runtime.run_graph_file(&graph_path)?;
 
     assert_eq!(run.graph.name, expected.graph_name);
     assert_eq!(status_name(&run.state.status), expected.state);
@@ -46,9 +50,9 @@ fn hello_graph_matches_post_cutover_fixture() -> Result<(), Box<dyn std::error::
     assert_eq!(
         run.steps
             .iter()
-            .map(|step| step.output.stdout.clone())
+            .map(|step| step.contract.clone())
             .collect::<Vec<_>>(),
-        expected.stdout
+        expected.contracts
     );
     assert_eq!(run.receipt.created_at, expected.created_at);
     if std::env::var("RUNX_REGEN_FIXTURES").is_ok() {

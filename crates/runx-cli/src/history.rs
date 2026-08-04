@@ -5,14 +5,16 @@ use std::path::{Path, PathBuf};
 
 use crate::cli_args;
 use runx_runtime::journal::{
-    HistoryFilter, JournalProjectionError, list_local_history, list_local_history_with_policy,
+    HistoryFilter, JournalProjectionError, ReceiptInspectionProjection, inspect_local_receipt,
+    inspect_local_receipt_with_policy, list_local_history, list_local_history_with_policy,
 };
 use runx_runtime::{
-    Ed25519ReceiptVerifier, LocalReceiptStore, ReceiptPathInputs, RuntimeReceiptConfig,
-    RuntimeReceiptSignaturePolicy, resolve_receipt_path,
+    Ed25519ReceiptVerifier, LocalReceiptStore, ReceiptPathInputs, ResolvedReceiptPath,
+    RuntimeReceiptConfig, RuntimeReceiptSignaturePolicy, receipt_verifier_from_env,
+    resolve_receipt_path,
 };
 
-// rust-style-allow: large-file because the native history CLI slice keeps
+// Module rationale: the native history CLI slice keeps
 // parsing, rendering, and CLI parity tests together until the rest of the Rust
 // command routing settles.
 #[derive(Debug)]
@@ -47,6 +49,7 @@ struct ParsedHistoryArgs {
     receipt_dir: Option<PathBuf>,
     query: Option<String>,
     filter: HistoryFilter,
+    detail: bool,
     json: bool,
 }
 
@@ -64,10 +67,66 @@ pub fn run_history_command(
         cwd,
     });
     let store = LocalReceiptStore::new(&resolved.path);
-    let verifier = history_production_verifier(env)?;
-    let history = if let Some(verifier) = verifier.as_ref() {
+    let verifier = receipt_verifier_from_env(env)
+        .map(|resolved| resolved.map(|verifier| verifier.into_verifier()))
+        .map_err(|error| HistoryCliError::InvalidReceiptVerifier(error.to_string()))?;
+    if parsed.detail {
+        return run_receipt_detail(&parsed, &store, &resolved, verifier.as_ref());
+    }
+    run_history_list(&parsed, &store, &resolved, verifier.as_ref())
+}
+
+fn run_receipt_detail(
+    parsed: &ParsedHistoryArgs,
+    store: &LocalReceiptStore,
+    resolved: &ResolvedReceiptPath,
+    verifier: Option<&Ed25519ReceiptVerifier>,
+) -> Result<HistoryCliResult, HistoryCliError> {
+    let receipt_reference = parsed.query.as_deref().ok_or_else(|| {
+        HistoryCliError::InvalidArgs("history --detail requires one exact receipt id".to_owned())
+    })?;
+    if has_non_query_filters(&parsed.filter) {
+        return Err(HistoryCliError::InvalidArgs(
+            "history --detail does not accept list filters".to_owned(),
+        ));
+    }
+    let inspection = if let Some(verifier) = verifier {
+        inspect_local_receipt_with_policy(
+            store,
+            &resolved.workspace_base,
+            &resolved.project_runx_dir,
+            receipt_reference,
+            RuntimeReceiptSignaturePolicy::production(verifier),
+        )
+    } else {
+        inspect_local_receipt(
+            store,
+            &resolved.workspace_base,
+            &resolved.project_runx_dir,
+            receipt_reference,
+        )
+    }
+    .map_err(HistoryCliError::Projection)?;
+    let output = if parsed.json {
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&inspection).map_err(HistoryCliError::Serialize)?
+        )
+    } else {
+        render_receipt_inspection(&inspection)
+    };
+    Ok(successful_result(output))
+}
+
+fn run_history_list(
+    parsed: &ParsedHistoryArgs,
+    store: &LocalReceiptStore,
+    resolved: &ResolvedReceiptPath,
+    verifier: Option<&Ed25519ReceiptVerifier>,
+) -> Result<HistoryCliResult, HistoryCliError> {
+    let history = if let Some(verifier) = verifier {
         list_local_history_with_policy(
-            &store,
+            store,
             &resolved.workspace_base,
             &resolved.project_runx_dir,
             &parsed.filter,
@@ -75,7 +134,7 @@ pub fn run_history_command(
         )
     } else {
         list_local_history(
-            &store,
+            store,
             &resolved.workspace_base,
             &resolved.project_runx_dir,
             &parsed.filter,
@@ -94,51 +153,17 @@ pub fn run_history_command(
             parsed.receipt_dir.as_deref(),
         )
     };
-    Ok(HistoryCliResult {
-        output,
-        error_is_usage: false,
-    })
+    Ok(successful_result(output))
 }
 
-pub(crate) const RUNX_RECEIPT_VERIFY_KID_ENV: &str = "RUNX_RECEIPT_VERIFY_KID";
-pub(crate) const RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV: &str =
-    "RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64";
-
-fn history_production_verifier(
-    env: &BTreeMap<String, String>,
-) -> Result<Option<Ed25519ReceiptVerifier>, HistoryCliError> {
-    let kid = non_empty_env(env, RUNX_RECEIPT_VERIFY_KID_ENV);
-    let public_key = non_empty_env(env, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV);
-    match (kid, public_key) {
-        (None, None) => Ok(None),
-        (Some(kid), Some(public_key)) => Ed25519ReceiptVerifier::from_public_key_base64(
-            kid.to_owned(),
-            public_key,
-        )
-        .map(Some)
-        .map_err(|_| {
-            HistoryCliError::InvalidReceiptVerifier(format!(
-                "{RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV} is not valid Ed25519 public key material"
-            ))
-        }),
-        _ => Err(HistoryCliError::InvalidReceiptVerifier(format!(
-            "{RUNX_RECEIPT_VERIFY_KID_ENV} and {RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV} must be set together"
-        ))),
+fn successful_result(output: String) -> HistoryCliResult {
+    HistoryCliResult {
+        output,
+        error_is_usage: false,
     }
 }
 
-fn non_empty_env<'a>(env: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str> {
-    env.get(key)
-        .map(String::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-}
-
-pub fn env_map() -> BTreeMap<String, String> {
-    crate::cli_io::env_map()
-}
-
-// rust-style-allow: long-function because this mirrors the public history CLI
+// Function rationale: this mirrors the public history CLI
 // flag grammar in one parser during the hard cutover.
 fn parse_history_args(args: &[OsString]) -> Result<ParsedHistoryArgs, HistoryCliError> {
     if args.first().and_then(|arg| arg.to_str()) != Some("history") {
@@ -163,6 +188,13 @@ fn parse_history_args(args: &[OsString]) -> Result<ParsedHistoryArgs, HistoryCli
                     return Err(invalid_args("--json does not take a value"));
                 }
                 parsed.json = true;
+                index += 1;
+            }
+            "--detail" => {
+                if inline_value.is_some() {
+                    return Err(invalid_args("--detail does not take a value"));
+                }
+                parsed.detail = true;
                 index += 1;
             }
             "--receipt-dir" => {
@@ -239,7 +271,23 @@ fn parse_history_args(args: &[OsString]) -> Result<ParsedHistoryArgs, HistoryCli
     }
     parsed.query = (!positionals.is_empty()).then(|| positionals.join(" "));
     parsed.filter.query = parsed.query.clone();
+    if parsed.detail && positionals.len() != 1 {
+        return Err(invalid_args(
+            "history --detail requires one exact receipt id",
+        ));
+    }
     Ok(parsed)
+}
+
+fn has_non_query_filters(filter: &HistoryFilter) -> bool {
+    filter.skill.is_some()
+        || filter.status.is_some()
+        || filter.source.is_some()
+        || filter.actor.is_some()
+        || filter.artifact_type.is_some()
+        || filter.since.is_some()
+        || filter.until.is_some()
+        || filter.limit.is_some()
 }
 
 fn render_history(
@@ -301,12 +349,10 @@ fn push_pending_run_lines(
         step,
         short_id(&pending.id)
     ));
-    if let Some(resume_skill_ref) = pending.resume_skill_ref.as_deref() {
+    if pending.resume_skill_ref.is_some() {
         let resume_command =
             crate::resume::render_skill_resume_command(crate::resume::SkillResumeCommand {
-                skill_ref: Some(resume_skill_ref),
                 run_id: &pending.id,
-                selected_runner: pending.selected_runner.as_deref(),
                 receipt_dir,
                 answers_path: None,
             });
@@ -334,7 +380,7 @@ fn push_receipt_line(
 
 fn history_next_line(history: &runx_runtime::journal::LocalHistoryProjection) -> String {
     if history.pending_runs.is_empty() {
-        "  next  runx history <receipt-id> --json".to_owned()
+        "  next  runx history <receipt-id> --detail --json".to_owned()
     } else if history
         .pending_runs
         .iter()
@@ -344,6 +390,31 @@ fn history_next_line(history: &runx_runtime::journal::LocalHistoryProjection) ->
     } else {
         "  next  write answers.json, then rerun the original skill with the shown run id".to_owned()
     }
+}
+
+fn render_receipt_inspection(inspection: &ReceiptInspectionProjection) -> String {
+    let receipt = &inspection.receipt;
+    let mut lines = vec![
+        String::new(),
+        format!(
+            "  receipt  {}  {}  {}",
+            receipt.status, receipt.verification.status, receipt.id
+        ),
+        format!("  subject  {}", receipt.subject_ref),
+        format!("  actor  {}", receipt.authority.actor_ref),
+        format!(
+            "  authority  {} scope(s), {} grant(s), {} approval(s)",
+            receipt.authority.exercised_scopes.len(),
+            receipt.authority.grant_refs.len(),
+            receipt.authority.approval_refs.len()
+        ),
+        format!("  acts  {}", receipt.acts.len()),
+    ];
+    for act in &receipt.acts {
+        lines.push(format!("  {}  {}  {}", act.disposition, act.form, act.id));
+    }
+    lines.push(String::new());
+    lines.join("\n")
 }
 
 fn short_id(value: &str) -> &str {
@@ -362,7 +433,12 @@ mod tests {
     use super::*;
     use runx_contracts::ReceiptIssuerType;
     use runx_runtime::receipts::step_receipt_with_signature_policy;
-    use runx_runtime::{Ed25519ReceiptSigner, InvocationStatus, RuntimeError, SkillOutput};
+    use runx_runtime::{
+        Ed25519ReceiptSigner, InvocationOutput, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
+        RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV, RUNX_RECEIPT_SIGN_KID_ENV,
+        RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV, RUNX_RECEIPT_VERIFY_KID_ENV,
+        RuntimeError,
+    };
 
     #[test]
     fn parses_history_args_without_comparing_against_runtime_constants() -> Result<(), io::Error> {
@@ -387,27 +463,37 @@ mod tests {
     }
 
     #[test]
-    // rust-style-allow: long-function because the CLI execute oracle test keeps
-    // its ledger fixture, command invocation, and typed output assertions in
-    // one place so the parity case remains readable.
-    fn executes_history_json_against_cli_parity_oracle() -> Result<(), io::Error> {
+    fn parses_exact_detail_request_and_rejects_list_filters() -> Result<(), io::Error> {
+        let parsed = parse_history_args(&[
+            "history".into(),
+            "sha256:receipt".into(),
+            "--detail".into(),
+            "--json".into(),
+        ])
+        .map_err(|error| io::Error::other(error.to_string()))?;
+        assert!(parsed.detail);
+        assert_eq!(parsed.query.as_deref(), Some("sha256:receipt"));
+
+        let invalid = run_history_command(
+            &[
+                "history".into(),
+                "sha256:receipt".into(),
+                "--detail".into(),
+                "--status".into(),
+                "closed".into(),
+            ],
+            &BTreeMap::new(),
+            Path::new("."),
+        );
+        assert!(matches!(invalid, Err(HistoryCliError::InvalidArgs(_))));
+        Ok(())
+    }
+
+    #[test]
+    fn executes_history_json_with_pending_run() -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
         let receipt_dir = temp.join("receipts");
         write_needs_agent_ledger(&receipt_dir)?;
-        let oracle: CliParityOracle = serde_json::from_str(include_str!(
-            "../../../fixtures/cli-parity/cases/oracle.json"
-        ))
-        .map_err(|error| io::Error::other(error.to_string()))?;
-        let execute_case = oracle
-            .cases
-            .iter()
-            .find(|case| case.id == "history.execute")
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "missing history.execute oracle case",
-                )
-            })?;
 
         let mut env = BTreeMap::new();
         env.insert("RUNX_CWD".to_owned(), temp.to_string_lossy().to_string());
@@ -431,18 +517,9 @@ mod tests {
             )
         })?;
 
-        assert_eq!(
-            output.pending_runs.len(),
-            execute_case.expect.pending_runs as usize
-        );
-        assert_eq!(
-            first_pending_run.id,
-            execute_case.expect.first_pending_run_id
-        );
-        assert_eq!(
-            first_pending_run.status,
-            execute_case.expect.first_pending_run_status
-        );
+        assert_eq!(output.pending_runs.len(), 1);
+        assert_eq!(first_pending_run.id, "gx_needs_agent_oracle");
+        assert_eq!(first_pending_run.status, "paused");
         assert_eq!(
             first_pending_run.selected_runner,
             Some("agent-task".to_owned())
@@ -548,7 +625,50 @@ mod tests {
     }
 
     #[test]
-    fn history_json_reports_production_verified_receipts_when_verifier_env_is_configured()
+    fn history_json_reports_production_verified_receipts_from_verifier_or_signer_environment()
+    -> Result<(), io::Error> {
+        let temp = tempfile_dir()?;
+        let receipt_dir = temp.join("receipts");
+        let signer = fixture_signer().map_err(|error| io::Error::other(error.to_string()))?;
+        let receipt = production_signed_receipt(&signer)
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        let store = LocalReceiptStore::new(&receipt_dir);
+        let verifier = Ed25519ReceiptVerifier::new([signer.production_key()]);
+        store
+            .write_receipt_with_policy(
+                &receipt,
+                RuntimeReceiptSignaturePolicy::production(&verifier),
+            )
+            .map_err(|error| io::Error::other(error.to_string()))?;
+
+        for mut env in [verifier_env(&signer), signer_env()] {
+            env.insert("RUNX_CWD".to_owned(), temp.to_string_lossy().to_string());
+            let result = run_history_command(
+                &[
+                    "history".into(),
+                    receipt.id.to_string().into(),
+                    "--receipt-dir".into(),
+                    receipt_dir.clone().into_os_string(),
+                    "--json".into(),
+                ],
+                &env,
+                &temp,
+            )
+            .map_err(|error| io::Error::other(error.to_string()))?;
+            let output: HistoryOutput = serde_json::from_str(&result.output)
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            let first_receipt = output.receipts.first().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "history output has no receipt")
+            })?;
+
+            assert_eq!(first_receipt.id, receipt.id.to_string());
+            assert_eq!(first_receipt.verification.status, "verified");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn history_detail_json_projects_one_verified_receipt_without_execution_bodies()
     -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
         let receipt_dir = temp.join("receipts");
@@ -574,11 +694,11 @@ mod tests {
             RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV.to_owned(),
             base64_standard(signer.public_key()),
         );
-
         let result = run_history_command(
             &[
                 "history".into(),
                 receipt.id.to_string().into(),
+                "--detail".into(),
                 "--receipt-dir".into(),
                 receipt_dir.into_os_string(),
                 "--json".into(),
@@ -587,38 +707,14 @@ mod tests {
             &temp,
         )
         .map_err(|error| io::Error::other(error.to_string()))?;
-        let output: HistoryOutput = serde_json::from_str(&result.output)
+        let output: ReceiptInspectionProjection = serde_json::from_str(&result.output)
             .map_err(|error| io::Error::other(error.to_string()))?;
-        let first_receipt = output.receipts.first().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "history output has no receipt")
-        })?;
 
-        assert_eq!(first_receipt.id, receipt.id.to_string());
-        assert_eq!(first_receipt.verification.status, "verified");
+        assert_eq!(output.receipt.id, receipt.id.to_string());
+        assert_eq!(output.receipt.verification.status, "verified");
+        assert!(!result.output.contains("structured_output"));
+        assert!(!result.output.contains("stderr"));
         Ok(())
-    }
-
-    #[derive(serde::Deserialize)]
-    struct CliParityOracle {
-        cases: Vec<CliParityCase>,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct CliParityCase {
-        id: String,
-        #[serde(default)]
-        expect: CliParityExpectation,
-    }
-
-    #[derive(Default, serde::Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct CliParityExpectation {
-        #[serde(default)]
-        pending_runs: u64,
-        #[serde(default)]
-        first_pending_run_id: String,
-        #[serde(default)]
-        first_pending_run_status: String,
     }
 
     #[derive(serde::Deserialize)]
@@ -706,25 +802,68 @@ mod tests {
         Ed25519ReceiptSigner::from_seed(FIXTURE_KID, ReceiptIssuerType::Hosted, &FIXTURE_SEED)
     }
 
+    fn verifier_env(signer: &Ed25519ReceiptSigner) -> BTreeMap<String, String> {
+        BTreeMap::from([
+            (
+                RUNX_RECEIPT_VERIFY_KID_ENV.to_owned(),
+                FIXTURE_KID.to_owned(),
+            ),
+            (
+                RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV.to_owned(),
+                base64_standard(signer.public_key()),
+            ),
+        ])
+    }
+
+    fn signer_env() -> BTreeMap<String, String> {
+        BTreeMap::from([
+            (RUNX_RECEIPT_SIGN_KID_ENV.to_owned(), FIXTURE_KID.to_owned()),
+            (
+                RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV.to_owned(),
+                "hosted".to_owned(),
+            ),
+            (
+                RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV.to_owned(),
+                base64_standard(&FIXTURE_SEED),
+            ),
+        ])
+    }
+
     fn production_signed_receipt(
         signer: &Ed25519ReceiptSigner,
     ) -> Result<runx_contracts::Receipt, RuntimeError> {
         let verifier = Ed25519ReceiptVerifier::new([signer.production_key()]);
-        let output = SkillOutput {
-            status: InvocationStatus::Success,
-            stdout:
-                r#"{"artifact":{"artifact_id":"artifact_cli_history","artifact_type":"artifact"}}"#
-                    .to_owned(),
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 10,
-            metadata: BTreeMap::new(),
-        };
+        let output = InvocationOutput::runtime_success(
+            runx_contracts::JsonValue::Object(BTreeMap::from([(
+                "artifact".to_owned(),
+                runx_contracts::JsonValue::Object(BTreeMap::from([
+                    (
+                        "artifact_id".to_owned(),
+                        runx_contracts::JsonValue::String("artifact_cli_history".to_owned()),
+                    ),
+                    (
+                        "artifact_type".to_owned(),
+                        runx_contracts::JsonValue::String("artifact".to_owned()),
+                    ),
+                ])),
+            )])),
+            10,
+            BTreeMap::new(),
+        );
+        let claim =
+            output
+                .value
+                .as_object()
+                .cloned()
+                .ok_or_else(|| RuntimeError::ReceiptInvalid {
+                    message: "history fixture output must be an object".to_owned(),
+                })?;
         step_receipt_with_signature_policy(
             "cli-history",
             "production-verified",
             1,
             &output,
+            &claim,
             "2026-05-25T00:00:00Z",
             RuntimeReceiptSignaturePolicy::production_signing(signer, &verifier),
         )

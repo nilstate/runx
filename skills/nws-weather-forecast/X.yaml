@@ -1,5 +1,5 @@
 skill: nws-weather-forecast
-version: "0.1.0"
+version: "0.1.2"
 catalog:
   kind: graph
   audience: public
@@ -8,6 +8,10 @@ catalog:
   canonical_skill: runx/weather-forecast
   provider: national-weather-service
   runtime_path: http
+  execution: read
+  completion: provider_readback
+  requires_adapter: false
+  approval: none
 runners:
   forecast:
     default: true
@@ -29,13 +33,25 @@ runners:
         description: NWS grid Y coordinate.
     graph:
       name: nws-weather-forecast
+      result_from: [forecast]
       steps:
         - id: forecast
-          skill: graph/forecast
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            office: $input.office
-            grid_x: $input.grid_x
-            grid_y: $input.grid_y
+            requests:
+              - id: forecast
+                method: GET
+                url: https://api.weather.gov/gridpoints/{office}/{grid_x},{grid_y}/forecast
+                path:
+                  office: $input.office
+                  grid_x: $input.grid_x
+                  grid_y: $input.grid_y
+                headers:
+                  user-agent: "runx-weather-catalog/0.1 (https://github.com/runxhq/runx)"
+                  accept: "application/geo+json, application/json"
+            allowed_hosts: [api.weather.gov]
+            stop_on_error: true
   locate:
     type: graph
     inputs:
@@ -49,9 +65,21 @@ runners:
         description: Longitude with no more than four decimal places.
     graph:
       name: nws-weather-locate
+      result_from: [points]
       steps:
         - id: points
-          skill: graph/points
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            lat: $input.lat
-            lon: $input.lon
+            requests:
+              - id: points
+                method: GET
+                url: https://api.weather.gov/points/{lat},{lon}
+                path:
+                  lat: $input.lat
+                  lon: $input.lon
+                headers:
+                  user-agent: "runx-weather-catalog/0.1 (https://github.com/runxhq/runx)"
+                  accept: "application/geo+json, application/json"
+            allowed_hosts: [api.weather.gov]
+            stop_on_error: true

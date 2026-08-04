@@ -1,18 +1,18 @@
-// rust-style-allow: large-file - graph loading keeps stage, registry, and local skill resolution together.
+// Module rationale: graph loading keeps stage, registry, and local skill resolution together.
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use runx_contracts::{JsonObject, JsonValue, sha256_prefixed};
 use runx_core::state_machine::{RetryPolicy, SequentialGraphStepDefinition};
 use runx_parser::{
-    ExecutionGraph, GraphStep, SkillArtifactContract, SkillRunnerDefinition, SkillRunnerManifest,
-    SkillSource, ValidatedSkill, parse_graph_yaml, parse_runner_manifest_yaml, validate_graph,
-    validate_runner_manifest,
+    ExecutionGraph, GraphStep, SkillRunnerDefinition, SkillRunnerManifest, parse_graph_yaml,
+    validate_graph,
 };
 
 use crate::registry::{
-    InstallCandidate, InstallLocalSkillOptions, RegistryResolveOptions, create_file_registry_store,
+    FileRegistryStore, InstallCandidate, InstallLocalSkillOptions, RegistryResolveOptions,
     install_local_skill, materialization_cache_path, materialization_digest_marker,
     resolve_registry_skill, split_skill_id, trusted_registry_manifest_keys_from_env,
 };
@@ -22,21 +22,14 @@ use super::graph_index::PriorRunIndex;
 
 #[derive(Clone)]
 pub(crate) struct LoadedStepSkill {
-    pub(crate) name: String,
-    pub(crate) source: SkillSource,
+    pub(crate) skill_name: String,
+    pub(crate) runner: SkillRunnerDefinition,
+    pub(crate) requirements: runx_contracts::ExecutionRequirements,
     pub(crate) directory: PathBuf,
-    /// The invoked runner's declared artifact contract. A sub-skill step exposes
-    /// this contract at the OUTER step (the packet, e.g. `research_packet`,
-    /// becomes `<step>.<packet>.data`), never the sub-skill's internals.
-    pub(crate) artifacts: Option<SkillArtifactContract>,
-    pub(crate) definition: LoadedStepSkillDefinition,
+    pub(crate) manual_path: PathBuf,
+    pub(crate) manual_markdown: Arc<str>,
+    pub(crate) manual_digest: String,
     pub(crate) registry: Option<LoadedStepSkillRegistryProvenance>,
-}
-
-#[derive(Clone)]
-pub(crate) enum LoadedStepSkillDefinition {
-    Runner(SkillRunnerDefinition),
-    Legacy(ValidatedSkill),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,6 +47,11 @@ pub(crate) struct LoadedStepSkillRegistryProvenance {
 struct ResolvedStepSkillDirectory {
     directory: PathBuf,
     registry: Option<LoadedStepSkillRegistryProvenance>,
+}
+
+pub(crate) struct LoadedStepSkillPackage {
+    pub(crate) package: crate::LoadedSkillPackage,
+    pub(crate) registry: Option<LoadedStepSkillRegistryProvenance>,
 }
 
 #[derive(Default)]
@@ -89,13 +87,21 @@ pub(crate) fn load_graph(graph_path: &Path) -> Result<ExecutionGraph, RuntimeErr
     validate_graph(raw).map_err(RuntimeError::from)
 }
 
-pub(crate) fn materialize_graph_inputs(
+pub(crate) fn materialize_graph_parameter_inputs(
     mut graph: ExecutionGraph,
     graph_inputs: &JsonObject,
 ) -> ExecutionGraph {
     for step in &mut graph.steps {
+        let declared_inputs = std::mem::take(&mut step.inputs);
         let mut inputs = graph_inputs.clone();
-        for (key, value) in &step.inputs {
+        // Graph inputs are ambient graph parameters, but a context edge is the
+        // explicit producer for its input name. Remove only that ambient value
+        // here. The parser separately rejects a real collision between the
+        // step's declared `inputs` and `context`.
+        for edge in &step.context_edges {
+            inputs.remove(&edge.input);
+        }
+        for (key, value) in &declared_inputs {
             if let Some(value) = materialize_graph_input_value(value, graph_inputs) {
                 inputs.insert(key.clone(), value);
             } else {
@@ -103,6 +109,16 @@ pub(crate) fn materialize_graph_inputs(
             }
         }
         step.inputs = inputs;
+        step.idempotency_key = step.idempotency_key.as_deref().and_then(|value| {
+            value.strip_prefix("$input.").map_or_else(
+                || Some(value.to_owned()),
+                |path| {
+                    resolve_graph_input_path(graph_inputs, path)
+                        .and_then(JsonValue::as_str)
+                        .map(str::to_owned)
+                },
+            )
+        });
     }
     graph
 }
@@ -149,48 +165,43 @@ fn resolve_graph_input_path<'a>(value: &'a JsonObject, path: &str) -> Option<&'a
     current
 }
 
-pub(crate) fn load_skill(skill_dir: &Path) -> Result<ValidatedSkill, RuntimeError> {
-    let skill_path = skill_dir.join("SKILL.md");
-    if !skill_path.exists() {
-        return Err(RuntimeError::SkillFileMissing { path: skill_path });
-    }
-    let source = fs::read_to_string(&skill_path)
-        .map_err(|source| RuntimeError::io("reading skill markdown", source))?;
-    let raw = runx_parser::parse_skill_markdown(&source)?;
-    runx_parser::validate_skill(raw).map_err(RuntimeError::from)
-}
-
 pub(crate) fn load_step_skill(
     graph_dir: &Path,
     step: &GraphStep,
     options: StepSkillLoadOptions<'_>,
 ) -> Result<LoadedStepSkill, RuntimeError> {
-    let resolved = resolve_step_skill_directory(graph_dir, step, options)?;
-    let directory = resolved.directory;
-    let loaded = if let Some(runner) = load_step_runner(&directory, step.runner.as_deref())? {
-        LoadedStepSkill {
-            name: runner.name.clone(),
-            source: runner.source.clone(),
-            directory,
-            artifacts: runner.artifacts.clone(),
-            definition: LoadedStepSkillDefinition::Runner(runner),
-            registry: resolved.registry,
-        }
-    } else {
-        let skill = load_skill(&directory)?;
-        LoadedStepSkill {
-            name: skill.name.clone(),
-            source: skill.source.clone(),
-            directory,
-            artifacts: skill.artifacts.clone(),
-            definition: LoadedStepSkillDefinition::Legacy(skill),
-            registry: resolved.registry,
-        }
+    let resolved = load_step_skill_package(graph_dir, step, options)?;
+    let package = resolved.package;
+    let manifest = package
+        .manifest()
+        .ok_or_else(|| RuntimeError::InvalidRunStep {
+            step_id: step.id.clone(),
+            reason: format!(
+                "sub-skill {} does not declare an X.yaml runner",
+                package.directory.display()
+            ),
+        })?;
+    let skill_name = manifest
+        .skill
+        .clone()
+        .unwrap_or_else(|| package.package.skill.name.clone());
+    let runner = select_step_runner(manifest, step.runner.as_deref())?.clone();
+    let requirements = manifest.execution_requirements(&runner);
+    let directory = package.directory.clone();
+    let manual_path = package.package_root.join("SKILL.md");
+    let manual_markdown = package.package.manual_markdown.clone().into();
+    let manual_digest = package.package.manual_digest.clone();
+    let loaded = LoadedStepSkill {
+        skill_name,
+        runner,
+        requirements,
+        directory,
+        manual_path: manual_path.clone(),
+        manual_markdown,
+        manual_digest,
+        registry: resolved.registry,
     };
-    for path in [
-        loaded.directory.join("X.yaml"),
-        loaded.directory.join("SKILL.md"),
-    ] {
+    for path in [loaded.directory.join("X.yaml"), manual_path] {
         if path.exists() {
             super::prepared_skill::verify_prepared_artifact_at_use(options.env, &path)?;
         }
@@ -198,30 +209,19 @@ pub(crate) fn load_step_skill(
     Ok(loaded)
 }
 
-fn load_step_runner(
-    skill_dir: &Path,
-    requested_runner: Option<&str>,
-) -> Result<Option<SkillRunnerDefinition>, RuntimeError> {
-    let manifest_path = skill_dir.join("X.yaml");
-    if !manifest_path.exists() {
-        if let Some(runner) = requested_runner {
-            return Err(RuntimeError::UnsupportedRunnerSelection {
-                runner: runner.to_owned(),
-            });
-        }
-        return Ok(None);
-    }
-    let source = fs::read_to_string(&manifest_path).map_err(|source| {
-        RuntimeError::io(format!("reading {}", manifest_path.display()), source)
-    })?;
-    let parsed = parse_runner_manifest_yaml(&source).map_err(RuntimeError::from)?;
-    let manifest = validate_runner_manifest(parsed).map_err(RuntimeError::from)?;
-    select_step_runner(&manifest, requested_runner)
-        .cloned()
-        .map(Some)
+pub(crate) fn load_step_skill_package(
+    graph_dir: &Path,
+    step: &GraphStep,
+    options: StepSkillLoadOptions<'_>,
+) -> Result<LoadedStepSkillPackage, RuntimeError> {
+    let resolved = resolve_step_skill_directory(graph_dir, step, options)?;
+    Ok(LoadedStepSkillPackage {
+        package: crate::load_validated_skill_package(&resolved.directory)?,
+        registry: resolved.registry,
+    })
 }
 
-fn select_step_runner<'a>(
+pub(crate) fn select_step_runner<'a>(
     manifest: &'a SkillRunnerManifest,
     requested_runner: Option<&str>,
 ) -> Result<&'a SkillRunnerDefinition, RuntimeError> {
@@ -277,6 +277,18 @@ fn resolve_step_skill_directory(
         if is_registry_step_ref(skill) {
             return materialize_registry_step_skill(graph_dir, step, skill, options);
         }
+        if let Some(directory) = crate::registry::package_bundle::resolve_bundled_skill(
+            graph_dir, skill,
+        )
+        .map_err(|reason| RuntimeError::InvalidRunStep {
+            step_id: step.id.clone(),
+            reason,
+        })? {
+            return Ok(ResolvedStepSkillDirectory {
+                directory,
+                registry: None,
+            });
+        }
         return Ok(ResolvedStepSkillDirectory {
             directory: graph_dir.join(skill),
             registry: None,
@@ -287,7 +299,7 @@ fn resolve_step_skill_directory(
     })
 }
 
-// rust-style-allow: long-function - registry step materialization owns cache, digest, and manifest restoration.
+// Function rationale: registry step materialization owns cache, digest, and manifest restoration.
 fn materialize_registry_step_skill(
     graph_dir: &Path,
     step: &GraphStep,
@@ -303,7 +315,7 @@ fn materialize_registry_step_skill(
         });
     };
     let registry_url = options.env.get("RUNX_REGISTRY_URL").cloned();
-    let store = create_file_registry_store(registry_dir);
+    let store = FileRegistryStore::new(registry_dir);
     let resolution = resolve_registry_skill(
         &store,
         reference,
@@ -452,27 +464,52 @@ fn is_registry_step_ref(reference: &str) -> bool {
         || reference.starts_with("runx://skill/")
 }
 
-pub(crate) fn resolve_inputs(
+pub(crate) fn materialize_step_invocation_inputs(
     step: &GraphStep,
     prior_runs: &[StepRun],
 ) -> Result<JsonObject, RuntimeError> {
     let prior_run_index = PriorRunIndex::new(prior_runs);
-    resolve_inputs_with_index(step, &prior_run_index)
+    materialize_step_invocation_inputs_with_index(step, &prior_run_index)
 }
 
-pub(crate) fn resolve_inputs_with_index(
+pub(crate) fn materialize_step_invocation_inputs_with_index(
     step: &GraphStep,
     prior_run_index: &PriorRunIndex<'_>,
 ) -> Result<JsonObject, RuntimeError> {
     let mut inputs = step.inputs.clone();
-    if step.context_edges.is_empty() {
-        return Ok(inputs);
-    }
     for edge in &step.context_edges {
-        let value = prior_run_index.output(&edge.from_step, &edge.output)?;
-        inputs.insert(edge.input.clone(), value);
+        let value = prior_run_index.output(&step.id, &edge.input, &edge.from_step, &edge.output)?;
+        if inputs.insert(edge.input.clone(), value).is_some() {
+            return Err(RuntimeError::InvalidRunStep {
+                step_id: step.id.clone(),
+                reason: format!(
+                    "input '{}' is declared by both static inputs and context",
+                    edge.input
+                ),
+            });
+        }
     }
     Ok(inputs)
+}
+
+pub(crate) fn materialize_step_invocation_provenance(
+    step: &GraphStep,
+    prior_runs: &[StepRun],
+) -> Result<Vec<runx_contracts::ProvenanceEntry>, RuntimeError> {
+    let prior_run_index = PriorRunIndex::new(prior_runs);
+    materialize_step_invocation_provenance_with_index(step, &prior_run_index)
+}
+
+pub(crate) fn materialize_step_invocation_provenance_with_index(
+    step: &GraphStep,
+    prior_run_index: &PriorRunIndex<'_>,
+) -> Result<Vec<runx_contracts::ProvenanceEntry>, RuntimeError> {
+    step.context_edges
+        .iter()
+        .map(|edge| {
+            prior_run_index.provenance(&step.id, &edge.input, &edge.from_step, &edge.output)
+        })
+        .collect()
 }
 
 fn context_from(step: &GraphStep) -> Option<Vec<String>> {
@@ -486,4 +523,108 @@ fn context_from(step: &GraphStep) -> Option<Vec<String>> {
 
 fn retry_attempts(max_attempts: u64) -> u32 {
     u32::try_from(max_attempts).unwrap_or(u32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use runx_contracts::{JsonObject, JsonValue};
+    use runx_parser::{ExecutionGraph, RawGraphIr, parse_graph_yaml, validate_graph};
+
+    use super::materialize_graph_parameter_inputs;
+
+    fn graph_with_idempotency_key(value: &str) -> Result<ExecutionGraph, String> {
+        let step = JsonObject::from([
+            ("id".to_owned(), JsonValue::String("mutate".to_owned())),
+            (
+                "tool".to_owned(),
+                JsonValue::String("provider.mutate".to_owned()),
+            ),
+            ("mutation".to_owned(), JsonValue::Bool(true)),
+            (
+                "idempotency_key".to_owned(),
+                JsonValue::String(value.to_owned()),
+            ),
+        ]);
+        let raw = RawGraphIr {
+            document: JsonObject::from([
+                ("name".to_owned(), JsonValue::String("example".to_owned())),
+                (
+                    "steps".to_owned(),
+                    JsonValue::Array(vec![JsonValue::Object(step)]),
+                ),
+            ]),
+        };
+        validate_graph(raw).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn graph_input_materialization_resolves_step_idempotency_key() -> Result<(), String> {
+        let graph = graph_with_idempotency_key("$input.retry.key")?;
+        let inputs = JsonObject::from([(
+            "retry".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "key".to_owned(),
+                JsonValue::String("campaign-42".to_owned()),
+            )])),
+        )]);
+
+        let materialized = materialize_graph_parameter_inputs(graph, &inputs);
+        let step = materialized
+            .steps
+            .first()
+            .ok_or_else(|| "graph should have one step".to_owned())?;
+
+        assert_eq!(step.idempotency_key.as_deref(), Some("campaign-42"));
+        Ok(())
+    }
+
+    #[test]
+    fn graph_input_materialization_preserves_static_step_idempotency_key() -> Result<(), String> {
+        let graph = graph_with_idempotency_key("fixed-key")?;
+
+        let materialized = materialize_graph_parameter_inputs(graph, &JsonObject::new());
+        let step = materialized
+            .steps
+            .first()
+            .ok_or_else(|| "graph should have one step".to_owned())?;
+
+        assert_eq!(step.idempotency_key.as_deref(), Some("fixed-key"));
+        Ok(())
+    }
+
+    #[test]
+    fn graph_context_replaces_only_ambient_runner_input() -> Result<(), String> {
+        let raw = parse_graph_yaml(
+            r#"
+name: context-precedence
+steps:
+  - id: produce
+    run:
+      type: javascript
+      module: produce.mjs
+      outputs: { value: string }
+  - id: consume
+    run:
+      type: javascript
+      module: consume.mjs
+    context:
+      value: produce.value
+"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let graph = validate_graph(raw).map_err(|error| error.to_string())?;
+        let inputs =
+            JsonObject::from([("value".to_owned(), JsonValue::String("ambient".to_owned()))]);
+
+        let materialized = materialize_graph_parameter_inputs(graph, &inputs);
+        let consume = materialized
+            .steps
+            .iter()
+            .find(|step| step.id == "consume")
+            .ok_or_else(|| "graph should contain consume".to_owned())?;
+
+        assert!(!consume.inputs.contains_key("value"));
+        assert_eq!(consume.context_edges.len(), 1);
+        Ok(())
+    }
 }

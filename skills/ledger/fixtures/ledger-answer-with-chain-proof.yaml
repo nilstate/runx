@@ -1,9 +1,9 @@
 name: ledger-answer-with-chain-proof
 kind: skill
 target: ..
-runner: ledger
+runner: read
 inputs:
-  question: Which spend runs over $500 sealed for the ops principal last week, and is that stretch of the chain intact?
+  question: Which spend runs sealed for the ops principal in the supplied ledger slice?
   filter:
     principal: principal:ops
     skill_ref: runx/spend
@@ -14,34 +14,15 @@ inputs:
       to: "2026-06-08T00:00:00Z"
   proof:
     verify_chain: true
-caller:
-  answers:
-    agent_task.ledger.output:
-      ledger_answer:
-        decision: answered
-        question: Which spend runs over $500 sealed for principal:ops between 2026-06-01 and 2026-06-08, and is that chain stretch intact?
-        query:
-          principal: principal:ops
-          skill_ref: runx/spend
-          status:
-            - sealed
-          time_range:
-            from: "2026-06-01T00:00:00Z"
-            to: "2026-06-08T00:00:00Z"
-      matched_receipts:
-        - receipt_id: rcpt_01HZX5K2spend
-          skill_ref: runx/spend
-          status: sealed
-          created_at: "2026-06-03T14:21:08Z"
-        - receipt_id: rcpt_01HZX9Q7spend
-          skill_ref: runx/spend
-          status: sealed
-          created_at: "2026-06-06T09:02:44Z"
-      chain_verification:
-        checked: true
-        intact: true
-        breaks: []
-      summary: Two sealed spend runs over $500 ran for principal:ops in the window; the link walk across both is unbroken.
+  receipts:
+    - receipt_id: rcpt_01HZX5K2spend
+      skill_ref: runx/spend
+      status: sealed
+      created_at: "2026-06-03T14:21:08Z"
+    - receipt_id: rcpt_01HZX9Q7spend
+      skill_ref: runx/spend
+      status: sealed
+      created_at: "2026-06-06T09:02:44Z"
 expect:
   status: sealed
   receipt:
@@ -50,3 +31,4 @@ metadata:
   public_skill: ledger
   source_case: ledger-answer-with-chain-proof
   source: skills-fixture
+  runner_kind: cli-tool

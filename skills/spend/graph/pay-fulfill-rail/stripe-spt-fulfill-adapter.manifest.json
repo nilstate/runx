@@ -8,16 +8,10 @@
   "transport": {
     "kind": "process",
     "command": "node",
-    "args": ["stripe-spt-fulfill-adapter.mjs"]
+    "args": ["tools/stripe-spt-fulfill-adapter.mjs"]
   },
   "timeouts": {
     "startup_ms": 5000,
     "invocation_ms": 30000
-  },
-  "sandbox_intent": {
-    "profile": "network",
-    "cwd_policy": "skill-directory",
-    "network": true,
-    "writable_paths": []
   }
 }

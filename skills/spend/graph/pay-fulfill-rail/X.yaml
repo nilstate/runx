@@ -1,5 +1,5 @@
 skill: pay-fulfill-rail
-version: "0.1.0"
+version: "0.2.0"
 catalog:
   kind: skill
   audience: operator
@@ -139,65 +139,6 @@ runners:
         type: object
         required: false
         description: Source quote packet for evidence continuity.
-  x402:
-    type: agent-task
-    agent: operator
-    task: pay-fulfill-rail-x402
-    mutating: true
-    retry:
-      max_attempts: 1
-    idempotency:
-      key: payment-rail-x402
-    outputs:
-      rail_result: object
-      rail_proof: object
-      credential_envelope: object
-      redactions: array
-      recovery_hint: object
-    artifacts:
-      wrap_as: effect_evidence_packet
-      packet: runx.effect.evidence.v1
-    runx:
-      payment_authority:
-        phase: fulfill
-        resource_family: effect
-        verbs:
-          - commit
-        rails:
-          - x402
-        requires_capability: effect_single_use_capability
-        authorization_form: single_use_capability
-        receives_funding_material: false
-        receipt_before_success: true
-    inputs:
-      payment_challenge:
-        type: object
-        required: true
-        description: Protocol/provider challenge to fulfill.
-      reserved_payment_authority:
-        type: object
-        required: true
-        description: Child payment authority term admitted by core.
-      spend_capability_ref:
-        type: object
-        required: true
-        description: Scoped single-use spend capability reference.
-      rail_profile_ref:
-        type: string
-        required: true
-        description: Configured rail profile reference.
-      payment_admission:
-        type: object
-        required: false
-        description: Hosted payment admission token and settlement identity.
-      idempotency:
-        type: object
-        required: true
-        description: Reservation key and recovery lookup fields.
-      quote_packet:
-        type: object
-        required: false
-        description: Source quote packet for evidence continuity.
   mpp:
     type: agent-task
     agent: operator
@@ -276,6 +217,8 @@ runners:
     artifacts:
       wrap_as: effect_evidence_packet
       packet: runx.effect.evidence.v1
+    scopes:
+      - net:http
     runx:
       payment_authority:
         phase: fulfill

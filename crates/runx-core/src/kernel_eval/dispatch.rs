@@ -5,10 +5,9 @@ use runx_contracts::JsonValue;
 use super::KernelEvalError;
 use super::input::{KernelDocument, KernelInput};
 use crate::policy::{
-    admit_graph_step_scopes, admit_local_skill, admit_retry_policy, admit_sandbox,
-    build_authority_proof_metadata, build_local_scope_admission,
-    evaluate_public_comment_opportunity, evaluate_public_pull_request_candidate,
-    normalize_public_work_policy, normalize_sandbox_declaration, sandbox_requires_approval,
+    admit_graph_step_scopes, admit_local_skill, admit_retry_policy, build_authority_proof_metadata,
+    build_local_scope_admission, evaluate_public_comment_opportunity,
+    evaluate_public_pull_request_candidate, normalize_public_work_policy,
     validate_credential_binding,
 };
 use crate::state_machine::{
@@ -23,9 +22,6 @@ pub(super) fn evaluate_kernel_input(input: KernelDocument) -> Result<JsonValue, 
         KernelInput::AdmitLocalSkill { .. }
         | KernelInput::AdmitRetryPolicy { .. }
         | KernelInput::AdmitGraphStepScopes { .. }
-        | KernelInput::NormalizeSandboxDeclaration { .. }
-        | KernelInput::SandboxRequiresApproval { .. }
-        | KernelInput::AdmitSandbox { .. }
         | KernelInput::BuildLocalScopeAdmission { .. }
         | KernelInput::BuildAuthorityProofMetadata { .. }
         | KernelInput::ValidateCredentialBinding { .. }
@@ -50,15 +46,6 @@ fn evaluate_policy_input(input: KernelInput) -> Result<JsonValue, KernelEvalErro
         KernelInput::AdmitRetryPolicy { request } => to_value(admit_retry_policy(&request)),
         KernelInput::AdmitGraphStepScopes { request } => {
             to_value(admit_graph_step_scopes(&request))
-        }
-        KernelInput::NormalizeSandboxDeclaration { sandbox } => {
-            to_value(normalize_sandbox_declaration(sandbox.as_ref()))
-        }
-        KernelInput::SandboxRequiresApproval { sandbox } => {
-            to_value(sandbox_requires_approval(sandbox.as_ref()))
-        }
-        KernelInput::AdmitSandbox { sandbox, options } => {
-            to_value(admit_sandbox(sandbox.as_ref(), &options))
         }
         KernelInput::BuildLocalScopeAdmission {
             auth,

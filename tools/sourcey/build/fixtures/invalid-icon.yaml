@@ -44,7 +44,6 @@ inputs:
 expect:
   status: success
   output:
-    matches_packet: runx.sourcey.build_report.v1
     subset:
       generated: true
       icon_validation:

@@ -110,5 +110,5 @@ print("   source_receipt     :", (d.get("source_receipt_id") or "")[:54])
 bar
 echo "one policy, any rail; the spend is refused before the rail is touched."
 echo "runx holds no wallet and no spend credential and called no rail. It signs the receipt"
-echo "with its own key, so anyone can verify it independently: node verify.mjs <receipt>"
+echo "with its own key, so anyone can verify it independently: node tools/verify/verify.mjs <receipt>"
 echo

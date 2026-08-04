@@ -15,8 +15,6 @@ interface Finding {
 interface Options {
   readonly candidate: string;
   readonly noLegacyShapes: boolean;
-  readonly noV2: boolean;
-  readonly noAliases: boolean;
   readonly noJsFallback: boolean;
 }
 
@@ -38,14 +36,6 @@ const forbiddenLegacyShapeTokens = [
   "compat_receipt",
 ] as const;
 
-const forbiddenV2Tokens = [
-  "RUNX_V2",
-  "--v2",
-  "runx v2",
-  'schema_version: "v2"',
-  '"schema_version":"v2"',
-] as const;
-
 const findings: Finding[] = [];
 const options = parseArgs(process.argv.slice(2));
 const candidate = resolveCandidatePath(options.candidate);
@@ -61,21 +51,11 @@ if (options.noLegacyShapes) {
   inspectBinaryTokens(candidate, forbiddenLegacyShapeTokens, "legacy_shape_token", findings);
 }
 
-if (options.noV2) {
-  inspectBinaryTokens(candidate, forbiddenV2Tokens, "v2_mode_token", findings);
-}
-
-if (options.noAliases) {
-  inspectCanonicalMatrix(findings);
-}
-
 emit({
   status: findings.length === 0 ? "passed" : "blocked",
   candidate: displayPath(candidate),
   checks: {
     no_legacy_shapes: options.noLegacyShapes,
-    no_v2: options.noV2,
-    no_aliases: options.noAliases,
     no_js_fallback: options.noJsFallback,
   },
   findings,
@@ -90,8 +70,6 @@ function retiredExecutionShape(prefix: string): string {
 function parseArgs(argv: readonly string[]): Options {
   let candidate = "";
   let noLegacyShapes = false;
-  let noV2 = false;
-  let noAliases = false;
   let noJsFallback = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -103,14 +81,6 @@ function parseArgs(argv: readonly string[]): Options {
     }
     if (arg === "--no-legacy-shapes") {
       noLegacyShapes = true;
-      continue;
-    }
-    if (arg === "--no-v2") {
-      noV2 = true;
-      continue;
-    }
-    if (arg === "--no-aliases") {
-      noAliases = true;
       continue;
     }
     if (arg === "--no-js-fallback") {
@@ -128,7 +98,7 @@ function parseArgs(argv: readonly string[]): Options {
     throw new Error("missing --candidate <path>");
   }
 
-  return { candidate, noLegacyShapes, noV2, noAliases, noJsFallback };
+  return { candidate, noLegacyShapes, noJsFallback };
 }
 
 function inspectCandidateFile(candidatePath: string, output: Finding[]): void {
@@ -215,23 +185,6 @@ function assertShimFlagsGone(candidatePath: string, output: Finding[]): void {
   }
 }
 
-function inspectCanonicalMatrix(output: Finding[]): void {
-  const matrixPath = path.join(workspaceRoot, "fixtures", "cli-parity", "commands.json");
-  try {
-    const matrix = JSON.parse(readFileSync(matrixPath, "utf8")) as {
-      readonly commands?: readonly { readonly id?: string; readonly aliases?: readonly string[] }[];
-    };
-    const aliases = (matrix.commands ?? []).flatMap((command) =>
-      (command.aliases ?? []).map((alias) => `${command.id ?? "<unknown>"}: ${alias}`),
-    );
-    for (const alias of aliases) {
-      output.push(finding("canonical_alias", matrixPath, `canonical matrix still includes alias ${alias}`));
-    }
-  } catch (error) {
-    output.push(finding("canonical_matrix_unreadable", matrixPath, errorMessage(error)));
-  }
-}
-
 function cutoverEnv(runxHome: string): NodeJS.ProcessEnv {
   const env = { ...process.env };
   delete env.RUNX_JS_BIN;
@@ -264,5 +217,5 @@ function emit(payload: unknown): void {
 }
 
 function printUsage(): void {
-  console.log("Usage: pnpm exec tsx scripts/check-rust-cli-cutover.ts --candidate <path> [--no-legacy-shapes] [--no-v2] [--no-aliases] [--no-js-fallback]");
+  console.log("Usage: pnpm exec tsx scripts/check-rust-cli-cutover.ts --candidate <path> [--no-legacy-shapes] [--no-js-fallback]");
 }

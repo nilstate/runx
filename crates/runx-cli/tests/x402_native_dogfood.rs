@@ -5,6 +5,55 @@ use std::process::{Command, Output};
 use serde_json::Value;
 
 #[test]
+fn payment_command_loads_its_workspace_environment_once_at_cli_admission()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-payment-workspace-env");
+    fs::create_dir_all(&root)?;
+    fs::write(
+        root.join(".env"),
+        concat!(
+            "RUNX_PAYMENT_ADMISSION_KID=workspace-kid\n",
+            "RUNX_INTERNAL_PAYMENT_ADMISSION_SIGNING_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n",
+            "RUNX_CWD=/must/not/override/discovery\n"
+        ),
+    )?;
+    let request_path = root.join("admission.json");
+    fs::write(
+        &request_path,
+        serde_json::json!({
+            "principal": "principal_1",
+            "act": "act_pay_quote",
+            "rail": "x402",
+            "amount_minor": 1250,
+            "currency": "USD",
+            "counterparty": "merchant_1",
+            "run_id": "run_1",
+            "authority_digest": "sha256:authority",
+            "expires_at": "2026-08-01T00:00:00Z"
+        })
+        .to_string(),
+    )?;
+
+    let output = crate::support::unsigned_runx_command_at(&root)
+        .args([
+            "payment",
+            "admission",
+            "issue",
+            "--input",
+            "admission.json",
+            "--json",
+        ])
+        .output()?;
+    assert_success(&output)?;
+    let result: Value = serde_json::from_slice(&output.stdout)?;
+    assert_eq!(result["status"], "success");
+    assert_eq!(result["result"]["token"]["kid"], "workspace-kid");
+
+    fs::remove_dir_all(&root).ok();
+    Ok(())
+}
+
+#[test]
 fn native_x402_mock_dogfood_fixtures_run_without_typescript()
 -> Result<(), Box<dyn std::error::Error>> {
     let approved = run_harness_fixture(
@@ -277,7 +326,9 @@ fn run_harness_fixture(
     denied_fragments: &[&str],
 ) -> Result<Value, Box<dyn std::error::Error>> {
     let fixture = crate::support::governed_harness_fixture(fixture)?;
+    let receipt_dir = fixture.receipt_dir();
     let output = native_command()?
+        .env("RUNX_RECEIPT_DIR", receipt_dir)
         .args(["harness", fixture.path_str()?, "--json"])
         .output()?;
     assert_success(&output)?;
@@ -292,9 +343,7 @@ fn run_harness_fixture(
 }
 
 fn native_command() -> Result<Command, Box<dyn std::error::Error>> {
-    let mut command = crate::support::isolated_runx_command("x402-native-dogfood-test-key")?;
-    command.env("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY", "local");
-    Ok(command)
+    crate::support::isolated_runx_command("x402-native-dogfood-test-key")
 }
 
 fn assert_success(output: &Output) -> Result<(), Box<dyn std::error::Error>> {

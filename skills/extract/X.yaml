@@ -1,5 +1,5 @@
 skill: extract
-version: "0.1.0"
+version: "0.1.3"
 
 catalog:
   kind: skill
@@ -7,6 +7,10 @@ catalog:
   visibility: public
   role: canonical
   runtime_path: local
+  execution: read
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
 
 policy:
   allow:
@@ -54,9 +58,13 @@ runners:
         description: "Maximum extracted items to include in output."
     graph:
       name: extract
+      result_from: [extract_structured_json]
       steps:
         - id: extract_structured_json
           tool: structured.extract
+          scopes:
+            - runx:fixture:read
+            - runx:schema:read
           inputs:
             input_path: "$input.input_path"
             schema_path: "$input.schema_path"

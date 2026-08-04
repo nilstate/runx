@@ -1,17 +1,14 @@
 ---
 name: extract
 description: Extract schema-validated JSON from messy HTML or text fixtures with digest-bound provenance.
-source:
-  type: cli-tool
-  command: node
-  args:
-    - tools/structured/extract/run.mjs
 runx:
   tags:
     - extraction
     - schema-validation
     - provenance
 ---
+
+# Extract
 
 ## What this skill does
 

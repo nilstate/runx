@@ -25,11 +25,13 @@ use runx_pay::{
 use runx_receipts::ReceiptTreeConfig;
 use runx_runtime::effects::RuntimeEffectRegistry;
 use runx_runtime::{
-    Host, InvocationStatus, RUNX_RUN_ID_ENV, Runtime, RuntimeError, RuntimeOptions, SkillAdapter,
-    SkillInvocation, SkillOutput, validate_runtime_receipt_tree,
+    Host, InvocationOutput, RUNX_RUN_ID_ENV, Runtime, RuntimeError, RuntimeOptions, SkillAdapter,
+    SkillInvocation, validate_runtime_receipt_tree,
 };
 use serde_json::{Value, json};
 use tempfile::TempDir;
+
+use crate::support::write_cli_tool_skill;
 
 const PAID_ECHO_IDEMPOTENCY_KEY: &str = "payment:paid-echo-001";
 const PAID_ECHO_RAIL_SESSION_MATERIAL_REF: &str = "rail-session-material:mock:paid-echo-001";
@@ -61,7 +63,7 @@ fn approved_payment_approval_emits_approval_output_and_runs_fulfill()
     );
     assert!(
         approval_step
-            .outputs
+            .contract
             .get("payment_approval")
             .is_some_and(|value| matches!(value, JsonValue::Object(_)))
     );
@@ -300,7 +302,7 @@ fn payment_spend_success_without_rail_proof_is_denied_before_graph_success()
 }
 
 #[test]
-fn payment_spend_authority_is_detected_from_reserved_authority_not_scope_string()
+fn effect_family_bypass_is_impossible_when_resolved_target_owns_payment_effect()
 -> Result<(), Box<dyn std::error::Error>> {
     let fixture = GraphFixture::with_fulfill_options(FulfillAdmission::Valid, FulfillScope::None)?;
     let runtime = Runtime::new(
@@ -321,7 +323,7 @@ fn payment_spend_authority_is_detected_from_reserved_authority_not_scope_string(
             assert_eq!(step_id, "fulfill");
             assert!(
                 reason.contains("rail proof"),
-                "authority denial should still happen without a payment:spend scope string"
+                "resolved payment target should enforce authority without an author-supplied family or scope string"
             );
         }
         Ok(run) => {
@@ -383,8 +385,7 @@ fn payment_spend_amount_widening_blocks_before_adapter_invocation()
 #[test]
 fn non_payment_step_without_rail_admission_inputs_invokes_adapter()
 -> Result<(), Box<dyn std::error::Error>> {
-    let fixture =
-        GraphFixture::with_fulfill_options(FulfillAdmission::MissingAll, FulfillScope::None)?;
+    let fixture = GraphFixture::non_payment()?;
     let adapter = RecordingAdapter::default();
     let invocations = adapter.invocations();
     let runtime = Runtime::new(adapter, runtime_options_with_effects(Vec::new()));
@@ -395,7 +396,7 @@ fn non_payment_step_without_rail_admission_inputs_invokes_adapter()
     assert_eq!(run.state.status, GraphStatus::Succeeded);
     assert_eq!(
         invocations.borrow().as_slice(),
-        &["pay-fulfill-rail".to_owned()],
+        &["non-payment-step".to_owned()],
         "non-payment steps should not require payment rail admission inputs"
     );
     Ok(())
@@ -442,8 +443,8 @@ fn x402_paid_echo_returns_echo_only_after_sealed_payment_proof()
     );
 
     let echo = step_run(&run.steps, "echo")?;
-    let skill_claim = object_field(&echo.outputs, "skill_claim")?;
-    let paid_echo_result = object_field(skill_claim, "paid_echo_result")?;
+    let paid_echo_packet = object_field(&echo.contract, "paid_echo_result")?;
+    let paid_echo_result = object_field(paid_echo_packet, "data")?;
     assert_eq!(
         paid_echo_result.get("message"),
         Some(&JsonValue::String("hello from paid echo".to_owned()))
@@ -474,7 +475,7 @@ fn x402_paid_echo_returns_echo_only_after_sealed_payment_proof()
         ))
     );
 
-    let echo_text = serde_json::to_string(&echo.outputs)?;
+    let echo_text = serde_json::to_string(&echo.contract)?;
     assert!(!echo_text.contains("credential_envelope"));
     assert!(!echo_text.contains("rail_session_material_ref"));
     assert!(!echo_text.contains(PAID_ECHO_RAIL_SESSION_MATERIAL_REF));
@@ -510,13 +511,18 @@ fn x402_paid_echo_replays_sealed_idempotency_without_second_rail()
             effects: runtime_effects(vec![paid_echo_supervisor_evidence(
                 PAID_ECHO_IDEMPOTENCY_KEY,
             )]),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
 
     let mut first_host = ApprovalHost::approved(true);
     let first = runtime.run_graph_file_with_host(fixture.graph_path(), &mut first_host)?;
     assert_eq!(first.state.status, GraphStatus::Succeeded);
+    let first_fulfill = serde_json::to_string(&step_run(&first.steps, "fulfill")?.contract)?;
+    assert!(
+        !first_fulfill.contains(PAID_ECHO_RAIL_SESSION_MATERIAL_REF),
+        "transient rail session material must be removed before output projection and sealing"
+    );
 
     let mut second_host = ApprovalHost::approved(true);
     let second = runtime.run_graph_file_with_host(fixture.graph_path(), &mut second_host)?;
@@ -533,8 +539,11 @@ fn x402_paid_echo_replays_sealed_idempotency_without_second_rail()
     );
     assert_eq!(
         object_field(
-            object_field(&step_run(&second.steps, "echo")?.outputs, "skill_claim")?,
-            "paid_echo_result"
+            object_field(
+                &step_run(&second.steps, "echo")?.contract,
+                "paid_echo_result"
+            )?,
+            "data"
         )?
         .get("payment_proof_ref"),
         Some(&JsonValue::String(
@@ -596,7 +605,7 @@ fn x402_paid_echo_replay_with_mismatched_amount_denies_before_second_rail()
             effects: runtime_effects(vec![paid_echo_supervisor_evidence(
                 PAID_ECHO_IDEMPOTENCY_KEY,
             )]),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
 
@@ -670,7 +679,7 @@ fn x402_paid_echo_reused_spend_capability_with_new_idempotency_denied_from_persi
             effects: runtime_effects(vec![paid_echo_supervisor_evidence(
                 PAID_ECHO_IDEMPOTENCY_KEY,
             )]),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
 
@@ -750,7 +759,7 @@ fn x402_paid_echo_run_cap_exhaustion_is_governed_denial_before_second_rail()
             effects: runtime_effects(vec![paid_echo_supervisor_evidence(
                 PAID_ECHO_IDEMPOTENCY_KEY,
             )]),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
 
@@ -824,7 +833,7 @@ fn x402_paid_echo_partial_mutation_escalates_without_second_rail()
         RuntimeOptions {
             env,
             effects: runtime_effects(Vec::new()),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         },
     );
 
@@ -1050,14 +1059,19 @@ fn runtime_options_with_effects(
     RuntimeOptions {
         env,
         effects: runtime_effects(evidence),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }
 
 fn runtime_effects(evidence: Vec<PaymentSupervisorSettlementEvidence>) -> RuntimeEffectRegistry {
-    RuntimeEffectRegistry::with_effect(PaymentRuntimeEffect::new(
+    let registry = RuntimeEffectRegistry::with_effect(PaymentRuntimeEffect::new(
         ExpectedPaymentFinalitySupervisor::new(evidence),
-    ))
+    ));
+    assert!(
+        registry.is_ok(),
+        "payment effect fixture metadata must be valid: {registry:?}"
+    );
+    registry.unwrap_or_default()
 }
 
 #[derive(Clone, Debug)]
@@ -1270,12 +1284,12 @@ fn payment_supervisor_evidence(
 
 struct RecordingAdapter {
     invocations: Rc<RefCell<Vec<String>>>,
-    stdout: String,
+    output_json: &'static str,
 }
 
 impl Default for RecordingAdapter {
     fn default() -> Self {
-        Self::with_stdout(
+        Self::with_output_json(
             r#"{"effect_evidence_packet":{"data":{"rail_result":{"status":"fulfilled","rail":"mock","amount_minor":125,"currency":"USD"},"rail_proof":{"proof_ref":"receipt-proof:mock:x402-pay-approval-001","idempotency_key":"payment:x402-pay-approval-001"},"credential_envelope":{"form":"paid_tool_credential","credential_ref":"credential:mock:x402-pay-approval-001"}}}}"#,
         )
     }
@@ -1283,15 +1297,15 @@ impl Default for RecordingAdapter {
 
 impl RecordingAdapter {
     fn without_rail_proof() -> Self {
-        Self::with_stdout(
+        Self::with_output_json(
             r#"{"effect_evidence_packet":{"data":{"rail_result":{"status":"fulfilled","rail":"mock","amount_minor":125,"currency":"USD"},"credential_envelope":{"form":"paid_tool_credential","credential_ref":"credential:mock:x402-pay-approval-001"}}}}"#,
         )
     }
 
-    fn with_stdout(stdout: &str) -> Self {
+    fn with_output_json(output_json: &'static str) -> Self {
         Self {
             invocations: Rc::new(RefCell::new(Vec::new())),
-            stdout: stdout.to_owned(),
+            output_json,
         }
     }
 
@@ -1305,16 +1319,18 @@ impl SkillAdapter for RecordingAdapter {
         "x402-pay-approval-test"
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
+    fn invoke(&self, request: SkillInvocation) -> Result<InvocationOutput, RuntimeError> {
         self.invocations.borrow_mut().push(request.skill_name);
-        Ok(SkillOutput {
-            status: InvocationStatus::Success,
-            stdout: self.stdout.clone(),
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 1,
-            metadata: JsonObject::new(),
-        })
+        let value =
+            serde_json::from_str(self.output_json).map_err(|source| RuntimeError::Json {
+                context: "parsing recording-adapter test output".to_owned(),
+                source,
+            })?;
+        Ok(InvocationOutput::runtime_success(
+            value,
+            1,
+            JsonObject::new(),
+        ))
     }
 }
 
@@ -1444,12 +1460,12 @@ impl SkillAdapter for PaidEchoAdapter {
         "paid-echo-test"
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
+    fn invoke(&self, request: SkillInvocation) -> Result<InvocationOutput, RuntimeError> {
         self.invocations.borrow_mut().push(PaidEchoInvocation {
             skill_name: request.skill_name.clone(),
             inputs: request.inputs.clone(),
         });
-        Ok(match request.skill_name.as_str() {
+        match request.skill_name.as_str() {
             "pay-quote" => skill_success(json!({
                 "payment_quote_packet": {
                     "data": {
@@ -1497,7 +1513,7 @@ impl SkillAdapter for PaidEchoAdapter {
             "pay-fulfill-rail" if matches!(self.rail_proof, PaidEchoRailProof::Partial) => {
                 let idempotency_key = self.current_idempotency_key.borrow().clone();
                 let amount_minor = *self.current_amount_minor.borrow();
-                skill_failure_with_stdout(
+                skill_failure_with_value(
                     paid_echo_partial_rail_packet(&idempotency_key, amount_minor),
                     "partial rail mutation recorded before terminal proof",
                 )
@@ -1537,53 +1553,41 @@ impl SkillAdapter for PaidEchoAdapter {
                 }
             }
             other => skill_failure(&format!("unexpected skill {other}")),
-        })
-    }
-}
-
-fn skill_success(value: Value) -> SkillOutput {
-    let stdout = match serde_json::to_string(&value) {
-        Ok(stdout) => stdout,
-        Err(error) => return skill_failure(&format!("test JSON serialization failed: {error}")),
-    };
-    SkillOutput {
-        status: InvocationStatus::Success,
-        stdout,
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 1,
-        metadata: JsonObject::new(),
-    }
-}
-
-fn skill_failure(message: &str) -> SkillOutput {
-    SkillOutput {
-        status: InvocationStatus::Failure,
-        stdout: String::new(),
-        stderr: message.to_owned(),
-        exit_code: Some(1),
-        duration_ms: 1,
-        metadata: JsonObject::new(),
-    }
-}
-
-fn skill_failure_with_stdout(value: Value, message: &str) -> SkillOutput {
-    let stdout = match serde_json::to_string(&value) {
-        Ok(stdout) => stdout,
-        Err(error) => {
-            return skill_failure(&format!(
-                "{message}; test JSON serialization failed: {error}"
-            ));
         }
-    };
-    SkillOutput {
-        status: InvocationStatus::Failure,
-        stdout,
-        stderr: message.to_owned(),
-        exit_code: Some(1),
-        duration_ms: 1,
-        metadata: JsonObject::new(),
     }
+}
+
+fn skill_success(value: Value) -> Result<InvocationOutput, RuntimeError> {
+    Ok(InvocationOutput::runtime_success(
+        runtime_value(value)?,
+        1,
+        JsonObject::new(),
+    ))
+}
+
+fn skill_failure(message: &str) -> Result<InvocationOutput, RuntimeError> {
+    Ok(InvocationOutput::runtime_failure(
+        JsonValue::Null,
+        message,
+        1,
+        JsonObject::new(),
+    ))
+}
+
+fn skill_failure_with_value(value: Value, message: &str) -> Result<InvocationOutput, RuntimeError> {
+    Ok(InvocationOutput::runtime_failure(
+        runtime_value(value)?,
+        message,
+        1,
+        JsonObject::new(),
+    ))
+}
+
+fn runtime_value(value: Value) -> Result<JsonValue, RuntimeError> {
+    serde_json::from_value(value).map_err(|source| RuntimeError::Json {
+        context: "converting paid-echo test output".to_owned(),
+        source,
+    })
 }
 
 fn paid_echo_rail_packet(
@@ -1668,6 +1672,10 @@ impl Host for ApprovalHost {
         self.requests.borrow_mut().push(request);
         Ok(self.responses.borrow_mut().pop_front().flatten())
     }
+
+    fn log(&mut self, _message: String) -> Result<(), RuntimeError> {
+        Ok(())
+    }
 }
 
 struct GraphFixture {
@@ -1684,21 +1692,34 @@ impl GraphFixture {
         admission: FulfillAdmission,
         scope: FulfillScope,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_target_name(admission, scope, "pay-fulfill-rail")
+    }
+
+    fn non_payment() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_target_name(
+            FulfillAdmission::MissingAll,
+            FulfillScope::None,
+            "non-payment-step",
+        )
+    }
+
+    fn with_target_name(
+        admission: FulfillAdmission,
+        scope: FulfillScope,
+        skill_name: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         let fulfill_dir = temp.path().join("fulfill");
-        fs::create_dir(&fulfill_dir)?;
-        fs::write(
-            fulfill_dir.join("SKILL.md"),
-            r#"---
-name: pay-fulfill-rail
-description: Fulfill approved payment.
-source:
-  type: cli-tool
-  command: runx-payment-test
----
-
-Fulfill the approved payment.
-"#,
+        write_cli_tool_skill(
+            &fulfill_dir,
+            skill_name,
+            "Fulfill approved payment.",
+            &[
+                ("reserved_payment_authority", "object"),
+                ("spend_capability_ref", "object"),
+                ("idempotency", "object"),
+            ],
+            Some("effect_evidence_packet"),
         )?;
         let graph_path = temp.path().join("graph.yaml");
         fs::write(&graph_path, graph_yaml(admission, scope)?)?;
@@ -1724,19 +1745,39 @@ impl PaidEchoFixture {
         write_cli_tool_skill(
             &temp.path().join("quote"),
             "pay-quote",
+            "Quote a payment fixture.",
+            &[("payment_signal", "object")],
             Some("payment_quote_packet"),
         )?;
         write_cli_tool_skill(
             &temp.path().join("reserve"),
             "pay-reserve",
+            "Reserve a payment fixture.",
+            &[("payment_quote_packet", "object")],
             Some("payment_reservation_packet"),
         )?;
         write_cli_tool_skill(
             &temp.path().join("fulfill"),
             "pay-fulfill-rail",
+            "Fulfill a payment fixture.",
+            &[
+                ("reserved_payment_authority", "object"),
+                ("spend_capability_ref", "object"),
+                ("idempotency", "object"),
+            ],
             Some("effect_evidence_packet"),
         )?;
-        write_cli_tool_skill(&temp.path().join("echo"), "paid-echo", None)?;
+        write_cli_tool_skill(
+            &temp.path().join("echo"),
+            "paid-echo",
+            "Return the paid fixture result.",
+            &[
+                ("message", "string"),
+                ("payment_credential_ref", "string"),
+                ("payment_proof_ref", "string"),
+            ],
+            Some("paid_echo_result"),
+        )?;
         let graph_path = temp.path().join("graph.yaml");
         fs::write(&graph_path, paid_echo_graph_yaml()?)?;
         Ok(Self {
@@ -1748,32 +1789,6 @@ impl PaidEchoFixture {
     fn graph_path(&self) -> &Path {
         self.graph_path.as_path()
     }
-}
-
-fn write_cli_tool_skill(
-    dir: &Path,
-    name: &str,
-    emitted_packet: Option<&str>,
-) -> Result<(), std::io::Error> {
-    fs::create_dir(dir)?;
-    let artifacts = emitted_packet.map_or_else(String::new, |packet| {
-        format!("runx:\n  artifacts:\n    named_emits:\n      {packet}: runx.payment.{packet}.v1\n")
-    });
-    fs::write(
-        dir.join("SKILL.md"),
-        format!(
-            r#"---
-name: {name}
-description: Payment fixture skill.
-source:
-  type: cli-tool
-  command: runx-payment-test
-{artifacts}---
-
-Payment fixture skill.
-"#
-        ),
-    )
 }
 
 #[derive(Clone, Copy)]
@@ -1982,13 +1997,11 @@ fn reserved_payment_authority(child_max_per_call_units: u64, include_subset_proo
         },
         "consumed_spend_capability_refs": []
     });
-    if include_subset_proof {
-        if let Some(object) = authority.as_object_mut() {
-            object.insert(
-                "subset_proof".to_owned(),
-                payment_subset_proof("child", "parent"),
-            );
-        }
+    if include_subset_proof && let Some(object) = authority.as_object_mut() {
+        object.insert(
+            "subset_proof".to_owned(),
+            payment_subset_proof("child", "parent"),
+        );
     }
     authority
 }
@@ -2212,7 +2225,7 @@ fn step_run<'a>(
 }
 
 fn approval_value(step: &runx_runtime::StepRun, field: &str) -> Result<JsonValue, std::io::Error> {
-    let payment_approval = object_field(&step.outputs, "payment_approval")?;
+    let payment_approval = object_field(&step.contract, "payment_approval")?;
     let data = object_field(payment_approval, "data")?;
     data.get(field)
         .cloned()

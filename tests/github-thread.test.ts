@@ -344,6 +344,7 @@ describe("GitHub thread helper", () => {
       },
     });
     const body = JSON.parse((frame.payload as { body: string }).body);
+    expect(body.provider_readback).toBe("mutation_only");
     expect(body.thread).toMatchObject({
       adapter: {
         adapter_ref: "auscaster/frantic-board#issue/7",
@@ -684,6 +685,36 @@ describe("GitHub thread helper", () => {
     }
   });
 
+  it("reads every REST comment page before deciding which thread comments are missing", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-rest-snapshot-"));
+    const curlBin = path.join(tempDir, "curl");
+    const logPath = path.join(tempDir, "curl.log");
+
+    try {
+      await writeFile(curlBin, fakeCurlScript(logPath));
+      await chmod(curlBin, 0o700);
+      const snapshot = readGitHubThreadSnapshot({
+        adapterRef: "github://auscaster/frantic-board/issues/7",
+        env: {
+          ...process.env,
+          PATH: `${tempDir}:${process.env.PATH ?? ""}`,
+          GITHUB_TOKEN: "test-token",
+          GH_FAKE_LOG: logPath,
+        },
+      });
+
+      expect(snapshot.comment_markers).toContain("late-page:thread.comment");
+      expect(snapshot.comment_bodies).toHaveLength(101);
+      const calls = JSON.parse(await readFile(logPath, "utf8"));
+      const urls = calls.map((call: { url: string }) => call.url);
+      expect(urls).toContain("https://api.github.com/repos/auscaster/frantic-board/issues/7/comments?per_page=100&page=1");
+      expect(urls).toContain("https://api.github.com/repos/auscaster/frantic-board/issues/7/comments?per_page=100&page=2");
+      expect(urls.some((url: string) => url.includes("page=3"))).toBe(false);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("lists GitHub issues carrying any managed label without duplicates", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-list-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
@@ -957,6 +988,68 @@ describe("GitHub thread helper", () => {
       },
     });
   });
+
+  it("uses mutation-only provider frames without redundant GraphQL thread reads", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+    const ghBin = path.join(tempDir, "fake-gh.mjs");
+    const logPath = path.join(tempDir, "gh.log");
+    const thread = {
+      schema_version: 1,
+      provider: "github",
+      target_repo: "auscaster/frantic-board",
+      identity_key: "frantic:bounty:7",
+      thread_locator: "github://auscaster/frantic-board/issues/7",
+      title: "Frantic bounty #7",
+      body: "Frantic is the source of truth.",
+      labels: ["bounty", "funded", "available"],
+      managed_labels: ["bounty", "funded", "available", "paid", "closed"],
+      state: "open",
+      comments: [],
+    };
+    const frame = buildMessageFrame(
+      thread,
+      {
+        entry_id: "github:payout-1:thread.comment",
+        body: "Frantic paid one accepted claim.",
+        receipt_ref: "frantic:receipt:payout:7",
+      },
+      thread.thread_locator,
+      { sourceId: "frantic" },
+    );
+
+    try {
+      await writeFile(ghBin, fakeGhScript(logPath));
+      await chmod(ghBin, 0o700);
+      const result = spawnSync("node", ["tools/thread/thread_outbox_provider/github-provider.mjs"], {
+        cwd: process.cwd(),
+        input: `${JSON.stringify(frame)}\n`,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          RUNX_GH_BIN: ghBin,
+          GH_FAKE_LOG: logPath,
+        },
+      });
+
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      const calls = JSON.parse(await readFile(logPath, "utf8"));
+      expect(calls.map((call: { args: string[] }) => call.args.slice(0, 2).join(" "))).toEqual([
+        "issue comment",
+      ]);
+      const output = JSON.parse(result.stdout);
+      expect(output).toMatchObject({
+        observation: { status: "accepted" },
+        output: {
+          push: {
+            status: "pushed",
+          },
+        },
+      });
+      expect(output.output.thread).toBeUndefined();
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function fakeGhScript(logPath: string): string {
@@ -982,6 +1075,7 @@ if (args[0] === "issue" && args[1] === "list") {
   process.stdout.write(JSON.stringify(filtered));
   process.exit(0);
 }
+
 if (args[0] === "issue" && args[1] === "create") {
   process.stdout.write("https://github.com/auscaster/frantic-board/issues/91\\n");
   process.exit(0);
@@ -1002,6 +1096,43 @@ if (args[0] === "label" && args[1] === "list") {
   process.exit(0);
 }
 process.stdout.write("");
+`;
+}
+
+function fakeCurlScript(logPath: string): string {
+  return `#!/usr/bin/env node
+import { readFileSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const urlIndex = args.indexOf("--url");
+const url = urlIndex >= 0 ? args[urlIndex + 1] : "";
+const logPath = process.env.GH_FAKE_LOG || ${JSON.stringify(logPath)};
+let calls = [];
+try {
+  calls = JSON.parse(readFileSync(logPath, "utf8"));
+} catch {}
+calls.push({ url });
+writeFileSync(logPath, JSON.stringify(calls));
+
+let body;
+if (url.endsWith("/repos/auscaster/frantic-board/issues/7")) {
+  body = { title: "Fixture issue", body: "Fixture body", state: "open", labels: [] };
+} else if (url.includes("/repos/auscaster/frantic-board/issues/7/comments?")) {
+  const page = Number(new URL(url).searchParams.get("page") || "1");
+  body = page === 1
+    ? Array.from({ length: 100 }, (_, index) => ({ body: \`comment \${index + 1}\` }))
+    : [{
+        body: [
+          "late comment",
+          "",
+          "<!-- runx-outbox-envelope: v1 -->",
+          "<!-- runx-outbox-entry: late-page:thread.comment -->",
+        ].join("\\n"),
+      }];
+} else {
+  body = { message: "not found" };
+}
+process.stdout.write(JSON.stringify(body) + "\\n200");
 `;
 }
 

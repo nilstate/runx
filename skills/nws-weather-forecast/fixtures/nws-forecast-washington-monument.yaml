@@ -8,6 +8,24 @@ inputs:
   grid_y: "71"
 expect:
   status: sealed
+  steps:
+    - forecast
+  step_outputs:
+    forecast:
+      subset:
+        http_execution:
+          data:
+            decision: completed
+            request_count: 1
+            responses:
+              - id: forecast
+                status: 200
+                json:
+                  type: Feature
+                  properties:
+                    units: us
+                    elevation:
+                      unitCode: "wmoUnit:m"
 metadata:
   public_skill: nws-weather-forecast
   source_case: nws-forecast-washington-monument

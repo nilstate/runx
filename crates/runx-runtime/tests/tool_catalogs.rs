@@ -11,23 +11,43 @@ use runx_runtime::{
 fn tool_catalogs_build_minimal_manifest() -> Result<(), Box<dyn std::error::Error>> {
     let temp_root = copy_minimal_tool_fixture("build_minimal_manifest")?;
     let tool_dir = temp_root.join("tools/fixture/minimal");
+    let manifest_path = tool_dir.join("manifest.json");
+    let manifest_before = fs::read(&manifest_path)?;
 
     let report = build_tool_catalogs(&ToolBuildOptions {
         root: temp_root.clone(),
         tool_path: Some(tool_dir),
         all: false,
-        toolkit_version: "0.1.4".to_owned(),
     })?;
 
     assert_eq!(report.status, ToolBuildStatus::Success);
     assert_eq!(report.built.len(), 1);
     assert!(report.errors.is_empty());
 
-    let manifest = fs::read_to_string(temp_root.join("tools/fixture/minimal/manifest.json"))?;
-    assert!(manifest.contains(r#""schema": "runx.tool.manifest.v1""#));
-    assert!(manifest.contains(r#""toolkit_version": "0.1.4""#));
-    assert!(manifest.contains(r#""source_hash": "sha256:63e4461ecfd377d113e10e8a7aedb0e40ea92cf32ff2ed1f14b1b2815b7d7b73""#));
-    assert!(manifest.contains(r#""schema_hash": "sha256:6395f3286433e5a5036334876c3708da19906eca61a02dd0a4e75f15d4b0f4f8""#));
+    assert_eq!(fs::read(&manifest_path)?, manifest_before);
+    assert!(report.built[0].source_hash.starts_with("sha256:"));
+    assert!(report.built[0].schema_hash.starts_with("sha256:"));
+    Ok(())
+}
+
+#[test]
+fn tool_catalogs_reject_node_entrypoints_that_import_typescript()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp_root = copy_minimal_tool_fixture("reject_node_typescript")?;
+    let tool_dir = temp_root.join("tools/fixture/minimal");
+    fs::create_dir_all(tool_dir.join("src"))?;
+    fs::write(tool_dir.join("run.mjs"), "import './src/index.ts';\n")?;
+    fs::write(tool_dir.join("src/index.ts"), "export const ok = true;\n")?;
+
+    let report = build_tool_catalogs(&ToolBuildOptions {
+        root: temp_root,
+        tool_path: Some(tool_dir),
+        all: false,
+    })?;
+
+    assert_eq!(report.status, ToolBuildStatus::Failure);
+    assert_eq!(report.errors.len(), 1);
+    assert!(report.errors[0].contains("imports uncompiled TypeScript"));
     Ok(())
 }
 
@@ -120,12 +140,7 @@ fn tool_catalogs_ignore_ancestor_tool_roots_outside_workspace()
   "description": "Ancestor outside the workspace.",
   "source": {"type": "cli-tool", "command": "node", "args": ["./run.mjs"]},
   "inputs": {},
-  "scopes": [],
-  "runtime": {"command": "node", "args": ["./run.mjs"]},
-  "output": {},
-  "source_hash": "sha256:ancestor",
-  "schema_hash": "sha256:ancestor",
-  "toolkit_version": "0.1.4"
+  "scopes": []
 }
 "#,
     )?;
@@ -227,17 +242,7 @@ fn tool_catalogs_inspect_prefers_local_manifest_over_fixture_catalog()
   "inputs": {},
   "scopes": [
     "fixture.local"
-  ],
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
-  "output": {},
-  "source_hash": "sha256:local",
-  "schema_hash": "sha256:local",
-  "toolkit_version": "0.1.4"
+  ]
 }
 "#,
     )?;

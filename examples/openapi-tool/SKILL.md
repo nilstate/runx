@@ -1,23 +1,6 @@
 ---
 name: openapi-adapter
 description: External-adapter sub-skill; turns an OpenAPI operation into a sealed tool result.
-source:
-  type: external-adapter
-  external_adapter:
-    manifest_path: manifest.json
-inputs:
-  operation_id:
-    type: string
-    required: true
-    description: The OpenAPI operationId to invoke.
-  petId:
-    type: string
-    required: false
-    description: Path parameter for the getPet operation.
-  fields:
-    type: string
-    required: false
-    description: Optional query parameter.
 ---
 An OpenAPI front, expressed as an external adapter. The adapter reads a
 checked-in OpenAPI spec (`openapi.json`), resolves the requested operation,

@@ -5,16 +5,15 @@ use std::path::{Path, PathBuf};
 use runx_contracts::{ClosureDisposition, JsonObject, JsonValue, ReceiptSchema};
 use runx_receipts::canonical_receipt_json;
 use runx_runtime::{
-    HarnessExpectedStatus, HarnessFixtureError, HarnessFixtureKind, InvocationStatus,
-    RuntimeOptions, SkillAdapter, SkillInvocation, SkillOutput, load_harness_fixture,
-    parse_harness_fixture, run_harness_fixture_with_adapter,
+    HarnessExpectedStatus, HarnessFixtureKind, InvocationOutput, RuntimeOptions, SkillAdapter,
+    SkillInvocation, load_harness_fixture, run_harness_fixture_with_adapter,
 };
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
 
 #[test]
-fn loads_active_harness_fixtures_without_retired_receipt_fields() -> Result<(), HarnessFixtureError>
-{
+fn loads_active_harness_fixtures_without_retired_receipt_fields()
+-> Result<(), Box<dyn std::error::Error>> {
     for (path, expected_status, expected_disposition) in [
         (
             "fixtures/harness/echo-skill.yaml",
@@ -29,12 +28,7 @@ fn loads_active_harness_fixtures_without_retired_receipt_fields() -> Result<(), 
     ] {
         let fixture = load_harness_fixture(fixture_path(path))?;
         assert_eq!(fixture.expect.status, Some(expected_status));
-        let receipt = fixture
-            .expect
-            .receipt
-            .ok_or(HarnessFixtureError::Required {
-                field: "expect.receipt".to_owned(),
-            })?;
+        let receipt = fixture.expect.receipt.ok_or("missing expect.receipt")?;
         assert_eq!(receipt.schema, ReceiptSchema::V1);
         // A suspended (deferred) run carries the "deferred" state; every
         // terminal seal carries "sealed".
@@ -50,38 +44,31 @@ fn loads_active_harness_fixtures_without_retired_receipt_fields() -> Result<(), 
 }
 
 #[test]
-fn parses_harness_skill_fixture_contract() -> Result<(), HarnessFixtureError> {
+fn parses_harness_skill_fixture_contract() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = load_harness_fixture(fixture_path("fixtures/harness/echo-skill.yaml"))?;
 
     assert_eq!(fixture.name, "echo-skill");
     assert_eq!(fixture.kind, HarnessFixtureKind::Skill);
     assert_eq!(fixture.target, "../skills/echo");
-    let receipt = fixture
-        .expect
-        .receipt
-        .ok_or(HarnessFixtureError::Required {
-            field: "expect.receipt".to_owned(),
-        })?;
-    assert_eq!(receipt.harness_id.as_deref(), Some("hrn_echo-skill_echo"));
+    let receipt = fixture.expect.receipt.ok_or("missing expect.receipt")?;
+    assert_eq!(
+        receipt.harness_id.as_deref(),
+        Some("hrn_echo-skill_default")
+    );
     assert_eq!(receipt.reason_code.as_deref(), Some("process_closed"));
-    assert_eq!(receipt.act_ids, vec!["act_echo"]);
+    assert_eq!(receipt.act_ids, vec!["act_default"]);
     Ok(())
 }
 
 #[test]
-fn parses_harness_graph_fixture_contract() -> Result<(), HarnessFixtureError> {
+fn parses_harness_graph_fixture_contract() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = load_harness_fixture(fixture_path("fixtures/harness/sequential-graph.yaml"))?;
 
     assert_eq!(fixture.name, "sequential-graph");
     assert_eq!(fixture.kind, HarnessFixtureKind::Graph);
     assert_eq!(fixture.target, "../graphs/sequential/graph.yaml");
     assert_eq!(fixture.expect.steps, vec!["first", "second"]);
-    let receipt = fixture
-        .expect
-        .receipt
-        .ok_or(HarnessFixtureError::Required {
-            field: "expect.receipt".to_owned(),
-        })?;
+    let receipt = fixture.expect.receipt.ok_or("missing expect.receipt")?;
     assert_eq!(
         receipt.harness_id.as_deref(),
         Some("hrn_sequential-echo_graph")
@@ -89,85 +76,11 @@ fn parses_harness_graph_fixture_contract() -> Result<(), HarnessFixtureError> {
     assert_eq!(
         receipt.child_receipt_refs,
         vec![
-            "runx:receipt:sha256:4bf91309813b3b409c340168892c6b3803602772010b4e8b47d9f7a3153f5da7",
-            "runx:receipt:sha256:a94a3b142e795c9c448bf43046eb6c0b9d47b5d4858f483f1bd1bb91bf5dc863"
+            "runx:receipt:sha256:4b385acccfe98969da954185a43194ea5afaa457e35e966a87cc9b1f15131f0c",
+            "runx:receipt:sha256:c83da853972888f1066075b5f076ec3182731ce9d512cb4aee0cd0c4ea164e64"
         ]
     );
     Ok(())
-}
-
-#[test]
-fn rejects_retired_receipt_kind_field_with_stable_path() {
-    for field in [
-        "kind".to_owned(),
-        retired_execution_receipt_field("skill"),
-        retired_execution_receipt_field("graph"),
-    ] {
-        let result = parse_harness_fixture(&format!(
-            r#"
-name: old
-kind: skill
-target: ../skills/echo
-expect:
-  receipt:
-    {field}: value
-"#,
-        ));
-
-        assert!(matches!(
-            result,
-            Err(HarnessFixtureError::RetiredReceiptField { field_path })
-                if field_path == format!("expect.receipt.{field}")
-        ));
-    }
-}
-
-#[test]
-fn retired_receipt_expectations_are_rejected() {
-    for field in [
-        retired_execution_receipt_field("skill"),
-        retired_execution_receipt_field("graph"),
-        "skill_name".to_owned(),
-        "source_type".to_owned(),
-        "graph_name".to_owned(),
-        "owner".to_owned(),
-    ] {
-        let result = parse_harness_fixture(&format!(
-            r#"
-name: old
-kind: skill
-target: ../skills/echo
-expect:
-  receipt:
-    {field}: value
-"#,
-        ));
-
-        assert!(matches!(
-            result,
-            Err(HarnessFixtureError::RetiredReceiptField { field_path })
-                if field_path == format!("expect.receipt.{field}")
-        ));
-    }
-}
-
-#[test]
-fn rejects_unsupported_fixture_mode_with_stable_path() {
-    let result = parse_harness_fixture(
-        r#"
-name: old
-kind: mcp
-target: ../skills/echo
-expect:
-  status: sealed
-"#,
-    );
-
-    assert!(matches!(
-        result,
-        Err(HarnessFixtureError::UnsupportedFixtureMode { mode, field_path })
-            if mode == "mcp" && field_path == "kind"
-    ));
 }
 
 #[test]
@@ -175,12 +88,19 @@ fn replays_active_harness_skill_fixture() -> Result<(), Box<dyn std::error::Erro
     let output = run_fixture_with_test_adapter("fixtures/harness/echo-skill.yaml")?;
 
     assert_eq!(output.status, HarnessExpectedStatus::Sealed);
-    assert_eq!(output.receipt.subject.reference.uri, "hrn_echo-skill_echo");
+    assert_eq!(
+        output.receipt.subject.reference.uri,
+        "hrn_echo-skill_default"
+    );
     assert_eq!(output.receipt.seal.disposition, ClosureDisposition::Closed);
-    let skill_output = output.skill_output.ok_or(HarnessFixtureError::Required {
-        field: "skill_output".to_owned(),
-    })?;
-    assert_eq!(skill_output.stdout, "{\"message\":\"hello from harness\"}");
+    let skill_output = output.skill_output.ok_or("missing skill_output")?;
+    assert_eq!(
+        skill_output.value,
+        JsonValue::Object(JsonObject::from([(
+            "message".to_owned(),
+            JsonValue::String("hello from harness".to_owned()),
+        )]))
+    );
     Ok(())
 }
 
@@ -228,8 +148,10 @@ fn replay_receipts_match_checked_in_canonical_oracles() -> Result<(), Box<dyn st
 #[test]
 #[cfg(not(feature = "cli-tool"))]
 fn default_harness_runner_reports_disabled_cli_tool_feature() {
-    let result =
-        runx_runtime::run_harness_fixture(fixture_path("fixtures/harness/echo-skill.yaml"));
+    let result = runx_runtime::run_harness_fixture(
+        fixture_path("fixtures/harness/echo-skill.yaml"),
+        std::collections::BTreeMap::new(),
+    );
 
     assert!(matches!(
         result,
@@ -250,7 +172,7 @@ fn run_fixture_with_test_adapter(
 fn fixture_runtime_options() -> RuntimeOptions {
     RuntimeOptions {
         created_at: FIXTURE_CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }
 
@@ -261,7 +183,10 @@ impl SkillAdapter for TestAdapter {
         "cli-tool"
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, runx_runtime::RuntimeError> {
+    fn invoke(
+        &self,
+        request: SkillInvocation,
+    ) -> Result<InvocationOutput, runx_runtime::RuntimeError> {
         let message = request
             .inputs
             .get("message")
@@ -276,16 +201,11 @@ impl SkillAdapter for TestAdapter {
         // is addressable by downstream context edges under the contract model.
         let mut claim = JsonObject::default();
         claim.insert("message".to_owned(), JsonValue::String(message));
-        let stdout = serde_json::to_string(&JsonValue::Object(claim))
-            .expect("serialize harness test adapter claim");
-        Ok(SkillOutput {
-            status: InvocationStatus::Success,
-            stdout,
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 0,
-            metadata: JsonObject::default(),
-        })
+        Ok(InvocationOutput::runtime_success(
+            JsonValue::Object(claim),
+            0,
+            JsonObject::default(),
+        ))
     }
 }
 
@@ -304,8 +224,4 @@ fn assert_oracle(relative_path: &str, actual: &str) -> Result<(), Box<dyn std::e
     let expected = std::fs::read_to_string(path)?;
     assert_eq!(expected, format!("{actual}\n"), "{relative_path}");
     Ok(())
-}
-
-fn retired_execution_receipt_field(prefix: &str) -> String {
-    format!("{prefix}_{}", "execution")
 }

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - operational-policy validation, admission,
+// Module rationale: operational-policy validation, admission,
 // and readback projection share a single fixture-driven contract surface that
 // stays adjacent until the cross-language oracle splits validation tracks.
 use std::collections::{BTreeMap, BTreeSet};

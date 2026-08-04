@@ -5,8 +5,8 @@ use runx_runtime::registry::{
     AcquiredRegistrySkill, FileRegistryStore, IngestSkillOptions, InstallCandidate,
     InstallLocalSkillResult, InstallStatus, PublishSkillMarkdownOptions, PublishStatus,
     RegistryPublisher, RegistryResolveOptions, RegistrySearchOptions, TrustTier,
-    create_local_registry_client, ingest_skill_markdown, publish_skill_markdown,
-    read_registry_skill, resolve_registry_skill, resolve_runx_link, search_registry_with_options,
+    ingest_skill_markdown, publish_skill_markdown, read_registry_skill, resolve_registry_skill,
+    resolve_runx_link, search_registry_with_options,
 };
 use runx_runtime::{RegistryInstallMetadataInput, registry_install_receipt_metadata};
 use tempfile::tempdir;
@@ -107,7 +107,7 @@ fn file_registry_store_covers_profiled_skill_surface() -> Result<(), Box<dyn std
     assert_eq!(version.skill_id, "acme/sourcey");
     assert_eq!(version.category.as_deref(), Some("content"));
     assert_eq!(version.source_category.as_deref(), None);
-    assert_eq!(version.source_type, "agent");
+    assert_eq!(version.source_type, "graph");
     assert_eq!(version.runner_names, vec!["sourcey"]);
     assert_eq!(
         version.profile_document.as_deref(),
@@ -288,11 +288,10 @@ harness:
 fn local_registry_publish_rejects_changed_duplicate() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let store = FileRegistryStore::new(temp.path());
-    let client = create_local_registry_client(store);
     let markdown = include_str!("../../../fixtures/skills/echo/SKILL.md");
 
     let first = publish_skill_markdown(
-        &client,
+        &store,
         markdown,
         PublishSkillMarkdownOptions {
             ingest: IngestSkillOptions {
@@ -306,7 +305,7 @@ fn local_registry_publish_rejects_changed_duplicate() -> Result<(), Box<dyn std:
         },
     )?;
     let second = publish_skill_markdown(
-        &client,
+        &store,
         markdown,
         PublishSkillMarkdownOptions {
             ingest: IngestSkillOptions {
@@ -321,7 +320,7 @@ fn local_registry_publish_rejects_changed_duplicate() -> Result<(), Box<dyn std:
 
     assert_eq!(first.status, PublishStatus::Published);
     assert_eq!(first.skill_id, "acme/echo");
-    assert_eq!(first.source_type, "cli-tool");
+    assert_eq!(first.source_type, "manual");
     assert_eq!(first.digest.len(), 64);
     assert_eq!(
         first.link.install_command,
@@ -337,7 +336,7 @@ fn local_registry_publish_rejects_changed_duplicate() -> Result<(), Box<dyn std:
 
     let changed = markdown.replace("Echo the provided message.", "Echo the changed message.");
     let conflict = publish_skill_markdown(
-        &client,
+        &store,
         &changed,
         PublishSkillMarkdownOptions {
             ingest: IngestSkillOptions {
@@ -370,7 +369,7 @@ fn file_registry_store_rejects_path_traversal_skill_ids() -> Result<(), Box<dyn 
     }
 
     let result = publish_skill_markdown(
-        &create_local_registry_client(store),
+        &store,
         markdown,
         PublishSkillMarkdownOptions {
             ingest: IngestSkillOptions {

@@ -59,7 +59,7 @@ deterministic `BTreeMap`-backed objects rather than public
 The Rust policy fixture runner lives in
 `crates/runx-core/tests/policy_fixtures.rs`. Rust policy fixtures are policy parity evidence for `runx-core::policy`; they do not make Rust policy runtime-authoritative.
 Current policy fixtures cover authority proof, credential binding, scope
-admission, public work, local admission, sandbox normalization/admission, retry
+admission, public work, local admission, grant attenuation, retry
 admission, and graph-scope admission. Domain-specific authority comparators
 live in their effect-family crates rather than in the core kernel fixture
 surface.

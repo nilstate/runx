@@ -4,7 +4,6 @@ target: ..
 runner: append_event
 inputs:
   data_source_ref: local://runx-data-store/append-fixture
-  store_id: data-store-append-local-event-v1
   resource: generic_events
   aggregate_id: item-1
   expected_version: 0

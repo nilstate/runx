@@ -61,7 +61,7 @@ fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::
 
     let package_root = install.destination.parent().ok_or("missing package root")?;
     assert_eq!(
-        std::fs::read_to_string(package_root.join("run.mjs"))?,
+        std::fs::read_to_string(package_root.join("graph/stage/run.mjs"))?,
         "console.log('installed');\n"
     );
     assert_eq!(
@@ -74,7 +74,7 @@ fn package_files_install_and_digest_mismatch_fails() -> Result<(), Box<dyn std::
     );
     assert_eq!(
         std::fs::read_to_string(package_root.join("graph/stage/X.yaml"))?,
-        "skill: stage\n"
+        stage_profile()
     );
     assert_eq!(
         std::fs::read_to_string(package_root.join("push-outbox/manifest.json"))?,
@@ -151,7 +151,7 @@ fn unsigned_local_registry_candidate_installs() -> Result<(), Box<dyn std::error
 
     let package_root = install.destination.parent().ok_or("missing package root")?;
     assert_eq!(
-        std::fs::read_to_string(package_root.join("run.mjs"))?,
+        std::fs::read_to_string(package_root.join("graph/stage/run.mjs"))?,
         "console.log('installed');\n"
     );
     assert_eq!(install.digest, skill_digest());
@@ -505,7 +505,7 @@ fn profile_digest() -> String {
 fn package_files_fixture() -> Vec<RegistryPackageFile> {
     vec![
         RegistryPackageFile {
-            path: "run.mjs".to_owned(),
+            path: "graph/stage/run.mjs".to_owned(),
             content: "console.log('installed');\n".to_owned(),
         },
         RegistryPackageFile {
@@ -518,13 +518,17 @@ fn package_files_fixture() -> Vec<RegistryPackageFile> {
         },
         RegistryPackageFile {
             path: "graph/stage/X.yaml".to_owned(),
-            content: "skill: stage\n".to_owned(),
+            content: stage_profile().to_owned(),
         },
         RegistryPackageFile {
             path: "push-outbox/manifest.json".to_owned(),
             content: "{}\n".to_owned(),
         },
     ]
+}
+
+fn stage_profile() -> &'static str {
+    "skill: stage\nrunners:\n  operate:\n    default: true\n    type: agent\n    agent: operator\n    outputs:\n      result: object\n  script:\n    type: javascript\n    module: run.mjs\n"
 }
 
 fn package_digest(files: &[RegistryPackageFile]) -> Result<String, serde_json::Error> {

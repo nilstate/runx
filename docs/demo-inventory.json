@@ -8,8 +8,8 @@
     },
     {
       "path": "skills/business-ops",
-      "proof": "One business signal is classified, persisted through the governed data plane, read back, and sealed.",
-      "command": "runx harness skills/business-ops/fixtures/route-and-append-sqlite.yaml"
+      "proof": "Launch routing stops sends and spend at their gates, requires provider evidence, persists a route, and proves idempotent replay.",
+      "command": "runx harness skills/business-ops"
     },
     {
       "path": "skills/data-store",
@@ -22,19 +22,14 @@
       "command": "sh examples/github-mcp-hero/run.sh"
     },
     {
-      "path": "examples/http-graph",
-      "proof": "Governed HTTP front call against a local fixture seals a receipt tree.",
-      "command": "sh examples/http-graph/run.sh"
-    },
-    {
       "path": "examples/openapi-graph",
       "proof": "OpenAPI-described operation executes through the governed external-adapter lane and seals.",
       "command": "sh examples/openapi-graph/run.sh"
     },
     {
-      "path": "examples/nws-weather-openapi",
-      "proof": "A real public National Weather Service API call executes through the governed HTTP front and seals stable provider metadata.",
-      "command": "sh examples/nws-weather-openapi/run.sh"
+      "path": "skills/nws-weather-forecast",
+      "proof": "The official National Weather Service skill executes through native http.read and seals stable provider metadata.",
+      "command": "runx harness skills/nws-weather-forecast/fixtures/nws-forecast-washington-monument.yaml"
     },
     {
       "path": "examples/governed-spend",
@@ -49,20 +44,12 @@
   ],
   "runnable_preview": [
     {
-      "path": "examples/byo-http-graph",
-      "command": "sh examples/byo-http-graph/run.sh"
-    },
-    {
       "path": "examples/external-adapter-graph",
       "command": "runx harness examples/external-adapter-graph"
     },
     {
       "path": "examples/hello-graph",
       "command": "runx harness examples/hello-graph/harness.yaml"
-    },
-    {
-      "path": "examples/http-tool-catalog",
-      "command": "sh examples/http-tool-catalog/run.sh"
     },
     {
       "path": "examples/managed-agent",
@@ -78,14 +65,9 @@
     }
   ],
   "fixture_support": [
-    "examples/adapter-kit",
-    "examples/byo-http-tool",
     "examples/external-adapter-tool",
     "examples/host-protocol",
-    "examples/http-tool",
-    "examples/nws-weather-points",
     "examples/openapi-tool",
-    "examples/orchestrator-webhooks",
     "examples/post-merge-final-outcome-publisher",
     "examples/thread-outbox-provider-fetch",
     "examples/thread-outbox-provider-fixture",

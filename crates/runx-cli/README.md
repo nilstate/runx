@@ -1,17 +1,17 @@
 # runx-cli
 
-`runx-cli` is the Cargo package for the native `runx` command.
+`runx-cli` contains the native `runx` command.
 
 ```bash
-cargo install runx-cli
-runx --help
+npm install --global @runxhq/cli
 ```
 
-The `runx` crate name on crates.io is already owned by an unrelated package, so
-the published Cargo package is `runx-cli` while the installed binary remains
-`runx`.
+The current CLI is distributed through npm and the signed GitHub release
+archives. The historical crates.io package is not the current release channel:
+publishing this crate requires a coordinated release of its internal Rust
+dependencies, and CLI releases intentionally do not publish those libraries.
 
 ## Runtime Requirements
 
-- Rust/Cargo for installation from crates.io.
+- No Rust toolchain is required for the published CLI packages.
 - No Node.js runtime is required for the native CLI.

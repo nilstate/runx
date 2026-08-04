@@ -1,85 +1,200 @@
 skill: review-receipt
-version: "0.1.2"
+version: "0.3.3"
 
 catalog:
-  kind: skill
+  kind: graph
   audience: builder
   visibility: public
   role: context
+  execution: read
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+
 harness:
   cases:
     - name: review-receipt-diagnoses-context-flattening
       inputs:
-        receipt_summary: Downstream step received JSON text instead of a structured object.
+        receipt_id: rcpt_context_flattening
+        receipt_rows:
+          - receipt_id: rcpt_context_flattening
+            skill_ref: skills/skill-lab
+            status: failed
+            created_at: "2026-07-16T00:00:00Z"
+            verification_status: verified
+        receipt_details:
+          - id: rcpt_context_flattening
+            receipt_ref: runx:receipt:rcpt_context_flattening
+            subject_kind: skill
+            subject_ref: skills/skill-lab
+            created_at: "2026-07-16T00:00:00Z"
+            status: failed
+            verification:
+              status: verified
+            authority:
+              exercised_scopes:
+                - scope: fs:read
+                  source: term
+            decisions: []
+            acts:
+              - id: author
+                form: execution
+                purpose: Produce the bounded skill proposal.
+                legitimacy: Held fs.read.
+                summary: Downstream authoring context was flattened to JSON text.
+                disposition: failed
+                reason_code: schema_mismatch
+                source_refs: []
+                target_refs: []
+                artifact_refs: []
+                criterion_statuses:
+                  - criterion_id: runx:criterion:structured_context
+                    status: failed
+                    evidence_refs: []
+                    verification_refs: []
+                context_ref_present: true
+            artifact_refs: []
+            lineage_refs: []
+            seal_reason_code: schema_mismatch
+            seal_summary: Structured context was not preserved.
         harness_output: Context edge pointed at stdout and flattened the payload.
-        skill_path: skills/design-skill
+        skill_path: skills/skill-lab
       caller:
         answers:
           agent_task.review-receipt.output:
             verdict: needs_update
             failure_summary: Context edges are reading stdout instead of an artifact envelope, so structured data is flattened before the next step.
             improvement_proposals:
-              - target: skills/design-skill/X.yaml
-                change: Emit a wrapped artifact from the upstream step and consume <step>.<artifact>.data in downstream context.
+              - target: skills/skill-lab/X.yaml
+                change: Emit a wrapped artifact from the upstream step and consume the named artifact data in downstream context.
                 rationale: Preserves structured objects across governed graph steps.
-                risk: Existing tests that parse stdout-shaped context will need updates.
+                risk: Existing fixtures that parse stdout-shaped context will need updates.
             next_harness_checks:
-              - design-skill passes structured decomposition to prior-art
-              - improve-skill passes structured review data to write-harness
+              - skill-lab passes structured authoring context into the bounded author step
       expect:
         status: sealed
+        steps:
+          - evidence
+          - diagnose
+        step_outputs:
+          evidence:
+            subset:
+              ledger_answer_packet:
+                data:
+                  ledger_answer:
+                    decision: answered
+                  matched_receipts:
+                    - receipt_id: rcpt_context_flattening
+                      status: failed
+                      verification_status: verified
+                  receipt_details:
+                    - id: rcpt_context_flattening
+                      subject_ref: skills/skill-lab
+                      seal_reason_code: schema_mismatch
         receipt:
           schema: runx.receipt.v1
 
     - name: review-receipt-passes-on-paused-graph
       inputs:
-        receipt_summary: Graph paused at step 1 awaiting caller cognitive work; status needs_agent with one outstanding agent-task request.
+        receipt_id: rcpt_paused
+        receipt_rows:
+          - receipt_id: rcpt_paused
+            skill_ref: skills/research
+            status: deferred
+            created_at: "2026-07-16T00:00:00Z"
+            verification_status: verified
+        receipt_details:
+          - id: rcpt_paused
+            receipt_ref: runx:receipt:rcpt_paused
+            subject_kind: skill
+            subject_ref: skills/research
+            created_at: "2026-07-16T00:00:00Z"
+            status: deferred
+            verification:
+              status: verified
+            authority:
+              exercised_scopes: []
+            decisions: []
+            acts: []
+            artifact_refs: []
+            lineage_refs: []
+            seal_reason_code: needs_agent
+            seal_summary: Waiting for bounded caller cognitive work.
         harness_output: needs_agent
         skill_path: skills/research
       caller:
         answers:
           agent_task.review-receipt.output:
             verdict: pass
-            failure_summary: No failure. The graph paused at step 1 as designed, awaiting caller cognitive work; needs_agent is a healthy agent-mediated suspension in runx, not a failure class.
+            failure_summary: No failure. The graph paused as designed while awaiting caller cognitive work.
             improvement_proposals: []
             next_harness_checks:
-              - target skill completes successfully on the happy path when valid agent outputs are supplied
+              - target skill completes when a valid agent response is supplied
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
 
 runners:
-  review-receipt-agent:
+  review:
     default: true
-    type: agent-task
-    runx:
-      post_run:
-        reflect: never
-    agent: reviewer
-    task: review-receipt
-    outputs:
-      verdict: string
-      failure_summary: string
-      improvement_proposals: array
-      next_harness_checks: array
-    artifacts:
-      wrap_as: review_receipt
-      packet: runx.review.receipt.v1
+    type: graph
     inputs:
       receipt_id:
         type: string
         required: false
-        description: "Receipt id to review when available."
+        description: Exact receipt id to resolve through the native ledger.
       receipt_summary:
         type: string
         required: false
-        description: "Sanitized receipt or harness summary."
+        description: Sanitized failure summary when detailed execution evidence is already available.
+      receipt_details:
+        type: json
+        required: false
+        description: Explicit native redacted receipt-detail projections for deterministic replay only.
       harness_output:
         type: string
         required: false
-        description: "Sanitized failed harness output."
+        description: Sanitized native harness output or assertion failure.
       skill_path:
         type: string
         required: false
-        description: "Skill path being improved."
+        description: Skill path being reviewed.
+      receipt_rows:
+        type: json
+        required: false
+        description: Explicit native-projection rows for deterministic replay only.
+    graph:
+      name: review-receipt
+      result_from: [diagnose]
+      steps:
+        - id: evidence
+          label: resolve and verify receipt evidence
+          skill: ../ledger
+          runner: read
+          inputs:
+            question: Resolve the exact receipt referenced by this failure review.
+            receipt_ids:
+              - $input.receipt_id
+            proof:
+              verify_chain: true
+            receipts: $input.receipt_rows
+            receipt_details: $input.receipt_details
+        - id: diagnose
+          label: diagnose one bounded failure
+          run:
+            type: agent-task
+            agent: reviewer
+            task: review-receipt
+            outputs:
+              verdict: string
+              failure_summary: string
+              improvement_proposals: array
+              next_harness_checks: array
+          allowed_tools:
+            - fs.read
+          context:
+            receipt_evidence: evidence.ledger_answer_packet.data
+          artifacts:
+            wrap_as: failure_packet
+            packet: runx.review.receipt.v1

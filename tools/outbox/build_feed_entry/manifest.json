@@ -74,35 +74,14 @@
   "scopes": [
     "runx:repo:package"
   ],
-  "runx": {
-    "artifacts": {
-      "named_emits": {
-        "feed_entry": "feed_entry",
-        "outbox_entry": "outbox_entry"
-      }
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
-  "output": {
+  "artifacts": {
     "named_emits": {
       "feed_entry": "feed_entry",
       "outbox_entry": "outbox_entry"
     },
-    "outputs": {
-      "feed_entry": {
-        "packet": "runx.feed_entry.v1"
-      },
-      "outbox_entry": {
-        "packet": "runx.outbox.entry.v1"
-      }
+    "packets": {
+      "feed_entry": "runx.feed_entry.v1",
+      "outbox_entry": "runx.outbox.entry.v1"
     }
-  },
-  "source_hash": "sha256:d649604e8d7baf1a49d92c0076e26444141c0f7ba46051ddffd9261393d25422",
-  "schema_hash": "sha256:cad8d177163f7dc398b94353320c97f84b80f6b2fb24dc1827b7645b68338378",
-  "toolkit_version": "0.1.4"
+  }
 }

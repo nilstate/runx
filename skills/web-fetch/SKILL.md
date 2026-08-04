@@ -24,10 +24,13 @@ extracted slice is inlined.
 This is the primitive an agent reaches for when it has already decided which page
 to read. The decision it makes easier is "can I read this page, and what did it
 actually say", with the answer backed by a digest instead of a remembered
-paraphrase. It differs from the research family: `research` and
-`deep-research` decide *which* sources matter and synthesize across them,
-while `web-fetch` retrieves exactly one source and refuses anything off the
-allowlist.
+paraphrase. The calling agent decides which sources matter and synthesizes
+across them; `web-fetch` retrieves exactly one source and refuses anything off
+the allowlist.
+
+The request path is native Runx code. Skills do not supply a JavaScript HTTP
+client: the runtime owns public-network enforcement, redirect admission,
+timeouts, retries, byte limits, response digests, and receipt-safe evidence.
 
 ## When to use this skill
 
@@ -36,13 +39,13 @@ allowlist.
 - A research pass needs each source retrieved through a single bounded
   `net:allowlist` fetch with a complete redirect chain and byte count.
 - A review must later prove what a page said at fetch time.
-- A follow-on skill (prior-art, vuln-triage, brief) needs one source extracted as
+- A follow-on governed operation needs one source extracted as
   `text`, `metadata`, or `links`.
 
 ## When not to use this skill
 
-- To judge, rank, or synthesize across sources. That is the research family's
-  job; `web-fetch` retrieves exactly one source and refuses to reason over many.
+- To judge, rank, or synthesize across sources. That remains caller reasoning;
+  `web-fetch` retrieves exactly one source and refuses to reason over many.
 - To reach a host the caller did not declare in `allowlist`, including a host
   reached only through a redirect.
 - To write anything. The only scope is `net:allowlist`; there is no repo, file,

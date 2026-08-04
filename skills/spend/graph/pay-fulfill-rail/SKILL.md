@@ -24,6 +24,11 @@ redacting sensitive fields. Report only operational states—fulfilled, declined
 retryable, recovered, or ambiguous. Return `needs_agent` or `ambiguous` when the
 response cannot be tied to both the reserved authority and idempotency key.
 
+There is intentionally no x402 fulfillment runner here. The public `x402-pay`
+facade is plan-only until a trusted buyer adapter implements the standard paid
+resource retry and returns independent settlement readback. Do not substitute
+agent-authored evidence or caller-supplied signer/facilitator endpoints.
+
 ## Output
 
 - `rail_result`: rail status, amount, currency, counterparty, and operation.
@@ -44,3 +49,22 @@ response cannot be tied to both the reserved authority and idempotency key.
   identity. When present, it is bound into supervisor settlement evidence.
 - `idempotency` (required): reservation key and recovery fields.
 - `quote_packet` (optional): source quote packet for evidence continuity.
+
+## Agent task contracts
+
+### `pay-fulfill-rail-mock`
+
+Produce deterministic mock rail evidence only for an explicitly configured test
+profile. Bind the challenge, reserved authority, capability reference, rail
+profile, and idempotency key. Return `rail_result`, `rail_proof`, a redacted
+`credential_envelope`, `redactions`, and `recovery_hint`. Never claim a live
+provider call or real money movement, and never accept raw funding material.
+
+### `pay-fulfill-rail-mpp`
+
+Interpret only bounded MPP provider evidence supplied through the authorized
+rail context. The same five outputs must bind amount, currency, counterparty,
+operation, admission/capability, and idempotency. Report `fulfilled` only when
+terminal provider evidence matches the reservation; otherwise return declined,
+retryable, recovered, ambiguous, or `needs_agent`. Never expose credentials or
+turn acknowledgement alone into settlement finality.

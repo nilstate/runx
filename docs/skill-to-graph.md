@@ -95,7 +95,7 @@ The gates are intentionally narrow:
 - Duplicate context refs are rejected.
 - Every context artifact is digest-bound and labeled
   `security_boundary: untrusted-agent-context`.
-- Native managed-agent execution passes the artifacts to the provider with an
+- Explicitly enabled native managed-agent execution passes the artifacts to the provider with an
   explicit instruction that context artifacts are advisory data, not system
   instructions or authority to change tools, reveal secrets, or bypass policy.
 
@@ -104,7 +104,6 @@ The gates are intentionally narrow:
 Use the graph harness as the executable contract:
 
 ```bash
-cd oss
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 crates/target/debug/runx harness examples/hello-graph/harness.yaml --json
 ```
@@ -114,10 +113,12 @@ steps `first`, then `second`.
 
 ## When To Use A Graph
 
-A single `agent-task` runner is one bounded managed-agent act. It carries its own
-`instructions` and `allowed_tools`, runs the configured provider, and seals one
-receipt; not everything needs a graph. Reach for one when a single model run
-produces the result.
+A single `agent-task` runner is one bounded agent act. It carries its own
+`instructions` and `allowed_tools` and normally yields `needs_agent` to the
+calling agent. `--managed-agent` explicitly delegates that act to the configured
+in-process provider for the current run; credentials alone never enable it. The
+round cap is shown in prepared context and defaults to four. Not everything
+needs a graph. Reach for one when a single judgment step produces the result.
 
 Reach for a graph when the work has explicit phases, when a later step consumes
 an earlier step's receipt-backed output, or when approval and revision boundaries
@@ -130,9 +131,9 @@ claimed it") instead of calling it. So an action that *must* happen, a mutation,
 an API call, a payment, belongs in a deterministic step (`tool:`, `http:`, or
 `skill:`), not in an agent's `allowed_tools` where the call is optional. The
 governed shape is a graph where an agent step authors or decides and the next
-deterministic step performs the act; one receipt seals both. An agent step inside
-a graph runs the configured provider inline, the same as a top-level `agent-task`
-runner (with no provider configured it yields `needs_agent` to the host instead).
+deterministic step performs the act; one receipt seals both. Agent steps yield
+`needs_agent` unless the current invocation explicitly supplies
+`--managed-agent`; provider configuration alone does not change execution.
 
 Graphs should stay small enough to review. If the graph is carrying hidden
 policy decisions, split the policy into the skill profile or a separate
@@ -193,52 +194,83 @@ shape.
 
 ## HTTP Steps And Credentials
 
-A graph step, or a top-level skill source, can be a governed HTTP call: declare
-`source.type: http` with the `url`, `method`, and `headers`. A **header** value
-may reference a delivered secret with `${secret:NAME}`; it is injected at the
-boundary and never reaches the model or the receipt (secret substitution applies
-to headers, not the request body, so put auth in a header, not a body field). The
-URL's `{placeholder}` path segments and the request body are filled from the
-step's inputs. A `tool: ns.name` step resolves an `http` tool manifest from
-`RUNX_TOOL_ROOTS`; the namespaced ref is required and is handled correctly when
-offered to an inline agent.
+Every executing Runx CLI command captures one workspace environment when the
+command starts. Help and version rendering remain independent of workspace
+state. Runx first resolves
+the workspace from the process environment and current directory, then parses
+the exact `<workspace>/.env` file when it exists. The file only fills missing
+keys, so an exported process value always wins. Runx parses the file as data; it
+does not source a shell or mutate the process environment.
 
-Secrets are delivered per run, never baked into the skill or passed on argv:
+Keep `.env` local and ignored by version control. Loading a key makes it
+available to declared credential resolution, but does not make it ambient child
+configuration. Credential delivery is a separate runtime channel. Executable
+runners declare non-secret configuration once through `environment.required`
+and `environment.optional`; the same declaration drives CLI, MCP, and
+deterministic JavaScript delivery.
 
-```bash
-runx skill <skill> \
-  --credential <provider>:<auth_mode>:<material_ref> \
-  --credential-scope <scope> \
-  --secret-env NAME
+A graph performs governed HTTP through the native `http.read`, `http.query`, or
+`http.execute` capability. There is no parallel HTTP source or tool-manifest
+adapter. Each step supplies bounded request records, an exact public-host
+allowlist, and `net:http` scope. Path values are typed inputs and are
+percent-encoded before transport:
+
+```yaml
+steps:
+  - id: read_account
+    tool: http.read
+    scopes: [net:http]
+    inputs:
+      requests:
+        - id: account
+          method: GET
+          url: https://api.example.com/v1/accounts/{account_id}
+          path:
+            account_id: $input.account_id
+      allowed_hosts: [api.example.com]
+      stop_on_error: true
 ```
 
-`--secret-env NAME` names an environment variable to deliver as the secret;
-repeat `--credential-scope` for each granted scope. Scopes may use the same
-colon-namespaced vocabulary as tool declarations, such as `twitter:read` or
-`runx:data:append`. The descriptor's entire third segment is the material ref;
-runx never guesses where that reference ends. Each explicit scope must match the
-tool's declared `scopes`. See `examples/byo-http-tool` and
-`examples/http-tool-catalog`.
+For authenticated calls, bind the runner credential and declare the native
+tool's auth input. Runx injects delivered material at the transport boundary;
+skills must not construct authorization headers themselves:
 
-For repeated local operator runs, keep the secret in project env and put only the
-non-secret descriptor in `.runx/credentials.json`:
+Declare the provider contract on the runner:
 
-```json
-{
-  "profiles": {
-    "operator": {
-      "credential": "frantic:bearer:local://frantic/internal",
-      "secret_env": "INTERNAL_SYNC_SECRET",
-      "scopes": ["frantic:review"]
-    }
-  }
-}
+```yaml
+credentials:
+  example-crm:
+    provider: example-crm
+    auth:
+      api_key:
+        delivery:
+          env: EXAMPLE_CRM_TOKEN
+runners:
+  main:
+    type: graph
+    credential: example-crm
+    graph:
+      steps:
+        - id: read_account
+          tool: http.read
+          scopes: [net:http]
+          inputs:
+            requests:
+              - id: account
+                method: GET
+                url: https://api.example.com/v1/accounts
+            allowed_hosts: [api.example.com]
+            auth:
+              type: bearer
+              secret_env: EXAMPLE_CRM_TOKEN
 ```
 
-Then run with `-p operator` (or `--profile operator`). If
-`RUNX_CREDENTIAL_PROFILES` is set, runx reads that JSON file instead; otherwise
-it checks the project `.runx/credentials.json` and then the global runx home.
-The profile file never contains the secret value.
+For durable local use, pipe material into `runx credential set` and select it
+with `--profile`; an ignored `.env` remains the low-friction fallback. See
+[Credential Resolution](./credentials.md) for the manifest contract, resolution
+order, project bindings, multi-auth providers, resume behavior, and MCP startup
+readiness. `skills/nws-weather-forecast` is the canonical public native-HTTP
+proof; credentialed provider skills use the same transport and auth boundary.
 
 ## Governed Data Steps
 
@@ -269,16 +301,14 @@ product API. Provider details live behind an adapter. The graph sees a declared
 operation and receives `runx.data.operation_result.v1` with version movement,
 digests, redaction notes, and provider evidence.
 
-Adapter choice is not product logic. A graph passes `data_source_ref` such as
+Storage choice is not product logic. A graph passes `data_source_ref` such as
 `local://runx-data-store/dev-board` or `tenant://acme/board`; project or hosted
-configuration binds that source to `data.sqlite`, `data.postgres`, `data.d1`,
-`data.redis`, or another provider adapter. For the bundled OSS proof, the
-`data-store` runners call the generic `data.source` resolver. Unbound
-`local://...` refs default to the durable `data.sqlite` adapter at
-`.runx/data/local-sources/source-<digest>.sqlite`; passing `store_id` opts into
-the `data.local` fixture adapter for deterministic harnesses. Production
-capability packs should keep the same operation inputs and move provider choice
-into the data-source binding rather than forking the domain skill.
+configuration binds that source to native SQLite or a conforming external
+provider such as `data.redis`. The `data-store` runners call exact native
+operations, and unbound `local://...` refs use a source-scoped SQLite database
+at `.runx/data/local-sources/source-<digest>.sqlite`. Production capability
+packs keep the same operation inputs and move provider choice into the
+data-source binding rather than forking the domain skill.
 
 Do not put messageboard, CRM, billing, or support-specific state machines into
 the data adapter. Domain skills own meaning; data adapters own bounded reads,

@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use runx_contracts::{Receipt, ReceiptIssuerType, ReferenceType};
+use runx_contracts::{Receipt, ReceiptIssuerType, Reference, ReferenceType};
 use runx_runtime::journal::{
     HISTORY_PROJECTOR_ID, HistoryFilter, JOURNAL_PROJECTOR_ID, JournalProjectionError,
-    PausedRunCheckpoint, RECEIPT_REF_PREFIX, exact_receipt_id, list_local_history,
-    list_local_history_with_checkpoints, list_local_history_with_policy,
+    PausedRunCheckpoint, RECEIPT_REF_PREFIX, exact_receipt_id, inspect_local_receipt,
+    list_local_history, list_local_history_with_checkpoints, list_local_history_with_policy,
     project_journal_for_receipt, project_receipt_journal, project_receipt_journal_with_policy,
     receipt_uri,
 };
@@ -17,7 +17,7 @@ use runx_runtime::receipts::{
     Ed25519ReceiptSigner, Ed25519ReceiptVerifier, RuntimeReceiptSignaturePolicy,
     step_receipt_with_signature_policy,
 };
-use runx_runtime::{InvocationStatus, LocalReceiptStore, SkillOutput};
+use runx_runtime::{InvocationOutput, InvocationStatus, LocalReceiptStore};
 use serde_json::json;
 
 const JOURNAL_ORACLE: &str = include_str!("../../../fixtures/journal/history-oracle.json");
@@ -135,6 +135,36 @@ fn history_display_identity_ignores_unsigned_metadata() -> Result<(), Box<dyn st
     assert_eq!(history.receipts[0].harness_id, SIGNED_RUNTIME_SUBJECT);
     assert_eq!(history.receipts[0].source_type.as_deref(), Some("local"));
     assert_eq!(history.receipts[0].actors, vec![SIGNED_LOCAL_ACTOR]);
+    Ok(())
+}
+
+#[test]
+fn receipt_inspection_projects_signed_governance_without_execution_bodies()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let workspace = temp.path().join("workspace");
+    let project_runx_dir = workspace.join(".runx");
+    let store = LocalReceiptStore::new(project_runx_dir.join("receipts"));
+    let mut receipt = generated_runtime_receipt()?;
+    receipt.authority.scope_refs.push(Reference::with_uri(
+        ReferenceType::ScopeAdmission,
+        "runx:scope_admission:repo.read",
+    ));
+    reseal_receipt(&mut receipt)?;
+    store.write_receipt(&receipt)?;
+
+    let inspection =
+        inspect_local_receipt(&store, &workspace, &project_runx_dir, receipt.id.as_str())?;
+    assert_eq!(inspection.receipt.id, receipt.id.to_string());
+    assert_eq!(
+        inspection.receipt.authority.exercised_scopes[0].scope,
+        "repo:read"
+    );
+    assert!(!inspection.receipt.acts.is_empty());
+    let serialized = serde_json::to_string(&inspection)?;
+    assert!(!serialized.contains("structured_output"));
+    assert!(!serialized.contains("stderr"));
+    assert_no_local_paths(&serialized);
     Ok(())
 }
 
@@ -316,6 +346,9 @@ fn history_merges_paused_ledgers_and_checkpoints() -> Result<(), Box<dyn std::er
             started_at: Some("2026-04-28T00:30:00Z".to_owned()),
             resume_skill_ref: None,
             selected_runner: Some("agent-task".to_owned()),
+            credential_profile: None,
+            package_digest: Some("sha256:checkpoint-package".to_owned()),
+            execution_closure_digest: Some("sha256:checkpoint-closure".to_owned()),
             step_ids: vec!["plan".to_owned()],
             step_labels: vec!["plan work".to_owned()],
         }],
@@ -353,6 +386,14 @@ fn history_merges_paused_ledgers_and_checkpoints() -> Result<(), Box<dyn std::er
     );
     assert_eq!(history.pending_runs[0].step_ids, vec!["discover"]);
     assert_eq!(history.pending_runs[1].step_labels, vec!["plan work"]);
+    assert_eq!(
+        history.pending_runs[1].package_digest.as_deref(),
+        Some("sha256:checkpoint-package")
+    );
+    assert_eq!(
+        history.pending_runs[1].execution_closure_digest.as_deref(),
+        Some("sha256:checkpoint-closure")
+    );
     assert_no_local_paths(&serde_json::to_string(&history)?);
     Ok(())
 }
@@ -610,22 +651,29 @@ fn generated_runtime_receipt_with(
     status: InvocationStatus,
     created_at: &str,
 ) -> Result<Receipt, Box<dyn std::error::Error>> {
-    let succeeded = status == InvocationStatus::Success;
-    let output = SkillOutput {
-        status: status.clone(),
-        stdout: format!(
-            r#"{{"artifact":{{"artifact_id":"artifact_{id}","artifact_type":"artifact"}}}}"#
-        ),
-        stderr: String::new(),
-        exit_code: Some(if succeeded { 0 } else { 1 }),
-        duration_ms: 10,
-        metadata: BTreeMap::new(),
-    };
+    let output = InvocationOutput::process(
+        status.clone(),
+        format!(r#"{{"artifact":{{"artifact_id":"artifact_{id}","artifact_type":"artifact"}}}}"#),
+        String::new(),
+        Some(if status == InvocationStatus::Success {
+            0
+        } else {
+            1
+        }),
+        10,
+        BTreeMap::new(),
+    );
+    let claim = output
+        .value
+        .as_object()
+        .cloned()
+        .ok_or("fixture output must be an object")?;
     let mut receipt = runx_runtime::receipts::step_receipt(
         "journal-history",
         "strict-proof",
         1,
         &output,
+        &claim,
         created_at,
     )?;
     reseal_receipt(&mut receipt)?;
@@ -663,20 +711,25 @@ fn production_generated_receipt(
     signer: &Ed25519ReceiptSigner,
     verifier: &Ed25519ReceiptVerifier,
 ) -> Result<Receipt, Box<dyn std::error::Error>> {
-    let output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: r#"{"artifact":{"artifact_id":"artifact_prod","artifact_type":"artifact"}}"#
-            .to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 10,
-        metadata: BTreeMap::new(),
-    };
+    let output = InvocationOutput::process(
+        InvocationStatus::Success,
+        r#"{"artifact":{"artifact_id":"artifact_prod","artifact_type":"artifact"}}"#.to_owned(),
+        String::new(),
+        Some(0),
+        10,
+        BTreeMap::new(),
+    );
+    let claim = output
+        .value
+        .as_object()
+        .cloned()
+        .ok_or("fixture output must be an object")?;
     Ok(step_receipt_with_signature_policy(
         "journal-history",
         "strict-proof",
         1,
         &output,
+        &claim,
         "2026-05-18T00:00:00Z",
         RuntimeReceiptSignaturePolicy::production_signing(signer, verifier),
     )?)

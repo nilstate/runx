@@ -12,34 +12,6 @@ export type JsonValue =
   | readonly JsonValue[]
   | { readonly [key: string]: JsonValue | undefined };
 
-export interface LangChainToolLike {
-  readonly name: string;
-  readonly description: string;
-  readonly schema?: unknown;
-  readonly invoke: StructuredToolInterface["invoke"];
-}
-
-export interface LangChainToolCatalogAdapterOptions {
-  readonly source: string;
-  readonly label: string;
-  readonly namespace: string;
-  readonly baseDirectory: string;
-  readonly tools:
-    | readonly LangChainToolLike[]
-    | { readonly getTools: () => readonly LangChainToolLike[] }
-    | (() => Promise<readonly LangChainToolLike[]> | readonly LangChainToolLike[]);
-  readonly tags?: readonly string[];
-}
-
-export interface RunxSkillExecutionResult {
-  readonly stdout?: string;
-  readonly stderr?: string;
-  readonly exit_code?: number | null;
-  readonly error_message?: string;
-  readonly structured_output?: JsonValue;
-  readonly [key: string]: JsonValue | undefined;
-}
-
 export type RunxSkillCliResult =
   | {
       readonly status: "needs_agent";
@@ -57,8 +29,8 @@ export type RunxSkillCliResult =
   | {
       readonly status: "failure";
       readonly schema?: string;
-      readonly execution?: RunxSkillExecutionResult;
-      readonly [key: string]: JsonValue | RunxSkillExecutionResult | undefined;
+      readonly error?: JsonValue;
+      readonly [key: string]: JsonValue | undefined;
     }
   | {
       readonly status: "sealed";
@@ -66,10 +38,10 @@ export type RunxSkillCliResult =
       readonly skill_name?: string;
       readonly run_id?: string;
       readonly receipt_id?: string;
-      readonly execution?: RunxSkillExecutionResult;
-      readonly payload?: JsonValue;
-      readonly receipt?: JsonValue;
-      readonly [key: string]: JsonValue | RunxSkillExecutionResult | undefined;
+      readonly result?: JsonValue;
+      readonly trace?: JsonValue;
+      readonly error?: JsonValue;
+      readonly [key: string]: JsonValue | undefined;
     };
 
 export interface RunxCliBoundaryOptions {
@@ -108,12 +80,6 @@ export interface RunxLangChainToolOptions {
   readonly runOptions?: Omit<RunxSkillCliRunOptions, "skillPath" | "inputs">;
   readonly mapInput?: (input: unknown) => Readonly<Record<string, unknown>>;
   readonly formatOutput?: (result: RunxSkillCliResult) => unknown;
-}
-
-export function createLangChainToolCatalogAdapter(_options: LangChainToolCatalogAdapterOptions): never {
-  throw new Error(
-    "createLangChainToolCatalogAdapter was sunset with the Rust runtime takeover. The Rust CLI has no in-process LangChain tool-catalog adapter boundary; publish runx tool manifests and use `runx tool search|inspect --json`, or wrap a governed skill with createRunxLangChainTool.",
-  );
 }
 
 export function createRunxCliSkillRunner(options: RunxCliBoundaryOptions = {}): RunxCliSkillRunner {
@@ -176,7 +142,7 @@ export function createRunxLangChainTool(
       }
 
       const formatted = options.formatOutput?.(result);
-      return formatted ?? stringField(result.execution, "stdout") ?? stringifyJson(result);
+      return formatted ?? stringifyJson(result.result ?? result);
     },
     {
       name: options.name,
@@ -297,9 +263,7 @@ function runxExitMessage(exitCode: number | null, stderr: string, fallback: stri
 }
 
 function skillFailureMessage(name: string, result: Extract<RunxSkillCliResult, { readonly status: "failure" }>): string {
-  return stringField(result.execution, "error_message")
-    ?? stringField(result.execution, "stderr")
-    ?? stringField(result.execution, "stdout")
+  return stringField(result.error, "message")
     ?? `runx workflow '${name}' failed.`;
 }
 
@@ -312,6 +276,9 @@ function stringField(value: unknown, key: string): string | undefined {
 }
 
 function stringifyJson(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
   return JSON.stringify(value) ?? "";
 }
 

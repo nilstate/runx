@@ -10,10 +10,8 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::types::TrustTier;
-use crate::http::{
-    HttpMethod, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest as HttpRequest,
-    RuntimeHttpTransport as Transport,
-};
+use crate::hosted_api::{HostedApiOperationError, request::send_json};
+use crate::http::{HttpMethod, RuntimeHttpTransport as Transport};
 
 /// Structured GitHub repository reference parsed from a user-provided URL.
 ///
@@ -91,18 +89,9 @@ pub enum IndexError {
     )]
     NotAGithubRepoUrl(String),
     #[error(transparent)]
-    RuntimeHttp(#[from] RuntimeHttpError),
-    #[error("runx-api index returned HTTP {status}: {body}")]
-    HttpStatus { status: u16, body: String },
-    #[error("runx-api index returned invalid JSON: {0}")]
-    InvalidJson(String),
-    #[error("runx-api index returned error envelope [{code}]: {detail}")]
-    RunxApi {
-        code: String,
-        detail: String,
-        hint: Option<String>,
-        retry_after_seconds: Option<u32>,
-    },
+    HostedApi(#[from] HostedApiOperationError),
+    #[error("runx API index returned an invalid response: {0}")]
+    InvalidResponse(String),
 }
 
 /// Parse a user-supplied GitHub repo URL into a structured reference.
@@ -153,40 +142,22 @@ pub fn index_github_repo<T: Transport>(
     options: &IndexGithubRepoOptions<'_>,
 ) -> Result<IndexResponse, IndexError> {
     let base = options.base_url.trim_end_matches('/');
-    let url = format!("{base}/v1/index");
     let body = serde_json::json!({
         "repo_url": options.repo_url,
         "ref": options.repo_ref,
     })
     .to_string();
-    let request = HttpRequest {
-        method: HttpMethod::Post,
-        url,
-        headers: vec![RuntimeHttpHeader {
-            name: "content-type".to_owned(),
-            value: "application/json".to_owned(),
-        }],
-        body: Some(body),
-    };
-    let response = transport.send(request)?;
-    if !(200..=299).contains(&response.status) {
-        if let Ok(envelope) = serde_json::from_str::<ErrorEnvelope>(&response.body) {
-            return Err(IndexError::RunxApi {
-                code: envelope.error.code,
-                detail: envelope.error.detail,
-                hint: envelope.error.hint,
-                retry_after_seconds: envelope.error.retry_after_seconds,
-            });
-        }
-        return Err(IndexError::HttpStatus {
-            status: response.status,
-            body: response.body,
-        });
-    }
-    let envelope: SuccessEnvelope = serde_json::from_str(&response.body)
-        .map_err(|error| IndexError::InvalidJson(error.to_string()))?;
+    let envelope: SuccessEnvelope = send_json(
+        transport,
+        base,
+        "registry index",
+        HttpMethod::Post,
+        "/v1/index",
+        None,
+        Some(body),
+    )?;
     if envelope.status != "success" {
-        return Err(IndexError::InvalidJson(format!(
+        return Err(IndexError::InvalidResponse(format!(
             "expected status \"success\", received \"{}\"",
             envelope.status
         )));
@@ -205,21 +176,6 @@ struct SuccessEnvelope {
     listings: Vec<IndexedListing>,
     #[serde(default)]
     warnings: Vec<IndexWarning>,
-}
-
-#[derive(Deserialize)]
-struct ErrorEnvelope {
-    error: ErrorPayload,
-}
-
-#[derive(Deserialize)]
-struct ErrorPayload {
-    code: String,
-    detail: String,
-    #[serde(default)]
-    hint: Option<String>,
-    #[serde(default)]
-    retry_after_seconds: Option<u32>,
 }
 
 #[cfg(test)]

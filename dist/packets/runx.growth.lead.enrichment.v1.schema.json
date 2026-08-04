@@ -2,31 +2,257 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.runx.ai/runx/growth/lead_enrichment/v1.json",
   "x-runx-packet-id": "runx.growth.lead_enrichment.v1",
-  "x-runx-generated-from": "skills/lead-enrichment/X.yaml#root.runners.enrich",
-  "type": "object",
-  "required": [
-    "evidence",
-    "lead_profile",
-    "recommended_action",
-    "risks",
-    "verdict"
-  ],
+  "x-runx-generated-from": "skills/lead-enrichment/X.yaml#root.runners.enrich.graph.steps.1",
+  "additionalProperties": false,
   "properties": {
+    "consent": {
+      "additionalProperties": false,
+      "properties": {
+        "channels_allowed": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "do_not_contact": {
+          "type": "boolean"
+        },
+        "opted_in": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "opted_in",
+        "do_not_contact",
+        "channels_allowed"
+      ],
+      "type": "object"
+    },
+    "decision": {
+      "enum": [
+        "ready_for_review",
+        "do_not_contact",
+        "needs_more_evidence"
+      ],
+      "type": "string"
+    },
+    "delivery_status": {
+      "const": "not_sent"
+    },
     "evidence": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "claim": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "observed",
+              "inferred"
+            ],
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "claim",
+          "source_refs",
+          "confidence"
+        ],
+        "type": "object"
+      },
+      "maxItems": 100,
       "type": "array"
     },
+    "fit_assessment": {
+      "additionalProperties": false,
+      "properties": {
+        "caveats": {
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "type": "string"
+        },
+        "fit": {
+          "enum": [
+            "strong",
+            "medium",
+            "weak",
+            "unknown"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "lead_profile": {
+      "maxProperties": 100,
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      },
       "type": "object"
     },
     "recommended_action": {
+      "additionalProperties": false,
+      "properties": {
+        "angle": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "review_outreach",
+            "nurture",
+            "hold"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
       "type": "object"
     },
-    "risks": {
+    "risk_flags": {
+      "items": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
       "type": "array"
     },
-    "verdict": {
-      "type": "string"
+    "signal_evidence": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "provenance": {
+            "const": "caller_supplied_source_digest"
+          },
+          "signal_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "source_ref": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_ref",
+          "signal_digest",
+          "type",
+          "observed_at",
+          "provenance"
+        ],
+        "type": "object"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "validation": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "maxItems": 250,
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "findings"
+      ],
+      "type": "object"
     }
   },
-  "additionalProperties": false
+  "required": [
+    "decision",
+    "lead_profile",
+    "evidence",
+    "fit_assessment",
+    "recommended_action",
+    "risk_flags",
+    "signal_evidence",
+    "consent",
+    "delivery_status",
+    "validation"
+  ],
+  "type": "object"
 }

@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -10,6 +9,7 @@ use runx_contracts::{
     OperationalPolicy, OperationalPolicyError, OperationalPolicyReadback,
     OperationalPolicyValidationFinding, project_operational_policy_readback,
 };
+use runx_runtime::WorkspaceEnv;
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -26,17 +26,8 @@ pub struct PolicyPlan {
     pub json: bool,
 }
 
-pub fn run_native_policy(plan: PolicyPlan) -> ExitCode {
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = crate::cli_io::write_stderr_code(&format!(
-                "runx: failed to resolve cwd: {error}\n"
-            ));
-            return ExitCode::from(1);
-        }
-    };
-    match run_policy_command(&plan, &crate::cli_io::env_map(), &cwd) {
+pub fn run_native_policy(plan: PolicyPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    match run_policy_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => crate::cli_io::write_stdout_code(&output.stdout, output.exit_code),
         Err(error) => {
             let _ignored = crate::cli_io::write_stderr_code(&format!("runx: {error}\n"));

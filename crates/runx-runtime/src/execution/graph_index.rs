@@ -1,21 +1,22 @@
 use std::collections::BTreeMap;
 
-use runx_contracts::{JsonObject, JsonValue};
+use runx_contracts::schema::NonEmptyString;
+use runx_contracts::{JsonObject, JsonValue, ProvenanceEntry};
 use runx_core::state_machine::{
-    FanoutBranchResult, FanoutGroupPolicy, GraphStepStatus, SequentialGraphPlan,
+    FanoutGroupPolicy, FanoutSyncDecision, SequentialGraphEvent, SequentialGraphPlan,
     SequentialGraphState, SequentialGraphStepDefinition, SequentialGraphStepIndex,
-    create_sequential_graph_step_index, plan_sequential_graph_transition_indexed,
+    apply_sequential_graph_event_owned_indexed, create_sequential_graph_step_index,
+    evaluate_sequential_fanout_sync, plan_sequential_graph_transition_indexed_from,
+    start_sequential_graph_step_indexed, succeed_sequential_graph_step_indexed,
 };
 use runx_parser::{ExecutionGraph, GraphStep};
 
-use crate::execution::output_projection::BASE_OUTPUT_FIELDS;
 use crate::{RuntimeError, StepRun};
 
 pub(crate) struct ExecutionGraphIndex {
     definitions: Vec<SequentialGraphStepDefinition>,
     planner_index: SequentialGraphStepIndex,
     step_positions: StepPositionIndex,
-    fanout_group_positions: BTreeMap<String, Vec<usize>>,
 }
 
 struct StepPositionIndex {
@@ -46,21 +47,13 @@ impl ExecutionGraphIndex {
     ) -> Self {
         let planner_index = create_sequential_graph_step_index(&definitions);
         let mut step_positions = StepPositionIndex::new();
-        let mut fanout_group_positions: BTreeMap<String, Vec<usize>> = BTreeMap::new();
         for (index, step) in graph.steps.iter().enumerate() {
             step_positions.insert(&step.id, index);
-            if let Some(group_id) = step.fanout_group.as_deref().filter(|id| !id.is_empty()) {
-                fanout_group_positions
-                    .entry(group_id.to_owned())
-                    .or_default()
-                    .push(index);
-            }
         }
         Self {
             definitions,
             planner_index,
             step_positions,
-            fanout_group_positions,
         }
     }
 
@@ -68,14 +61,44 @@ impl ExecutionGraphIndex {
         &self,
         state: &SequentialGraphState,
         fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
+        start_index: usize,
     ) -> SequentialGraphPlan {
-        plan_sequential_graph_transition_indexed(
+        plan_sequential_graph_transition_indexed_from(
             state,
             &self.definitions,
             &self.planner_index,
             fanout_policies,
             None,
+            start_index,
         )
+    }
+
+    pub(crate) fn apply_event(
+        &self,
+        state: &mut SequentialGraphState,
+        event: SequentialGraphEvent,
+    ) {
+        apply_sequential_graph_event_owned_indexed(state, event, &self.planner_index);
+    }
+
+    pub(crate) fn start_step(&self, state: &mut SequentialGraphState, step_id: &str, at: String) {
+        start_sequential_graph_step_indexed(state, step_id, at, &self.planner_index);
+    }
+
+    pub(crate) fn succeed_step(
+        &self,
+        state: &mut SequentialGraphState,
+        at: String,
+        admission_witness: runx_core::state_machine::StepAdmissionWitness,
+        outputs: Option<JsonObject>,
+    ) {
+        succeed_sequential_graph_step_indexed(
+            state,
+            at,
+            admission_witness,
+            outputs,
+            &self.planner_index,
+        );
     }
 
     pub(crate) fn find_step<'a>(
@@ -96,43 +119,33 @@ impl ExecutionGraphIndex {
             })
     }
 
-    pub(crate) fn branch_results(
+    pub(crate) fn fanout_decision(
         &self,
-        graph: &ExecutionGraph,
         state: &SequentialGraphState,
-        group_id: &str,
-        include_outputs: bool,
-    ) -> Vec<FanoutBranchResult> {
-        let Some(indexes) = self.fanout_group_positions.get(group_id) else {
-            return Vec::new();
-        };
-        indexes
-            .iter()
-            .filter_map(|index| graph.steps.get(*index))
-            .map(|step| {
-                let state = self.state_for(state, &step.id);
-                FanoutBranchResult {
-                    step_id: step.id.clone(),
-                    status: state.map_or(GraphStepStatus::Failed, |state| state.status.clone()),
-                    outputs: if include_outputs {
-                        state.and_then(|state| state.outputs.clone())
-                    } else {
-                        None
-                    },
-                }
-            })
-            .collect()
+        policy: &FanoutGroupPolicy,
+    ) -> FanoutSyncDecision {
+        evaluate_sequential_fanout_sync(state, &self.definitions, &self.planner_index, policy, None)
     }
 
-    fn state_for<'a>(
+    pub(crate) fn fanout_receipt_ids(
         &self,
-        state: &'a SequentialGraphState,
-        step_id: &str,
-    ) -> Option<&'a runx_core::state_machine::SequentialGraphStepState> {
-        self.step_positions
-            .position(step_id)
-            .and_then(|index| state.steps.get(index))
-            .filter(|state| state.step_id == step_id)
+        graph: &ExecutionGraph,
+        runs: &[StepRun],
+        run_positions: &BTreeMap<String, usize>,
+        group_id: &str,
+    ) -> Vec<String> {
+        self.planner_index
+            .fanout_positions(group_id)
+            .into_iter()
+            .flatten()
+            .filter_map(|position| {
+                let step = graph.steps.get(*position)?;
+                let run = run_positions
+                    .get(&step.id)
+                    .and_then(|index| runs.get(*index))?;
+                (run.step_id == step.id).then(|| run.receipt.id.to_string())
+            })
+            .collect()
     }
 }
 
@@ -168,40 +181,63 @@ impl<'a> PriorRunIndex<'a> {
         }
     }
 
-    pub(crate) fn output(&self, from_step: &str, output: &str) -> Result<JsonValue, RuntimeError> {
+    pub(crate) fn output(
+        &self,
+        to_step: &str,
+        input: &str,
+        from_step: &str,
+        output: &str,
+    ) -> Result<JsonValue, RuntimeError> {
         let Some(run) = self.runs.get(from_step) else {
             return Err(RuntimeError::GraphBlocked {
                 step_id: from_step.to_owned(),
                 reason: "context source step has not run".to_owned(),
             });
         };
-        reject_base_key_edge(from_step, output)?;
-        resolve_output_path(&run.outputs, output).map_err(|break_at| {
-            RuntimeError::ContextEdgeUnresolved {
-                from_step: from_step.to_owned(),
-                output_path: output.to_owned(),
-                missing_segment: break_at.missing_segment,
-                available_keys: break_at.available_keys,
-            }
+        resolve_output_path(&run.contract, output).map_err(|break_at| {
+            RuntimeError::context_edge_unresolved(
+                to_step,
+                input,
+                from_step,
+                output,
+                break_at.missing_segment,
+                break_at.available_keys,
+            )
         })
     }
-}
 
-/// Base/diagnostic fields (`raw`/`skill_claim`/`stdout`/`stderr`/`status`) are kept
-/// in a step's `outputs` for receipts and effect replay, but they are not part of
-/// the step's addressable contract. A context edge whose first path segment names
-/// one of them is rejected loudly so authors bind to the contract (declared outputs
-/// or artifact packets), never to diagnostic material.
-fn reject_base_key_edge(from_step: &str, output: &str) -> Result<(), RuntimeError> {
-    let first = output.split('.').next().unwrap_or(output);
-    if BASE_OUTPUT_FIELDS.contains(&first) {
-        return Err(RuntimeError::ContextEdgeBaseKey {
-            from_step: from_step.to_owned(),
-            output_path: output.to_owned(),
-            base_field: first.to_owned(),
-        });
+    pub(crate) fn provenance(
+        &self,
+        to_step: &str,
+        input: &str,
+        from_step: &str,
+        output: &str,
+    ) -> Result<ProvenanceEntry, RuntimeError> {
+        let run = self
+            .runs
+            .get(from_step)
+            .ok_or_else(|| RuntimeError::GraphBlocked {
+                step_id: from_step.to_owned(),
+                reason: "context source step has not run".to_owned(),
+            })?;
+        let input =
+            NonEmptyString::new(input.to_owned()).ok_or_else(|| RuntimeError::InvalidRunStep {
+                step_id: to_step.to_owned(),
+                reason: "context edge input must not be empty".to_owned(),
+            })?;
+        let output =
+            NonEmptyString::new(output.to_owned()).ok_or_else(|| RuntimeError::InvalidRunStep {
+                step_id: to_step.to_owned(),
+                reason: "context edge output must not be empty".to_owned(),
+            })?;
+        Ok(ProvenanceEntry {
+            input,
+            output,
+            from_step: Some(from_step.to_owned()),
+            artifact_id: None,
+            receipt_id: Some(run.receipt.id.to_string()),
+        })
     }
-    Ok(())
 }
 
 /// Where a context-edge path stopped resolving: the segment that was absent and the keys

@@ -1,0 +1,47 @@
+name: sql-analyst-forwards-governed-data-store-read
+kind: graph
+target: ../harness/forward-data-store-read.yaml
+caller:
+  answers:
+    agent_task.sql-plan.output:
+      sql_plan_draft:
+        decision: ready
+        query_plan:
+          intent: Inspect the bounded launch summary projection.
+          dialect: sqlite
+          tables: [launch_metrics]
+          fields: [launch_metrics.qualified_trials]
+          joins: []
+          filters: []
+          limit: 1
+        validation_checks: [Confirm the projection observation time before interpreting it.]
+        interpretation:
+          summary: Read the declared projection before interpreting qualified trials.
+          caveats: [The projection is a bounded summary, not raw event history.]
+        residual_risks: [The projection may lag source events.]
+expect:
+  status: sealed
+  steps: [seed, analyze, read]
+  step_outputs:
+    analyze:
+      subset:
+        sql_analysis_plan:
+          data:
+            decision: ready
+            execution:
+              status: prepared_for_governed_read
+              executed: false
+              handoff:
+                skill: data-store
+                runner: read_projection
+    read:
+      subset:
+        data_operation_result:
+          data:
+            operation: read_projection
+            aggregate_id: launch-summary
+            projection:
+              event_count: 1
+              last_event_type: analysis_snapshot.created
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: sql-analyst, source_case: forward-data-store-read, source: skills-fixture }

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/payment/tool-call/v1.json",
+  "x-runx-packet-id": "runx.payment.tool_call.v1",
+  "x-runx-generated-from": "schemas/payment-tool-call.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "arguments": {
+      "additionalProperties": {},
+      "type": "object"
+    },
+    "schema": {
+      "const": "runx.payment.tool_call.v1",
+      "type": "string"
+    },
+    "tool": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "tool",
+    "arguments"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.payment.tool_call.v1"
+}

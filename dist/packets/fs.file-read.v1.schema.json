@@ -7,7 +7,11 @@
     "path": { "type": "string" },
     "contents": { "type": "string" },
     "bytes": { "type": "integer" },
-    "truncated": { "type": "boolean" }
+    "truncated": { "type": "boolean" },
+    "content_digest": {
+      "type": "string",
+      "pattern": "^(?:|sha256:[0-9a-f]{64})$"
+    }
   },
   "additionalProperties": true
 }

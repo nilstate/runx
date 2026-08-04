@@ -7,22 +7,18 @@ inputs:
   principal: ""
   claim: ""
   evidence: []
-caller:
-  answers:
-    agent_task.sign-receipt.output:
-      attestation:
-        decision: needs_agent
-        action: ""
-        claim: ""
-        principal: ""
-        evidence_refs: []
-        gaps:
-          - action is missing
-          - principal is missing
-          - claim is missing
-          - evidence is missing
 expect:
   status: sealed
+  step_outputs:
+    attest:
+      subset:
+        attestation:
+          data:
+            decision: needs_agent
+            proof_boundary:
+              external_action_verified: false
+              provider_status: not_called
+              runtime_seal_status: pending_parent_receipt
   receipt:
     schema: runx.receipt.v1
 metadata:

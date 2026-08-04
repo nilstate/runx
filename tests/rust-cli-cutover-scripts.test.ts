@@ -25,6 +25,49 @@ describe("Rust CLI cutover scripts", () => {
     expect(selector).toContain("createHash(\"sha256\").update(readFileSync(binaryPath)).digest(\"hex\")");
   });
 
+  it("derives every worker release gate from the canonical platform topology", async () => {
+    const topology = JSON.parse(
+      await readFile(path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json"), "utf8"),
+    ) as {
+      readonly nativePackages: Readonly<Record<string, {
+        readonly runner: string;
+        readonly rustTarget: string;
+        readonly archiveExtension: string;
+        readonly binary: string;
+        readonly worker: string;
+      }>>;
+    };
+    const matrixResult = spawnSync(process.execPath, ["scripts/release-platform-matrix.mjs"], {
+      cwd: workspaceRoot,
+      encoding: "utf8",
+    });
+    expect(matrixResult.status, matrixResult.stderr).toBe(0);
+    const matrix = JSON.parse(matrixResult.stdout) as { readonly include: readonly unknown[] };
+    expect(matrix.include).toEqual(
+      Object.entries(topology.nativePackages).map(([platform, entry]) => ({
+        platform,
+        runner: entry.runner,
+        target: entry.rustTarget,
+        ext: entry.archiveExtension,
+        binary: path.posix.basename(entry.binary),
+        worker: path.posix.basename(entry.worker),
+      })),
+    );
+
+    const workflow = await readFile(path.join(workspaceRoot, ".github", "workflows", "release.yml"), "utf8");
+    expect(workflow).toContain("matrix: ${{ fromJSON(needs.prepare.outputs.platform_matrix) }}");
+    expect(workflow).toContain("cargo test --locked -p runx-js-worker");
+    expect(workflow).toContain("'javascript_worker::' -- --nocapture");
+    expect(workflow).toContain("'javascript_worker_hostile::' -- --nocapture");
+    expect(workflow).toContain("-p runx-cli -p runx-js-worker");
+    expect(workflow).toContain("node scripts/record-deterministic-module-platform-evidence.mjs");
+    expect(workflow).toContain('--decision "docs/architecture/deterministic-module-engine.json"');
+    expect(workflow).toContain('--worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}"');
+    expect(workflow).not.toContain("setup-linux-sandbox");
+    expect(workflow).not.toContain("bubblewrap");
+    expect(workflow).not.toContain(".scafld/");
+  });
+
   it("accepts clean cutover candidates and blocks launcher shim flags", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-cutover-script-candidate-"));
 
@@ -38,8 +81,6 @@ describe("Rust CLI cutover scripts", () => {
         "--candidate",
         clean,
         "--no-legacy-shapes",
-        "--no-v2",
-        "--no-aliases",
         "--no-js-fallback",
       ]);
       expect(cleanResult.status).toBe(0);
@@ -66,14 +107,18 @@ describe("Rust CLI cutover scripts", () => {
 
     try {
       const binary = path.join(tempDir, executableName());
+      const worker = path.join(tempDir, executableName("runx-js-worker"));
       const outDir = path.join(tempDir, "artifacts");
       const signatureManifest = path.join(tempDir, "signatures.json");
       await writeExecutable(binary, exitScript(64));
-      await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary), null, 2)}\n`, "utf8");
+      await writeExecutable(worker, exitScript(70));
+      await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary, worker), null, 2)}\n`, "utf8");
 
       const packageResult = runTsx("scripts/package-rust-cli.ts", [
         "--binary",
         binary,
+        "--worker",
+        worker,
         "--out-dir",
         outDir,
         "--signature-manifest",
@@ -104,6 +149,12 @@ describe("Rust CLI cutover scripts", () => {
       await expect(readFile(path.join(packageDir, "native", "signatures.json"), "utf8")).resolves.toContain(
         "runx.rust_cli_artifact_signatures.v1",
       );
+      const checksums = JSON.parse(await readFile(path.join(packageDir, "native", "checksums.json"), "utf8")) as {
+        readonly worker: string;
+        readonly worker_sha256: string;
+      };
+      const packagedWorker = path.join(packageDir, checksums.worker);
+      expect(checksums.worker_sha256).toBe(sha256(await readFile(packagedWorker)));
       await expect(readFile(path.join(packageDir, "package.json"), "utf8")).resolves.toContain(
         `"name": "${nativePackageName(platformKey(process.platform, process.arch))}"`,
       );
@@ -129,26 +180,32 @@ describe("Rust CLI cutover scripts", () => {
       const otherPlatform = alternatePlatform(currentPlatform);
       const currentBinary = path.join(tempDir, executableName("runx-current"));
       const otherBinary = path.join(tempDir, executableName("runx-other"));
+      const currentWorker = path.join(tempDir, executableName("runx-js-worker-current"));
+      const otherWorker = path.join(tempDir, executableName("runx-js-worker-other"));
       const currentSignature = path.join(tempDir, "current-signatures.json");
       const otherSignature = path.join(tempDir, "other-signatures.json");
       const outDir = path.join(tempDir, "artifacts");
 
       await writeExecutable(currentBinary, exitScript(64));
       await writeExecutable(otherBinary, exitScript(64));
+      await writeExecutable(currentWorker, exitScript(70));
+      await writeExecutable(otherWorker, exitScript(70));
       await writeFile(
         currentSignature,
-        `${JSON.stringify(await fixtureSignatureManifest(currentBinary, currentPlatform), null, 2)}\n`,
+        `${JSON.stringify(await fixtureSignatureManifest(currentBinary, currentWorker, currentPlatform), null, 2)}\n`,
         "utf8",
       );
       await writeFile(
         otherSignature,
-        `${JSON.stringify(await fixtureSignatureManifest(otherBinary, otherPlatform), null, 2)}\n`,
+        `${JSON.stringify(await fixtureSignatureManifest(otherBinary, otherWorker, otherPlatform), null, 2)}\n`,
         "utf8",
       );
 
       const otherPackage = runTsx("scripts/package-rust-cli.ts", [
         "--binary",
         otherBinary,
+        "--worker",
+        otherWorker,
         "--out-dir",
         outDir,
         "--platform",
@@ -161,6 +218,8 @@ describe("Rust CLI cutover scripts", () => {
       const result = runTsx("scripts/release-rust-cli.ts", [
         "--binary",
         currentBinary,
+        "--worker",
+        currentWorker,
         "--artifact-dir",
         outDir,
         "--platform",
@@ -171,7 +230,7 @@ describe("Rust CLI cutover scripts", () => {
       ]);
 
       expect(result.status, result.stderr).toBe(0);
-      expect(result.stdout).toContain('"status": "dry_run_published"');
+      expect(result.stdout).toContain('"status": "dry_run_validated"');
 
       const checkResult = runTsx("scripts/check-rust-cli-release-artifacts.ts", [
         "--artifact-dir",
@@ -240,13 +299,17 @@ describe("Rust CLI cutover scripts", () => {
 
     try {
       const binary = path.join(tempDir, executableName());
+      const worker = path.join(tempDir, executableName("runx-js-worker"));
       const signatureManifest = path.join(tempDir, "signatures.json");
       await writeExecutable(binary, exitScript(64));
-      await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary), null, 2)}\n`, "utf8");
+      await writeExecutable(worker, exitScript(70));
+      await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary, worker), null, 2)}\n`, "utf8");
 
       const result = runTsx("scripts/release-rust-cli.ts", [
         "--binary",
         binary,
+        "--worker",
+        worker,
         "--artifact-dir",
         path.join(tempDir, "artifacts"),
         "--signature-manifest",
@@ -274,7 +337,11 @@ function ruleIds(payload: { readonly findings: readonly { readonly rule: string 
   return payload.findings.map((finding) => finding.rule);
 }
 
-async function fixtureSignatureManifest(binaryPath: string, platform = platformKey(process.platform, process.arch)): Promise<unknown> {
+async function fixtureSignatureManifest(
+  binaryPath: string,
+  workerPath: string,
+  platform = platformKey(process.platform, process.arch),
+): Promise<unknown> {
   const manifest = JSON.parse(await readFile(path.join(workspaceRoot, "packages", "cli", "package.json"), "utf8")) as {
     readonly name: string;
     readonly version: string;
@@ -286,6 +353,8 @@ async function fixtureSignatureManifest(binaryPath: string, platform = platformK
     platform,
     binary: platform.startsWith("win32-") ? "bin/runx.exe" : "bin/runx",
     sha256: sha256(await readFile(binaryPath)),
+    worker: platform.startsWith("win32-") ? "bin/runx-js-worker.exe" : "bin/runx-js-worker",
+    worker_sha256: sha256(await readFile(workerPath)),
     signatures: [
       {
         kind: "fixture",

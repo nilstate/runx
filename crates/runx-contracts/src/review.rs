@@ -1,5 +1,5 @@
 //! Review-receipt output contract: the diagnosis the managed reviewer produces
-//! for the review-receipt skill, consumed by write-harness downstream.
+//! for the review-receipt skill, consumed by skill-lab improvement runs.
 //!
 //! Identity is the legacy bare `runx.ai/schemas` `$id` (no `x-runx-schema`,
 //! no `schema` discriminant). The document is open (`additionalProperties:

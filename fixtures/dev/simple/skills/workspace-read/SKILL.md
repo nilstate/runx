@@ -1,25 +1,6 @@
 ---
 name: workspace-read
 description: Read a file from the fixture workspace.
-source:
-  type: cli-tool
-  command: node
-  args:
-    - -e
-    - "const fs = require('node:fs'); const path = require('node:path'); const file = process.env.RUNX_INPUT_PATH; process.stdout.write(JSON.stringify({ cwd: process.cwd(), path: file, contents: fs.readFileSync(path.join(process.cwd(), file), 'utf8') }));"
-  timeout_seconds: 10
-  sandbox:
-    profile: readonly
-    cwd_policy: workspace
-inputs:
-  path:
-    type: string
-    required: true
-    description: File path to read
-runx:
-  input_resolution:
-    required:
-      - path
 ---
 
 Read a workspace-relative file.

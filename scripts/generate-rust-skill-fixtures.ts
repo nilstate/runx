@@ -2,7 +2,11 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseDocument } from "yaml";
+
+import {
+  validateRunnerManifestYamlBatch,
+  validateSkillMarkdownBatch,
+} from "./lib/native-parser.mjs";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "runtime", "skills");
@@ -19,10 +23,52 @@ const retiredReceiptFields = [
   "owner",
 ];
 
+interface ParsedGraphStep {
+  readonly id: string;
+  readonly run?: {
+    readonly type: string;
+    readonly task?: string;
+  };
+}
+
+interface ParsedRunnerManifest {
+  readonly skill?: string;
+  readonly harness?: {
+    readonly cases: readonly Record<string, unknown>[];
+  };
+  readonly runners: Readonly<Record<string, {
+    readonly source: {
+      readonly graph?: {
+        readonly steps: readonly ParsedGraphStep[];
+      };
+    };
+  }>>;
+}
+
 process.chdir(workspaceRoot);
 
-for (const skillName of skillNames) {
-  await generateSkillFixtures(skillName);
+const packages = await Promise.all(skillNames.map(async (skillName) => {
+  const skillDir = path.join(workspaceRoot, "skills", skillName);
+  return {
+    skillName,
+    skillMarkdown: await readFile(path.join(skillDir, "SKILL.md"), "utf8"),
+    profileSource: await readFile(path.join(skillDir, "X.yaml"), "utf8"),
+  };
+}));
+const skills = validateSkillMarkdownBatch(packages.map((entry) => entry.skillMarkdown));
+const profiles = validateRunnerManifestYamlBatch(
+  packages.map((entry) => entry.profileSource),
+) as ParsedRunnerManifest[];
+for (const [index, entry] of packages.entries()) {
+  const profile = profiles[index];
+  if (!profile) throw new Error(`native parser omitted skills/${entry.skillName}/X.yaml`);
+  await generateSkillFixtures(
+    entry.skillName,
+    entry.skillMarkdown,
+    entry.profileSource,
+    profile,
+    (skills[index] as { name: string }).name,
+  );
 }
 
 console.log(`${check ? "checked" : "generated"} Rust product skill fixtures`);
@@ -31,13 +77,14 @@ function retiredExecutionShape(prefix: string): string {
   return `${prefix}_${"execution"}`;
 }
 
-async function generateSkillFixtures(skillName: typeof skillNames[number]): Promise<void> {
-  const skillDir = path.join(workspaceRoot, "skills", skillName);
-  const skillMarkdownPath = path.join(skillDir, "SKILL.md");
-  const profilePath = path.join(skillDir, "X.yaml");
-  const skillMarkdown = await readFile(skillMarkdownPath, "utf8");
-  const profile = parseYamlObject(await readFile(profilePath, "utf8"), profilePath);
-  const declaredSkillName = parseSkillName(skillMarkdown, skillMarkdownPath);
+async function generateSkillFixtures(
+  skillName: typeof skillNames[number],
+  skillMarkdown: string,
+  profileSource: string,
+  profile: ParsedRunnerManifest,
+  declaredSkillName: string,
+): Promise<void> {
+  const profilePath = path.join(workspaceRoot, "skills", skillName, "X.yaml");
   if (declaredSkillName !== skillName || profile.skill !== skillName) {
     throw new Error(`${skillName}: product skill name drifted from SKILL.md/X.yaml`);
   }
@@ -56,7 +103,7 @@ async function generateSkillFixtures(skillName: typeof skillNames[number]): Prom
       profile: path.posix.join("skills", skillName, "X.yaml"),
     },
     skill_name: skillName,
-    manifest_hash: `sha256:${sha256(`${skillMarkdown}\n${JSON.stringify(profile)}`)}`,
+    manifest_hash: `sha256:${sha256(`${skillMarkdown}\n${profileSource}`)}`,
     harness_schema: "runx.receipt.v1",
     case_names: cases.map((entry) => String(entry.name)),
   }, null, 2)}\n`);
@@ -88,12 +135,8 @@ function intakeFixture(entry: Record<string, unknown>, skillName: string): Recor
     caller: entry.caller ?? {},
     expect: canonicalExpectation(entry, {
       status: "sealed",
-      receiptId: `hrn_rcpt_${entry.name}_${entry.name}`,
-      harnessId: `hrn_${entry.name}_${entry.name}`,
+      state: "sealed",
       disposition: "closed",
-      reasonCode: `${entry.name}_closed`,
-      actId: `act_${entry.name}`,
-      decisionId: `dec_${entry.name}`,
     }),
     metadata: {
       product_skill: skillName,
@@ -111,12 +154,9 @@ function issueToPrFixture(
   const childSteps = replayedChildSteps(entry, replaySteps);
   const expect = canonicalExpectation(entry, {
     status: "needs_agent",
-    receiptId: `hrn_rcpt_${entry.name}`,
-    harnessId: `hrn_${entry.name}_graph`,
+    state: "deferred",
     disposition: "deferred",
-    reasonCode: `${entry.name}_deferred`,
-    decisionIds: ["dec_graph"],
-    childReceiptRefs: childSteps.map((step) => `runx:receipt:hrn_rcpt_${entry.name}_${step.step_id}`),
+    childReceiptCount: childSteps.length,
   });
   expect.steps = childSteps.map((step) => step.step_id);
   return {
@@ -138,20 +178,15 @@ function issueToPrFixture(
 }
 
 function graphReplaySteps(
-  profile: Record<string, unknown>,
+  profile: ParsedRunnerManifest,
   skillName: string,
 ): { step_id: string; task: string }[] {
-  const runners = record(profile.runners, "runners") ?? {};
-  const runner = record(runners[skillName], `runners.${skillName}`) ?? {};
-  const graph = record(runner.graph, `runners.${skillName}.graph`) ?? {};
-  const steps = Array.isArray(graph.steps) ? graph.steps : [];
-  return steps.flatMap((rawStep, index) => {
-    const step = record(rawStep, `runners.${skillName}.graph.steps[${index}]`);
-    const run = record(step?.run, `runners.${skillName}.graph.steps[${index}].run`);
-    if (!step || !run || run.type !== "agent-task" || typeof step.id !== "string" || typeof run.task !== "string") {
+  const steps = profile.runners[skillName]?.source.graph?.steps ?? [];
+  return steps.flatMap((step) => {
+    if (step.run?.type !== "agent-task" || typeof step.run.task !== "string") {
       return [];
     }
-    return [{ step_id: step.id, task: run.task }];
+    return [{ step_id: step.id, task: step.run.task }];
   });
 }
 
@@ -207,34 +242,19 @@ function canonicalExpectation(
   entry: Record<string, unknown>,
   receipt: {
     status: string;
-    receiptId: string;
-    harnessId: string;
+    state: string;
     disposition: string;
-    reasonCode: string;
-    actId?: string;
-    decisionId?: string;
-    decisionIds?: string[];
-    childReceiptRefs?: string[];
+    childReceiptCount?: number;
   },
 ): Record<string, unknown> {
   const status = record(entry.expect, "expect")?.status ?? receipt.status;
   const receiptExpectation: Record<string, unknown> = {
     schema: "runx.receipt.v1",
-    receipt_id: receipt.receiptId,
-    harness_id: receipt.harnessId,
-    state: "sealed",
+    state: receipt.state,
     disposition: receipt.disposition,
-    reason_code: receipt.reasonCode,
   };
-  if (receipt.actId) {
-    receiptExpectation.act_ids = [receipt.actId];
-  }
-  const decisionIds = receipt.decisionIds ?? (receipt.decisionId ? [receipt.decisionId] : []);
-  if (decisionIds.length > 0) {
-    receiptExpectation.decision_ids = decisionIds;
-  }
-  if (receipt.childReceiptRefs && receipt.childReceiptRefs.length > 0) {
-    receiptExpectation.child_receipt_refs = receipt.childReceiptRefs;
+  if (receipt.childReceiptCount !== undefined) {
+    receiptExpectation.child_receipt_count = receipt.childReceiptCount;
   }
   return {
     status,
@@ -242,25 +262,9 @@ function canonicalExpectation(
   };
 }
 
-function parseSkillName(markdown: string, sourcePath: string): string {
-  const match = /^---\r?\n(?<frontmatter>.*?)\r?\n---/s.exec(markdown);
-  if (!match?.groups?.frontmatter) {
-    throw new Error(`${sourcePath}: missing SKILL.md frontmatter`);
-  }
-  return String(parseYamlObject(match.groups.frontmatter, sourcePath).name ?? "");
-}
-
-function parseYamlObject(source: string, sourcePath: string): Record<string, unknown> {
-  const document = parseDocument(source, { prettyErrors: false });
-  if (document.errors.length > 0) {
-    throw new Error(`${sourcePath}: ${document.errors.map((error: { message: string }) => error.message).join("; ")}`);
-  }
-  return record(document.toJS(), sourcePath) ?? {};
-}
-
-function harnessCases(profile: Record<string, unknown>, sourcePath: string): Record<string, unknown>[] {
-  const cases = record(profile.harness, `${sourcePath}.harness`)?.cases;
-  if (!Array.isArray(cases)) {
+function harnessCases(profile: ParsedRunnerManifest, sourcePath: string): Record<string, unknown>[] {
+  const cases = profile.harness?.cases;
+  if (!cases) {
     throw new Error(`${sourcePath}: harness.cases must be an array`);
   }
   return cases.map((entry, index) => {
@@ -319,7 +323,9 @@ function yaml(value: unknown, indent = 0): string {
     if (value.length === 0) {
       return `${" ".repeat(indent)}[]\n`;
     }
-    return value.map((entry) => `${" ".repeat(indent)}- ${yamlScalarOrBlock(entry, indent + 2)}`).join("");
+    return value.map((entry) => isScalar(entry)
+      ? `${" ".repeat(indent)}- ${scalar(entry)}\n`
+      : `${" ".repeat(indent)}-\n${yaml(entry, indent + 2)}`).join("");
   }
   const object = record(value, "yaml") ?? {};
   if (Object.keys(object).length === 0) {
@@ -334,13 +340,6 @@ function yaml(value: unknown, indent = 0): string {
     }
     return `${" ".repeat(indent)}${key}:\n${yaml(entry, indent + 2)}`;
   }).join("");
-}
-
-function yamlScalarOrBlock(value: unknown, indent: number): string {
-  if (isScalar(value)) {
-    return `${scalar(value)}\n`;
-  }
-  return `\n${yaml(value, indent)}`;
 }
 
 function scalar(value: unknown): string {

@@ -1,38 +1,76 @@
 ---
 name: ecosystem-brief
-description: Produce an approved ecosystem briefing from bounded research and a governed content pass.
+description: Produce a decision-ready ecosystem briefing from fresh governed evidence without claiming publication.
 runx:
   category: research
 ---
 
 # Ecosystem Brief
 
-This graph is the specialized daily-brief variant of `content-pipeline`.
+Produce one time-bounded update on what changed, why it matters, and what an
+operator should do with that information. This is the focused monitoring
+variant of the research and content chain: a sharp decision brief, not a generic
+news roundup or an article padded from weak signals.
 
-It is for one decision-ready ecosystem update: what changed, why it matters,
-and what the operator should do with that information. The output should feel
-like a sharp daily brief, not a generic article.
+Lead with the operational implication. Then show the verified change, sources,
+inference, uncertainty, and recommended posture. Connect a signal to product,
+trust, distribution, positioning, or catalog work only when the evidence
+supports that connection.
 
-Lead with the operational implication, then show the sources, verified change,
-inference, and uncertainty behind it. Connect a signal to product, catalog,
-trust, distribution, or positioning only when the evidence supports that link.
-Return `needs_more_evidence` for an unverifiable signal and
-`not_worth_publishing` for a true update that gives the operator no useful next
-posture.
+## Composes
 
-## Output
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
 
-- `ecosystem_brief`: what changed, why it matters, evidence, implications, and recommendation.
-- `open_uncertainties`: claims or movement that remain unverified.
-- `approval_decision`: review of the exact brief.
-- `publish_packet`: approved brief and channel metadata.
+- `ghostwrite#draft`
+- `research#research`
 
-## Inputs
+## When to use it
 
-- `objective` (optional): specific question for the market scan.
-- `audience` (optional): who will read the brief.
-- `channel` (optional): output channel; defaults to `brief`.
-- `domain` (optional): ecosystem slice to monitor.
-- `operator_context` (optional): decision context or evaluation lens for the brief.
-- `target_entities` (optional): structured list of projects or companies the scan
-  should compare or monitor.
+Use `ecosystem-brief` for daily or periodic monitoring of a bounded market,
+technology, project set, or competitive surface. Use `deep-research` when the
+question is durable and needs a fuller decision memo. Use `content-pipeline`
+when the principal outcome is reader-facing publication rather than operator
+awareness.
+
+## How the chain works
+
+1. Supply governed source packets and an explicit `as_of` time.
+2. A deterministic freshness gate rejects missing provenance, future-dated
+   observations, and sources older than the declared window.
+3. `research` verifies citations and separates evidence from inference.
+4. `ghostwrite` turns the ready packet into a concise brief whose claims remain
+   bound to admitted source digests.
+
+The brief remains local. A Slack, email, social, or publication skill must own
+any outward notification and its approval, idempotency, and provider readback.
+
+## Inputs and result
+
+- `objective` identifies the monitoring question or decision.
+- `source_packets` provide governed evidence.
+- `as_of` is the explicit evaluation time; `max_age_hours` defines freshness.
+- `audience`, `channel`, `domain`, `operator_context`, and `target_entities`
+  scope relevance without becoming evidence themselves.
+
+The result includes the freshness report, citation-validated research packet,
+and evidence-bound brief. It returns `needs_more_evidence` when no source
+survives freshness and provenance checks, and `not_worth_publishing` when the
+change is real but offers no useful posture.
+
+## Stop conditions
+
+- Reject stale, future-dated, malformed, or untraceable source packets.
+- Do not disguise an old event as a new signal because an article was reposted.
+- Carry meaningful uncertainty and conflicting evidence into the brief.
+- Do not claim a provider was monitored continuously or a brief was delivered.
+- Route external distribution to the owning provider skill with the exact brief
+  and source bindings.
+
+## Example
+
+Three fresh official sources show that a framework changed its extension model.
+The brief can explain the verified change, infer which integrations may be
+affected, and recommend inspect, adopt, or wait. A stale opinion post may inform
+background only if admitted under policy; it cannot be presented as the current
+event, and a true change with no bearing on the operator can end as
+`not_worth_publishing`.

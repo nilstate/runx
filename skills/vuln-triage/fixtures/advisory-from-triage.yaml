@@ -1,0 +1,50 @@
+name: advisory-from-triage
+kind: skill
+target: ..
+runner: advisory
+inputs:
+  audience: affected_users
+  triage_packet:
+    schema: runx.security.vulnerability_scan.v1
+    decision: remediate
+    target: example/service
+    advisories:
+      - dependency: example-lib
+        exact_version: 1.2.3
+        advisory_id: GHSA-example-1234
+        advisory_url: https://osv.dev/vulnerability/GHSA-example-1234
+        assessment:
+          priority: high
+          exposure: confirmed
+          confidence: high
+          evidence_status: verified_exact_cve
+          rationale: verified direct dependency
+    remediation_plan:
+      immediate:
+        - upgrade example-lib
+    evidence_binding:
+      receipt_ref: runx:receipt:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      evidence_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    validation:
+      status: pass
+      findings: []
+caller:
+  answers:
+    agent_task.vuln-triage-advisory.output:
+      advisory_draft:
+        title: Example dependency advisory
+        summary: A verified dependency finding requires an upgrade.
+        body: example/service includes example-lib 1.2.3, which is affected by GHSA-example-1234. Upgrade after compatibility testing.
+        affected_advisory_ids:
+          - GHSA-example-1234
+        disclosure_checklist:
+          - confirm the fixed version
+          - confirm deployment timing
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: vuln-triage
+  source_case: advisory-from-triage
+  source: skills-fixture

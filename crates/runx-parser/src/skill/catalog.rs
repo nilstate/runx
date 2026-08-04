@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - catalog enums, parsing, and cross-field capability validation form one public metadata contract.
+// Module rationale: catalog enums, parsing, and cross-field capability validation form one public metadata contract.
 use runx_contracts::JsonObject;
 use serde::{Deserialize, Serialize};
 

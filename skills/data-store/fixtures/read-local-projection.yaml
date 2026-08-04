@@ -4,7 +4,6 @@ target: ..
 runner: read_projection
 inputs:
   data_source_ref: local://runx-data-store/read-projection-fixture
-  store_id: data-store-read-local-projection-v1
   resource: generic_events
   aggregate_id: item-1
 expect:

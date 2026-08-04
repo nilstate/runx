@@ -2,74 +2,78 @@ name: "reply-only-question"
 kind: "agent_task"
 runner: "issue-intake"
 inputs:
-  thread_title: "How do I rotate my API key?"
   thread_body: "I only need the operator instructions for rotating an API key safely."
   thread_locator: "support://request/983"
+  thread_title: "How do I rotate my API key?"
 caller:
   answers:
     agent_task.issue-intake.output:
-      intake_report:
-        category: "question"
-        severity: "low"
-        summary: "The user is asking for operator guidance, not a product mutation."
-        suggested_reply: "Share the documented API key rotation steps and confirm whether they need a UI walkthrough."
-        recommended_lane: "reply-only"
-        rationale: "No code or planning lane is required to answer this request."
-        needs_human: false
-        commence_decision: "approve"
-        action_decision: "stop"
-        review_target: "none"
-        operator_notes:
-          []
       change_set:
-        change_set_id: "change_set_support_983"
-        thread_locator: "support://request/983"
-        summary: "Respond with operator guidance for rotating an API key safely."
-        category: "question"
-        severity: "low"
-        recommended_lane: "reply-only"
-        commence_decision: "approve"
         action_decision: "stop"
-        target_surfaces:
-          - 
-            surface: "support"
-            kind: "support"
-            mutating: false
-            rationale: "This is a guidance-only support interaction."
+        category: "question"
+        change_set_id: "change_set_support_983"
+        commence_decision: "approve"
+        recommended_lane: "reply-only"
+        severity: "low"
         shared_invariants:
           - "Do not open a mutation lane for guidance-only requests."
         success_criteria:
           - "The operator sends or adapts the documented API key rotation guidance."
+        summary: "Respond with operator guidance for rotating an API key safely."
+        target_surfaces:
+          -
+            kind: "support"
+            mutating: false
+            rationale: "This is a guidance-only support interaction."
+            surface: "support"
+        thread_locator: "support://request/983"
+      closure:
+        disposition: "closed"
+        reason_code: "issue_intake_completed"
+        summary: "Support question should be answered without a mutation lane."
+      intake_report:
+        action_decision: "stop"
+        category: "question"
+        commence_decision: "approve"
+        needs_human: false
+        operator_notes:
+          []
+        rationale: "No code or planning lane is required to answer this request."
+        recommended_lane: "reply-only"
+        review_target: "none"
+        severity: "low"
+        suggested_reply: "Share the documented API key rotation steps and confirm whether they need a UI walkthrough."
+        summary: "The user is asking for operator guidance, not a product mutation."
       signal:
+        change_set:
+          change_set_id: "change_set_support_983"
+        created_at: "2026-05-15T00:00:00Z"
+        dedupe:
+          algorithm: "sha256"
+          fingerprint: "sha256:api-key-rotation-guidance"
+          source_locator: "support://request/983"
+        outcome:
+          state: "closed"
+          summary: "Guidance-only request should be answered without mutation."
         schema: "runx.signal.v1"
         signal_id: "sig_support_983"
-        state: "outcome_closed"
         source_events:
-          - 
+          -
+            body_preview: "I only need the operator instructions for rotating an API key safely."
             provider: "other"
             source_locator: "support://request/983"
             thread_locator: "support://request/983"
             title: "How do I rotate my API key?"
-            body_preview: "I only need the operator instructions for rotating an API key safely."
-        dedupe:
-          algorithm: "sha256"
-          source_locator: "support://request/983"
-          fingerprint: "sha256:api-key-rotation-guidance"
+        state: "outcome_closed"
+        status_summary: "Reply-only request does not need a PR lane."
         triage:
-          category: "question"
-          severity: "low"
-          confidence: 0.98
           action: "reply-only"
-          recommended_lane: "reply-only"
+          category: "question"
+          confidence: 0.98
           needs_human: false
           rationale: "No code or planning lane is required to answer this request."
-        change_set:
-          change_set_id: "change_set_support_983"
-        outcome:
-          state: "closed"
-          summary: "Guidance-only request should be answered without mutation."
-        status_summary: "Reply-only request does not need a PR lane."
-        created_at: "2026-05-15T00:00:00Z"
+          recommended_lane: "reply-only"
+          severity: "low"
         updated_at: "2026-05-15T00:00:00Z"
       decision:
         schema: "runx.decision.v1"
@@ -77,19 +81,14 @@ caller:
         choice: "decline"
         summary: "No code or planning lane is required to answer this request."
         recommended_lane: "reply-only"
+  approvals:
+    {}
 expect:
   status: "sealed"
   receipt:
     schema: "runx.receipt.v1"
-    receipt_id: "sha256:4fc950da3a03ea39dfd5583dcfad27a01b25f57f1e2a9d0c9f4a2d096b1cc0f6"
-    harness_id: "hrn_reply-only-question_reply-only-question"
     state: "sealed"
     disposition: "closed"
-    reason_code: "process_closed"
-    act_ids:
-      - "act_reply-only-question"
-    decision_ids:
-      - "dec_reply-only-question"
 metadata:
   product_skill: "issue-intake"
   source_case: "reply-only-question"

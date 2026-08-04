@@ -1,1 +1,0 @@
-{"expected":{"rejection":{"kind":"validation","message":"sandbox.profile must be readonly, workspace-write, network, or unrestricted-local-dev."}},"input":{"markdown":"---\nname: bad-sandbox\nsource:\n  type: cli-tool\n  command: node\n  sandbox:\n    profile: superuser\n---\n# Bad\n"},"name":"validation-invalid-sandbox-profile","scope":"skills"}

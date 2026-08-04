@@ -14,9 +14,11 @@ const trackedFiles = execFileSync("git", ["ls-files", "--cached", "--others", "-
   .filter(Boolean)
   .filter((file) => existsSync(path.join(workspaceRoot, file)))
   .sort();
+const trackedFileSet = new Set(trackedFiles);
 
 const failures = [
   ...checkRetiredCoreImports(),
+  ...checkStaleWorkspaceCommands(),
   ...checkCommittedBuildOutput(),
   ...checkTrackedEmptyDirPlaceholders(),
   ...checkDuplicateActiveAndDraftSpecs(),
@@ -59,6 +61,28 @@ function checkRetiredCoreImports() {
     const source = readFileSync(path.join(workspaceRoot, file), "utf8");
     if (importPattern.test(source)) {
       failures.push(`${file} references retired @runxhq/core as an import or package dependency`);
+    }
+  }
+
+  return failures;
+}
+
+function checkStaleWorkspaceCommands() {
+  const failures = [];
+  const documentation = new Set([
+    "CONTRIBUTING.md",
+    "README.md",
+    ...trackedFiles.filter((file) => file.startsWith("docs/") && file.endsWith(".md")),
+  ]);
+  const staleCommandPattern = /\b(?:cd\s+oss|pnpm\s+--dir\s+oss)\b|oss\/packages\/cli/u;
+
+  for (const file of documentation) {
+    if (!trackedFileSet.has(file)) {
+      continue;
+    }
+    const source = readFileSync(path.join(workspaceRoot, file), "utf8");
+    if (staleCommandPattern.test(source)) {
+      failures.push(`${file} contains a stale parent-workspace command for the standalone OSS checkout`);
     }
   }
 
@@ -115,8 +139,10 @@ function checkDuplicateActiveAndDraftSpecs() {
     if (file.startsWith(".scafld/specs/archive/")) {
       continue;
     }
-    const source = readFileSync(path.join(workspaceRoot, file), "utf8");
-    const taskId = extractFrontmatterField(source, "task_id") ?? path.basename(file, ".md");
+    // scafld owns spec identity and stores each live task at <task_id>.md.
+    // This repository check only compares those owned paths; it must not
+    // become a second parser for scafld lifecycle front matter.
+    const taskId = path.basename(file, ".md");
     if (file.startsWith(".scafld/specs/drafts/")) {
       addSpec(draftSpecIds, taskId, file);
     } else if (file.startsWith(".scafld/specs/active/") || file.startsWith(".scafld/specs/approved/")) {
@@ -142,20 +168,6 @@ function addSpec(index, taskId, file) {
   index.set(taskId, files);
 }
 
-function extractFrontmatterField(source, field) {
-  const match = source.match(/^---\n([\s\S]*?)\n---/u);
-  if (!match) {
-    return undefined;
-  }
-  const line = match[1]
-    .split("\n")
-    .find((candidate) => candidate.startsWith(`${field}:`));
-  if (!line) {
-    return undefined;
-  }
-  return line.slice(field.length + 1).trim().replace(/^['"]|['"]$/gu, "");
-}
-
 function hasBuildOutputSegment(file) {
   return file.split("/").some((segment) => segment === "dist" || segment === "build" || segment === ".build" || segment === "target");
 }
@@ -163,7 +175,6 @@ function hasBuildOutputSegment(file) {
 function isAllowedCommittedBuildOutput(file) {
   return (
     /^dist\/packets\/[^/]+\.schema\.json$/u.test(file)
-    || /^fixtures\/scaffold\/new-docs-demo\/files\/dist\/packets\/[^/]+\.schema\.json$/u.test(file)
     || file.startsWith("fixtures/tool-catalogs/build/")
     || file.startsWith("tools/sourcey/build/")
   );

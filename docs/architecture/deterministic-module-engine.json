@@ -1,0 +1,269 @@
+{
+  "schema": "runx.deterministic_module_engine_decision.v1",
+  "captured_at": "2026-07-21T10:47:23Z",
+  "requirements": {
+    "release_targets": [
+      "darwin-arm64",
+      "darwin-x64",
+      "linux-arm64",
+      "linux-x64",
+      "win32-x64"
+    ],
+    "host_authority": [
+      "no_child_process",
+      "no_credentials",
+      "no_environment",
+      "no_filesystem",
+      "no_host_clock",
+      "no_host_randomness",
+      "no_network"
+    ],
+    "limits": {
+      "source_bytes": 4194304,
+      "input_bytes": 4194304,
+      "output_bytes": 4194304,
+      "heap_bytes": 67108864,
+      "stack_bytes": 4194304,
+      "wall_milliseconds": 2000,
+      "queued_jobs": 4096
+    },
+    "worker": {
+      "protocol": "length_delimited_json_v1",
+      "session_reuse": true,
+      "fresh_context_per_invocation": true,
+      "node_fallback": false
+    }
+  },
+  "probe": {
+    "host": {
+      "os": "macOS 26.4",
+      "cpu": "arm64",
+      "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+      "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)"
+    },
+    "source_digests": {
+      "cargo_manifest": "sha256:c3e62bec8917023b1da56505613bfc6a9e7f36e0c313583183e4b2d877a20622",
+      "cargo_lock": "sha256:43e805bb73704df8aa32cdc5821e632b0bfae7d2679ae19e025e6e0cd4de3983",
+      "boa_native_source": "sha256:b6a68c17dff26f76724c6c91c299abf8c476d0fda3a5d132cb2ff7856e31d62d",
+      "boa_wasm_source": "sha256:283c03ab8854bfb03c7fe46cabc5c4b5d143db90127dc1870408b42fc41e0183",
+      "boa_wasm_host_source": "sha256:0f6f2a7b843c427f88106b6531ffc28f8530e340a4c4edbd8623a4f996cafd8d",
+      "rquickjs_source": "sha256:1a0a8475dd78ae4a16b1d1c795add7a07b74a21b585bc1fb44db836af9d2f615",
+      "boa_wasm_artifact": "sha256:f5093c1b67c0ae09447656ddcfbe5cb463b5cf7b19d82c50be5ce4a8c9d31315"
+    },
+    "commands": [
+      "cargo run --release --no-default-features --features boa --bin boa-probe",
+      "cargo run --release --no-default-features --features quickjs --bin rquickjs-probe",
+      "RUSTFLAGS='--cfg getrandom_backend=custom' cargo build --release --target wasm32-unknown-unknown --no-default-features --features boa --lib",
+      "cargo run --release --no-default-features --features wasm-host --bin boa-wasm-host-probe",
+      "cargo check --release --no-default-features --features boa --target <release-target> --bin boa-probe",
+      "/usr/bin/time -l target/release/<probe>"
+    ],
+    "measurements": {
+      "boa_wasm": {
+        "invocations": 1000,
+        "mean_microseconds": 194,
+        "max_rss_bytes": 219594752,
+        "engine_artifact_bytes": 6679343,
+        "host_artifact_bytes": 11905728,
+        "imports": 0
+      },
+      "rquickjs": {
+        "invocations": 1000,
+        "mean_microseconds": 87,
+        "max_rss_bytes": 3473408,
+        "artifact_bytes": 1533680
+      },
+      "boa_native": {
+        "invocations": 1000,
+        "mean_microseconds": 118,
+        "max_rss_bytes": 10715136,
+        "artifact_bytes": 10636208
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "boa_wasm",
+      "class": "no_wasi_javascript_on_wasm",
+      "version": "boa_engine 0.21.1 + wasmtime 35.0.0",
+      "license": "Unlicense OR MIT; Apache-2.0 WITH LLVM-exception",
+      "official_sources": [
+        "https://docs.rs/boa_engine/0.21.1/boa_engine/",
+        "https://github.com/boa-dev/boa/tree/v0.21.1",
+        "https://docs.rs/wasmtime/35.0.0/wasmtime/"
+      ],
+      "security_boundary": "Boa compiled to wasm32-unknown-unknown with a deterministic custom entropy backend, instantiated with no imports in a fresh Wasmtime store and instance.",
+      "module_model": "JavaScript is evaluated inside a no-WASI WebAssembly module; a production design would require a bounded byte protocol and an in-module validated bundle loader.",
+      "resource_controls": [
+        "Wasmtime store limits and epoch interruption can bound guest memory and wall time",
+        "A no-import module structurally excludes WASI and provider hostcalls",
+        "Fresh stores and instances isolate linear memory per invocation"
+      ],
+      "platform_evidence": {
+        "darwin-arm64": {
+          "status": "passed_local_probe",
+          "evidence": "No-import wasm32-unknown-unknown module executed 1,000 fresh stores and instances on the arm64 macOS probe host."
+        },
+        "darwin-x64": {
+          "status": "documented_not_locally_executed",
+          "evidence": "Wasmtime publishes this host target; the target-specific hostile-module probe remains a release gate."
+        },
+        "linux-arm64": {
+          "status": "documented_not_locally_executed",
+          "evidence": "Wasmtime publishes this host target; the target-specific hostile-module probe remains a release gate."
+        },
+        "linux-x64": {
+          "status": "documented_not_locally_executed",
+          "evidence": "Wasmtime publishes this host target; the target-specific hostile-module probe remains a release gate."
+        },
+        "win32-x64": {
+          "status": "documented_not_locally_executed",
+          "evidence": "Wasmtime publishes this host target; the target-specific hostile-module probe remains a release gate."
+        }
+      },
+      "local_probe": {
+        "host_access": "passed",
+        "termination": "not_proven",
+        "fresh_instance_isolation": "passed",
+        "in_memory_imports": "not_proven",
+        "evidence": "The built module had zero imports and produced the expected JavaScript result in 1,000 fresh instances."
+      },
+      "disposition": "rejected",
+      "reason": "It adds a second compilation/runtime layer, a 6.7 MB guest plus an 11.9 MB probe host, and roughly 220 MB probe RSS without improving the required session-worker contract enough to justify that operational cost."
+    },
+    {
+      "id": "rquickjs",
+      "class": "native_quickjs_worker",
+      "version": "rquickjs 0.12.1",
+      "license": "MIT",
+      "official_sources": [
+        "https://docs.rs/rquickjs/0.12.1/rquickjs/",
+        "https://github.com/DelSkayn/rquickjs/tree/v0.12.1"
+      ],
+      "security_boundary": "QuickJS-ng runs in a dedicated native process with explicit memory and stack limits; the process supervisor must enforce wall time, environment clearing, filesystem, and network isolation.",
+      "module_model": "Native QuickJS ES modules through a custom loader; runtime and context are recreated per invocation while the process remains reusable.",
+      "resource_controls": [
+        "QuickJS exposes explicit heap and stack limits",
+        "A runtime interrupt handler can enforce instruction or wall budgets",
+        "A dedicated process supervisor contains native engine faults"
+      ],
+      "platform_evidence": {
+        "darwin-arm64": {
+          "status": "passed",
+          "evidence": "Release probe built and ran on the arm64 macOS host."
+        },
+        "darwin-x64": {
+          "status": "passed_cross_check",
+          "evidence": "cargo check succeeded for x86_64-apple-darwin."
+        },
+        "linux-arm64": {
+          "status": "blocked_by_c_cross_toolchain",
+          "evidence": "Cross-check requires an aarch64 Linux C compiler because QuickJS is a C engine."
+        },
+        "linux-x64": {
+          "status": "not_proven",
+          "evidence": "No target-native hostile-module probe was available on the macOS host."
+        },
+        "win32-x64": {
+          "status": "blocked_by_msvc_toolchain",
+          "evidence": "Cross-check failed before Rust type checking because the C build required the MSVC compiler toolchain."
+        }
+      },
+      "local_probe": {
+        "host_access": "passed",
+        "termination": "not_proven",
+        "fresh_instance_isolation": "passed",
+        "in_memory_imports": "not_proven",
+        "evidence": "The probe created 1,000 fresh runtime/context pairs with no process, fetch, or require globals and explicit heap/stack limits."
+      },
+      "disposition": "rejected",
+      "reason": "It is the fastest and smallest probe, but it makes a C engine and per-target C toolchain part of the release and security surface, while deterministic clock and all-target hostile-module evidence remain unresolved."
+    },
+    {
+      "id": "boa_native",
+      "class": "memory_safe_no_host_engine",
+      "version": "boa_engine 0.21.1",
+      "license": "Unlicense OR MIT",
+      "official_sources": [
+        "https://docs.rs/boa_engine/0.21.1/boa_engine/",
+        "https://github.com/boa-dev/boa/tree/v0.21.1"
+      ],
+      "security_boundary": "A memory-safe Rust JavaScript engine with no Node, browser, filesystem, network, process, or credential APIs runs inside a separately supervised worker process.",
+      "module_model": "A validated relative module bundle is loaded from memory into a fresh Boa context for every invocation; a runtime-scoped pool reuses up to four dedicated workers, with one active invocation per process.",
+      "resource_controls": [
+        "Boa loop, stack, recursion, and parser limits bound engine work",
+        "Per-worker memory limits, per-invocation wall limits, and the four-worker pool cap bound aggregate host exposure outside the engine",
+        "A fixed clock and no host bindings remove ambient time and authority",
+        "Fresh contexts prevent globals, modules, promises, and mutable state crossing invocations"
+      ],
+      "platform_evidence": {
+        "darwin-arm64": {
+          "status": "passed",
+          "evidence": "Release probe built and ran on the arm64 macOS host."
+        },
+        "darwin-x64": {
+          "status": "passed",
+          "evidence": "cargo check succeeded for x86_64-apple-darwin."
+        },
+        "linux-arm64": {
+          "status": "passed",
+          "evidence": "cargo check succeeded for aarch64-unknown-linux-gnu."
+        },
+        "linux-x64": {
+          "status": "passed",
+          "evidence": "cargo check succeeded for x86_64-unknown-linux-gnu."
+        },
+        "win32-x64": {
+          "status": "passed",
+          "evidence": "cargo check succeeded for x86_64-pc-windows-msvc without a native C-engine toolchain."
+        }
+      },
+      "local_probe": {
+        "host_access": "passed",
+        "termination": "passed",
+        "fresh_instance_isolation": "passed",
+        "in_memory_imports": "passed",
+        "evidence": "The probe fixed Date at zero, exposed no process/fetch/require globals, stopped an infinite loop, resolved a relative in-memory module, and ran 1,000 fresh contexts."
+      },
+      "disposition": "selected",
+      "reason": "It is the only candidate that combines a memory-safe engine, no built-in host authority, deterministic clock control, in-memory modules, engine-level termination, and source-level portability across every Runx release target."
+    }
+  ],
+  "decision": {
+    "selected_engine": "boa_native",
+    "selected_version": "boa_engine 0.21.1",
+    "worker_design": "A runtime session lazily reuses a bounded pool of up to four supervised runx-js-worker processes. Each process executes one invocation at a time, creates a fresh Boa context per invocation, loads only a validated in-memory relative module bundle, and communicates over a versioned length-delimited JSON protocol.",
+    "rationale": [
+      "The engine contributes no Node, browser, filesystem, network, process, environment, credential, clock, or randomness host surface.",
+      "Pure Rust source passed checks for all five Runx release targets without introducing a C cross-toolchain into releases.",
+      "The measured fresh-context cost is 118 microseconds, leaving ample margin versus the current process-per-step lane.",
+      "Engine loop limits, fixed clock support, and embedded module loading are available without custom native bindings.",
+      "A separate process remains mandatory because an in-process language engine is not the aggregate memory, crash, or wall-time security boundary."
+    ],
+    "required_controls": [
+      "aggregate_process_memory_limit",
+      "bounded_job_queue",
+      "env_clear",
+      "fresh_engine_context_per_invocation",
+      "hostile_module_contract_on_all_release_targets",
+      "in_memory_relative_module_loader",
+      "no_node_fallback",
+      "non_workspace_cwd",
+      "protocol_version_handshake",
+      "supervised_wall_timeout",
+      "worker_replacement_after_fault"
+    ],
+    "release_gate": "Do not switch the production javascript lane until the worker passes the hostile-module suite and hard memory/wall/process isolation checks on every release target, and the measured runtime budgets do not regress beyond the approved baseline.",
+    "rejected_alternatives": [
+      {
+        "id": "boa_wasm",
+        "reason": "Stronger structural no-import isolation does not offset the Wasmtime dependency, compilation layer, artifact size, and measured memory overhead for this bounded worker."
+      },
+      {
+        "id": "rquickjs",
+        "reason": "Superior microbenchmark speed does not offset native C-engine release complexity and incomplete deterministic/all-target evidence."
+      }
+    ]
+  },
+  "decision_sha256": "sha256:65d48defd9aab3d602d7c31ae105be3e3add6ea448a1a5ca623b114a88eac5e0"
+}

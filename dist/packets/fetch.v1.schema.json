@@ -7,7 +7,14 @@
     "final_url": { "type": "string" },
     "status": { "type": "number" },
     "content_digest": { "type": "string" },
-    "extracted": { "type": "string" },
+    "extract_mode": { "enum": ["text", "metadata", "links"] },
+    "extracted": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object", "additionalProperties": true },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
     "provenance": {
       "type": "object",
       "additionalProperties": true

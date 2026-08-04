@@ -47,7 +47,36 @@ pub fn plan_sequential_graph_transition_indexed(
         };
     }
 
-    let mut index = 0;
+    plan_sequential_graph_transition_indexed_from(
+        state,
+        steps,
+        step_index,
+        fanout_policies,
+        resolved_fanout_gate_keys,
+        0,
+    )
+}
+
+/// Plan from a cursor whose preceding steps are known to be terminal.
+///
+/// Runtime executors maintain this cursor as steps complete, avoiding a fresh
+/// scan of the terminal prefix for every transition. Callers that do not own
+/// that invariant must use [`plan_sequential_graph_transition_indexed`].
+#[must_use]
+pub fn plan_sequential_graph_transition_indexed_from(
+    state: &SequentialGraphState,
+    steps: &[SequentialGraphStepDefinition],
+    step_index: &SequentialGraphStepIndex,
+    fanout_policies: &BTreeMap<String, FanoutGroupPolicy>,
+    resolved_fanout_gate_keys: Option<&BTreeSet<String>>,
+    start_index: usize,
+) -> SequentialGraphPlan {
+    debug_assert!(state.steps.iter().take(start_index).all(|step| matches!(
+        step.status,
+        GraphStepStatus::Succeeded | GraphStepStatus::Skipped
+    )));
+
+    let mut index = start_index.min(steps.len());
     while index < steps.len() {
         let step_definition = &steps[index];
         if let Some(group_id) = fanout_group_id(step_definition) {
@@ -56,6 +85,7 @@ pub fn plan_sequential_graph_transition_indexed(
                 state,
                 step_index,
                 index,
+                steps,
                 group_steps,
                 fanout_policies.get(group_id),
                 resolved_fanout_gate_keys,
@@ -91,6 +121,14 @@ fn plan_step(
         });
     };
 
+    if step_state.status == GraphStepStatus::Running {
+        return Some(SequentialGraphPlan::Blocked {
+            step_id: step_definition.id.clone(),
+            reason: "step is already running".to_owned(),
+            sync_decision: None,
+        });
+    }
+
     // A succeeded step is done; a `when`-skipped step is selected out. Both are
     // terminal, so the forward walker moves past them to the next live step.
     if matches!(
@@ -121,4 +159,50 @@ fn plan_step(
         attempt: step_state.attempts + 1,
         context_from: step_definition.context_from.clone().unwrap_or_default(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::{
+        plan_sequential_graph_transition_indexed, plan_sequential_graph_transition_indexed_from,
+    };
+    use crate::state_machine::{
+        GraphStepStatus, SequentialGraphStepDefinition, create_sequential_graph_state,
+        create_sequential_graph_step_index,
+    };
+
+    #[test]
+    fn terminal_prefix_cursor_preserves_the_canonical_plan() {
+        let definitions = (0..3)
+            .map(|index| SequentialGraphStepDefinition {
+                id: format!("step_{index}"),
+                context_from: None,
+                retry: None,
+                fanout_group: None,
+            })
+            .collect::<Vec<_>>();
+        let index = create_sequential_graph_step_index(&definitions);
+        let mut state = create_sequential_graph_state("graph", &definitions);
+        state.steps[0].status = GraphStepStatus::Succeeded;
+
+        let canonical = plan_sequential_graph_transition_indexed(
+            &state,
+            &definitions,
+            &index,
+            &BTreeMap::new(),
+            None,
+        );
+        let from_cursor = plan_sequential_graph_transition_indexed_from(
+            &state,
+            &definitions,
+            &index,
+            &BTreeMap::new(),
+            None,
+            1,
+        );
+
+        assert_eq!(from_cursor, canonical);
+    }
 }

@@ -3,22 +3,24 @@
   "expected": {
     "kind": "output",
     "value": {
-      "attempts": {
-        "finance": 1,
-        "market": 1,
-        "risk": 1
-      },
-      "contextFrom": {
-        "finance": [],
-        "market": [],
-        "risk": []
-      },
-      "groupId": "advisors",
-      "stepIds": [
-        "market",
-        "risk",
-        "finance"
+      "branches": [
+        {
+          "attempt": 1,
+          "contextFrom": [],
+          "stepId": "market"
+        },
+        {
+          "attempt": 1,
+          "contextFrom": [],
+          "stepId": "risk"
+        },
+        {
+          "attempt": 1,
+          "contextFrom": [],
+          "stepId": "finance"
+        }
       ],
+      "groupId": "advisors",
       "type": "run_fanout"
     }
   },

@@ -18,8 +18,10 @@ OSS owns:
 Cloud owns:
 
 - hosted harness storage and receipt indexing
-- approval inboxes
-- authenticated source adapters
+- approval state for runs explicitly submitted to the hosted service, not the
+  default provider-neutral operator inbox
+- credential-bound source transport for explicitly hosted runs, not source
+  filtering or operator workflow policy
 - org routing and operational APIs
 
 Consuming repos own:
@@ -43,6 +45,13 @@ The durable lifecycle is explicit:
 Every terminal path produces a receipt. Failed, killed, timed out, blocked, and
 declined paths are not missing evidence; they are abnormal seals with reason
 codes, criterion state, and hash commitments.
+
+Harness cases execute in independent scratch workspaces and receipt stores.
+When a case needs prior receipt evidence, `setup.receipts` may name only
+normalized `.json` files contained by the owning skill package. The runtime
+verifies those receipts before seeding that case and never treats fixture setup
+as provider readback. Newly produced receipts are verified again before they
+are copied to the requested durable output store.
 
 ## Evidence
 

@@ -1,122 +1,614 @@
 skill: moltbook
-version: "0.1.1"
+version: "0.3.1"
 
 catalog:
   kind: skill
   audience: public
   visibility: public
   role: context
+  provider: moltbook
+  runtime_path: moltbook
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: required
+
+input_definitions:
+  feed_snapshot:
+    type: array
+    required: true
+    description: One to 100 unique, timestamped Moltbook evidence items admitted for local analysis.
+    schema:
+      minItems: 1
+      maxItems: 100
+      items:
+        type: object
+        required: [source_ref, topic, summary, observed_at]
+        additionalProperties: false
+        properties:
+          source_ref: { type: string, minLength: 1, maxLength: 512 }
+          topic: { type: string, minLength: 1, maxLength: 500 }
+          summary: { type: string, minLength: 1, maxLength: 10000 }
+          observed_at: { type: string, format: date-time }
+  outline:
+    type: object
+    required: true
+    description: Exact headline and beats selected from the admitted scan packet.
+    schema:
+      required: [headline, beats]
+      additionalProperties: false
+      properties:
+        headline: { type: string, minLength: 1, maxLength: 500 }
+        beats:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 1000 }
+        source_refs:
+          type: array
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 512 }
+
 harness:
   cases:
-    - name: moltbook-scan-finds-opportunity
+    - name: moltbook-scan-binds-fresh-opportunity
       runner: scan
       inputs:
-        objective: Identify one helpful post for the runx community account
-        community_context: OSS builders evaluating whether runx is visibly governed and useful.
+        objective: Find one useful post for Runx builders.
+        community_context: OSS operators evaluating governed agent workflows.
+        as_of: "2026-07-17T12:00:00Z"
+        max_age_hours: 48
         feed_snapshot:
-          signals:
-            - source: changelog
-              headline: runx now enforces package-style skills
-              freshness: current
-            - source: operator-feedback
-              headline: builders want clearer migration guidance
-              freshness: current
+          - { source_ref: changelog_1, topic: package skills, summary: Runx now enforces package-rooted skills., observed_at: "2026-07-16T10:00:00Z" }
+          - { source_ref: feedback_1, topic: migration, summary: Builders requested clearer migration guidance., observed_at: "2026-07-16T11:00:00Z" }
       caller:
         answers:
           agent_task.moltbook-scan.output:
-            opportunity_report:
-              topic: package-standard enforcement
-              rationale: It explains a visible product discipline change with immediate operator value.
-            post_outline:
-              headline: runx now enforces package-style skills
-              beats:
-                - why the standard changed
-                - what it unlocks
-            moderation_notes:
-              sensitivity: low
-              tone: direct and useful
-            follow_up_plan:
-              monitor_for:
-                - questions about migration
+            scan_draft:
+              decision: ready
+              opportunity_report:
+                topic: package skill migration
+                rationale: Current product change and operator demand support a practical migration post.
+                source_refs: [changelog_1, feedback_1]
+              post_outline:
+                headline: How to move a Runx skill into a package root
+                beats: [What changed, How to migrate, How to verify]
+                source_refs: [changelog_1, feedback_1]
+              moderation_notes: { sensitivity: low, tone: direct and useful }
+              follow_up_plan: { monitor_for: [migration questions] }
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
-    - name: moltbook-post-packet
+        steps: [admit, digest, analyze, finalize]
+        step_outputs:
+          finalize:
+            subset:
+              moltbook_scan_packet:
+                data:
+                  decision: ready
+                  delivery_status: not_posted
+                  validation: { status: pass }
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: moltbook-scan-rejects-stale-feed
+      runner: scan
+      inputs:
+        objective: Find a current post.
+        as_of: "2026-07-17T12:00:00Z"
+        max_age_hours: 24
+        feed_snapshot:
+          - { source_ref: old_1, topic: old, summary: Old product update., observed_at: "2026-07-10T10:00:00Z" }
+      expect:
+        status: sealed
+        steps: [admit, digest, reject]
+        step_outputs:
+          reject:
+            subset:
+              moltbook_scan_packet:
+                data:
+                  decision: needs_more_evidence
+                  delivery_status: not_posted
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: moltbook-post-preserves-scan-evidence-without-posting
       runner: post
       inputs:
+        scan_packet:
+          decision: ready
+          opportunity_report:
+            topic: package skill migration
+            rationale: Current demand supports a practical post.
+            source_refs: [changelog_1]
+          post_outline:
+            headline: How to move a Runx skill into a package root
+            beats: [What changed, How to migrate]
+            source_refs: [changelog_1]
+          source_evidence:
+            - { source_ref: changelog_1, observed_at: "2026-07-16T10:00:00Z" }
+          evidence_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          delivery_status: not_posted
+          validation: { status: pass, findings: [] }
         outline:
-          headline: runx now enforces package-style skills
-          beats:
-            - why the standard changed
-        community_context: OSS builders evaluating whether runx is visibly governed and useful.
-        approval_note: Keep the final post factual and avoid launch-theater language.
+          headline: How to move a Runx skill into a package root
+          beats: [What changed, How to migrate]
+        community_context: OSS operators.
+        operator_guidance: Keep it factual.
       caller:
         answers:
           agent_task.moltbook-post.output:
-            post_payload:
-              channel: moltbook
-              body: runx now enforces package-style skills so every official flow is package-rooted, harnessed, and inspectable.
-            moderation_notes:
-              final_check:
-                - no unsupported claims
-            publish_plan:
-              after_post:
-                - answer operator questions
+            post_draft:
+              decision: ready_for_handoff
+              post_payload:
+                channel: moltbook
+                body: Package-rooted skills make inspection and harness verification explicit.
+                claim_refs:
+                  - { claim: Package-rooted skills are the migration subject., source_refs: [changelog_1] }
+              moderation_notes: { final_check: [No unsupported claims.] }
+              follow_up_plan: { monitor_for: [migration questions] }
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
+        steps: [admit-scan, author, digest-post, finalize-post]
+        step_outputs:
+          finalize-post:
+            subset:
+              moltbook_post_packet:
+                data:
+                  decision: ready_for_handoff
+                  delivery_status: not_posted
+                  validation: { status: pass }
+        receipt: { schema: runx.receipt.v1 }
 
 runners:
-  scan:
-    default: true
-    type: agent-task
-    agent: researcher
-    task: moltbook-scan
-    outputs:
-      opportunity_report: object
-      post_outline: object
-      moderation_notes: object
-      follow_up_plan: object
-    artifacts:
-      wrap_as: moltbook_scan_packet
-      packet: runx.moltbook.scan.v1
+  scan-provider:
+    type: graph
     inputs:
       objective:
         type: string
-        required: false
-        description: "Posting objective for this scan pass."
+        required: true
+        description: Posting objective.
       community_context:
         type: string
         required: false
-        description: "Audience or community context."
-      feed_snapshot:
-        type: json
+        description: Intended community and discussion context.
+      as_of:
+        type: string
+        required: true
+        description: Explicit ISO-8601 evaluation time.
+      max_age_hours:
+        type: number
         required: false
-        description: "Structured list of candidate signals, threads, or prompts."
+        default: 168
+        description: Maximum feed signal age.
+      max_items:
+        type: number
+        required: false
+        default: 50
+        description: Maximum provider feed items, capped by the provider grant.
+    examples:
+      - objective: Find one useful post for Runx builders.
+        community_context: OSS operators evaluating governed agent workflows.
+        as_of: "2026-07-17T12:00:00Z"
+        max_age_hours: 48
+        max_items: 50
+    graph:
+      name: moltbook-scan-provider
+      result_from: [reject, finalize]
+      steps:
+        - id: read-feed
+          tool: provider.read
+          scopes:
+            - feed.read
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: feed.scan
+            target: moltbook://feed
+            expected_provider: moltbook
+            result_fields: [items]
+            input:
+              objective: $input.objective
+              max_items: $input.max_items
+
+        - id: admit
+          inputs:
+            objective: $input.objective
+            as_of: $input.as_of
+            max_age_hours: $input.max_age_hours
+          context:
+            feed_snapshot: read-feed.provider_operation.data.result.items
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: admitFeed
+            outputs:
+              feed_index: object
+          artifacts:
+            named_emits:
+              feed_index: feed_index
+
+        - id: digest
+          tool: data.digest
+          context:
+            value: admit.feed_index.data.sources
+
+        - id: reject
+          when:
+            field: admit.feed_index.data.decision
+            equals: needs_more_evidence
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: finalizeScan
+            outputs:
+              moltbook_scan_packet: object
+          artifacts:
+            named_emits:
+              moltbook_scan_packet: moltbook_scan_packet
+            packets:
+              moltbook_scan_packet: runx.moltbook.scan.v1
+
+        - id: analyze
+          when:
+            field: admit.feed_index.data.decision
+            equals: ready
+          run:
+            type: agent-task
+            agent: researcher
+            task: moltbook-scan
+            outputs:
+              scan_draft: object
+          inputs:
+            objective: $input.objective
+            community_context: $input.community_context
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+
+        - id: finalize
+          when:
+            field: admit.feed_index.data.decision
+            equals: ready
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+            scan_draft: analyze.scan_draft.data
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: finalizeScan
+            outputs:
+              moltbook_scan_packet: object
+          artifacts:
+            named_emits:
+              moltbook_scan_packet: moltbook_scan_packet
+            packets:
+              moltbook_scan_packet: runx.moltbook.scan.v1
+
+  scan:
+    default: true
+    type: graph
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: Posting objective.
+      community_context:
+        type: string
+        required: false
+        description: Intended community and discussion context.
+      feed_snapshot:
+        definition: feed_snapshot
+      as_of:
+        type: string
+        required: true
+        description: Explicit ISO-8601 evaluation time.
+      max_age_hours:
+        type: number
+        required: false
+        default: 168
+        description: Maximum feed signal age.
+    examples:
+      - objective: Find one useful post for Runx builders.
+        community_context: OSS operators evaluating governed agent workflows.
+        as_of: "2026-07-17T12:00:00Z"
+        max_age_hours: 48
+        feed_snapshot:
+          - source_ref: changelog_1
+            topic: package skills
+            summary: Runx now enforces package-rooted skills.
+            observed_at: "2026-07-16T10:00:00Z"
+    graph:
+      name: moltbook-scan
+      result_from: [reject, finalize]
+      steps:
+        - id: admit
+          inputs:
+            objective: $input.objective
+            feed_snapshot: $input.feed_snapshot
+            as_of: $input.as_of
+            max_age_hours: $input.max_age_hours
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: admitFeed
+            outputs:
+              feed_index: object
+          artifacts:
+            named_emits:
+              feed_index: feed_index
+
+        - id: digest
+          tool: data.digest
+          context:
+            value: admit.feed_index.data.sources
+
+        - id: reject
+          when:
+            field: admit.feed_index.data.decision
+            equals: needs_more_evidence
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: finalizeScan
+            outputs:
+              moltbook_scan_packet: object
+          artifacts:
+            named_emits:
+              moltbook_scan_packet: moltbook_scan_packet
+            packets:
+              moltbook_scan_packet: runx.moltbook.scan.v1
+
+        - id: analyze
+          when:
+            field: admit.feed_index.data.decision
+            equals: ready
+          run:
+            type: agent-task
+            agent: researcher
+            task: moltbook-scan
+            outputs:
+              scan_draft: object
+          inputs:
+            objective: $input.objective
+            community_context: $input.community_context
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+          artifacts:
+            named_emits:
+              scan_draft: scan_draft
+
+        - id: finalize
+          when:
+            field: admit.feed_index.data.decision
+            equals: ready
+          context:
+            feed_index: admit.feed_index.data
+            evidence_digest: digest.digest_result.data.digest
+            scan_draft: analyze.scan_draft.data
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: finalizeScan
+            outputs:
+              moltbook_scan_packet: object
+          artifacts:
+            named_emits:
+              moltbook_scan_packet: moltbook_scan_packet
+            packets:
+              moltbook_scan_packet: runx.moltbook.scan.v1
 
   post:
-    type: agent-task
-    agent: builder
-    task: moltbook-post
-    outputs:
-      post_payload: object
-      moderation_notes: object
-      publish_plan: object
-    artifacts:
-      wrap_as: moltbook_post_packet
-      packet: runx.moltbook.post.v1
+    type: graph
     inputs:
-      outline:
+      scan_packet:
         type: json
+        packet: runx.moltbook.scan.v1
         required: true
-        description: "Approved post outline from the scan runner."
+        description: Validated ready Moltbook scan packet.
+      outline:
+        definition: outline
       community_context:
         type: string
         required: false
-        description: "Audience or thread context for the final post."
-      approval_note:
+        description: Intended community context.
+      operator_guidance:
         type: string
         required: false
-        description: "Operator guidance before packaging the post."
+        description: Local content guidance, not publication approval.
+    examples:
+      - scan_packet:
+          decision: ready
+          opportunity_report:
+            topic: package skill migration
+            rationale: Current demand supports a practical post.
+            source_refs: [changelog_1]
+          post_outline:
+            headline: How to move a Runx skill into a package root
+            beats: [What changed, How to migrate]
+            source_refs: [changelog_1]
+          source_evidence:
+            - { source_ref: changelog_1, observed_at: "2026-07-16T10:00:00Z" }
+          evidence_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          delivery_status: not_posted
+          validation: { status: pass, findings: [] }
+        outline:
+          headline: How to move a Runx skill into a package root
+          beats: [What changed, How to migrate]
+        community_context: OSS operators.
+        operator_guidance: Keep it factual.
+    graph:
+      name: moltbook-post
+      result_from: [finalize-post]
+      steps:
+        - id: admit-scan
+          inputs:
+            scan_packet: $input.scan_packet
+            outline: $input.outline
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: admitScan
+            outputs:
+              post_context: object
+          artifacts:
+            named_emits:
+              post_context: post_context
+
+        - id: author
+          when:
+            field: admit-scan.post_context.data.decision
+            equals: ready
+          run:
+            type: agent-task
+            agent: writer
+            task: moltbook-post
+            outputs:
+              post_draft: object
+          inputs:
+            community_context: $input.community_context
+            operator_guidance: $input.operator_guidance
+          context:
+            post_context: admit-scan.post_context.data
+          artifacts:
+            named_emits:
+              post_draft: post_draft
+
+        - id: digest-post
+          when:
+            field: admit-scan.post_context.data.decision
+            equals: ready
+          tool: data.digest
+          context:
+            value: author.post_draft.data.post_payload
+
+        - id: finalize-post
+          context:
+            post_context: admit-scan.post_context.data
+            post_draft: author.post_draft.data
+            payload_digest: digest-post.digest_result.data.digest
+          run:
+            type: javascript
+            module: moltbook.mjs
+            export: finalizePost
+            outputs:
+              moltbook_post_packet: object
+          artifacts:
+            named_emits:
+              moltbook_post_packet: moltbook_post_packet
+            packets:
+              moltbook_post_packet: runx.moltbook.post.v1
+
+  publish:
+    type: graph
+    inputs:
+      post_packet:
+        type: json
+        packet: runx.moltbook.post.v1
+        required: true
+        description: Exact validated runx.moltbook.post.v1 payload to publish.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for this exact post payload.
+    examples:
+      - post_packet:
+          decision: ready_for_handoff
+          post_payload:
+            channel: moltbook
+            body: Package-rooted skills make inspection and harness verification explicit.
+            claim_refs:
+              - claim: Package-rooted skills are the migration subject.
+                source_refs: [changelog_1]
+          payload_digest: sha256:27329a1f0e5fa8da7598ac0bdc5079aa9bbec68bdc2cee2c14526f55d1a32f7d
+          moderation_notes: { final_check: [No unsupported claims.] }
+          follow_up_plan: { monitor_for: [migration questions] }
+          source_evidence:
+            - { source_ref: changelog_1, observed_at: "2026-07-16T10:00:00Z" }
+          delivery_status: not_posted
+          validation: { status: pass, findings: [] }
+        idempotency_key: 1c9a81bc-94c2-43f7-922c-a59145c7290e
+    graph:
+      name: moltbook-publish
+      result_from: [readback]
+      steps:
+        - id: validate
+          tool: data.compare
+          inputs:
+            actual:
+              decision: $input.post_packet.decision
+              delivery_status: $input.post_packet.delivery_status
+              validation_status: $input.post_packet.validation.status
+              channel: $input.post_packet.post_payload.channel
+            expected:
+              decision: ready_for_handoff
+              delivery_status: not_posted
+              validation_status: pass
+              channel: moltbook
+
+        - id: digest-payload
+          when:
+            field: validate.comparison.data.equal
+            equals: true
+          tool: data.digest
+          inputs:
+            value: $input.post_packet.post_payload
+
+        - id: bind-payload
+          when:
+            field: validate.comparison.data.equal
+            equals: true
+          tool: data.compare
+          inputs:
+            expected: $input.post_packet.payload_digest
+          context:
+            actual: digest-payload.digest_result.data.digest
+
+        - id: publish
+          when:
+            field: bind-payload.comparison.data.equal
+            equals: true
+          tool: provider.mutate
+          mutation: true
+          idempotency_key: $input.idempotency_key
+          scopes:
+            - post.write
+          policy:
+            provider_permission:
+              verb: write
+          inputs:
+            operation: post.create
+            target: moltbook://posts
+            expected_provider: moltbook
+            idempotency_key: $input.idempotency_key
+            expected_result:
+              payload_digest: $input.post_packet.payload_digest
+            result_fields: [post_ref, payload_digest]
+            input:
+              post_payload: $input.post_packet.post_payload
+              evidence: $input.post_packet.source_evidence
+
+        - id: readback
+          when:
+            field: bind-payload.comparison.data.equal
+            equals: true
+          tool: provider.read
+          scopes:
+            - post.read
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: post.read
+            target: moltbook://posts
+            expected_provider: moltbook
+            result_fields: [post_ref, payload_digest, body, status]
+          context:
+            expected_result: publish.provider_operation.data.result
+            input: publish.provider_operation.data.result

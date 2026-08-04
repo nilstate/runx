@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because local registry installs keep digest
+// Module rationale: local registry installs keep digest
 // validation, binding checks, conflict planning, and atomic writes in one
 // transaction module.
 use std::collections::BTreeSet;
@@ -8,13 +8,12 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use runx_contracts::sha256_prefixed;
-use runx_parser::{
-    SkillInstallOrigin, ValidatedSkillInstall, parse_runner_manifest_yaml,
-    validate_runner_manifest, validate_skill_install,
-};
+use runx_parser::{SkillInstallOrigin, ValidatedSkillInstall, validate_skill_install};
 use serde_json::{Value, json};
 
-use super::package_files::{registry_package_digest, validate_registry_package_file_path};
+use super::package_files::{
+    registry_package_digest, validate_registry_package_file_path, validate_registry_skill_package,
+};
 use super::refs::safe_skill_package_parts;
 use super::source_authority::RegistryManifestSourceAuthority;
 use super::trust_anchor::{
@@ -74,6 +73,8 @@ pub struct InstallLocalSkillResult {
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstallError {
+    #[error("{0}")]
+    Package(#[from] runx_parser::SkillPackageError),
     #[error("{0}")]
     Parser(#[from] runx_parser::SkillInstallError),
     #[error("{0}")]
@@ -229,9 +230,14 @@ fn validate_install_candidate(
     validate_candidate_package_digest(candidate, allow_unsigned_local)?;
     let origin = install_origin(candidate, &actual_digest, profile_digest.as_deref());
     let install = validate_skill_install(&candidate.markdown, origin)?;
+    let package = validate_registry_skill_package(
+        &candidate.markdown,
+        candidate.profile_document.as_deref(),
+        &candidate.package_files,
+    )?;
     let runner_names = validate_install_binding_manifest(
         &install.skill.name,
-        candidate.profile_document.as_deref(),
+        package.root_manifest(),
         &candidate.runner_names,
     )?;
     let next_profile_state = next_profile_state(
@@ -591,7 +597,7 @@ fn install_paths(
     }
 }
 
-// rust-style-allow: long-function - install planning compares all destination
+// Function rationale: install planning compares all destination
 // files before writing so package, profile, and lock updates remain atomic.
 fn prepare_install_write_plan(
     paths: &InstallPaths,
@@ -610,28 +616,26 @@ fn prepare_install_write_plan(
         Some(path) => read_optional(path)?,
         None => None,
     };
-    if let Some(existing) = &existing {
-        if sha256_prefixed(existing.as_bytes()) != sha256_prefixed(markdown.as_bytes()) {
-            return Err(InstallError::ConflictingSkill(paths.destination.clone()));
-        }
+    if let Some(existing) = &existing
+        && sha256_prefixed(existing.as_bytes()) != sha256_prefixed(markdown.as_bytes())
+    {
+        return Err(InstallError::ConflictingSkill(paths.destination.clone()));
     }
     if let (Some(path), Some(existing), Some(next)) = (
         &paths.profile_state_path,
         &existing_profile,
         next_profile_state,
-    ) {
-        if existing != next {
-            return Err(InstallError::ConflictingProfile(path.clone()));
-        }
+    ) && existing != next
+    {
+        return Err(InstallError::ConflictingProfile(path.clone()));
     }
     if let (Some(path), Some(existing), Some(next)) = (
         &paths.runner_manifest_path,
         &existing_runner_manifest,
         profile_document,
-    ) {
-        if existing != next {
-            return Err(InstallError::ConflictingRunnerManifest(path.clone()));
-        }
+    ) && existing != next
+    {
+        return Err(InstallError::ConflictingRunnerManifest(path.clone()));
     }
     let mut seen_package_paths = BTreeSet::new();
     let mut package_file_plans = Vec::with_capacity(package_files.len());
@@ -650,10 +654,10 @@ fn prepare_install_write_plan(
         }
         let path = paths.package_root.join(&file.path);
         let existing = read_optional(&path)?;
-        if let Some(existing) = &existing {
-            if existing != &file.content {
-                return Err(InstallError::ConflictingPackageFile(path));
-            }
+        if let Some(existing) = &existing
+            && existing != &file.content
+        {
+            return Err(InstallError::ConflictingPackageFile(path));
         }
         package_file_plans.push(PackageFileWritePlan {
             path,
@@ -722,20 +726,19 @@ fn commit_install_write_plan(
 
 fn validate_install_binding_manifest(
     skill_name: &str,
-    profile_document: Option<&str>,
+    manifest: Option<&runx_parser::SkillRunnerManifest>,
     advertised_runner_names: &[String],
 ) -> Result<Vec<String>, InstallError> {
-    let Some(profile_document) = profile_document else {
+    let Some(manifest) = manifest else {
         return Ok(advertised_runner_names.to_vec());
     };
-    let manifest = validate_runner_manifest(parse_runner_manifest_yaml(profile_document)?)?;
-    if let Some(manifest_skill) = manifest.skill {
-        if manifest_skill != skill_name {
-            return Err(InstallError::ManifestSkillMismatch {
-                manifest_skill,
-                skill_name: skill_name.to_owned(),
-            });
-        }
+    if let Some(manifest_skill) = &manifest.skill
+        && manifest_skill != skill_name
+    {
+        return Err(InstallError::ManifestSkillMismatch {
+            manifest_skill: manifest_skill.clone(),
+            skill_name: skill_name.to_owned(),
+        });
     }
     let runner_names = manifest.runners.keys().cloned().collect::<Vec<_>>();
     if !advertised_runner_names.is_empty() && advertised_runner_names != runner_names {

@@ -5,11 +5,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Barrier};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use runx_contracts::{JsonObject, Receipt};
 use runx_runtime::receipts::{RuntimeReceiptSignaturePolicy, step_receipt};
-use runx_runtime::{InvocationStatus, LocalReceiptStore, ReceiptStoreError, SkillOutput};
+use runx_runtime::{InvocationOutput, InvocationStatus, LocalReceiptStore, ReceiptStoreError};
 use serde_json::json;
 
 // Receipt ids are content-addressed (`id = hash(canonical_body)`), so the
@@ -346,6 +347,79 @@ fn write_receipt_commits_readable_receipt_and_index() -> Result<(), Box<dyn std:
 }
 
 #[test]
+fn write_receipts_commits_one_durable_batch_and_index() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let store = LocalReceiptStore::new(temp.path().join("receipts"));
+    let receipts = [success_receipt()?, abnormal_receipt()?];
+
+    store.write_receipts(&receipts)?;
+
+    let index = store.load_index()?;
+    assert_eq!(index.entries.len(), receipts.len());
+    for receipt in receipts {
+        assert_eq!(store.read_exact(&receipt.id)?.id, receipt.id);
+    }
+    Ok(())
+}
+
+#[test]
+fn concurrent_writers_commit_one_complete_index() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let root = Arc::new(temp.path().join("receipts"));
+    let receipts = (0..16)
+        .map(|index| {
+            runtime_receipt(
+                "concurrent-store",
+                &format!("step-{index}"),
+                InvocationStatus::Success,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let barrier = Arc::new(Barrier::new(receipts.len()));
+    let writers = receipts
+        .iter()
+        .cloned()
+        .map(|receipt| {
+            let root = Arc::clone(&root);
+            let barrier = Arc::clone(&barrier);
+            std::thread::spawn(move || {
+                barrier.wait();
+                LocalReceiptStore::new(root.as_ref()).write_receipt(&receipt)
+            })
+        })
+        .collect::<Vec<_>>();
+
+    for writer in writers {
+        writer.join().map_err(|_| "receipt writer panicked")??;
+    }
+
+    let store = LocalReceiptStore::new(root.as_ref());
+    let index = store.load_index()?;
+    assert_eq!(index.entries.len(), receipts.len());
+    assert_eq!(store.list()?.len(), receipts.len());
+    Ok(())
+}
+
+#[test]
+fn write_receipts_preflights_every_proof_before_writing() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = TestDir::new()?;
+    let store = LocalReceiptStore::new(temp.path().join("receipts"));
+    let valid = success_receipt()?;
+    let mut invalid = abnormal_receipt()?;
+    invalid.signature.value = "sig:tampered".into();
+
+    let result = store.write_receipts(&[valid.clone(), invalid]);
+
+    assert!(matches!(
+        result,
+        Err(ReceiptStoreError::ReceiptProofInvalid { .. })
+    ));
+    assert!(!store.root().join(receipt_file_name(&valid.id)).exists());
+    Ok(())
+}
+
+#[test]
 fn content_addressed_receipts_use_platform_safe_file_names()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = TestDir::new()?;
@@ -400,6 +474,46 @@ fn write_receipt_allows_identical_and_rejects_divergent_rewrite()
 }
 
 #[test]
+fn write_receipts_coalesces_identical_ids_and_rejects_divergent_content()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let store = LocalReceiptStore::new(temp.path());
+    let receipt = success_receipt()?;
+
+    store.write_receipts(&[receipt.clone(), receipt.clone()])?;
+    assert_eq!(store.list()?.len(), 1);
+    assert_eq!(store.load_index()?.entries.len(), 1);
+
+    let mut changed = receipt.clone();
+    changed.signature.value = "sig:different".into();
+    let result = store.write_receipts(&[receipt, changed]);
+
+    assert!(matches!(
+        result,
+        Err(ReceiptStoreError::ReceiptAlreadyExists { .. })
+    ));
+    Ok(())
+}
+
+#[test]
+fn identical_receipt_retry_repairs_a_missing_index_projection()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let store = LocalReceiptStore::new(temp.path());
+    let receipt = success_receipt()?;
+
+    store.write_receipt(&receipt)?;
+    fs::remove_file(store.root().join("index.json"))?;
+
+    store.write_receipt(&receipt)?;
+
+    let index = store.load_index()?;
+    assert_eq!(index.entries.len(), 1);
+    assert_eq!(index.entries[0].receipt_id, receipt.id);
+    Ok(())
+}
+
+#[test]
 fn index_write_failure_reports_stale_but_receipt_stays_readable()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = TestDir::new()?;
@@ -414,6 +528,29 @@ fn index_write_failure_reports_stale_but_receipt_stays_readable()
         Err(ReceiptStoreError::ReceiptIndexStale { .. })
     ));
     assert_eq!(store.read_exact(&receipt.id)?.id, receipt.id);
+    Ok(())
+}
+
+#[test]
+fn unrelated_historical_proof_does_not_block_a_new_receipt_write()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let mut historical = success_receipt()?;
+    historical.signature.value = "sig:unavailable-historical-key".into();
+    write_json(temp.path(), &receipt_file_name(&historical.id), &historical)?;
+    let store = LocalReceiptStore::new(temp.path());
+    let receipt = abnormal_receipt()?;
+
+    store.write_receipt(&receipt)?;
+
+    assert_eq!(store.read_exact(&receipt.id)?.id, receipt.id);
+    let index: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(temp.path().join("index.json"))?)?;
+    assert_eq!(index["entries"].as_array().map(Vec::len), Some(2));
+    assert!(matches!(
+        store.load_index(),
+        Err(ReceiptStoreError::ReceiptProofInvalid { .. })
+    ));
     Ok(())
 }
 
@@ -572,24 +709,18 @@ fn runtime_receipt(
         step_id,
         1,
         &skill_output(status),
+        &JsonObject::new(),
         "2026-05-18T00:01:00Z",
     )
     .map_err(Into::into)
 }
 
-fn skill_output(status: InvocationStatus) -> SkillOutput {
+fn skill_output(status: InvocationStatus) -> InvocationOutput {
     let (stdout, stderr, exit_code) = match status {
         InvocationStatus::Success => ("ok".to_owned(), String::new(), Some(0)),
         InvocationStatus::Failure => (String::new(), "failed".to_owned(), Some(1)),
     };
-    SkillOutput {
-        status,
-        stdout,
-        stderr,
-        exit_code,
-        duration_ms: 1,
-        metadata: JsonObject::new(),
-    }
+    InvocationOutput::process(status, stdout, stderr, exit_code, 1, JsonObject::new())
 }
 
 fn receipt_file_name(receipt_id: &str) -> String {

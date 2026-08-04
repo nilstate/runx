@@ -13,7 +13,6 @@ inputs:
 expect:
   status: success
   output:
-    matches_packet: runx.sourcey.verification.v1
     subset:
       verified: true
       contains_doctype: true

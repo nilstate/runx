@@ -139,14 +139,183 @@ fn mcp_native_binary_reports_mid_session_framing_fault() -> Result<(), Box<dyn s
     Ok(())
 }
 
+#[test]
+fn mcp_native_binary_uses_one_workspace_env_snapshot_per_session()
+-> Result<(), Box<dyn std::error::Error>> {
+    let workspace = TestTempDir::new("runx-mcp-workspace-env")?;
+    let runx_dir = workspace.path().join(".runx");
+    fs::create_dir_all(&runx_dir)?;
+    fs::write(
+        runx_dir.join("project.json"),
+        r#"{"version":1,"project_id":"proj_mcp_workspace_env","created_at":"2026-07-16T00:00:00Z"}"#,
+    )?;
+    fs::write(
+        workspace.path().join(".env"),
+        "MCP_DOGFOOD_MARKER=initial-snapshot\n",
+    )?;
+    let skill_dir = write_workspace_env_mcp_skill(workspace.path())?;
+    let mut server =
+        spawn_mcp_server_at(&[skill_dir.display().to_string()], workspace.path(), None)?;
+
+    write_frame(server.stdin_mut()?, &initialize_request(1))?;
+    let initialize = server.read_response("initialize", MCP_INITIALIZE_TIMEOUT)?;
+    assert_eq!(
+        path_text(&initialize, &["result", "protocolVersion"])?,
+        "2025-06-18"
+    );
+    write_frame(server.stdin_mut()?, &initialized_notification())?;
+
+    // A long-lived MCP server must keep the command-entry snapshot. Reloading
+    // the file between calls would make one operator session non-deterministic.
+    fs::write(
+        workspace.path().join(".env"),
+        "MCP_DOGFOOD_MARKER=changed-after-start\n",
+    )?;
+    write_frame(
+        server.stdin_mut()?,
+        &request(
+            2,
+            "tools/call",
+            json!({
+                "name": "mcp-workspace-env",
+                "arguments": {},
+            }),
+        ),
+    )?;
+    let response = server.read_response("tools/call workspace env", MCP_REQUEST_TIMEOUT)?;
+    assert_eq!(
+        path_text(&response, &["result", "content", "0", "text"])?,
+        "initial-snapshot"
+    );
+
+    server.close_stdin();
+    let status = server.wait_timeout(Duration::from_secs(10))?;
+    assert!(
+        status.success(),
+        "runx mcp serve exited with {status}; stderr: {}",
+        server.stderr_string()?
+    );
+    Ok(())
+}
+
+#[test]
+fn mcp_credential_readiness_fails_at_startup_with_setup_action()
+-> Result<(), Box<dyn std::error::Error>> {
+    let workspace = TestTempDir::new("runx-mcp-missing-credential")?;
+    let skill_dir = write_credential_mcp_skill(workspace.path())?;
+    let mut server =
+        spawn_mcp_server_at(&[skill_dir.display().to_string()], workspace.path(), None)?;
+    let status = server.wait_timeout(Duration::from_secs(10))?;
+    assert!(!status.success());
+    let stderr = server.stderr_string()?;
+    assert!(stderr.contains("needs a example credential"));
+    assert!(stderr.contains("runx credential set example --from-stdin"));
+    Ok(())
+}
+
+#[test]
+fn mcp_credential_readiness_uses_startup_workspace_snapshot()
+-> Result<(), Box<dyn std::error::Error>> {
+    let workspace = TestTempDir::new("runx-mcp-ready-credential")?;
+    fs::write(
+        workspace.path().join(".env"),
+        "MCP_DOGFOOD_CREDENTIAL=credential-snapshot\n",
+    )?;
+    let skill_dir = write_credential_mcp_skill(workspace.path())?;
+    let mut server =
+        spawn_mcp_server_at(&[skill_dir.display().to_string()], workspace.path(), None)?;
+    write_frame(server.stdin_mut()?, &initialize_request(1))?;
+    let initialize = server.read_response("initialize", MCP_INITIALIZE_TIMEOUT)?;
+    assert_eq!(
+        path_text(&initialize, &["result", "protocolVersion"])?,
+        "2025-06-18"
+    );
+    write_frame(server.stdin_mut()?, &initialized_notification())?;
+    write_frame(
+        server.stdin_mut()?,
+        &request(
+            2,
+            "tools/call",
+            json!({"name": "mcp-credential", "arguments": {}}),
+        ),
+    )?;
+    let response = server.read_response("default credential runner", MCP_REQUEST_TIMEOUT)?;
+    assert_eq!(
+        path_text(&response, &["result", "content", "0", "text"])?,
+        "default:[redacted-credential]"
+    );
+    assert!(!response.to_string().contains("credential-snapshot"));
+    server.close_stdin();
+    assert!(server.wait_timeout(Duration::from_secs(10))?.success());
+    assert!(!server.stderr_string()?.contains("credential-snapshot"));
+    Ok(())
+}
+
+#[test]
+fn mcp_selected_runner_matches_its_credential_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    let workspace = TestTempDir::new("runx-mcp-selected-credential")?;
+    fs::write(
+        workspace.path().join(".env"),
+        "MCP_DOGFOOD_CREDENTIAL=selected-runner-secret\n",
+    )?;
+    let skill_dir = write_credential_mcp_skill(workspace.path())?;
+    let mut server = spawn_mcp_server_at(
+        &[
+            skill_dir.display().to_string(),
+            "--runner".to_owned(),
+            "alternate".to_owned(),
+        ],
+        workspace.path(),
+        None,
+    )?;
+
+    write_frame(server.stdin_mut()?, &initialize_request(1))?;
+    let initialize = server.read_response("initialize", MCP_INITIALIZE_TIMEOUT)?;
+    assert_eq!(
+        path_text(&initialize, &["result", "protocolVersion"])?,
+        "2025-06-18"
+    );
+    write_frame(server.stdin_mut()?, &initialized_notification())?;
+    write_frame(
+        server.stdin_mut()?,
+        &request(
+            2,
+            "tools/call",
+            json!({"name": "mcp-credential", "arguments": {}}),
+        ),
+    )?;
+    let response = server.read_response("alternate credential runner", MCP_REQUEST_TIMEOUT)?;
+    assert_eq!(
+        path_text(&response, &["result", "content", "0", "text"])?,
+        "alternate:[redacted-credential]"
+    );
+    assert!(!response.to_string().contains("selected-runner-secret"));
+
+    server.close_stdin();
+    assert!(server.wait_timeout(Duration::from_secs(10))?.success());
+    assert!(!server.stderr_string()?.contains("selected-runner-secret"));
+    Ok(())
+}
+
 fn spawn_mcp_server(args: &[String]) -> Result<McpProcess, Box<dyn std::error::Error>> {
     let repo_root = repo_root()?;
+    spawn_mcp_server_at(args, &repo_root, Some(&repo_root))
+}
+
+fn spawn_mcp_server_at(
+    args: &[String],
+    cwd: &Path,
+    runx_cwd: Option<&Path>,
+) -> Result<McpProcess, Box<dyn std::error::Error>> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_runx"));
     crate::support::apply_fixture_signing(&mut command, "mcp-dogfood-test-key");
+    command.current_dir(cwd).env_remove("MCP_DOGFOOD_MARKER");
+    if let Some(runx_cwd) = runx_cwd {
+        command.env("RUNX_CWD", runx_cwd);
+    } else {
+        command.env_remove("RUNX_CWD");
+    }
     let mut child = command
-        .current_dir(&repo_root)
-        .env("RUNX_CWD", &repo_root)
-        .env("RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY", "local")
         .arg("mcp")
         .arg("serve")
         .args(args)
@@ -194,7 +363,11 @@ impl McpProcess {
     ) -> Result<Value, Box<dyn std::error::Error>> {
         match self.stdout.recv_timeout(timeout) {
             Ok(Ok(value)) => Ok(value),
-            Ok(Err(error)) => Err(format!("{label}: {error}").into()),
+            Ok(Err(error)) => {
+                let _ignored = self.child.kill();
+                let _ignored = self.child.wait();
+                Err(format!("{label}: {error}; stderr: {}", self.stderr_string()?).into())
+            }
             Err(RecvTimeoutError::Timeout) => {
                 let _ignored = self.child.kill();
                 Err(format!(
@@ -366,42 +539,136 @@ fn read_json_file(path: &Path) -> Result<Value, Box<dyn std::error::Error>> {
 
 fn write_unenforced_mcp_echo_skill() -> Result<TestTempDir, Box<dyn std::error::Error>> {
     let skill_dir = TestTempDir::new("runx-mcp-dogfood-skill")?;
-    let server_path = repo_root()?.join("fixtures/runtime/adapters/mcp/stdio-server.py");
-    let server_arg = serde_json::to_string(&server_path.display().to_string())?;
+    copy_mcp_fixture_server(skill_dir.path())?;
     fs::write(
         skill_dir.path().join("SKILL.md"),
-        format!(
-            r#"---
+        r#"---
 name: mcp-echo
 description: Echo a message through a local MCP stdio fixture server.
-source:
-  type: mcp
-  server:
-    command: python3
-    args:
-      - {server_arg}
-  tool: echo
-  arguments:
-    message: "{{{{message}}}}"
-  timeout_seconds: 15
-  sandbox:
-    profile: readonly
-    cwd_policy: workspace
-    require_enforcement: false
-inputs:
-  message:
-    type: string
-    required: true
-    description: Message to echo through MCP
-runx:
-  input_resolution:
-    required:
-      - message
 ---
 
 Echo the provided message through a local MCP server fixture.
-"#
-        ),
+"#,
+    )?;
+    fs::write(
+        skill_dir.path().join("X.yaml"),
+        r#"skill: mcp-echo
+runners:
+  default:
+    default: true
+    type: mcp
+    server:
+      command: node
+      args:
+        - ./stdio-server.mjs
+    tool: echo
+    arguments:
+      message: "{{message}}"
+    timeout_seconds: 15
+    inputs:
+      message:
+        type: string
+        required: true
+        description: Message to echo through MCP
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn write_workspace_env_mcp_skill(workspace: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = workspace.join("mcp-workspace-env");
+    fs::create_dir_all(&skill_dir)?;
+    copy_mcp_fixture_server(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        r#"---
+name: mcp-workspace-env
+description: Return an allowlisted workspace value through an MCP server.
+---
+
+Return the allowlisted workspace marker.
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"skill: mcp-workspace-env
+runners:
+  default:
+    default: true
+    type: mcp
+    server:
+      command: node
+      args:
+        - ./stdio-server.mjs
+    tool: env
+    arguments:
+      name: MCP_DOGFOOD_MARKER
+    timeout_seconds: 15
+    environment:
+      required:
+        - MCP_DOGFOOD_MARKER
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn copy_mcp_fixture_server(skill_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    fs::copy(
+        repo_root()?.join("fixtures/skills/mcp-echo/stdio-server.mjs"),
+        skill_dir.join("stdio-server.mjs"),
+    )?;
+    Ok(())
+}
+
+fn write_credential_mcp_skill(workspace: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = workspace.join("mcp-credential");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        r#"---
+name: mcp-credential
+description: Credential readiness fixture.
+---
+
+Credential readiness fixture.
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: mcp-credential
+credentials:
+  example:
+    provider: example
+    auth:
+      api_key:
+        delivery:
+          env: MCP_DOGFOOD_CREDENTIAL
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./default.sh
+    input_mode: none
+    credential: example
+  alternate:
+    type: cli-tool
+    command: sh
+    args:
+      - ./alternate.sh
+    input_mode: none
+    credential: example
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("default.sh"),
+        "printf 'default:%s' \"$MCP_DOGFOOD_CREDENTIAL\"\n",
+    )?;
+    fs::write(
+        skill_dir.join("alternate.sh"),
+        "printf 'alternate:%s' \"$MCP_DOGFOOD_CREDENTIAL\"\n",
     )?;
     Ok(skill_dir)
 }

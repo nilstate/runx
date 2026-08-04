@@ -13,7 +13,7 @@ packet.
 
 The graph separates cognition from mutation. Agent phases author the scafld
 markdown spec and the bounded repo change bundle. Deterministic `fs.write` and
-`fs.write_bundle` phases are the only places files are written to disk. scafld
+`fs.apply_bundle` phases are the only places files are written to disk. scafld
 owns the workflow kernel: `plan`, `validate`, `approve`, `build_to_review`,
 `status`, `review`, `complete`, and `handoff`. runx owns the explicit authoring
 boundaries, deterministic writes, receipts, and final outbox packaging.
@@ -28,8 +28,8 @@ fails closed if the workspace checkout does not match it. The final
 
 The graph runs:
 
-`scafld plan` -> author markdown spec -> write spec -> read spec -> validate ->
-approve -> read approved spec -> read declared files -> author fix bundle ->
+`scafld plan` -> read the CLI-owned draft -> complete its markdown body ->
+write spec -> read spec -> validate -> approve -> read approved spec -> read declared files -> author fix bundle ->
 write fix bundle -> build to review -> status -> read current branch -> review
 -> complete -> final status -> handoff -> package draft PR outbox -> adapter
 push.
@@ -62,27 +62,28 @@ such as spec authoring, fix authoring, review, and human merge gate.
 
 The `issue-to-pr-author-spec` boundary must emit a full scafld
 2.4-compatible markdown document, not YAML and not a reduced project brief.
+`scafld plan` is the sole owner of lifecycle front matter. The graph reads that
+exact draft and supplies it as `planned_spec_contents`; the author must preserve
+the complete front-matter block exactly and complete only the markdown body.
+It must never synthesize, normalize, repair, or reorder lifecycle fields.
+Keep the CLI-created top-level title; add the required sections beneath it.
 
-The document must preserve front matter with:
-
-- `spec_version: '2.0'`
-- `task_id`
-- `created`: ISO-8601 timestamp
-- `updated`: ISO-8601 timestamp
-- `title`: non-empty task title, normally `thread_title`
-- `status: draft`
-- `harden_status: not_run`
-- `size`: one of `small`, `medium`, or `large`
-- `risk_level`
+It must also emit `context_files`, a deduplicated array of at most sixteen
+concrete repo-relative paths whose current contents are needed to implement the
+spec. This is bounded authoring evidence, not a projection of scafld state.
+Include the relevant files from `repo_snapshot.recommended_files`, the smallest
+production targets, and targeted tests when they exist. Native
+`fs.read_bundle` hydrates this list; no Runx tool parses the spec Markdown or
+guesses file ownership from prose.
 
 The body must include the standard scafld 2 sections: Current State, Summary,
 Context, Objectives, Scope, Dependencies, Assumptions, Touchpoints, Risks,
 Acceptance, at least one Phase section, Rollback, Review, Self Eval,
 Deviations, Metadata, Origin, Harden Rounds, and Planning Log.
 
-The graph normalizes the front matter before writing the spec so current scafld
-schema fields such as `title` and size stay deterministic even if the authoring
-boundary omits or stales them.
+`scafld validate` is the only schema gate after the deterministic write. If the
+author changes the CLI-owned header, validation must fail rather than a Runx
+tool guessing how to repair it.
 
 All changed-file declarations must use concrete repo-relative paths in
 backticks under Context / Files impacted and Phase / Changes. Do not declare
@@ -100,7 +101,7 @@ Validation commands must run against the current workspace state after the fix
 bundle is written. Do not depend on git history ranges such as `HEAD~1` or
 merge-base comparisons. Validation commands, when present, must be direct
 repo-local checks such as test, lint, build, or file-content commands. Never use
-runx runtime internals or `graph/scafld/run.mjs` as a validation command;
+runx runtime internals or `graph/scafld/tools/scafld-cli.mjs` as a validation command;
 scafld is already the lifecycle runner around the task.
 
 For any code change, the approved spec must declare at least one targeted
@@ -118,7 +119,8 @@ publishing a code-only PR.
 
 Preserve source-thread context in the spec's Summary, Origin, and Planning Log
 so later PR packaging can explain why the lane ran and what evidence justified
-the mutation.
+the mutation. Return the exact written document as `spec_contents` and the
+bounded evidence paths as `context_files`.
 
 ## Fix Authoring Contract
 
@@ -199,3 +201,83 @@ On success, the lane emits:
   push.
 - Story metadata suitable for one source-thread reviewer update that summarizes
   the lifecycle gates and points at the human merge decision.
+
+## Agent task contracts
+
+### `issue-to-pr-author-spec`
+
+Complete the draft created by scafld plan as a scafld 2.4-compatible markdown spec.
+Use thread_title, thread_body, thread_locator, thread, outbox_entry, target_repo, repo_snapshot,
+repo_snapshot_path, and repo_context to keep the spec grounded in the actual request and
+repository. Treat planned_spec_contents as the exact scafld-owned source document: preserve its
+entire front-matter block byte-for-byte, do not add, remove, reorder, normalize, or repair any
+lifecycle field. Preserve the CLI-created top-level title and complete the markdown body below it. The body must include Current State, Summary, Context,
+Objectives, Scope, Dependencies, Assumptions, Touchpoints, Risks, Acceptance, at least one Phase
+section, Rollback, Review, Self Eval, Deviations, Metadata, Origin, Harden Rounds, and Planning
+Log. Declare changed repo files in Context / Files impacted and Phase / Changes using concrete
+repo-relative paths in backticks. Do not declare scafld-managed control-plane artifacts under
+.scafld/specs, .scafld/reviews, .scafld/runs, or old .ai governance paths as repo-change scope.
+Validation commands must be executable in the current workspace after the fix bundle is written.
+Do not depend on git history ranges such as HEAD~1. When validation commands are included, use
+direct repo-local checks such as tests, lint, build, or file-content commands. Do not use runx
+runtime internals or graph/scafld/tools/scafld-cli.mjs as validation commands; scafld is already the
+lifecycle runner around this graph. For any code change, declare at least one targeted test/spec
+file in Files impacted and Phase / Changes and include at least one executable validation
+command that exercises that target. Do this even when the source thread does not explicitly
+request coverage; code PRs are not publishable from this lane without either targeted test/spec
+scope or grounded scafld validation evidence. When the source thread or acceptance criteria asks
+for tests, specs, regression coverage, focused coverage, or request/service coverage, this
+coverage requirement is mandatory and cannot be softened to a generic smoke check. If no
+existing test/spec path is declared but the repository layout makes a conventional path
+inferable, declare that new test/spec file. If no grounded test/spec path or command can be
+inferred from the repo snapshot, stop with a missing-evidence reason instead of publishing a
+code-only PR. If a required file path cannot be grounded from the thread or repository evidence,
+keep the scope narrow and state the assumption instead of inventing a file. When the approved
+lane is documentation or process work, prefer existing documentation surfaces from
+repo_snapshot.existing_files or repo_context, and declare at least one non-governance repo file;
+issue-to-pr is a PR lane, so an approved spec must not leave the repo-change scope empty.
+Preserve source-thread context in Summary, Origin, and Planning Log so the eventual reviewer
+story can explain why this lane ran and what evidence justified mutation. Return context_files as
+a deduplicated array of at most sixteen concrete repo-relative files needed to implement the
+approved scope. Include relevant repo_snapshot.recommended_files, production targets, and
+targeted tests. The list is bounded read context, not scafld lifecycle state; do not include
+governance artifacts or infer paths not grounded in repository evidence.
+
+### `issue-to-pr-apply-fix`
+
+Produce the bounded fix bundle described by the approved scafld 2 markdown spec. Use
+repo_snapshot, repo_snapshot_path, repo_context, approved spec contents, current thread context,
+and declared_file_context. Review declared_file_context.files and
+declared_file_context.missing before deciding what to edit. This is the native
+`fs.read_bundle` result with `{ repo_root, file_count, total_bytes, files, missing }`;
+each present file has `{ path, contents, bytes, truncated, content_digest }`. Treat present
+contents as already read source evidence, and use the allowed `fs.read` tool when the approved
+spec requires another grounded file. `fix_bundle.files` must be an
+array of { path, contents } entries covering every repo file needed to satisfy the approved
+spec. For documentation or process changes, the approved spec, thread, repo_snapshot,
+repo_context, and current declared file contents are sufficient when they identify a narrow
+edit; do not return an empty bundle when one scoped docs edit is possible. For any existing
+file, contents must be the complete current file with the smallest necessary edit applied;
+preserve unrelated sections, headings, prose, tables, links, setup instructions, and ordering
+exactly. Never replace an existing file with only the new section or a shortened summary. If a
+declared file list is sparse but repo_snapshot.recommended_files contains concrete repo-relative
+files, treat those recommended files as actionable target evidence. Read the recommended file
+and the nearest relevant test or spec before blocking. When the source thread includes a runtime
+exception, backtrace, failing command, or named behavior and a recommended file exists, prefer
+the smallest conventional fix plus targeted regression coverage over an empty bundle. For any
+production code change, fix_bundle.files must include both the smallest production fix and a
+targeted test/spec file, even when the source request does not explicitly ask for coverage. Do
+not publish a code-only fix bundle from this lane. When the approved spec, source thread, or
+acceptance criteria asks for tests, specs, regression coverage, focused coverage, or
+request/service coverage, the targeted test/spec file must directly cover that requested
+behavior. If no test file exists, create the narrow conventional test file when the repository
+structure makes that path inferable; otherwise block with the missing path and evidence reason.
+If no fix is possible after inspecting the target paths, the blocked reason must name the exact
+path and missing evidence. If a declared file has exists: false and the approved spec
+intentionally creates it, write the new file when the desired contents are inferable from the
+spec and thread. Do not widen scope. Do not hand-edit scafld lifecycle files. Return
+fix_bundle.status: blocked with a reason and an empty files array only when no concrete
+repo-relative target is declared, a required existing file cannot be read, or the requested
+behavior cannot be inferred after inspecting the supplied target files without inventing
+requirements; name the missing evidence and path in the reason because an empty bundle is a
+terminal policy denial.

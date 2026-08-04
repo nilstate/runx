@@ -16,8 +16,6 @@ export function kernelTestEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv 
   return {
     ...process.env,
     RUNX_CWD: process.cwd(),
-    RUNX_KERNEL_EVAL_BIN: runxBinary,
-    RUNX_PARSER_EVAL_BIN: runxBinary,
     RUNX_RUST_CLI_BIN: runxBinary,
     ...extra,
   };

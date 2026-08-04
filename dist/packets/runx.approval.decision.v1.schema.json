@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/approval/decision/v1.json",
+  "x-runx-packet-id": "runx.approval.decision.v1",
+  "x-runx-generated-from": "schemas/approval-decision.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "actor": {
+      "anyOf": [
+        {
+          "const": "human",
+          "type": "string"
+        },
+        {
+          "const": "agent",
+          "type": "string"
+        }
+      ]
+    },
+    "approved": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "gate_id": {
+      "type": "string"
+    },
+    "gate_type": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.approval.decision.v1",
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "approved",
+          "type": "string"
+        },
+        {
+          "const": "denied",
+          "type": "string"
+        },
+        {
+          "const": "pending",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "required": [
+    "approved",
+    "gate_id",
+    "idempotency_key",
+    "status"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.approval.decision.v1"
+}

@@ -1,13 +1,21 @@
-name: missing-subject-needs-agent
+name: taste-profile-thin-evidence-seals-stop
 kind: skill
 target: ..
 runner: profile
 inputs:
+  subject: runx maintainer
   evidence:
-    - concise, proof-first, no decorative cards
+    - kind: instruction
+      content: Keep it clean.
 expect:
-  status: needs_agent
-metadata:
-  public_skill: taste-profile
-  source_case: missing-subject-needs-agent
-  source: skills-fixture
+  status: sealed
+  steps: [index, digest, reject]
+  step_outputs:
+    reject:
+      subset:
+        taste_profile_packet:
+          data:
+            decision: needs_more_evidence
+            validation: { status: fail }
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: taste-profile, source_case: thin-evidence-stop, source: skills-fixture }

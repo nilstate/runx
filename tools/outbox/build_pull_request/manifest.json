@@ -134,35 +134,14 @@
   "scopes": [
     "runx:repo:package"
   ],
-  "runx": {
-    "artifacts": {
-      "named_emits": {
-        "draft_pull_request": "draft_pull_request_packet",
-        "outbox_entry": "outbox_entry"
-      }
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
-  "output": {
+  "artifacts": {
     "named_emits": {
       "draft_pull_request": "draft_pull_request_packet",
       "outbox_entry": "outbox_entry"
     },
-    "outputs": {
-      "draft_pull_request": {
-        "packet": "runx.outbox.draft_pull_request.v1"
-      },
-      "outbox_entry": {
-        "packet": "runx.outbox.entry.v1"
-      }
+    "packets": {
+      "draft_pull_request": "runx.outbox.draft_pull_request.v1",
+      "outbox_entry": "runx.outbox.entry.v1"
     }
-  },
-  "source_hash": "sha256:379a83d3d59d509901c991048079364648ce51c550c13aac024faa2589bebbc4",
-  "schema_hash": "sha256:acb31a4949db4b76155909a4adda45d2427b5e615d6557f9816482a07a8ce3de",
-  "toolkit_version": "0.1.4"
+  }
 }

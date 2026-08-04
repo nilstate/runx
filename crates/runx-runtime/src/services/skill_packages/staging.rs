@@ -1,0 +1,271 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use runx_contracts::JsonValue;
+
+use super::path::{
+    display_relative, invalid_skill_change, normalize_package_file, reject_secret_material,
+    required_string, unique_stage_root,
+};
+use super::snapshot::{PackageSnapshot, package_snapshot};
+use super::{MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES};
+use crate::RuntimeError;
+use crate::filesystem::{TextBundle, TextFileWrite, apply_text_bundle};
+
+pub(super) struct InlineCandidateStage {
+    root: PathBuf,
+    pub(super) skill_dir: PathBuf,
+}
+
+impl InlineCandidateStage {
+    pub(super) fn prepare(repo_root: &Path, files: &[JsonValue]) -> Result<Self, RuntimeError> {
+        let root = unique_stage_root(repo_root, &repo_root.join(".runx-inline-skill"));
+        let stage = Self {
+            root: root.clone(),
+            skill_dir: root,
+        };
+        fs::create_dir_all(&stage.skill_dir).map_err(|source| {
+            RuntimeError::io(
+                format!("creating inline candidate {}", stage.skill_dir.display()),
+                source,
+            )
+        })?;
+        let writes = admit_inline_candidate_files(files)?;
+        apply_text_bundle(
+            "runx.skill.validate",
+            &stage.skill_dir,
+            &TextBundle {
+                writes,
+                deletes: Vec::new(),
+            },
+        )?;
+        Ok(stage)
+    }
+}
+
+fn admit_inline_candidate_files(files: &[JsonValue]) -> Result<Vec<TextFileWrite>, RuntimeError> {
+    if files.is_empty() || files.len() > MAX_PACKAGE_FILES {
+        return Err(invalid_skill_change(format!(
+            "candidate files must contain 1-{MAX_PACKAGE_FILES} entries"
+        )));
+    }
+    let mut writes = Vec::with_capacity(files.len());
+    let mut total_bytes = 0usize;
+    let mut seen = BTreeSet::new();
+    for (index, file) in files.iter().enumerate() {
+        let file = file.as_object().ok_or_else(|| {
+            invalid_skill_change(format!("candidate files[{index}] must be an object"))
+        })?;
+        let path = normalize_package_file(required_string(file, "path")?)?;
+        if !seen.insert(path.clone()) {
+            return Err(invalid_skill_change(format!(
+                "candidate contains duplicate file {path}"
+            )));
+        }
+        let contents = file
+            .get("contents")
+            .and_then(JsonValue::as_str)
+            .ok_or_else(|| {
+                invalid_skill_change(format!(
+                    "candidate files[{index}].contents must be a string"
+                ))
+            })?;
+        total_bytes = total_bytes
+            .checked_add(contents.len())
+            .ok_or_else(|| invalid_skill_change("candidate byte count overflow"))?;
+        if total_bytes > MAX_PACKAGE_BYTES {
+            return Err(invalid_skill_change(format!(
+                "candidate exceeds {MAX_PACKAGE_BYTES} bytes"
+            )));
+        }
+        reject_secret_material(&path, contents)?;
+        writes.push(TextFileWrite {
+            path,
+            contents: contents.to_owned(),
+        });
+    }
+    if !seen.contains("SKILL.md") || !seen.contains("X.yaml") {
+        return Err(invalid_skill_change(
+            "candidate must contain SKILL.md and X.yaml",
+        ));
+    }
+    Ok(writes)
+}
+
+impl Drop for InlineCandidateStage {
+    fn drop(&mut self) {
+        let _ignored = fs::remove_dir_all(&self.root);
+    }
+}
+
+pub(super) struct ValidationReceiptStage {
+    root: PathBuf,
+    pub(super) receipt_dir: PathBuf,
+}
+
+impl ValidationReceiptStage {
+    pub(super) fn prepare(repo_root: &Path) -> Result<Self, RuntimeError> {
+        let root = unique_stage_root(repo_root, &repo_root.join(".runx-validation"));
+        let receipt_dir = root.join("receipts");
+        fs::create_dir_all(&receipt_dir).map_err(|source| {
+            RuntimeError::io(
+                format!(
+                    "creating isolated validation receipts {}",
+                    receipt_dir.display()
+                ),
+                source,
+            )
+        })?;
+        Ok(Self { root, receipt_dir })
+    }
+}
+
+impl Drop for ValidationReceiptStage {
+    fn drop(&mut self) {
+        let _ignored = fs::remove_dir_all(&self.root);
+    }
+}
+
+pub(super) fn isolated_harness_env(
+    repo_root: &Path,
+    env: &BTreeMap<String, String>,
+) -> BTreeMap<String, String> {
+    let mut isolated = BTreeMap::new();
+    for key in [
+        "PATH",
+        "SystemRoot",
+        "COMSPEC",
+        "PATHEXT",
+        "LANG",
+        "LC_ALL",
+        "SHELL",
+    ] {
+        if let Some(value) = env.get(key) {
+            isolated.insert(key.to_owned(), value.clone());
+        }
+    }
+    isolated.insert(
+        crate::receipts::paths::RUNX_CWD_ENV.to_owned(),
+        repo_root.to_string_lossy().into_owned(),
+    );
+    let tools = repo_root.join("tools");
+    if tools.is_dir()
+        && let Ok(value) = std::env::join_paths([tools])
+    {
+        isolated.insert(
+            crate::services::tool_roots::RUNX_TOOL_ROOTS_ENV.to_owned(),
+            value.to_string_lossy().into_owned(),
+        );
+    }
+    isolated
+}
+
+pub(super) struct CandidateStage {
+    root: PathBuf,
+    pub(super) skill_dir: PathBuf,
+    pub(super) base_digest: String,
+}
+
+impl CandidateStage {
+    pub(super) fn prepare(
+        repo_root: &Path,
+        target: &Path,
+        bundle: &TextBundle,
+    ) -> Result<Self, RuntimeError> {
+        let root = unique_stage_root(repo_root, target);
+        let skill_dir = root.clone();
+        let snapshot = package_snapshot(target)?;
+        let stage = Self {
+            root,
+            skill_dir,
+            base_digest: snapshot.digest.clone(),
+        };
+        fs::create_dir_all(&stage.skill_dir).map_err(|source| {
+            RuntimeError::io(
+                format!("creating candidate {}", stage.skill_dir.display()),
+                source,
+            )
+        })?;
+        copy_snapshot(&stage.skill_dir, snapshot)?;
+        let staged = rebase_bundle(repo_root, target, bundle)?;
+        apply_text_bundle("runx.skill.apply", &stage.skill_dir, &staged)?;
+        Ok(stage)
+    }
+}
+
+fn copy_snapshot(skill_dir: &Path, snapshot: PackageSnapshot) -> Result<(), RuntimeError> {
+    for file in snapshot.files {
+        let destination = skill_dir.join(&file.relative);
+        let parent = destination
+            .parent()
+            .ok_or_else(|| invalid_skill_change("candidate file has no parent directory"))?;
+        fs::create_dir_all(parent).map_err(|source| {
+            RuntimeError::io(
+                format!("creating candidate directory {}", parent.display()),
+                source,
+            )
+        })?;
+        fs::write(&destination, &file.contents).map_err(|source| {
+            RuntimeError::io(
+                format!("writing candidate file {}", destination.display()),
+                source,
+            )
+        })?;
+        fs::set_permissions(&destination, file.permissions).map_err(|source| {
+            RuntimeError::io(
+                format!("preserving candidate permissions {}", destination.display()),
+                source,
+            )
+        })?;
+    }
+    Ok(())
+}
+
+fn rebase_bundle(
+    repo_root: &Path,
+    target: &Path,
+    bundle: &TextBundle,
+) -> Result<TextBundle, RuntimeError> {
+    let target_prefix = target
+        .strip_prefix(repo_root)
+        .map_err(|_| invalid_skill_change("target directory escaped repo root"))?;
+    let prefix = format!("{}/", display_relative(target_prefix));
+    let writes = bundle
+        .writes
+        .iter()
+        .map(|write| {
+            let relative = write.path.strip_prefix(&prefix).ok_or_else(|| {
+                invalid_skill_change(format!(
+                    "bundle write is outside target directory: {}",
+                    write.path
+                ))
+            })?;
+            Ok(TextFileWrite {
+                path: relative.to_owned(),
+                contents: write.contents.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
+    let deletes = bundle
+        .deletes
+        .iter()
+        .map(|delete| {
+            delete
+                .strip_prefix(&prefix)
+                .map(str::to_owned)
+                .ok_or_else(|| {
+                    invalid_skill_change(format!(
+                        "bundle delete is outside target directory: {delete}"
+                    ))
+                })
+        })
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
+    Ok(TextBundle { writes, deletes })
+}
+
+impl Drop for CandidateStage {
+    fn drop(&mut self) {
+        let _ignored = fs::remove_dir_all(&self.root);
+    }
+}

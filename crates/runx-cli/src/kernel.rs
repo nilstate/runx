@@ -1,13 +1,16 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::fmt;
-use std::fs;
-use std::io::{self, Read};
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::Path;
 use std::process::ExitCode;
 
+use runx_runtime::WorkspaceEnv;
 use runx_runtime::kernel_eval::{KernelEvalError, KernelEvalOutput, evaluate_kernel_document_str};
 use serde::Serialize;
+
+use crate::document_input::{DocumentInputError, read_document_input};
+
+pub use crate::document_input::DocumentInputSource as KernelInputSource;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KernelPlan {
@@ -15,22 +18,8 @@ pub struct KernelPlan {
     pub json: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum KernelInputSource {
-    Path(PathBuf),
-    Stdin,
-}
-
-pub fn run_native_kernel(plan: KernelPlan) -> ExitCode {
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let error = KernelCliError::CurrentDirectory(error);
-            return write_error(&error, plan.json);
-        }
-    };
-
-    match run_kernel_command(&plan, &crate::cli_io::env_map(), &cwd) {
+pub fn run_native_kernel(plan: KernelPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    match run_kernel_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => crate::cli_io::write_stdout_code(&output.stdout, output.exit_code),
         Err(error) => write_error(&error, plan.json),
     }
@@ -47,7 +36,7 @@ pub fn run_kernel_command(
         ));
     }
 
-    let raw = read_kernel_input(&plan.input, env, cwd)?;
+    let raw = read_document_input(&plan.input, env, cwd).map_err(KernelCliError::Input)?;
     let result = evaluate_kernel_document_str(&raw)?;
     let stdout = serde_json::to_string_pretty(&KernelJsonEnvelope {
         status: "success",
@@ -71,8 +60,7 @@ pub struct KernelCliOutput {
 pub enum KernelCliError {
     CurrentDirectory(io::Error),
     InvalidArgs(String),
-    Read(PathBuf, io::Error),
-    ReadStdin(io::Error),
+    Input(DocumentInputError),
     Eval(KernelEvalError),
     Serialize(serde_json::Error),
 }
@@ -82,8 +70,8 @@ impl KernelCliError {
         match self {
             Self::CurrentDirectory(_) => "current_directory",
             Self::InvalidArgs(_) => "invalid_args",
-            Self::Read(_, _) => "read_input",
-            Self::ReadStdin(_) => "read_stdin",
+            Self::Input(error) if error.is_stdin() => "read_stdin",
+            Self::Input(_) => "read_input",
             Self::Eval(error) => error.code(),
             Self::Serialize(_) => "serialize_output",
         }
@@ -92,11 +80,7 @@ impl KernelCliError {
     fn exit_code(&self) -> u8 {
         match self {
             Self::InvalidArgs(_) => 64,
-            Self::CurrentDirectory(_)
-            | Self::Read(_, _)
-            | Self::ReadStdin(_)
-            | Self::Eval(_)
-            | Self::Serialize(_) => 1,
+            Self::CurrentDirectory(_) | Self::Input(_) | Self::Eval(_) | Self::Serialize(_) => 1,
         }
     }
 }
@@ -106,16 +90,7 @@ impl fmt::Display for KernelCliError {
         match self {
             Self::CurrentDirectory(error) => write!(formatter, "failed to resolve cwd: {error}"),
             Self::InvalidArgs(message) => formatter.write_str(message),
-            Self::Read(path, error) => {
-                write!(
-                    formatter,
-                    "failed to read kernel input {}: {error}",
-                    path.display()
-                )
-            }
-            Self::ReadStdin(error) => {
-                write!(formatter, "failed to read kernel input stdin: {error}")
-            }
+            Self::Input(error) => write!(formatter, "failed to read kernel input {error}"),
             Self::Eval(error) => write!(formatter, "{error}"),
             Self::Serialize(error) => {
                 write!(formatter, "failed to serialize kernel result: {error}")
@@ -136,33 +111,6 @@ impl From<KernelEvalError> for KernelCliError {
 struct KernelJsonEnvelope<'a> {
     status: &'static str,
     result: &'a KernelEvalOutput,
-}
-
-fn read_kernel_input(
-    source: &KernelInputSource,
-    env: &BTreeMap<String, String>,
-    cwd: &Path,
-) -> Result<String, KernelCliError> {
-    match source {
-        KernelInputSource::Path(path) => {
-            let resolved = resolve_kernel_path(path, env, cwd);
-            fs::read_to_string(&resolved).map_err(|error| KernelCliError::Read(resolved, error))
-        }
-        KernelInputSource::Stdin => {
-            let mut raw = String::new();
-            io::stdin()
-                .read_to_string(&mut raw)
-                .map_err(KernelCliError::ReadStdin)?;
-            Ok(raw)
-        }
-    }
-}
-
-fn resolve_kernel_path(path: &Path, env: &BTreeMap<String, String>, cwd: &Path) -> PathBuf {
-    if path.is_absolute() {
-        return path.to_path_buf();
-    }
-    runx_runtime::resolve_runx_workspace_base(env, cwd).join(path)
 }
 
 fn write_error(error: &KernelCliError, json: bool) -> ExitCode {

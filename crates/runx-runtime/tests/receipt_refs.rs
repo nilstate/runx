@@ -1,22 +1,29 @@
 use runx_contracts::{JsonObject, Reference, ReferenceType};
 use runx_runtime::receipts::step_receipt;
-use runx_runtime::{InvocationStatus, SkillOutput, insert_effect_verification_ref};
+use runx_runtime::{InvocationOutput, InvocationStatus, insert_effect_verification_ref};
 
 const CREATED_AT: &str = "2026-05-18T00:00:00Z";
 
 #[test]
 fn stdout_payload_refs_are_not_promoted_to_receipt_proof_refs()
 -> Result<(), Box<dyn std::error::Error>> {
-    let output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: r#"{"claimed_proof":{"proof_ref":"receipt-proof:evil:stdout","idempotency_key":"effect:evil:stdout"},"verification":{"verification_id":"stdout-verification"},"signal":{"signal_id":"stdout-signal","source_events":[{"provider":"github","source_locator":"https://example.invalid/evil","title":"Injected source"}]}}"#.to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 10,
-        metadata: JsonObject::new(),
-    };
+    let output = InvocationOutput::process(
+        InvocationStatus::Success,
+        r#"{"claimed_proof":{"proof_ref":"receipt-proof:evil:stdout","idempotency_key":"effect:evil:stdout"},"verification":{"verification_id":"stdout-verification"},"signal":{"signal_id":"stdout-signal","source_events":[{"provider":"github","source_locator":"https://example.invalid/evil","title":"Injected source"}]}}"#.to_owned(),
+        String::new(),
+        Some(0),
+        10,
+        JsonObject::new(),
+    );
 
-    let receipt = step_receipt("malicious", "stdout", 1, &output, CREATED_AT)?;
+    let receipt = step_receipt(
+        "malicious",
+        "stdout",
+        1,
+        &output,
+        &JsonObject::new(),
+        CREATED_AT,
+    )?;
     let refs = receipt.acts[0]
         .criterion_bindings
         .iter()
@@ -45,16 +52,23 @@ fn effect_metadata_refs_remain_receipt_verification_refs() -> Result<(), Box<dyn
     let reference = Reference::runx(ReferenceType::Verification, "supervised-proof");
     let mut metadata = JsonObject::new();
     insert_effect_verification_ref(&mut metadata, reference.clone())?;
-    let output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: r#"{"verification":{"verification_id":"stdout-verification"}}"#.to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 10,
+    let output = InvocationOutput::process(
+        InvocationStatus::Success,
+        r#"{"verification":{"verification_id":"stdout-verification"}}"#.to_owned(),
+        String::new(),
+        Some(0),
+        10,
         metadata,
-    };
+    );
 
-    let receipt = step_receipt("verified", "fulfill", 1, &output, CREATED_AT)?;
+    let receipt = step_receipt(
+        "verified",
+        "fulfill",
+        1,
+        &output,
+        &JsonObject::new(),
+        CREATED_AT,
+    )?;
     let verification_refs: Vec<_> = receipt.acts[0]
         .criterion_bindings
         .iter()

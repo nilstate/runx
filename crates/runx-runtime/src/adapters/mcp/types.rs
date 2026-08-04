@@ -3,27 +3,26 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use runx_contracts::{JsonObject, JsonValue};
-use runx_parser::{SkillMcpServer, ValidatedSkill};
+use runx_parser::{SkillMcpServer, SkillRunnerDefinition};
 
 use crate::credentials::SecretEnv;
-use crate::sandbox::SandboxPlan;
-use crate::services::process_env_snapshot;
+use crate::process_invocation::PreparedProcessInvocation;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct McpToolCallRequest {
     pub server: SkillMcpServer,
     pub tool: String,
     pub arguments: JsonObject,
     pub timeout: Duration,
-    pub sandbox: SandboxPlan,
+    pub process: PreparedProcessInvocation,
     pub secret_env: SecretEnv,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct McpListToolsRequest {
     pub server: SkillMcpServer,
     pub timeout: Duration,
-    pub sandbox: SandboxPlan,
+    pub process: PreparedProcessInvocation,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -40,21 +39,14 @@ pub struct McpServerOptions {
     pub tools: Vec<McpServerTool>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct McpServerExecutionOptions {
     pub runner: Option<String>,
     pub receipt_dir: Option<PathBuf>,
     pub env: BTreeMap<String, String>,
-}
-
-impl Default for McpServerExecutionOptions {
-    fn default() -> Self {
-        Self {
-            runner: None,
-            receipt_dir: None,
-            env: process_env_snapshot(),
-        }
-    }
+    /// Credential deliveries resolved once at server startup, keyed by the
+    /// canonical skill path they may serve.
+    pub credential_deliveries: BTreeMap<PathBuf, crate::credentials::CredentialDelivery>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -75,9 +67,12 @@ pub enum McpServerToolBehavior {
 #[derive(Clone, Debug, PartialEq)]
 pub struct McpServerSkillExecution {
     pub skill_path: PathBuf,
-    pub skill: ValidatedSkill,
+    pub skill_name: String,
+    pub runner: SkillRunnerDefinition,
+    pub requirements: runx_contracts::ExecutionRequirements,
     pub receipt_dir: Option<PathBuf>,
     pub env: BTreeMap<String, String>,
+    pub credential_delivery: crate::credentials::CredentialDelivery,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -96,7 +91,7 @@ pub struct McpContent {
 pub enum McpHostRunResult {
     Completed {
         skill_name: String,
-        output: String,
+        output: JsonValue,
         receipt_id: String,
         runx: JsonObject,
     },

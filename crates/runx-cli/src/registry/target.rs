@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use runx_runtime::registry::RegistryManifestSourceAuthority;
+use runx_runtime::registry::{RegistryManifestSourceAuthority, canonical_registry_url};
 use url::Url;
 
 use super::RegistryPlan;
@@ -39,7 +39,7 @@ impl RegistryTarget {
     pub(crate) fn fingerprint_source(&self) -> String {
         match self {
             Self::Remote { registry_url } => {
-                format!("remote:{}", canonical_remote_registry_url(registry_url))
+                format!("remote:{}", canonical_registry_url(registry_url))
             }
             Self::Local {
                 registry_path,
@@ -199,7 +199,7 @@ pub(crate) fn registry_skills_cache_root(env: &BTreeMap<String, String>, cwd: &P
 pub(crate) fn registry_source_description(target: &RegistryTarget) -> String {
     match target {
         RegistryTarget::Remote { registry_url } => {
-            format!("remote {}", canonical_remote_registry_url(registry_url))
+            format!("remote {}", canonical_registry_url(registry_url))
         }
         RegistryTarget::Local {
             registry_path,
@@ -237,27 +237,6 @@ fn file_url_path(value: &str) -> Option<PathBuf> {
         return None;
     }
     url.to_file_path().ok()
-}
-
-fn canonical_remote_registry_url(value: &str) -> String {
-    let without_fragment = value.split_once('#').map_or(value, |(prefix, _)| prefix);
-    let without_query = without_fragment
-        .split_once('?')
-        .map_or(without_fragment, |(prefix, _)| prefix);
-    let Some((scheme, rest)) = without_query.split_once("://") else {
-        return without_query.trim_end_matches('/').to_owned();
-    };
-    let (authority, path) = rest
-        .split_once('/')
-        .map_or((rest, ""), |(authority, path)| (authority, path));
-    let authority = authority
-        .rsplit_once('@')
-        .map_or(authority, |(_, host)| host);
-    if path.is_empty() {
-        format!("{scheme}://{authority}")
-    } else {
-        format!("{scheme}://{authority}/{}", path.trim_end_matches('/'))
-    }
 }
 
 fn is_remote_registry_url(value: &str) -> bool {

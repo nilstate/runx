@@ -1,0 +1,78 @@
+name: refund-receipt-proof-ready
+kind: skill
+target: ..
+runner: mock
+setup:
+  receipts:
+    - fixtures/receipt-store/sha256-1910196944b4ed43200c6e0645245ff9afecf936d3bf57f4f0a23c155cc3491f.json
+    - fixtures/receipt-store/sha256-edd49641367cd061effba5e7388a4e9b4544cd0bd210859f5547d6ad3d97b845.json
+env:
+  RUNX_RECEIPT_VERIFY_KID: runx-core-skill-trial-key
+  RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64: IVL40Zt5HSRFMkLhXy6rbLfP+ntqXtMAl5YOBpiB2xI=
+inputs:
+  original_receipt_ref: sha256:1910196944b4ed43200c6e0645245ff9afecf936d3bf57f4f0a23c155cc3491f
+  refund_request:
+    amount_minor: 100
+    reason: operator_refund
+    requested_counterparty: payer:demo
+  parent_payment_authority:
+    term_id: refund-parent
+    principal_ref:
+      type: principal
+      uri: runx:principal:operator
+    resource_ref:
+      type: target
+      uri: payer:demo
+    resource_family: effect
+    verbs: [reverse]
+    bounds:
+      effect_limits:
+        - family: payment
+          unit: USD
+          max_per_call_units: 125
+          max_per_run_units: 125
+          channels: [mock]
+          realm: test
+          peer: payer:demo
+          operation: refund
+          authorization_form: single_use_capability
+          idempotency_required: true
+          recovery_required: true
+          receipt_before_success: true
+          single_use_capability: true
+    conditions: []
+    approvals: []
+    capabilities: [effect_single_use_capability]
+    issued_by_ref:
+      type: grant
+      uri: runx:grant:payment
+expect:
+  status: sealed
+  steps: [prepare]
+  step_outputs:
+    prepare:
+      subset:
+        refund_plan:
+          data:
+            decision: ready_for_refund_adapter
+            original_charge:
+              refunded_minor: 25
+            refundable_bounds:
+              remaining_minor: 100
+              currency: USD
+            adapter_handoff:
+              amount_minor: 100
+              currency: USD
+              counterparty: payer:demo
+            provider_status: not_called
+            refund_status: not_started
+            money_moved: false
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: graph_closed
+metadata:
+  public_skill: refund
+  source_case: verified-original-and-prior-refund
+  source: skills-fixture

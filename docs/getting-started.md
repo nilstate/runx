@@ -5,7 +5,7 @@ checked-in `examples/hello-world` package so the commands stay tied to the repo.
 
 ## Prerequisites
 
-- Rust 1.85 or newer for the native CLI path.
+- Rust 1.97 or newer for the native CLI path.
 - Node.js 20 or newer for the checked-in `hello-world` runner command. No
   TypeScript install is required for the native CLI path.
 - pnpm 10 or newer only when exercising the npm wrapper or TypeScript package
@@ -14,9 +14,12 @@ checked-in `examples/hello-world` package so the commands stay tied to the repo.
 Build the native CLI from the OSS workspace:
 
 ```bash
-cd oss
 cargo build --manifest-path crates/Cargo.toml -p runx-cli
 ```
+
+On macOS 26, complete the
+[Developer Tools permission prerequisite](../CONTRIBUTING.md#macos-developer-tools-permission)
+before troubleshooting a stalled Rust build.
 
 ## Run The Example
 
@@ -65,9 +68,13 @@ export RUNX_RECEIPT_SIGN_ISSUER_TYPE="hosted"
 All three variables must be set together. `RUNX_RECEIPT_SIGN_ISSUER_TYPE` must
 be `hosted` or `ci`; production receipts are never stamped as local issuers.
 When configured, the runtime signs each receipt body digest with Ed25519 and
-writes the matching public key hash in the issuer metadata. To have
-`runx history` report those receipts as production-verified, provide the public
-verification key to the same command:
+writes the matching public key hash in the issuer metadata. `runx history` and
+`runx verify` derive the matching verifier from that complete signing identity,
+so the operator that created local receipts does not configure the same key
+twice.
+
+For independent or read-only verification where the signing seed is
+intentionally unavailable, provide the public verification key instead:
 
 ```bash
 export RUNX_RECEIPT_VERIFY_KID="hosted-prod-key"
@@ -77,11 +84,16 @@ crates/target/debug/runx history <receipt-id> --json
 
 ## Next
 
-- Use `crates/target/debug/runx new docs-demo` to scaffold a native cli-tool
-  skill (SKILL.md + X.yaml + run.mjs, zero npm deps). To cold-start without
-  installing runx first, run `npx @runxhq/cli new docs-demo`; it downloads the
-  launcher and runs the same native scaffold.
+- Use `crates/target/debug/runx new docs-demo --objective "Create a bounded
+  documentation decision skill"` to enter the canonical Skill Lab build lane.
+  Runx inspects the catalog, returns an exact agent/resume handoff unless
+  `--managed-agent` was explicitly authorized, and writes only the validated
+  package. It never generates a placeholder module. To cold-start without
+  installing Runx first, use the same command through `npx @runxhq/cli`.
 - Compose the example into a graph with [Skill To Graph](./skill-to-graph.md).
+- Configure provider-backed skills once with
+  [Credential Resolution](./credentials.md); agents and MCP use the same
+  readiness path automatically.
 - Publish a ready skill from a public repo at https://runx.ai/x/publish, or run
   `crates/target/debug/runx login --for publish` followed by
   `crates/target/debug/runx registry publish ... --registry https://api.runx.ai`.

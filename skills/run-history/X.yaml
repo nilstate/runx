@@ -1,172 +1,341 @@
 skill: run-history
-version: "0.1.0"
+version: "0.2.3"
 
 catalog:
   kind: skill
   audience: operator
   visibility: public
-  role: context
+  role: canonical
+  execution: read
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
+
 harness:
   cases:
-    - name: catalog-behavior-overview
+    - name: reports-native-history-and-catalog-coverage
       inputs:
-        objective: How is the skill catalog behaving this month, and what should we tighten?
+        objective: Show how Runx behaved over the supplied window.
         scope: workspace
         period: 30d
-        history_summary: "30-day window: 412 runs, 387 sealed, 25 refused. Maturity across 21 skills: 14 alpha, 5 beta, 2 stable. One skill, doc-bot, granted repo.write but exercised only repo.read across 40 runs."
-        objective_focus: Lead with maturity and unused authority.
-      caller:
-        answers:
-          agent_task.run-history.output:
-            history_report:
-              decision: ready
-              scope: workspace
-              period: 30d
-              ordered_tool_calls:
-                - tool: runx history
-                  purpose: Pull the 30-day run ledger to compute seal and refusal rates.
-                  requires_confirmation: false
-                - tool: runx list
-                  purpose: List skills with their maturity tiers to compute the maturity distribution.
-                  requires_confirmation: false
-              findings:
-                - metric: seal_rate
-                  value: "0.94"
-                  assessment: good
-                - metric: refusal_rate
-                  value: "0.06"
-                  assessment: info
-                - metric: maturity_distribution
-                  value: "14 alpha / 5 beta / 2 stable"
-                  assessment: warning
-                - metric: unused_scope
-                  value: "doc-bot: repo.write granted, never exercised in 40 runs"
-                  assessment: warning
-              recommendations:
-                - finding: Most skills are stuck at alpha with no harness coverage.
-                  lane: maturity-promoter
-                  action: Route the alpha-heavy skills to the maturity promoter to add harness and graph-integration cases.
-                - finding: doc-bot holds repo.write it never exercises.
-                  lane: least-privilege
-                  action: Audit doc-bot's grant and propose narrowing repo.write to repo.read.
-              blockers: []
-              needs_input: []
-              success_checkpoint:
-                milestone: report_delivered
-                description: A read-only 30-day platform report with graded signals and recommendations routed to governance lanes.
+        history_receipts:
+          - id: rcpt_1
+            name: release
+            status: closed
+            created_at: "2026-07-01T00:00:00Z"
+          - id: rcpt_2
+            name: release
+            status: blocked
+            created_at: "2026-07-02T00:00:00Z"
+        catalog_items:
+          - name: release
+            status: ok
+            fixtures: 2
+            harness_cases: 1
+          - name: untested
+            status: ok
+            fixtures: 0
+            harness_cases: 0
       expect:
         status: sealed
+        step_outputs:
+          finalize-replay:
+            subset:
+              history_report:
+                schema: runx.history_report.v1
+                decision: ready
+                catalog:
+                  entry_count: 2
+                  tested_entry_count: 1
+                  untested_entry_count: 1
+                  coverage_rate: 0.5
+                runs:
+                  terminal_count: 2
+                  pending_count: 0
+                  closed_rate: 0.5
+                  refusal_rate: 0.5
+                sources:
+                  history: supplied_replay
+                  catalog: supplied_replay
         receipt:
           schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
 
-    - name: refusal-spike-flagged
+    - name: filters-one-skill
       inputs:
-        objective: One skill seems to be getting refused a lot lately. What is going on?
-        scope: skill
-        period: 7d
-        history_summary: >-
-          7-day window for skill payments-fulfill: 60 runs, 22 refused (refusal_rate 0.37), all refusals
-          cite a payment cap exceeded. Seal rate on the non-refused runs is 1.0.
-      caller:
-        answers:
-          agent_task.run-history.output:
-            history_report:
-              decision: ready
-              scope: skill
-              period: 7d
-              ordered_tool_calls:
-                - tool: runx history
-                  purpose: Pull the 7-day ledger for payments-fulfill and group refusals by reason.
-                  requires_confirmation: false
-              findings:
-                - metric: refusal_rate
-                  value: "0.37"
-                  assessment: warning
-                - metric: refusal_reason
-                  value: "payment cap exceeded (22 of 22 refusals)"
-                  assessment: warning
-                - metric: seal_rate
-                  value: "1.0 on admitted runs"
-                  assessment: good
-              recommendations:
-                - finding: A 37% refusal rate, all from a payment cap, means the bound is working but the cap may be mis-sized for current demand.
-                  lane: audit-receipt
-                  action: Audit a sample of the refused runs' receipts to confirm the refusals were correct, then review the per-period payment cap with the grant owner.
-              blockers: []
-              needs_input: []
-              success_checkpoint:
-                milestone: spike_explained
-                description: The refusal spike is attributed to a payment cap, with an audit-then-review recommendation.
+        objective: Review release runs only.
+        scope: release
+        history_receipts:
+          - id: rcpt_release
+            name: release
+            status: closed
+            created_at: "2026-07-01T00:00:00Z"
+          - id: rcpt_other
+            name: research
+            status: failed
+            created_at: "2026-07-01T00:00:00Z"
+        catalog_items: []
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
 
-    - name: empty-history-needs-evidence
+    - name: empty-history-stops-for-evidence
       inputs:
-        objective: Show me how our skills are doing.
-      caller:
-        answers:
-          agent_task.run-history.output:
-            history_report:
-              decision: needs_more_evidence
-              scope: all
-              period: ""
-              ordered_tool_calls:
-                - tool: runx history
-                  purpose: Attempt to read the run ledger.
-                  requires_confirmation: false
-              findings:
-                - metric: total_runs
-                  value: "0"
-                  assessment: info
-              recommendations: []
-              blockers: []
-              needs_input:
-                - No runs are recorded yet. Run some governed skills first, or provide a history summary to analyze.
-              success_checkpoint:
-                milestone: awaiting_history
-                description: The report stops for evidence rather than reporting on an empty ledger.
+        objective: Show how our skills are doing.
+        history_receipts: []
+        pending_runs: []
+        catalog_items: []
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
 
 runners:
-  analyze:
+  report:
     default: true
-    type: agent-task
-    agent: researcher
-    task: run-history
-    outputs:
-      history_report: object
-    artifacts:
-      wrap_as: history_report_packet
-      packet: runx.history_report.v1
+    type: graph
     inputs:
       objective:
         type: string
         required: true
-        description: "The history question."
+        description: The bounded history question.
       scope:
         type: string
         required: false
-        description: "workspace, a specific skill, or all."
+        default: workspace
+        description: workspace, all, or one skill/subject name.
       period:
         type: string
         required: false
-        description: "e.g. 30d or 90d."
-      history_summary:
+        description: Relative lookback such as 7d or 30d, or an RFC 3339 lower bound.
+      as_of:
         type: string
         required: false
-        description: "A sanitized runx history summary when already fetched."
-      objective_focus:
-        type: string
+        description: Optional RFC3339 anchor for a reproducible relative lookback.
+      limit:
+        type: number
         required: false
-        description: "Which signals to lead with."
+        default: 1000
+        description: Maximum receipt and pending-run rows to inspect; must be from 1 to 10000.
+      history_receipts:
+        type: json
+        required: false
+        description: Explicit receipt rows for deterministic replay; live runs use native runx history.
+      pending_runs:
+        type: json
+        required: false
+        description: Explicit pending-run rows paired with history_receipts during replay.
+      catalog_items:
+        type: json
+        required: false
+        description: Explicit catalog rows paired with history_receipts for deterministic replay.
+    graph:
+      name: run-history
+      result_from: [finalize-live, finalize-replay]
+      steps:
+        - id: prepare
+          label: normalize the bounded report request
+          inputs:
+            objective: $input.objective
+            scope: $input.scope
+            period: $input.period
+            as_of: $input.as_of
+            limit: $input.limit
+            history_receipts: $input.history_receipts
+            catalog_items: $input.catalog_items
+          run:
+            type: javascript
+            module: run-history.mjs
+            export: prepareHistory
+            outputs:
+              history_context: object
+          artifacts:
+            named_emits:
+              history_context: history_context
+        - id: history
+          label: query native receipt history
+          when:
+            field: prepare.history_context.data.path
+            equals: live
+          tool: receipt.query
+          scopes:
+            - receipt.read
+          context:
+            skill: prepare.history_context.data.skill_filter
+            period: prepare.history_context.data.period
+            as_of: prepare.history_context.data.as_of
+            limit: prepare.history_context.data.limit
+        - id: catalog
+          label: inspect native skill coverage
+          when:
+            field: prepare.history_context.data.path
+            equals: live
+          tool: runx.skill.inspect
+          scopes:
+            - fs.read
+          inputs:
+            repo_root: .
+        - id: finalize-live
+          label: calculate the live history report
+          when:
+            field: prepare.history_context.data.path
+            equals: live
+          run:
+            type: javascript
+            module: run-history.mjs
+            export: finalizeHistory
+            outputs:
+              history_report:
+                type: object
+                schema:
+                  required: [schema, decision, objective, query, sources, runs, catalog, recommendations, limitations]
+                  additionalProperties: false
+                  properties:
+                    schema: { const: runx.history_report.v1 }
+                    decision: { type: string, enum: [ready, needs_more_evidence] }
+                    objective: { type: string, minLength: 1 }
+                    query:
+                      type: object
+                      required: [scope, period, since, skill_filter, limit]
+                      additionalProperties: false
+                      properties:
+                        scope: { type: string }
+                        period: { type: [string, "null"] }
+                        since: { type: [string, "null"] }
+                        skill_filter: { type: [string, "null"] }
+                        limit: { type: integer, minimum: 1, maximum: 10000 }
+                    sources:
+                      type: object
+                      required: [history, catalog]
+                      properties:
+                        history: { type: string, enum: [supplied_replay, receipt.query] }
+                        catalog: { type: string, enum: [supplied_replay, runx.skill.inspect] }
+                      additionalProperties: false
+                    runs:
+                      type: object
+                      required: [terminal_count, pending_count, statuses, closed_rate, refusal_rate, top_subjects]
+                      additionalProperties: false
+                      properties:
+                        terminal_count: { type: integer, minimum: 0 }
+                        pending_count: { type: integer, minimum: 0 }
+                        statuses: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+                        closed_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        refusal_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        top_subjects:
+                          type: array
+                          items:
+                            type: object
+                            required: [subject, count]
+                            properties:
+                              subject: { type: string }
+                              count: { type: integer, minimum: 0 }
+                            additionalProperties: false
+                    catalog:
+                      type: object
+                      required: [entry_count, tested_entry_count, untested_entry_count, coverage_rate]
+                      additionalProperties: false
+                      properties:
+                        entry_count: { type: integer, minimum: 0 }
+                        tested_entry_count: { type: integer, minimum: 0 }
+                        untested_entry_count: { type: integer, minimum: 0 }
+                        coverage_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                    recommendations:
+                      type: array
+                      items:
+                        type: object
+                        required: [lane, action]
+                        properties:
+                          lane: { type: string }
+                          action: { type: string }
+                        additionalProperties: false
+                    limitations: { type: array, items: { type: string } }
+          context:
+            history_context: prepare.history_context.data
+            receipt_query: history.receipt_query.data
+            authoring_context: catalog.authoring_context.data
+          artifacts:
+            wrap_as: history_report_packet
+            packet: runx.history_report.v1
+        - id: finalize-replay
+          label: calculate the supplied replay report
+          when:
+            field: prepare.history_context.data.path
+            equals: replay
+          inputs:
+            history_receipts: $input.history_receipts
+            pending_runs: $input.pending_runs
+            catalog_items: $input.catalog_items
+          run:
+            type: javascript
+            module: run-history.mjs
+            export: finalizeHistory
+            outputs:
+              history_report:
+                type: object
+                schema:
+                  required: [schema, decision, objective, query, sources, runs, catalog, recommendations, limitations]
+                  additionalProperties: false
+                  properties:
+                    schema: { const: runx.history_report.v1 }
+                    decision: { type: string, enum: [ready, needs_more_evidence] }
+                    objective: { type: string, minLength: 1 }
+                    query:
+                      type: object
+                      required: [scope, period, since, skill_filter, limit]
+                      additionalProperties: false
+                      properties:
+                        scope: { type: string }
+                        period: { type: [string, "null"] }
+                        since: { type: [string, "null"] }
+                        skill_filter: { type: [string, "null"] }
+                        limit: { type: integer, minimum: 1, maximum: 10000 }
+                    sources:
+                      type: object
+                      required: [history, catalog]
+                      properties:
+                        history: { type: string, enum: [supplied_replay, receipt.query] }
+                        catalog: { type: string, enum: [supplied_replay, runx.skill.inspect] }
+                      additionalProperties: false
+                    runs:
+                      type: object
+                      required: [terminal_count, pending_count, statuses, closed_rate, refusal_rate, top_subjects]
+                      additionalProperties: false
+                      properties:
+                        terminal_count: { type: integer, minimum: 0 }
+                        pending_count: { type: integer, minimum: 0 }
+                        statuses: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+                        closed_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        refusal_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                        top_subjects:
+                          type: array
+                          items:
+                            type: object
+                            required: [subject, count]
+                            properties:
+                              subject: { type: string }
+                              count: { type: integer, minimum: 0 }
+                            additionalProperties: false
+                    catalog:
+                      type: object
+                      required: [entry_count, tested_entry_count, untested_entry_count, coverage_rate]
+                      additionalProperties: false
+                      properties:
+                        entry_count: { type: integer, minimum: 0 }
+                        tested_entry_count: { type: integer, minimum: 0 }
+                        untested_entry_count: { type: integer, minimum: 0 }
+                        coverage_rate: { type: [number, "null"], minimum: 0, maximum: 1 }
+                    recommendations:
+                      type: array
+                      items:
+                        type: object
+                        required: [lane, action]
+                        properties:
+                          lane: { type: string }
+                          action: { type: string }
+                        additionalProperties: false
+                    limitations: { type: array, items: { type: string } }
+          context:
+            history_context: prepare.history_context.data
+          artifacts:
+            wrap_as: history_report_packet
+            packet: runx.history_report.v1

@@ -65,7 +65,10 @@ pub fn is_official_runx_registry_url(value: &str) -> bool {
     )
 }
 
-fn canonical_registry_url(value: &str) -> String {
+/// Returns a stable, credential-free registry URL for source identity, cache
+/// partitioning, and operator presentation.
+#[must_use]
+pub fn canonical_registry_url(value: &str) -> String {
     let without_fragment = value.split_once('#').map_or(value, |(prefix, _)| prefix);
     let without_query = without_fragment
         .split_once('?')
@@ -79,9 +82,29 @@ fn canonical_registry_url(value: &str) -> String {
     let authority = authority
         .rsplit_once('@')
         .map_or(authority, |(_, host)| host);
+    let path = path.trim_matches('/');
     if path.is_empty() {
         format!("{scheme}://{authority}")
     } else {
-        format!("{scheme}://{authority}/{}", path.trim_end_matches('/'))
+        format!("{scheme}://{authority}/{path}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::canonical_registry_url;
+
+    #[test]
+    fn canonical_registry_url_removes_credentials_query_fragment_and_trailing_slashes() {
+        assert_eq!(
+            canonical_registry_url(
+                "https://user:secret@registry.runx.test/team/?token=secret#anchor"
+            ),
+            "https://registry.runx.test/team"
+        );
+        assert_eq!(
+            canonical_registry_url("https://registry.runx.test///"),
+            "https://registry.runx.test"
+        );
     }
 }

@@ -3,67 +3,68 @@ kind: skill
 target: ..
 runner: settle-invoice
 inputs:
-  invoice_ref: "INV-2026-0412"
-  amount: 1840.00
+  invoice_ref: INV-2026-0412
+  amount_minor: 184000
   currency: USD
   payee:
     name: Acme Hosting
-    account_ref: "acct_3f9c1a7e"
-  requested_scope:
+    party_ref: merchant:acme-hosting
+    settlement_ref: payee-account:acme-hosting:mock
+  rail: mock
+  rail_profile_ref: rail-profile:mock:test
+  parent_payment_authority:
+    term_id: authority:ap:2026:ready
     principal_ref:
       type: principal
-      uri: runx:principal:accounts-payable
+      uri: principal:operator:test
     resource_ref:
       type: surface
       uri: merchant:acme-hosting
-    resource_family: workspace
+    resource_family: effect
     verbs:
-      - read
-    capabilities:
-      - network_egress
+      - prepare
+      - commit
     bounds:
-      network_destinations:
-        - rail.ach
-      max_fanout: 1
-      max_child_depth: 1
-    expires_at: 2026-06-30T00:00:00Z
-  rail: ach
-caller:
-  answers:
-    agent_task.settle-invoice.output:
-      payment_plan:
-        decision: ready
-        invoice_ref: "INV-2026-0412"
-        amount: 1840.00
-        currency: USD
-        payee:
-          name: Acme Hosting
-          account_digest: "sha256:9b1f...e042"
-        rail: ach
-        requested_scope:
-          principal_ref:
-            type: principal
-            uri: runx:principal:accounts-payable
-          resource_ref:
-            type: surface
-            uri: merchant:acme-hosting
-          resource_family: workspace
-          verbs:
-            - read
-          capabilities:
-            - network_egress
-          bounds:
-            network_destinations:
-              - rail.ach
-            max_fanout: 1
-            max_child_depth: 1
-          expires_at: 2026-06-30T00:00:00Z
-        gates:
-          human_approval_required: true
-          preflight_required: true
-        blockers: []
+      effect_limits:
+        - family: payment
+          unit: USD
+          max_per_call_units: 250000
+          max_per_run_units: 250000
+          channels:
+            - mock
+          realm: test
+          peer: merchant:acme-hosting
+          operation: invoice.settle
+          authorization_form: single_use_capability
+          idempotency_required: true
+          recovery_required: true
+          receipt_before_success: true
+          single_use_capability: true
+    conditions: []
+    approvals: []
+    capabilities:
+      - effect_single_use_capability
+    issued_by_ref:
+      type: host
+      uri: authority:payment:test
+  idempotency_seed: invoice-2026-0412
+  realm: test
 expect:
   status: sealed
+  steps:
+    - prepare
+  step_outputs:
+    prepare:
+      subset:
+        settlement_plan:
+          data:
+            decision: ready_for_spend
+            provider_effect:
+              status: not_started
+              money_moved: false
+            downstream:
+              skill: spend
+              runner: mock
   receipt:
     schema: runx.receipt.v1
 metadata:

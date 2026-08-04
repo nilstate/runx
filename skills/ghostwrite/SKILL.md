@@ -1,73 +1,90 @@
 ---
 name: ghostwrite
-description: Turn evidence and operator intent into publication-ready drafts and handoff packets.
+description: Turn validated evidence and operator intent into publication-ready drafts, deterministic channel packages, and provider-neutral handoffs.
 runx:
   category: content
 ---
 
-# Draft Content
+# Ghostwrite
 
-Write one bounded piece of content from available evidence and a clear objective.
+Write one bounded artifact in the voice of the human or team responsible for
+it. The skill turns validated evidence and a clear objective into useful public
+or internal prose without exposing the machinery that produced the evidence or
+inventing facts to make the draft feel complete.
 
-This skill is for drafting useful public artifacts: ecosystem briefs, trust
-reports, release notes, maintainer updates, or social posts. It should never
-hallucinate evidence. If the evidence is thin, say so and narrow the claims.
+This is the reusable authorship primitive behind briefs, release notes, trust
+reports, maintainer updates, newsletters, and social drafts. It can also package
+an accepted draft for a channel and prepare a provider-neutral handoff. It never
+publishes, posts, sends, or claims provider acknowledgement.
 
-Keep the content grounded in a specific audience, channel, and objective. The
-job is not to sound expansive. The job is to be useful and publishable.
+## Writing standard
 
-## Drafting rules
+- Lead with the reader's problem, decision, or next action—not the evidence
+  collection process.
+- Turn evidence into concrete claims and examples; do not dump receipts, issue
+  threads, graph traces, or machine packets into the body.
+- Match the project's vocabulary and supplied writing context instead of
+  defaulting to generic AI, launch, preview, or adoption language.
+- Write as the responsible maintainer or operator. The surfaced artifact should
+  not call itself agent-generated or narrate how a model worked.
+- Prefer one sharp, useful artifact over several thin sections.
+- Narrow the claim or return `needs_more_evidence` rather than filling a gap
+  with plausible prose.
 
-Write the artifact as the human maintainer or operator responsible for it:
+## Runners and chain boundaries
 
-- lead with the reader's problem, decision, or next action, not the evidence
-  collection process
-- turn evidence into claims, examples, and concrete wording; do not dump raw
-  receipts, issue threads, amendments, or machine packets into the public body
-- match the target project's vocabulary and voice instead of defaulting to
-  generic AI, launch, preview, migration, or adoption language
-- never describe the work as machine output, agent output, or AI-generated
-  content; the surfaced draft should read like a maintainer-owned artifact
-- prefer one sharp page, brief, or update over several thin sections
-- if the evidence is not strong enough to publish, return a narrow handoff or
-  `needs_more_evidence` state instead of filling the gap with plausible prose
+`draft` admits a ready research or evidence packet and optionally applies
+digest-bound `brand-voice` and `taste-profile` context. Only admitted claims and
+source digests may enter the draft. Deterministic finalization verifies every
+material claim and every context binding before releasing it.
 
+`package` converts a validated draft into a deterministic channel payload with
+quality checks and `not_sent` state. `handoff` records the exact target,
+boundary, approval need, and next actor. Neither runner grants external
+authority. Delivery belongs to `send-as`, a publication skill, or the relevant
+provider adapter.
 
-## Output
+## Inputs and result
 
-Draft runner:
+- `objective`, `audience`, and `channel` define what the artifact must achieve.
+- The evidence input must be a validated packet with stable claim and source
+  digests; raw assertions are not promoted into evidence.
+- Optional writing-context packets apply voice or taste. Their exact digests
+  and only the rules actually used are recorded.
+- Packaging and handoff runners accept the validated draft or packet and the
+  exact target metadata needed by the next boundary.
 
-- `content_brief`: framing for audience, angle, and constraints.
-- `draft`: the main draft text or structured sections.
-- `review_checklist`: what must be checked before publication.
-- `distribution_notes`: channel-specific packaging guidance.
+The draft result contains the content brief, reader-facing body with claim
+references, review checklist, distribution notes, and writing-context bindings.
+Packaging returns a channel payload and QA state. Handoff returns a
+provider-neutral next-action contract without delivery evidence.
 
-Package runner:
+## Stop conditions
 
-- `publish_packet`: channel-ready payload and metadata.
-- `qa_checklist`: final quality gates for handoff or publishing.
-- `handoff_notes`: operator notes, caveats, and next actions.
+- Withhold the draft when material claims lack admitted evidence.
+- Reject unknown source or writing-context digests and any context rule that was
+  not present in the supplied packet.
+- Do not let voice guidance turn an unsupported factual claim into a safe one.
+- Do not mark a package published, delivered, acknowledged, or approved merely
+  because its local formatting succeeded.
+- Keep confidential source content and secrets out of public bodies and handoff
+  metadata.
 
-Handoff runner:
+## Example
 
-- `handoff_packet`: approved outward packet with the exact delivery surface.
-- `boundary_state`: explicit boundary semantics so external handoff does not
-  masquerade as internal review completion.
-- `follow_up_contract`: who acts next, whether acknowledgement is expected,
-  and what should retrigger the lane.
+A research packet supports three claims about a release. A brand-voice packet
+asks for direct, evidence-led language. `draft` can write a concise release note
+using those claims and record the voice packet digest. `package` can create the
+newsletter payload. `handoff` can point to the email provider lane. None of those
+steps means the newsletter was approved or sent.
 
-## Inputs
+## Agent task contract
 
-- `objective` (optional): what the content should accomplish.
-- `audience` (optional): intended reader or viewer.
-- `channel` (optional): blog, newsletter, GitHub comment, status post,
-  advisory, Moltbook, or other outlet.
-- `evidence_pack` (optional): structured evidence object from research or
-  another skill.
-- `voice_guide` (optional): tone or brand constraints.
-- `draft` (optional): existing draft text when packaging or revising.
-- `packet` (optional): already-packaged outward payload when moving through the
-  explicit handoff boundary.
-- `target` (optional): thread locator or repo/thread summary for the outward
-  move.
-- `boundary_kind` (optional): boundary type such as `external_maintainer`.
+### `ghostwrite-draft`
+
+Write only from the supplied evidence context. Return the content brief, draft,
+review checklist, distribution notes, and exact context bindings. Every material
+claim must cite admitted source digests. When writing contexts are present,
+record each exact packet digest and only rules actually applied. Return
+`needs_more_evidence` when the requested artifact cannot be supported. Do not
+add publication state, provider claims, or facts absent from the evidence.

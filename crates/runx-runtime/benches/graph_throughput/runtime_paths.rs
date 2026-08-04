@@ -1,0 +1,631 @@
+use std::collections::BTreeMap;
+use std::error::Error;
+use std::fs;
+use std::hint::black_box;
+use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+
+use criterion::{BatchSize, Criterion};
+use runx_contracts::{
+    ClosureDisposition, ExecutionEvent, JsonObject, JsonValue, ProofKind, ResolutionRequest,
+    ResolutionResponse, ResolutionResponseActor,
+};
+use runx_parser::{ExecutionGraph, SkillSource, SourceKind, parse_graph_yaml, validate_graph};
+use runx_runtime::adapters::agent_loop::ToolExecutor;
+use runx_runtime::adapters::agent_tools::RuntimeToolExecutor;
+use runx_runtime::adapters::javascript::JavaScriptAdapter;
+use runx_runtime::{
+    CredentialDelivery, HOSTED_API_BASE_URL_ENV, HOSTED_API_TOKEN_ENV, Host, HttpMethod, NoopHost,
+    PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
+    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, ProviderPermissionEffect,
+    RUNX_MAX_FANOUT_CONCURRENCY_ENV, RUNX_RECEIPT_DIR_ENV, Runtime, RuntimeEffectRegistry,
+    RuntimeHttpError, RuntimeHttpRequest, RuntimeHttpResponse, RuntimeHttpTransport,
+    RuntimeOptions, SkillAdapter, SkillInvocation, encode_provider_scopes_env,
+};
+use tempfile::TempDir;
+
+use super::{record_resource_metrics, session_metric};
+
+const CREATED_AT: &str = "2026-07-20T00:00:00Z";
+const LARGE_INPUT_BYTES: usize = 4 * 1024 * 1024 - 64;
+
+#[allow(clippy::expect_used)]
+pub(super) fn register(c: &mut Criterion) {
+    let fixtures = RuntimePathFixtures::new().expect("runtime-path benchmark fixtures must load");
+    let resources = fixtures
+        .smoke()
+        .expect("runtime-path benchmark fixtures must execute successfully");
+    record_resource_metrics(&resources)
+        .expect("runtime-path benchmark resource metrics must be recorded");
+
+    c.bench_function("native_capability_dispatch", |b| {
+        b.iter(|| {
+            fixtures
+                .native_executor
+                .execute("data.digest", black_box(&fixtures.native_input))
+        })
+    });
+
+    c.bench_function("graph_context_to_module", |b| {
+        b.iter_batched(
+            || fixtures.context_graph.clone(),
+            |graph| run_graph(&fixtures.context_runtime, fixtures.root(), graph),
+            BatchSize::SmallInput,
+        )
+    });
+
+    c.bench_function("pure_module_cold_start", |b| {
+        b.iter_batched(
+            || {
+                (
+                    JavaScriptAdapter::new_session(),
+                    fixtures.module_invocation.clone(),
+                )
+            },
+            |(adapter, invocation)| adapter.invoke(black_box(invocation)),
+            BatchSize::SmallInput,
+        )
+    });
+
+    c.bench_function("pure_module_session_reuse", |b| {
+        b.iter_batched(
+            || fixtures.module_invocation.clone(),
+            |invocation| fixtures.module_adapter.invoke(black_box(invocation)),
+            BatchSize::SmallInput,
+        )
+    });
+
+    c.bench_function("pure_module_large_input", |b| {
+        b.iter_batched(
+            || fixtures.large_module_invocation.clone(),
+            |invocation| fixtures.module_adapter.invoke(black_box(invocation)),
+            BatchSize::PerIteration,
+        )
+    });
+
+    c.bench_function("bounded_parallel_fanout", |b| {
+        b.iter_batched(
+            || fixtures.fanout_graph.clone(),
+            |graph| run_graph(&fixtures.fanout_runtime, fixtures.root(), graph),
+            BatchSize::SmallInput,
+        )
+    });
+
+    c.bench_function("provider_effect_finality", |b| {
+        b.iter_batched(
+            || fixtures.provider_graph.clone(),
+            |graph| {
+                run_provider_graph(
+                    &fixtures.provider_runtime,
+                    &fixtures.provider_transport,
+                    fixtures.root(),
+                    graph,
+                )
+                .expect("production provider-effect benchmark sample must reach sealed finality")
+            },
+            BatchSize::SmallInput,
+        )
+    });
+}
+
+struct RuntimePathFixtures {
+    directory: TempDir,
+    native_executor: RuntimeToolExecutor,
+    native_input: JsonValue,
+    context_runtime: Runtime<JavaScriptAdapter>,
+    context_graph: ExecutionGraph,
+    module_invocation: SkillInvocation,
+    large_module_invocation: SkillInvocation,
+    module_adapter: JavaScriptAdapter,
+    fanout_runtime: Runtime<JavaScriptAdapter>,
+    fanout_graph: ExecutionGraph,
+    provider_runtime: Runtime<JavaScriptAdapter>,
+    provider_graph: ExecutionGraph,
+    provider_transport: ProviderBenchmarkTransport,
+}
+
+impl RuntimePathFixtures {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        let directory = TempDir::new()?;
+        write_modules(directory.path())?;
+
+        let native_executor = RuntimeToolExecutor::new(
+            BTreeMap::new(),
+            directory.path().to_path_buf(),
+            CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            CREATED_AT,
+            ["data.digest".to_owned()],
+            Vec::new(),
+        );
+        let native_input = JsonValue::Object(JsonObject::from([(
+            "value".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "subject".to_owned(),
+                JsonValue::String("native-dispatch".to_owned()),
+            )])),
+        )]));
+        let context_runtime = Runtime::new(JavaScriptAdapter::default(), runtime_options());
+        let context_graph = graph(CONTEXT_GRAPH)?;
+        let module_invocation = javascript_invocation(
+            directory.path(),
+            JsonObject::from([("payload".to_owned(), JsonValue::String("runx".to_owned()))]),
+        );
+        let large_module_invocation = javascript_invocation(
+            directory.path(),
+            JsonObject::from([(
+                "payload".to_owned(),
+                JsonValue::String("x".repeat(LARGE_INPUT_BYTES)),
+            )]),
+        );
+        let module_adapter = JavaScriptAdapter::new_session();
+
+        let mut fanout_options = runtime_options();
+        fanout_options
+            .env
+            .insert(RUNX_MAX_FANOUT_CONCURRENCY_ENV.to_owned(), "4".to_owned());
+        let fanout_runtime = Runtime::new(JavaScriptAdapter::default(), fanout_options);
+        let fanout_graph = graph(&fanout_graph_yaml(8))?;
+
+        let provider_transport = ProviderBenchmarkTransport::default();
+        let effects = RuntimeEffectRegistry::with_effect(
+            ProviderPermissionEffect::with_http_transport(provider_transport.clone()),
+        )?;
+        let mut provider_options = runtime_options();
+        provider_options.effects = effects.clone();
+        provider_options.env.insert(
+            PROVIDER_PERMISSION_GRANT_ID_ENV.to_owned(),
+            "grant_runtime_perf".to_owned(),
+        );
+        provider_options.env.insert(
+            PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
+            encode_provider_scopes_env(&["runtime:perf:write".to_owned()])?,
+        );
+        provider_options.env.insert(
+            PROVIDER_PERMISSION_PRINCIPAL_REF_ENV.to_owned(),
+            "runx:principal:operator:benchmark".to_owned(),
+        );
+        provider_options.env.insert(
+            HOSTED_API_BASE_URL_ENV.to_owned(),
+            "https://api.runx.benchmark".to_owned(),
+        );
+        provider_options
+            .env
+            .insert(HOSTED_API_TOKEN_ENV.to_owned(), "rxk_benchmark".to_owned());
+        provider_options.env.insert(
+            RUNX_RECEIPT_DIR_ENV.to_owned(),
+            directory
+                .path()
+                .join("provider-receipts")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        let provider_runtime = Runtime::new(JavaScriptAdapter::default(), provider_options);
+        let provider_graph = graph(PROVIDER_EFFECT_GRAPH)?;
+
+        Ok(Self {
+            directory,
+            native_executor,
+            native_input,
+            context_runtime,
+            context_graph,
+            module_invocation,
+            large_module_invocation,
+            module_adapter,
+            fanout_runtime,
+            fanout_graph,
+            provider_runtime,
+            provider_graph,
+            provider_transport,
+        })
+    }
+
+    fn root(&self) -> &Path {
+        self.directory.path()
+    }
+
+    fn smoke(&self) -> Result<JsonObject, Box<dyn Error>> {
+        require_success(
+            self.native_executor
+                .execute("data.digest", &self.native_input)?,
+        )?;
+        let cold = JavaScriptAdapter::new_session();
+        require_success(cold.invoke(self.module_invocation.clone())?)?;
+        require_success(self.module_adapter.invoke(self.module_invocation.clone())?)?;
+        require_success(
+            self.module_adapter
+                .invoke(self.large_module_invocation.clone())?,
+        )?;
+        run_graph(
+            &self.context_runtime,
+            self.root(),
+            self.context_graph.clone(),
+        )?;
+        run_graph(&self.fanout_runtime, self.root(), self.fanout_graph.clone())?;
+        run_provider_graph(
+            &self.provider_runtime,
+            &self.provider_transport,
+            self.root(),
+            self.provider_graph.clone(),
+        )?;
+        Ok(JsonObject::from([
+            (
+                "native_capability_dispatch".to_owned(),
+                session_metric(self.native_executor.javascript_session_stats()),
+            ),
+            (
+                "graph_context_to_module".to_owned(),
+                session_metric(self.context_runtime.javascript_session_stats()),
+            ),
+            (
+                "pure_module_cold_start".to_owned(),
+                session_metric(cold.session_stats()),
+            ),
+            (
+                "pure_module_session_reuse".to_owned(),
+                session_metric(self.module_adapter.session_stats()),
+            ),
+            (
+                "pure_module_large_input".to_owned(),
+                session_metric(self.module_adapter.session_stats()),
+            ),
+            (
+                "bounded_parallel_fanout".to_owned(),
+                session_metric(self.fanout_runtime.javascript_session_stats()),
+            ),
+            (
+                "provider_effect_finality".to_owned(),
+                session_metric(self.provider_runtime.javascript_session_stats()),
+            ),
+        ]))
+    }
+}
+
+fn runtime_options() -> RuntimeOptions {
+    RuntimeOptions {
+        created_at: CREATED_AT.to_owned(),
+        ..RuntimeOptions::local_development(std::env::vars().collect())
+    }
+}
+
+fn graph(source: &str) -> Result<ExecutionGraph, Box<dyn Error>> {
+    Ok(validate_graph(parse_graph_yaml(source)?)?)
+}
+
+fn run_graph<A: SkillAdapter>(
+    runtime: &Runtime<A>,
+    graph_dir: &Path,
+    graph: ExecutionGraph,
+) -> Result<usize, runx_runtime::RuntimeError> {
+    let mut host = NoopHost;
+    runtime
+        .run_graph_with_host(graph_dir, graph, &mut host)
+        .map(|run| black_box(run.steps.len()))
+}
+
+fn run_provider_graph<A: SkillAdapter>(
+    runtime: &Runtime<A>,
+    transport: &ProviderBenchmarkTransport,
+    graph_dir: &Path,
+    graph: ExecutionGraph,
+) -> Result<usize, Box<dyn Error>> {
+    let attempts_before = transport.operation_attempts();
+    let mut host = ProviderBenchmarkHost;
+    let run = runtime.run_graph_with_host(graph_dir, graph, &mut host)?;
+    if transport.operation_attempts() != attempts_before.saturating_add(1) {
+        return Err(std::io::Error::other(
+            "provider benchmark sample did not attempt exactly one provider operation",
+        )
+        .into());
+    }
+    let step = run.steps.as_slice().first().ok_or_else(|| {
+        std::io::Error::other("provider benchmark sample emitted no step receipt")
+    })?;
+    let operation = step
+        .contract
+        .get("provider_operation")
+        .and_then(JsonValue::as_object)
+        .and_then(|packet| packet.get("data"))
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| {
+            std::io::Error::other("provider benchmark sample emitted no operation packet")
+        })?;
+    if operation.get("finality").and_then(JsonValue::as_str) != Some("confirmed")
+        || operation
+            .get("readback_ref")
+            .and_then(JsonValue::as_str)
+            .is_none()
+    {
+        return Err(std::io::Error::other(
+            "provider benchmark sample did not reach identity-bound readback finality",
+        )
+        .into());
+    }
+    let finality_refs = step
+        .receipt
+        .acts
+        .iter()
+        .flat_map(|act| &act.criterion_bindings)
+        .flat_map(|binding| &binding.verification_refs)
+        .filter(|reference| reference.proof_kind == Some(ProofKind::EffectFinality))
+        .count();
+    if step.receipt.seal.disposition != ClosureDisposition::Closed || finality_refs != 1 {
+        return Err(std::io::Error::other(
+            "provider benchmark sample did not seal exactly one independent finality proof",
+        )
+        .into());
+    }
+    Ok(black_box(run.steps.len()))
+}
+
+#[derive(Clone, Default)]
+struct ProviderBenchmarkTransport {
+    state: Arc<ProviderBenchmarkState>,
+}
+
+#[derive(Default)]
+struct ProviderBenchmarkState {
+    operation_attempts: AtomicU64,
+    logical_mutations: AtomicU64,
+    mutations: Mutex<BTreeMap<String, JsonObject>>,
+}
+
+impl ProviderBenchmarkTransport {
+    fn operation_attempts(&self) -> u64 {
+        self.state.operation_attempts.load(Ordering::Relaxed)
+    }
+}
+
+impl RuntimeHttpTransport for ProviderBenchmarkTransport {
+    fn send(&self, request: RuntimeHttpRequest) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        if request.method == HttpMethod::Get && request.url.ends_with("/v1/me") {
+            return Ok(RuntimeHttpResponse::new(
+                200,
+                r#"{"status":"success","principal":{"principal_id":"operator:benchmark"}}"#,
+            ));
+        }
+        if request.method != HttpMethod::Post || !request.url.ends_with("/v1/provider-operations") {
+            return Err(benchmark_transport_error("unexpected hosted API request"));
+        }
+        self.state
+            .operation_attempts
+            .fetch_add(1, Ordering::Relaxed);
+        let body = request
+            .body
+            .as_deref()
+            .ok_or_else(|| benchmark_transport_error("provider request body is missing"))?;
+        let request: JsonObject = serde_json::from_str(body)
+            .map_err(|error| benchmark_transport_error(format!("invalid request JSON: {error}")))?;
+        let operation = benchmark_string(&request, "operation")?;
+        let target = benchmark_string(&request, "target")?;
+        let access = benchmark_string(&request, "access")?;
+        let input = request
+            .get("input")
+            .and_then(JsonValue::as_object)
+            .ok_or_else(|| benchmark_transport_error("provider input is missing"))?;
+        let idempotency_key = benchmark_string(input, "idempotency_key")?;
+        let mut mutations = self
+            .state
+            .mutations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let result = mutations
+            .entry(idempotency_key.to_owned())
+            .or_insert_with(|| {
+                let logical = self
+                    .state
+                    .logical_mutations
+                    .fetch_add(1, Ordering::Relaxed)
+                    .saturating_add(1);
+                JsonObject::from([
+                    (
+                        "operation_id".to_owned(),
+                        JsonValue::String(format!("benchmark-operation-{logical}")),
+                    ),
+                    (
+                        "readback_ref".to_owned(),
+                        JsonValue::String(format!("runx:provider_readback:{logical}")),
+                    ),
+                ])
+            })
+            .clone();
+        let response = serde_json::json!({
+            "status": "success",
+            "provider": "benchmark",
+            "operation": operation,
+            "target": target,
+            "access": access,
+            "operation_id": benchmark_string(&result, "operation_id")?,
+            "idempotency_key": idempotency_key,
+            "readback_ref": benchmark_string(&result, "readback_ref")?,
+            "result": {"state": "delivered"}
+        });
+        Ok(RuntimeHttpResponse::new(200, response.to_string()))
+    }
+}
+
+struct ProviderBenchmarkHost;
+
+impl Host for ProviderBenchmarkHost {
+    fn log(&mut self, _message: String) -> Result<(), runx_runtime::RuntimeError> {
+        Ok(())
+    }
+
+    fn report(&mut self, _event: ExecutionEvent) -> Result<(), runx_runtime::RuntimeError> {
+        Ok(())
+    }
+
+    fn resolve(
+        &mut self,
+        _request: ResolutionRequest,
+    ) -> Result<Option<ResolutionResponse>, runx_runtime::RuntimeError> {
+        Ok(Some(ResolutionResponse {
+            actor: ResolutionResponseActor::Human,
+            payload: JsonValue::Bool(true),
+        }))
+    }
+}
+
+fn benchmark_string<'a>(object: &'a JsonObject, field: &str) -> Result<&'a str, RuntimeHttpError> {
+    object
+        .get(field)
+        .and_then(JsonValue::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| benchmark_transport_error(format!("provider {field} is missing")))
+}
+
+fn benchmark_transport_error(message: impl Into<String>) -> RuntimeHttpError {
+    RuntimeHttpError::Transport {
+        message: message.into(),
+    }
+}
+
+fn require_success(output: runx_runtime::InvocationOutput) -> Result<(), Box<dyn Error>> {
+    if output.succeeded() {
+        return Ok(());
+    }
+    Err(std::io::Error::other(
+        output
+            .failure_message()
+            .unwrap_or_else(|| "runtime invocation failed".to_owned()),
+    )
+    .into())
+}
+
+fn write_modules(root: &Path) -> Result<(), std::io::Error> {
+    fs::write(
+        root.join("SKILL.md"),
+        "---\nname: runtime-throughput\ndescription: Exercise production runtime paths for release performance budgets.\n---\n# Runtime throughput\n\nThis synthetic package binds the modules used by the release performance harness.\n",
+    )?;
+    fs::write(
+        root.join("X.yaml"),
+        "skill: runtime-throughput\nrunners:\n  main:\n    default: true\n    type: javascript\n    module: domain.mjs\n    inputs:\n      payload:\n        type: string\n        required: true\n    outputs:\n      result: object\n",
+    )?;
+    fs::write(
+        root.join("domain.mjs"),
+        "export default ({ payload }) => ({ result: { bytes: payload.length } });\n\
+         export const project = ({ marker, digest_result }) => ({ projection: { marker, digest: digest_result.digest } });\n",
+    )?;
+    let worker = root.join("fanout-worker");
+    fs::create_dir_all(&worker)?;
+    fs::write(
+        worker.join("SKILL.md"),
+        "---\nname: fanout-worker\ndescription: Deterministic runtime fanout benchmark worker.\n---\n# Fanout worker\n",
+    )?;
+    fs::write(
+        worker.join("X.yaml"),
+        "skill: fanout-worker\nrunners:\n  main:\n    default: true\n    type: javascript\n    module: domain.mjs\n    inputs:\n      value:\n        type: string\n        required: true\n    outputs:\n      branch_result: object\n",
+    )?;
+    fs::write(
+        worker.join("domain.mjs"),
+        "export default ({ value }) => ({ branch_result: { value } });\n",
+    )
+}
+
+fn javascript_invocation(root: &Path, inputs: JsonObject) -> SkillInvocation {
+    SkillInvocation {
+        skill_name: "runtime-perf-module".to_owned(),
+        step_id: None,
+        requirements: Default::default(),
+        artifacts: None,
+        allowed_tools: None,
+        source: SkillSource {
+            source_type: SourceKind::JavaScript,
+            module: Some("domain.mjs".to_owned()),
+            ..empty_source()
+        },
+        inputs,
+        resolved_inputs: JsonObject::new(),
+        current_context: Vec::new(),
+        provenance: Vec::new(),
+        skill_directory: root.to_path_buf(),
+        env: std::env::vars().collect(),
+        credential_delivery: CredentialDelivery::none(),
+    }
+}
+
+fn empty_source() -> SkillSource {
+    SkillSource {
+        source_type: SourceKind::JavaScript,
+        command: None,
+        module: None,
+        javascript_export: None,
+        pages: None,
+        args: Vec::new(),
+        cwd: None,
+        timeout_seconds: None,
+        input_mode: None,
+        environment: Default::default(),
+        server: None,
+        tool: None,
+        arguments: None,
+        agent_card_url: None,
+        agent_identity: None,
+        agent: None,
+        task: None,
+        outputs: None,
+        graph: None,
+        external_adapter: None,
+        thread_outbox_provider: None,
+        act: None,
+        raw: JsonObject::new(),
+    }
+}
+
+fn fanout_graph_yaml(branches: usize) -> String {
+    let steps = (0..branches)
+        .map(|index| {
+            format!(
+                "  - id: branch_{index}\n    mode: fanout\n    fanout_group: workers\n    skill: ./fanout-worker\n    inputs:\n      value: branch-{index}\n"
+            )
+        })
+        .collect::<String>();
+    format!(
+        "name: runtime-bounded-parallel-fanout\nfanout:\n  groups:\n    workers:\n      strategy: all\n      on_branch_failure: halt\nsteps:\n{steps}"
+    )
+}
+
+const CONTEXT_GRAPH: &str = r#"
+name: runtime-context-to-module
+steps:
+  - id: digest
+    tool: data.digest
+    inputs:
+      value:
+        subject: graph-context
+  - id: project
+    inputs:
+      marker: baseline
+    context:
+      digest_result: digest.digest_result.data
+    run:
+      type: javascript
+      module: domain.mjs
+      export: project
+      outputs:
+        projection: object
+"#;
+
+const PROVIDER_EFFECT_GRAPH: &str = r#"
+name: runtime-provider-effect-transition
+steps:
+  - id: provider-effect
+    tool: provider.mutate
+    scopes: [runtime:perf:write]
+    mutation: true
+    idempotency_key: benchmark-request
+    policy:
+      provider_permission:
+        verb: write
+    inputs:
+      operation: messages.deliver
+      target: benchmark://channel/performance
+      expected_provider: benchmark
+      idempotency_key: benchmark-request
+      expected_result:
+        state: delivered
+      result_fields: [state]
+      input:
+        text: provider-effect-transition
+"#;

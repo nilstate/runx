@@ -1,11 +1,14 @@
 use std::collections::BTreeMap;
 
-use runx_contracts::{JsonObject, JsonValue};
+use runx_contracts::{
+    ExecutionCredentialRequirement, ExecutionRequirements, JsonObject, JsonValue,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::skill::{
-    CatalogMetadata, RunnerHarnessManifest, SkillRunnerDefinition, validate_catalog_metadata,
-    validate_harness_manifest, validate_runner_definition,
+    CatalogMetadata, CredentialRequirement, RunnerHarnessManifest, SkillRunnerDefinition,
+    validate_catalog_metadata, validate_credential_requirements, validate_harness_manifest,
+    validate_inputs, validate_runner_credential_references, validate_runner_definition,
 };
 use crate::{
     ParseError, ValidationError, assert_execution_profile_yaml_subset,
@@ -14,7 +17,16 @@ use crate::{
 
 const FIELDS: JsonFieldReader = JsonFieldReader::new("runner_manifest");
 const MANIFEST_FIELDS: &[&str] = &[
-    "skill", "version", "runx", "policy", "emits", "catalog", "runners", "harness",
+    "skill",
+    "version",
+    "runx",
+    "policy",
+    "emits",
+    "catalog",
+    "credentials",
+    "input_definitions",
+    "runners",
+    "harness",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -37,10 +49,43 @@ pub struct SkillRunnerManifest {
     pub emits: Option<runx_contracts::JsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub catalog: Option<CatalogMetadata>,
+    #[serde(default)]
+    pub credentials: BTreeMap<String, CredentialRequirement>,
+    /// Manifest-local reusable input declarations. Runner references are
+    /// expanded during parsing, so runtime consumers never resolve them again.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub input_definitions: BTreeMap<String, crate::skill::SkillInput>,
     pub runners: BTreeMap<String, SkillRunnerDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub harness: Option<RunnerHarnessManifest>,
     pub raw: RawRunnerManifestIr,
+}
+
+impl SkillRunnerManifest {
+    /// Return the exact non-secret requirements selected by one runner.
+    ///
+    /// This is the parser-owned projection used by inspection and execution;
+    /// downstream consumers must not rescan raw YAML or normalize scope values.
+    #[must_use]
+    pub fn execution_requirements(&self, runner: &SkillRunnerDefinition) -> ExecutionRequirements {
+        let credential = runner.credential.as_ref().and_then(|name| {
+            self.credentials
+                .get(name)
+                .map(|requirement| ExecutionCredentialRequirement {
+                    name: name.clone(),
+                    provider: requirement.provider.clone(),
+                    audience: requirement.audience.clone(),
+                    deliveries: requirement.deliveries.clone(),
+                })
+        });
+        ExecutionRequirements {
+            auth: runner.auth.clone(),
+            scopes: runner.declared_scopes(),
+            environment: runner.source.environment.clone(),
+            credential,
+            runtime: runner.runtime.clone(),
+        }
+    }
 }
 
 pub fn parse_runner_manifest_yaml(yaml: &str) -> Result<RawRunnerManifestIr, ParseError> {
@@ -66,17 +111,25 @@ pub fn validate_runner_manifest(
     raw: RawRunnerManifestIr,
 ) -> Result<SkillRunnerManifest, ValidationError> {
     FIELDS.reject_unknown_fields(&raw.document, "runner_manifest", MANIFEST_FIELDS)?;
+    let input_definitions = validate_inputs(
+        FIELDS
+            .optional_object(raw.document.get("input_definitions"), "input_definitions")?
+            .unwrap_or_default(),
+        "input_definitions",
+    )?;
     let runners_record = FIELDS.required_object(raw.document.get("runners"), "runners")?;
     let mut runners = BTreeMap::new();
     for (name, value) in runners_record {
         let JsonValue::Object(runner) = value else {
             return Err(FIELDS.validation_error(format!("runners.{name} must be an object.")));
         };
-        runners.insert(
-            name.clone(),
-            validate_runner_definition(name, runner.clone())?,
-        );
+        let runner = expand_input_definitions(name, runner, &input_definitions)?;
+        runners.insert(name.clone(), validate_runner_definition(name, runner)?);
     }
+
+    let credentials = validate_credential_requirements(raw.document.get("credentials"))?;
+    validate_runner_credential_references(&runners, &credentials)?;
+    validate_credential_environment_separation(&runners, &credentials)?;
 
     let harness = validate_harness_manifest(
         FIELDS.optional_object(raw.document.get("harness"), "harness")?,
@@ -95,10 +148,77 @@ pub fn validate_runner_manifest(
         policy: raw.document.get("policy").cloned(),
         emits: raw.document.get("emits").cloned(),
         catalog,
+        credentials,
+        input_definitions,
         runners,
         harness,
         raw,
     })
+}
+
+fn expand_input_definitions(
+    runner_name: &str,
+    runner: &JsonObject,
+    definitions: &BTreeMap<String, crate::skill::SkillInput>,
+) -> Result<JsonObject, ValidationError> {
+    let Some(inputs) = runner.get("inputs") else {
+        return Ok(runner.clone());
+    };
+    let inputs = FIELDS.required_object(Some(inputs), &format!("runners.{runner_name}.inputs"))?;
+    let mut expanded = JsonObject::new();
+    for (input_name, declaration) in inputs {
+        let Some(reference) = declaration
+            .as_object()
+            .filter(|declaration| declaration.len() == 1)
+            .and_then(|declaration| declaration.get("definition"))
+            .and_then(JsonValue::as_str)
+        else {
+            expanded.insert(input_name.clone(), declaration.clone());
+            continue;
+        };
+        let definition = definitions.get(reference).ok_or_else(|| {
+            FIELDS.validation_error(format!(
+                "runners.{runner_name}.inputs.{input_name}.definition references unknown input_definitions.{reference}"
+            ))
+        })?;
+        let value = serde_json::to_value(definition)
+            .and_then(serde_json::from_value)
+            .map_err(|error| {
+                FIELDS.validation_error(format!(
+                    "input_definitions.{reference} could not be materialized: {error}"
+                ))
+            })?;
+        expanded.insert(input_name.clone(), value);
+    }
+    let mut resolved = runner.clone();
+    resolved.insert("inputs".to_owned(), JsonValue::Object(expanded));
+    Ok(resolved)
+}
+
+fn validate_credential_environment_separation(
+    runners: &BTreeMap<String, SkillRunnerDefinition>,
+    credentials: &BTreeMap<String, CredentialRequirement>,
+) -> Result<(), ValidationError> {
+    for (runner_name, runner) in runners {
+        let Some(credential_name) = runner.credential.as_ref() else {
+            continue;
+        };
+        let Some(credential) = credentials.get(credential_name) else {
+            continue;
+        };
+        for environment_name in runner.source.environment.names() {
+            if credential
+                .deliveries
+                .values()
+                .any(|delivery_name| delivery_name == environment_name)
+            {
+                return Err(FIELDS.validation_error(format!(
+                    "runners.{runner_name}.environment cannot redeclare credential delivery environment variable {environment_name}; credentials and non-secret environment use separate channels"
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 pub fn resolve_post_run_reflect_policy(
@@ -128,12 +248,12 @@ fn validate_harness_runners(
     runners: &BTreeMap<String, SkillRunnerDefinition>,
 ) -> Result<(), ValidationError> {
     for entry in harness.iter().flat_map(|harness| harness.cases.iter()) {
-        if let Some(runner) = &entry.runner {
-            if !runners.contains_key(runner) {
-                return Err(FIELDS.validation_error(format!(
-                    "harness.cases runner {runner} is not declared in runners."
-                )));
-            }
+        if let Some(runner) = &entry.runner
+            && !runners.contains_key(runner)
+        {
+            return Err(FIELDS.validation_error(format!(
+                "harness.cases runner {runner} is not declared in runners."
+            )));
         }
     }
     Ok(())

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - this binary is the fixture oracle transaction:
+// Module rationale: this binary is the fixture oracle transaction:
 // it replays harness fixtures, signs canonical receipts, and compares committed
 // root/step oracles in one reviewable regeneration boundary.
 use std::error::Error;
@@ -16,8 +16,8 @@ use runx_receipts::{
 };
 use runx_runtime::harness::{HarnessFixtureCase, list_cases};
 use runx_runtime::{
-    HarnessReplayOutput, InvocationStatus, RuntimeOptions, SkillAdapter, SkillInvocation,
-    SkillOutput, run_harness_fixture_with_adapter,
+    HarnessReplayOutput, InvocationOutput, RuntimeOptions, SkillAdapter, SkillInvocation,
+    run_harness_fixture_with_adapter,
 };
 
 fn main() -> ExitCode {
@@ -179,14 +179,31 @@ fn check_fixture_digests(
 ) -> Result<bool, Box<dyn Error>> {
     let body_digest = canonical_receipt_body_digest(receipt)?;
     let receipt_digest = canonical_receipt_digest(receipt)?;
+    let fixture_path = cli.repo_root.join(fixture.fixture_path);
 
     if cli.write {
+        let child_receipt_refs = receipt
+            .lineage
+            .as_ref()
+            .map(|lineage| {
+                lineage
+                    .children
+                    .iter()
+                    .map(|reference| reference.uri.as_str())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        rewrite_fixture_receipt_expectations(
+            &fixture_path,
+            &body_digest,
+            &receipt_digest,
+            &child_receipt_refs,
+        )?;
         write_stdout_line(&format!("{} body_digest={body_digest}", fixture.name))?;
         write_stdout_line(&format!("{} receipt_digest={receipt_digest}", fixture.name))?;
         return Ok(false);
     }
 
-    let fixture_path = cli.repo_root.join(fixture.fixture_path);
     let contents = fs::read_to_string(&fixture_path)?;
     let mut failed = false;
 
@@ -206,6 +223,57 @@ fn check_fixture_digests(
     }
 
     Ok(failed)
+}
+
+fn rewrite_fixture_receipt_expectations(
+    fixture_path: &Path,
+    body_digest: &str,
+    receipt_digest: &str,
+    child_receipt_refs: &[&str],
+) -> Result<(), Box<dyn Error>> {
+    let contents = fs::read_to_string(fixture_path)?;
+    let ends_with_newline = contents.ends_with('\n');
+    let mut lines = contents.lines().peekable();
+    let mut rewritten = Vec::new();
+
+    while let Some(line) = lines.next() {
+        let indent = line.len() - line.trim_start().len();
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("body_digest:") {
+            rewritten.push(format!("{}body_digest: {body_digest}", &line[..indent]));
+            continue;
+        }
+        if trimmed.starts_with("receipt_digest:") {
+            rewritten.push(format!(
+                "{}receipt_digest: {receipt_digest}",
+                &line[..indent]
+            ));
+            continue;
+        }
+        if trimmed == "child_receipt_refs:" {
+            rewritten.push(line.to_owned());
+            while lines.peek().is_some_and(|next| {
+                let next_indent = next.len() - next.trim_start().len();
+                next_indent > indent && next.trim_start().starts_with("- ")
+            }) {
+                let _discarded = lines.next();
+            }
+            rewritten.extend(
+                child_receipt_refs
+                    .iter()
+                    .map(|reference| format!("{}  - {reference}", &line[..indent])),
+            );
+            continue;
+        }
+        rewritten.push(line.to_owned());
+    }
+
+    let mut output = rewritten.join("\n");
+    if ends_with_newline {
+        output.push('\n');
+    }
+    fs::write(fixture_path, output)?;
+    Ok(())
 }
 
 fn write_stdout_line(message: &str) -> io::Result<()> {
@@ -350,7 +418,7 @@ impl Error for MessageError {}
 fn fixture_runtime_options() -> RuntimeOptions {
     RuntimeOptions {
         created_at: "2026-05-18T00:00:00Z".to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }
 
@@ -361,7 +429,10 @@ impl SkillAdapter for FixtureOracleAdapter {
         "cli-tool"
     }
 
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, runx_runtime::RuntimeError> {
+    fn invoke(
+        &self,
+        request: SkillInvocation,
+    ) -> Result<InvocationOutput, runx_runtime::RuntimeError> {
         let message = request
             .inputs
             .get("message")
@@ -376,14 +447,10 @@ impl SkillAdapter for FixtureOracleAdapter {
         // by downstream context edges under the contract-only addressing model.
         let mut claim = JsonObject::default();
         claim.insert("message".to_owned(), JsonValue::String(message));
-        let stdout = serde_json::to_string(&JsonValue::Object(claim)).unwrap_or_default();
-        Ok(SkillOutput {
-            status: InvocationStatus::Success,
-            stdout,
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 0,
-            metadata: JsonObject::default(),
-        })
+        Ok(InvocationOutput::runtime_success(
+            JsonValue::Object(claim),
+            0,
+            JsonObject::default(),
+        ))
     }
 }

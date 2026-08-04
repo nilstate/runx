@@ -1,5 +1,7 @@
 export const contractsPackage = "@runxhq/contracts";
 
+export { definePacket, type PacketDefinition } from "./packet-definition.js";
+
 export {
   RUNX_STABLE_JSON_V1,
   canonicalJsonStringify,
@@ -15,7 +17,32 @@ export {
   RUNX_AUXILIARY_SCHEMA_IDS,
   contractSchemaMatches,
   validateContractSchemaForDiagnostics,
+  Type,
+  Type as t,
+  type JsonSchema,
+  type Static,
 } from "./internal.js";
+
+export {
+  skillArchitectureDecisionV1Schema,
+  skillArchitecturePlanV1Schema,
+  skillChangeDraftV1Schema,
+  skillChangeBundleV1Schema,
+  skillValidationResultV1Schema,
+  skillApplyResultV1Schema,
+  validateSkillArchitectureDecisionContract,
+  validateSkillArchitecturePlanContract,
+  validateSkillChangeDraftContract,
+  validateSkillChangeBundleContract,
+  validateSkillValidationResultContract,
+  validateSkillApplyResultContract,
+  type SkillArchitectureDecisionContract,
+  type SkillArchitecturePlanContract,
+  type SkillChangeDraftContract,
+  type SkillChangeBundleContract,
+  type SkillValidationResultContract,
+  type SkillApplyResultContract,
+} from "./schemas/skill-authoring.js";
 
 export {
   credentialGrantReferenceSchema,
@@ -145,12 +172,17 @@ export {
   contextDocumentSchema,
   contextSchema,
   executionLocationSchema,
+  environmentRequirementsSchema,
+  executionCredentialRequirementSchema,
+  executionRequirementsSchema,
+  agentExecutionRequirementsSchema,
   agentContextEnvelopeSchema,
   validateAgentContextEnvelopeContract,
   type AgentContextProvenanceContract,
   type ContextDocumentContract,
   type ContextContract,
   type ExecutionLocationContract,
+  type AgentExecutionRequirementsContract,
   type AgentContextEnvelopeContract,
 } from "./schemas/context.js";
 
@@ -347,10 +379,14 @@ export {
 } from "./schemas/act-assignment.js";
 
 export {
+  executionBoundaryObservationSchema,
+  type ExecutionBoundaryObservationContract,
+} from "./schemas/execution-boundary.js";
+
+export {
   externalAdapterProtocolVersion,
   externalAdapterTransportSchema,
   externalAdapterCredentialNeedSchema,
-  externalAdapterSandboxIntentSchema,
   externalAdapterTimeoutsSchema,
   externalAdapterManifestV1Schema,
   externalAdapterCredentialRequestV1Schema,
@@ -370,7 +406,6 @@ export {
   validateExternalAdapterCredentialRequestContract,
   type ExternalAdapterTransportContract,
   type ExternalAdapterCredentialNeedContract,
-  type ExternalAdapterSandboxIntentContract,
   type ExternalAdapterTimeoutsContract,
   type ExternalAdapterManifestContract,
   type ExternalAdapterCredentialRequestContract,
@@ -600,6 +635,12 @@ export const runxContractSchemas = {
   dev: runxSchemaArtifacts["dev.schema.json"],
   list: runxSchemaArtifacts["list.schema.json"],
   runSummary: runxSchemaArtifacts["run-summary.schema.json"],
+  skillArchitectureDecision: runxSchemaArtifacts["skill-architecture-decision.schema.json"],
+  skillArchitecturePlan: runxSchemaArtifacts["skill-architecture-plan.schema.json"],
+  skillChangeDraft: runxSchemaArtifacts["skill-change-draft.schema.json"],
+  skillChangeBundle: runxSchemaArtifacts["skill-change-bundle.schema.json"],
+  skillValidationResult: runxSchemaArtifacts["skill-validation-result.schema.json"],
+  skillApplyResult: runxSchemaArtifacts["skill-apply-result.schema.json"],
   receipt: runxSchemaArtifacts["receipt.schema.json"],
   effectFinalityReceipt: runxSchemaArtifacts["effect-finality-receipt.schema.json"],
   fixture: runxSchemaArtifacts["fixture.schema.json"],

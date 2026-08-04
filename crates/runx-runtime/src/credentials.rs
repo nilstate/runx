@@ -1,19 +1,25 @@
-// rust-style-allow: large-file - credential delivery is one secret-handling trust surface; secret
+// Module rationale: credential delivery is one secret-handling trust surface; secret
 // string/env types, redaction, material resolution, and the delivery boundary stay colocated so the
 // "secrets never leak" review happens against the whole module at once.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::sync::Arc;
 
+use base64::Engine as _;
 use runx_contracts::{
     CredentialDeliveryMode, CredentialDeliveryObservation, CredentialDeliveryObservationStatus,
-    CredentialDeliveryPurpose, CredentialEnvelopeKind, ProofKind, Reference, ReferenceType,
-    sha256_hex, sha256_prefixed,
+    CredentialDeliveryPurpose, CredentialEnvelopeKind, JsonObject, JsonValue, ProofKind, Reference,
+    ReferenceType, sha256_hex, sha256_prefixed,
 };
 use runx_core::policy::{CredentialBindingDecision, CredentialEnvelope};
 use serde::Deserialize;
+use subtle::ConstantTimeEq;
 use thiserror::Error;
+use zeroize::Zeroize;
 
 const REDACTED_CREDENTIAL: &str = "[redacted-credential]";
+const MAX_STRUCTURED_REDACTION_DEPTH: usize = 128;
+pub const RUNX_HOSTED_CREDENTIAL_HANDLES_JSON_ENV: &str = "RUNX_HOSTED_CREDENTIAL_HANDLES_JSON";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CredentialDeliveryProfile {
@@ -186,10 +192,11 @@ where
             });
         }
         Ok(CredentialResolution {
-            delivery: CredentialDelivery {
-                secret_env: apply_profile(request.profile, &material)?,
-                public_observation: Some(request.observation),
-            },
+            delivery: CredentialDelivery::from_parts(
+                apply_profile(request.profile, &material)?,
+                Some(request.observation),
+                BTreeSet::new(),
+            ),
         })
     }
 }
@@ -251,7 +258,7 @@ impl ResolvedCredentialMaterial {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct SecretString(String);
 
 impl SecretString {
@@ -267,6 +274,20 @@ impl SecretString {
 impl fmt::Debug for SecretString {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(REDACTED_CREDENTIAL)
+    }
+}
+
+impl PartialEq for SecretString {
+    fn eq(&self, other: &Self) -> bool {
+        bool::from(self.0.as_bytes().ct_eq(other.0.as_bytes()))
+    }
+}
+
+impl Eq for SecretString {}
+
+impl Drop for SecretString {
+    fn drop(&mut self) {
+        self.0.zeroize();
     }
 }
 
@@ -294,25 +315,135 @@ impl SecretEnv {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CredentialDelivery {
+    inner: Arc<CredentialDeliveryState>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct CredentialDeliveryState {
     secret_env: SecretEnv,
+    secret_taint: SecretTaint,
     public_observation: Option<runx_contracts::CredentialDeliveryObservation>,
+    destination_hosts: BTreeSet<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct SecretTaint {
+    derived: Vec<SecretString>,
+}
+
+impl SecretTaint {
+    fn from_secret_env(secret_env: &SecretEnv) -> Self {
+        let mut variants = BTreeSet::new();
+        for (_, secret) in secret_env.iter() {
+            // Derived encodings of tiny values are too collision-prone to be a
+            // useful redaction boundary. The exact raw value is still scrubbed.
+            if secret.len() < 6 {
+                continue;
+            }
+            let encoded = [
+                url::form_urlencoded::byte_serialize(secret.as_bytes()).collect::<String>(),
+                form_urlencoded_value(secret),
+                base64::engine::general_purpose::STANDARD.encode(secret),
+                base64::engine::general_purpose::STANDARD_NO_PAD.encode(secret),
+                base64::engine::general_purpose::URL_SAFE.encode(secret),
+                base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(secret),
+            ];
+            for value in encoded {
+                if value != secret && value.len() >= 8 {
+                    variants.insert(value);
+                }
+            }
+        }
+        let mut derived = variants
+            .into_iter()
+            .map(SecretString::new)
+            .collect::<Vec<_>>();
+        derived.sort_by_key(|value| std::cmp::Reverse(value.expose().len()));
+        Self { derived }
+    }
+}
+
+fn form_urlencoded_value(value: &str) -> String {
+    url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("", value)
+        .finish()
+        .strip_prefix('=')
+        .unwrap_or_default()
+        .to_owned()
+}
+
+/// Detect raw credential fields at untrusted configuration/provider boundaries.
+///
+/// This is deliberately separate from [`SecretTaint`]: taint precisely scrubs
+/// credential values Runx delivered, while external configuration and provider
+/// output can contain material Runx never minted and therefore cannot taint.
+/// Exact normalized field names keep this fail-closed admission check from
+/// turning into a general text redactor or a substring guess.
+#[cfg(any(feature = "catalog", test))]
+pub(crate) fn first_unregistered_secret_field(value: &JsonValue) -> Option<String> {
+    match value {
+        JsonValue::Object(object) => object.iter().find_map(|(key, value)| {
+            if is_unregistered_secret_field(key) {
+                return Some(key.clone());
+            }
+            first_unregistered_secret_field(value)
+        }),
+        JsonValue::Array(values) => values.iter().find_map(first_unregistered_secret_field),
+        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) | JsonValue::String(_) => None,
+    }
+}
+
+#[cfg(any(feature = "catalog", test))]
+fn is_unregistered_secret_field(field: &str) -> bool {
+    let normalized = field
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect::<String>();
+    matches!(
+        normalized.as_str(),
+        "apikey"
+            | "accesstoken"
+            | "refreshtoken"
+            | "clientsecret"
+            | "secretkey"
+            | "privatekey"
+            | "password"
+            | "bearertoken"
+            | "connectionstring"
+            | "authorization"
+            | "token"
+            | "secret"
+    )
 }
 
 impl CredentialDelivery {
     #[must_use]
-    pub const fn none() -> Self {
+    pub fn none() -> Self {
+        Self::from_parts(SecretEnv::default(), None, BTreeSet::new())
+    }
+
+    fn from_parts(
+        secret_env: SecretEnv,
+        public_observation: Option<runx_contracts::CredentialDeliveryObservation>,
+        destination_hosts: BTreeSet<String>,
+    ) -> Self {
+        let secret_taint = SecretTaint::from_secret_env(&secret_env);
         Self {
-            secret_env: SecretEnv {
-                values: BTreeMap::new(),
-            },
-            public_observation: None,
+            inner: Arc::new(CredentialDeliveryState {
+                secret_env,
+                secret_taint,
+                public_observation,
+                destination_hosts,
+            }),
         }
     }
 
-    /// Build a delivery from a one-shot, per-run local credential descriptor.
+    /// Build a delivery from a resolved, per-run local credential descriptor.
     ///
-    /// This is the OSS local-provision path: no network, no persistence, no
-    /// brokerage. It derives a delivery profile, a credential envelope, and an
+    /// This is the OSS local-delivery path: no network and no brokerage. The
+    /// resolver may have loaded encrypted profile material or a declared
+    /// workspace value. This derives a delivery profile, a credential envelope, and an
     /// allowed binding decision purely from the supplied descriptor, resolves
     /// the secret in-memory, and routes it through the same
     /// [`Self::from_allowed_binding`] seam so policy checks and redaction stay
@@ -366,7 +497,17 @@ impl CredentialDelivery {
         Self::from_hosted_handles(&handles)
     }
 
-    // rust-style-allow: long-function because hosted handle delivery validates
+    pub fn hosted_handles_provider(raw: &str) -> Result<Option<String>, CredentialDeliveryError> {
+        let handles: Vec<HostedCredentialHandle> = serde_json::from_str(raw).map_err(|error| {
+            CredentialDeliveryError::HostedCredentialHandlesInvalid {
+                reason: error.to_string(),
+            }
+        })?;
+        Self::from_hosted_handles(&handles)?;
+        Ok(handles.first().map(|handle| handle.provider.clone()))
+    }
+
+    // Function rationale: hosted handle delivery validates
     // one homogeneous credential batch before exposing any secret references.
     fn from_hosted_handles(
         handles: &[HostedCredentialHandle],
@@ -386,7 +527,10 @@ impl CredentialDelivery {
                     reference_type: handle.credential_ref.reference_type.as_str().to_owned(),
                 });
             }
-            if handle.provider.trim() != provider || handle.purpose != first.purpose {
+            if handle.provider.trim() != provider
+                || handle.purpose != first.purpose
+                || handle.audience != first.audience
+            {
                 return Err(CredentialDeliveryError::HostedCredentialHandlesMixed);
             }
         }
@@ -405,9 +549,9 @@ impl CredentialDelivery {
             refs.push(credential_ref);
         }
 
-        Ok(Self {
-            secret_env: SecretEnv::default(),
-            public_observation: Some(CredentialDeliveryObservation {
+        Self::from_parts(
+            SecretEnv::default(),
+            Some(CredentialDeliveryObservation {
                 schema: runx_contracts::CredentialDeliveryObservationSchema::V1,
                 observation_id: format!("hosted-credential-delivery/{handles_id}").into(),
                 request_id: format!("hosted-credential-handles/{handles_id}").into(),
@@ -431,7 +575,9 @@ impl CredentialDelivery {
                 redaction_refs: None,
                 observed_at: crate::time::now_iso8601().into(),
             }),
-        })
+            BTreeSet::new(),
+        )
+        .bind_audience(first.audience.as_deref())
     }
 
     pub fn from_allowed_binding<R: MaterialResolver>(
@@ -453,14 +599,32 @@ impl CredentialDelivery {
 
     #[must_use]
     pub fn secret_env(&self) -> &SecretEnv {
-        &self.secret_env
+        &self.inner.secret_env
+    }
+
+    pub(crate) fn bind_audience(
+        mut self,
+        audience: Option<&str>,
+    ) -> Result<Self, CredentialDeliveryError> {
+        if let Some(audience) = audience {
+            Arc::make_mut(&mut self.inner)
+                .destination_hosts
+                .insert(credential_audience_host(audience)?);
+        }
+        Ok(self)
+    }
+
+    #[must_use]
+    #[cfg(feature = "async-http")]
+    pub(crate) fn destination_hosts(&self) -> &BTreeSet<String> {
+        &self.inner.destination_hosts
     }
 
     pub fn reject_process_env_boundary(
         &self,
         boundary: &'static str,
     ) -> Result<(), CredentialDeliveryError> {
-        if self.secret_env.is_empty() {
+        if self.inner.secret_env.is_empty() {
             return Ok(());
         }
         Err(CredentialDeliveryError::ProcessEnvBoundaryUnsupported {
@@ -468,44 +632,163 @@ impl CredentialDelivery {
         })
     }
 
+    pub fn ensure_environment_disjoint(
+        &self,
+        environment: &BTreeMap<String, String>,
+    ) -> Result<(), CredentialDeliveryError> {
+        if let Some(name) = self
+            .inner
+            .secret_env
+            .values
+            .keys()
+            .find(|name| environment.contains_key(*name))
+        {
+            return Err(CredentialDeliveryError::EnvironmentCollision { name: name.clone() });
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn with_public_observation(
         mut self,
         observation: runx_contracts::CredentialDeliveryObservation,
     ) -> Self {
-        self.public_observation = Some(observation);
+        Arc::make_mut(&mut self.inner).public_observation = Some(observation);
         self
     }
 
     #[must_use]
     pub fn public_observation(&self) -> Option<&runx_contracts::CredentialDeliveryObservation> {
-        self.public_observation.as_ref()
+        self.inner.public_observation.as_ref()
     }
 
     #[must_use]
     pub fn credential_refs(&self) -> Option<Vec<runx_contracts::Reference>> {
-        self.public_observation.as_ref().and_then(|observation| {
-            (!observation.credential_refs.is_empty()).then(|| observation.credential_refs.clone())
-        })
+        self.inner
+            .public_observation
+            .as_ref()
+            .and_then(|observation| {
+                (!observation.credential_refs.is_empty())
+                    .then(|| observation.credential_refs.clone())
+            })
     }
 
     #[must_use]
     pub fn redact_text(&self, text: impl Into<String>) -> String {
         let mut redacted = text.into();
-        for value in self.secret_env.values.values() {
+        for value in self.inner.secret_env.values.values() {
             let secret = value.expose();
             if !secret.is_empty() {
                 redacted = redacted.replace(secret, REDACTED_CREDENTIAL);
             }
         }
+        for value in &self.inner.secret_taint.derived {
+            redacted = redacted.replace(value.expose(), REDACTED_CREDENTIAL);
+        }
         redacted
     }
 
+    /// Redact delivered credential material from every string-bearing JSON
+    /// position after decoding. This is the canonical structured-output
+    /// boundary for provider and adapter responses; callers must not redact a
+    /// serialized representation and then parse it, because JSON escapes can
+    /// otherwise reconstruct the secret after the redaction pass.
+    #[cfg(any(
+        feature = "async-http",
+        feature = "mcp",
+        feature = "thread-outbox-provider"
+    ))]
+    pub(crate) fn redact_json_value(&self, value: &mut JsonValue) {
+        self.redact_json_value_at_depth(value, 0);
+    }
+
+    fn redact_json_value_at_depth(&self, value: &mut JsonValue, depth: usize) {
+        if depth >= MAX_STRUCTURED_REDACTION_DEPTH {
+            *value = JsonValue::String(REDACTED_CREDENTIAL.to_owned());
+            return;
+        }
+        match value {
+            JsonValue::String(text) => {
+                *text = self.redact_output_text_at_depth(std::mem::take(text), depth + 1);
+            }
+            JsonValue::Array(values) => {
+                for child in values {
+                    self.redact_json_value_at_depth(child, depth + 1);
+                }
+            }
+            JsonValue::Object(object) => self.redact_json_object_at_depth(object, depth),
+            JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) => {}
+        }
+    }
+
+    #[cfg(feature = "external-adapter")]
+    pub(crate) fn redact_json_object(&self, object: &mut JsonObject) {
+        self.redact_json_object_at_depth(object, 0);
+    }
+
+    fn redact_json_object_at_depth(&self, object: &mut JsonObject, depth: usize) {
+        let mut redacted = JsonObject::new();
+        for (key, mut value) in std::mem::take(object) {
+            self.redact_json_value_at_depth(&mut value, depth + 1);
+            let base = self.redact_output_text_at_depth(key, depth + 1);
+            let mut candidate = base.clone();
+            let mut suffix = 2_u64;
+            while redacted.contains_key(&candidate) {
+                candidate = format!("{base}#{suffix}");
+                suffix = suffix.saturating_add(1);
+            }
+            redacted.insert(candidate, value);
+        }
+        *object = redacted;
+    }
+
+    /// Redact a final output string that may itself be a JSON document. JSON
+    /// strings nested inside that document are handled recursively because MCP
+    /// text content and process protocols can legitimately carry structured
+    /// output inside a string field.
     #[must_use]
+    pub(crate) fn redact_output_text(&self, text: impl Into<String>) -> String {
+        self.redact_output_text_at_depth(text.into(), 0)
+    }
+
+    fn redact_output_text_at_depth(&self, text: String, depth: usize) -> String {
+        if self.inner.secret_env.is_empty() {
+            return text;
+        }
+        if depth >= MAX_STRUCTURED_REDACTION_DEPTH {
+            return REDACTED_CREDENTIAL.to_owned();
+        }
+        if !matches!(
+            text.trim_start().as_bytes().first(),
+            Some(b'{') | Some(b'[') | Some(b'"')
+        ) {
+            return self.redact_text(text);
+        }
+        match serde_json::from_str::<JsonValue>(&text) {
+            Ok(mut value) => {
+                self.redact_json_value_at_depth(&mut value, depth);
+                // `JsonValue` serialization is infallible in practice. Keep this
+                // boundary fail-closed nevertheless: falling back to the encoded
+                // source text would recreate the escape bypass this branch exists
+                // to prevent.
+                match serde_json::to_string(&value) {
+                    Ok(serialized) => serialized,
+                    Err(_) => REDACTED_CREDENTIAL.to_owned(),
+                }
+            }
+            Err(_) => self.redact_text(text),
+        }
+    }
+
+    #[must_use]
+    /// Redact captured output without trusting its wire representation. Valid
+    /// JSON is decoded and redacted structurally before it is serialized again;
+    /// all other output is treated as text. This keeps every process-backed
+    /// adapter from having to reimplement the same escape-safe boundary.
     pub fn redact_bytes_to_string(&self, bytes: Vec<u8>, limit_bytes: usize) -> String {
-        let mut text = String::from_utf8_lossy(&bytes).into_owned();
-        text = self.redact_text(text);
-        truncate_utf8_string(&text, limit_bytes)
+        let text = String::from_utf8_lossy(&bytes).into_owned();
+        let redacted = self.redact_output_text(text);
+        crate::bytes::truncate_utf8_bytes(&redacted, limit_bytes)
     }
 }
 
@@ -539,10 +822,16 @@ pub enum CredentialDeliveryError {
     UnsupportedDeliveryMode { mode: String },
     #[error("credential process-env delivery is not supported across the '{boundary}' boundary")]
     ProcessEnvBoundaryUnsupported { boundary: String },
+    #[error(
+        "credential delivery environment variable '{name}' collides with non-secret process environment"
+    )]
+    EnvironmentCollision { name: String },
     #[error("invalid hosted credential handles: {reason}")]
     HostedCredentialHandlesInvalid { reason: String },
-    #[error("hosted credential handles must share one provider and purpose")]
+    #[error("hosted credential handles must share one provider, purpose, and audience")]
     HostedCredentialHandlesMixed,
+    #[error("credential audience is not a canonical HTTPS URL: {audience}")]
+    InvalidAudience { audience: String },
     #[error("hosted credential handle reference must be type credential, got '{reference_type}'")]
     HostedCredentialRefType { reference_type: String },
 }
@@ -553,6 +842,32 @@ struct HostedCredentialHandle {
     credential_ref: Reference,
     provider: String,
     purpose: CredentialDeliveryPurpose,
+    #[serde(default)]
+    audience: Option<String>,
+}
+
+pub(crate) fn credential_audience_host(audience: &str) -> Result<String, CredentialDeliveryError> {
+    let parsed =
+        url::Url::parse(audience).map_err(|_| CredentialDeliveryError::InvalidAudience {
+            audience: audience.to_owned(),
+        })?;
+    if parsed.scheme() != "https"
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+        || parsed.query().is_some()
+        || parsed.fragment().is_some()
+    {
+        return Err(CredentialDeliveryError::InvalidAudience {
+            audience: audience.to_owned(),
+        });
+    }
+    parsed
+        .host_str()
+        .map(|host| host.trim_end_matches('.').to_ascii_lowercase())
+        .filter(|host| !host.is_empty())
+        .ok_or_else(|| CredentialDeliveryError::InvalidAudience {
+            audience: audience.to_owned(),
+        })
 }
 
 /// Build the non-secret observation that records a local per-run credential
@@ -657,20 +972,84 @@ fn validate_env_name(name: &str) -> Result<(), CredentialDeliveryError> {
     }
 }
 
-fn truncate_utf8_string(text: &str, limit_bytes: usize) -> String {
-    if text.len() <= limit_bytes {
-        return text.to_owned();
-    }
-    let mut end = limit_bytes;
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    text[..end].to_owned()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn credential_free_output_preserves_exact_bytes() {
+        let output = b"{\"message\":\"hello\"}\n".to_vec();
+
+        assert_eq!(
+            CredentialDelivery::none().redact_bytes_to_string(output, 64 * 1024),
+            "{\"message\":\"hello\"}\n"
+        );
+    }
+
+    #[test]
+    fn unregistered_secret_field_detection_is_exact_not_substring_based() {
+        let safe = JsonValue::Object(JsonObject::from([
+            (
+                "token_budget".to_owned(),
+                JsonValue::String("10".to_owned()),
+            ),
+            (
+                "credential_profile".to_owned(),
+                JsonValue::String("production".to_owned()),
+            ),
+        ]));
+        let unsafe_value = JsonValue::Object(JsonObject::from([(
+            "nested".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "access_token".to_owned(),
+                JsonValue::String("raw-provider-material".to_owned()),
+            )])),
+        )]));
+
+        assert_eq!(first_unregistered_secret_field(&safe), None);
+        assert_eq!(
+            first_unregistered_secret_field(&unsafe_value).as_deref(),
+            Some("access_token")
+        );
+    }
+
+    #[test]
+    fn captured_json_uses_structured_credential_redaction() -> Result<(), Box<dyn std::error::Error>>
+    {
+        const SECRET: &str = "credential-redaction-sentinel-\"quoted\\slash\ncontrol";
+        const MARKER: &str = "credential-redaction-sentinel";
+        let delivery = CredentialDelivery::from_local_descriptor(
+            "example",
+            "api_key",
+            "EXAMPLE_TOKEN",
+            "local:example:test",
+            vec!["example:read".to_owned()],
+            SECRET,
+        )?;
+        let document = JsonValue::Object(JsonObject::from([
+            (SECRET.to_owned(), JsonValue::String(SECRET.to_owned())),
+            (
+                "nested".to_owned(),
+                JsonValue::Array(vec![JsonValue::String(SECRET.to_owned())]),
+            ),
+        ]));
+        let encoded = serde_json::to_vec(&JsonValue::Object(JsonObject::from([
+            ("document".to_owned(), document.clone()),
+            (
+                "embedded".to_owned(),
+                JsonValue::String(serde_json::to_string(&document)?),
+            ),
+        ])))?;
+
+        let output = delivery.redact_bytes_to_string(encoded, 64 * 1024);
+        let decoded = serde_json::from_str::<JsonValue>(&output)?;
+
+        assert!(output.contains(REDACTED_CREDENTIAL));
+        assert!(!output.contains(MARKER));
+        assert!(!format!("{decoded:?}").contains(MARKER));
+        assert_eq!(delivery.redact_output_text("1e3"), "1e3");
+        Ok(())
+    }
 
     #[test]
     fn optional_env_binding_is_skipped_when_material_role_is_missing()
@@ -790,6 +1169,27 @@ mod tests {
             Some("ghp_secret_value")
         );
         assert!(!format!("{delivery:?}").contains("ghp_secret_value"));
+        Ok(())
+    }
+
+    #[test]
+    fn credential_delivery_clones_share_one_zeroizing_secret_owner()
+    -> Result<(), CredentialDeliveryError> {
+        let delivery = CredentialDelivery::from_local_descriptor(
+            "github",
+            "api_key",
+            "GITHUB_TOKEN",
+            "local:github:shared",
+            vec!["repo:read".to_owned()],
+            "ghp_secret_value",
+        )?;
+        let clone = delivery.clone();
+
+        assert!(Arc::ptr_eq(&delivery.inner, &clone.inner));
+        assert_eq!(
+            clone.secret_env().get("GITHUB_TOKEN"),
+            Some("ghp_secret_value")
+        );
         Ok(())
     }
 

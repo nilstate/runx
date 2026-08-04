@@ -1,7 +1,7 @@
-use runx_contracts::{JsonNumber, JsonObject, JsonValue, Reference};
+use runx_contracts::{JsonNumber, JsonObject, JsonValue, ProofKind, Reference, ReferenceType};
 use runx_runtime::{
-    EffectAdmission, EffectMetadataRefreshRequest, EffectOutputRequest, EffectReceiptRequest,
-    EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, RuntimeEffectError,
+    EffectAdmission, EffectOutputRequest, EffectReceiptRequest, EffectReplay,
+    EffectReplayOutputRequest, EffectReplayReceiptRequest, InvocationOutput, RuntimeEffectError,
     insert_effect_verification_ref,
 };
 
@@ -13,13 +13,15 @@ use super::errors::{denied, failed};
 use super::finality::{PaymentFinalitySupervisor, PaymentFinalitySupervisorRequest};
 use super::replay::receipt_has_payment_rail_proof;
 use crate::effect_state::{EffectStepStateInput, persist_effect_step_state};
-use crate::packets::{PaymentRailProof, read_effect_evidence_packet};
+use crate::packets::{
+    PaymentRailProof, read_effect_evidence_packet, redact_payment_transient_material,
+};
 use crate::supervisor::{
     PAYMENT_RAIL_SUPERVISOR_EVIDENCE_METADATA, PaymentSupervisorProofMatch,
-    PaymentSupervisorVerificationInput, insert_payment_supervisor_proof_metadata,
-    payment_supervisor_evidence_from_payload, payment_supervisor_evidence_metadata_value,
-    payment_supervisor_evidence_reference, payment_supervisor_proof_reference,
-    rebind_supervisor_proof_to_receipt, validate_payment_supervisor_proof,
+    PaymentSupervisorSettlementEvidence, PaymentSupervisorVerificationInput,
+    insert_payment_supervisor_proof_metadata, payment_supervisor_evidence_from_payload,
+    payment_supervisor_evidence_metadata_value, payment_supervisor_evidence_reference,
+    payment_supervisor_proof_reference, validate_payment_supervisor_proof,
     verify_payment_rail_supervisor_proof,
 };
 
@@ -48,6 +50,17 @@ pub(super) fn prepare_payment_output(
         .result
         .as_ref()
         .and_then(|result| result.status.as_deref());
+    let evidence = supervise_payment_output(supervisor, payment, claim, status)?;
+    attach_payment_output_evidence(request.output, payment, &evidence)?;
+    redact_transient_payment_output(request.output)
+}
+
+fn supervise_payment_output(
+    supervisor: &dyn PaymentFinalitySupervisor,
+    payment: &StepPaymentAuthorityContext,
+    claim: &PaymentRailProof,
+    status: Option<&str>,
+) -> Result<PaymentSupervisorSettlementEvidence, RuntimeEffectError> {
     let supervisor_evidence = supervisor
         .supervise(supervisor_request(payment, claim, status))
         .map_err(|source| {
@@ -61,23 +74,41 @@ pub(super) fn prepare_payment_output(
             supervisor_evidence.family, PAYMENT_EFFECT_FAMILY
         )));
     }
-    let evidence = payment_supervisor_evidence_from_payload(&supervisor_evidence.payload).map_err(
-        |source| {
-            denied(format!(
-                "supervisor-verified rail proof is required: {source}"
-            ))
-        },
-    )?;
-    let value = payment_supervisor_evidence_metadata_value(&evidence)
+    payment_supervisor_evidence_from_payload(&supervisor_evidence.payload).map_err(|source| {
+        denied(format!(
+            "supervisor-verified rail proof is required: {source}"
+        ))
+    })
+}
+
+fn attach_payment_output_evidence(
+    output: &mut InvocationOutput,
+    payment: &StepPaymentAuthorityContext,
+    evidence: &PaymentSupervisorSettlementEvidence,
+) -> Result<(), RuntimeEffectError> {
+    let value = payment_supervisor_evidence_metadata_value(evidence)
         .map_err(|source| failed("encoding supervisor evidence", source))?;
-    request
-        .output
+    output
         .metadata
         .insert(PAYMENT_RAIL_SUPERVISOR_EVIDENCE_METADATA.to_owned(), value);
     insert_effect_verification_ref(
-        &mut request.output.metadata,
-        payment_supervisor_evidence_reference(&evidence),
+        &mut output.metadata,
+        payment_supervisor_evidence_reference(evidence),
     )?;
+    if let Some(identity) = payment.settlement_identity.as_ref() {
+        insert_effect_verification_ref(
+            &mut output.metadata,
+            Reference {
+                reference_type: ReferenceType::Target,
+                uri: format!("runx:money_movement:{}", identity.money_movement_id).into(),
+                provider: Some(payment.rail.clone().into()),
+                locator: None,
+                label: Some("verified payment movement".into()),
+                observed_at: None,
+                proof_kind: Some(ProofKind::EffectFinality),
+            },
+        )?;
+    }
     Ok(())
 }
 
@@ -127,6 +158,11 @@ pub(super) fn persist_payment_output(
     };
     let proof = crate::supervisor::payment_supervisor_proof_from_metadata(&request.output.metadata)
         .map_err(|source| failed("reading supervisor proof metadata", source))?;
+    // A failed rail act carries its partial evidence packet in the failure
+    // value, not in the (success-only) contract claim. Durable state must
+    // still record that in-flight mutation so a later run escalates instead
+    // of issuing a second rail mutation.
+    let evidence = payment_effect_evidence(request.claim, request.output)?;
     persist_effect_step_state(
         request.env,
         request.graph_dir,
@@ -142,11 +178,36 @@ pub(super) fn persist_payment_output(
             run_spend: payment.run_spend.clone(),
             period_spend: payment.period_spend.clone(),
         },
-        request.claim,
+        evidence,
         request.receipt,
         proof.as_ref(),
     )
     .map_err(|source| failed("persisting state", source))
+}
+
+fn payment_effect_evidence<'a>(
+    claim: &'a JsonObject,
+    output: &'a InvocationOutput,
+) -> Result<&'a JsonObject, RuntimeEffectError> {
+    if read_effect_evidence_packet(claim)
+        .map_err(|source| failed("reading persisted rail packet", source))?
+        .is_some()
+    {
+        return Ok(claim);
+    }
+    let Some(value) = (!output.succeeded())
+        .then(|| output.value.as_object())
+        .flatten()
+    else {
+        return Ok(claim);
+    };
+    if read_effect_evidence_packet(value)
+        .map_err(|source| failed("reading failed rail packet", source))?
+        .is_some()
+    {
+        return Ok(value);
+    }
+    Ok(claim)
 }
 
 pub(super) fn payment_authority_grant_refs(
@@ -218,11 +279,17 @@ pub(super) fn validate_payment_replay(
     })
 }
 
-pub(super) fn refresh_payment_output_metadata(
-    request: EffectMetadataRefreshRequest<'_>,
+fn redact_transient_payment_output(
+    output: &mut InvocationOutput,
 ) -> Result<(), RuntimeEffectError> {
-    rebind_supervisor_proof_to_receipt(&mut request.output.metadata, request.receipt)
-        .map_err(|source| failed("refreshing supervisor proof metadata", source))
+    let JsonValue::Object(payload) = &mut output.value else {
+        return Ok(());
+    };
+    redact_payment_transient_material(payload);
+    if let Some(JsonValue::Object(proof)) = payload.get_mut("rail_proof") {
+        proof.remove("rail_session_material_ref");
+    }
+    Ok(())
 }
 
 fn supervisor_request<'a>(

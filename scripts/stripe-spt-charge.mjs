@@ -225,8 +225,8 @@ function writeDemoReceipts(directory, settlement, refusal) {
   return {
     settlement: settlementPath,
     refusal: refusalPath,
-    verify_settlement: `node examples/governed-spend/verify.mjs ${settlementPath}`,
-    verify_refusal: `node examples/governed-spend/verify.mjs ${refusalPath}`,
+    verify_settlement: `node tools/verify/verify.mjs ${settlementPath}`,
+    verify_refusal: `node tools/verify/verify.mjs ${refusalPath}`,
   };
 }
 

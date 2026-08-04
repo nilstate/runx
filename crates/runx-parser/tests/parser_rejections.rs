@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use runx_parser::{
     ParseErrorKind, ValidationErrorKind, assert_yaml_scalar_subset, parse_graph_yaml,
     parse_runner_manifest_yaml, parse_skill_markdown, parse_tool_manifest_json,
-    parse_tool_manifest_yaml, validate_graph, validate_skill,
+    parse_tool_manifest_yaml, validate_graph, validate_skill, validate_tool_manifest,
 };
 
 #[test]
@@ -28,6 +28,118 @@ fn parse_rejections_cover_every_error_kind() -> Result<(), String> {
             ParseErrorKind::UnsupportedScalar,
         ]),
     );
+    Ok(())
+}
+
+#[test]
+fn tool_manifests_reject_retired_http_and_catalog_sources() -> Result<(), String> {
+    for (source_type, replacement) in [
+        ("http", "http.read, http.query, or http.execute"),
+        ("catalog", "graph tool step"),
+    ] {
+        let raw = parse_tool_manifest_yaml(&format!(
+            "schema: runx.tool.manifest.v1\nname: retired-{source_type}\nsource:\n  type: {source_type}\n"
+        ))
+        .map_err(|error| error.to_string())?;
+        let error = validate_tool_manifest(raw)
+            .err()
+            .ok_or_else(|| format!("retired {source_type} tool source unexpectedly validated"))?;
+        assert!(error.to_string().contains(replacement), "{error}");
+    }
+    Ok(())
+}
+
+#[test]
+fn tool_manifests_reject_unknown_input_types_and_invalid_defaults() -> Result<(), String> {
+    for (input, expected) in [
+        ("type: mystery", "must be one of"),
+        (
+            "type: integer\n    default: not-an-integer",
+            "default must match",
+        ),
+    ] {
+        let raw = parse_tool_manifest_yaml(&format!(
+            "schema: runx.tool.manifest.v1\nname: invalid-input\nsource:\n  type: cli-tool\n  command: /bin/true\ninputs:\n  value:\n    {input}\n"
+        ))
+        .map_err(|error| error.to_string())?;
+        let error = validate_tool_manifest(raw)
+            .err()
+            .ok_or_else(|| format!("invalid input contract unexpectedly validated: {input}"))?;
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+    Ok(())
+}
+
+#[test]
+fn tool_manifests_reject_blank_scopes_without_rewriting_opaque_values() -> Result<(), String> {
+    let raw = parse_tool_manifest_yaml(
+        "schema: runx.tool.manifest.v1\nname: invalid-scope\nsource:\n  type: cli-tool\n  command: /bin/true\nscopes:\n  - '   '\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let error = validate_tool_manifest(raw)
+        .err()
+        .ok_or_else(|| "blank tool scope unexpectedly validated".to_owned())?;
+    assert!(
+        error
+            .to_string()
+            .contains("scopes must contain only non-empty scope strings"),
+        "{error}"
+    );
+
+    let raw = parse_tool_manifest_yaml(
+        "schema: runx.tool.manifest.v1\nname: opaque-scope\nsource:\n  type: cli-tool\n  command: /bin/true\nscopes:\n  - 'https://provider.example/auth/custom.scope?mode=read,write'\n  - 'opaque capability with spaces'\n  - 'opaque capability with spaces'\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let tool = validate_tool_manifest(raw).map_err(|error| error.to_string())?;
+    assert_eq!(
+        tool.scopes,
+        [
+            "https://provider.example/auth/custom.scope?mode=read,write",
+            "opaque capability with spaces",
+            "opaque capability with spaces",
+        ]
+    );
+    Ok(())
+}
+
+#[test]
+fn tool_manifests_reject_generated_parallel_contract_fields() -> Result<(), String> {
+    for field in [
+        "output",
+        "runx",
+        "runtime",
+        "schema_hash",
+        "source_hash",
+        "toolkit_version",
+    ] {
+        let raw = parse_tool_manifest_yaml(&format!(
+            "schema: runx.tool.manifest.v1\nname: canonical-only\nsource:\n  type: cli-tool\n  command: /bin/true\n{field}: {{}}\n"
+        ))
+        .map_err(|error| error.to_string())?;
+        let error = validate_tool_manifest(raw)
+            .err()
+            .ok_or_else(|| format!("generated field {field} unexpectedly validated"))?;
+        assert!(
+            error
+                .to_string()
+                .contains(&format!("{field} is not supported")),
+            "{error}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn tool_manifests_require_the_canonical_schema_marker() -> Result<(), String> {
+    let raw = parse_tool_manifest_yaml(
+        "name: missing-schema\nsource:\n  type: cli-tool\n  command: /bin/true\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let error = validate_tool_manifest(raw)
+        .err()
+        .ok_or_else(|| "schema-less tool manifest unexpectedly validated".to_owned())?;
+
+    assert!(error.to_string().contains("schema is required"), "{error}");
     Ok(())
 }
 
@@ -100,6 +212,299 @@ steps:
     assert_eq!(
         graph.steps[0].context_skills,
         vec!["registry:runx/taste-profile@1.0.0"]
+    );
+    Ok(())
+}
+
+#[test]
+fn graph_rejects_agent_instructions_outside_skill_markdown() -> Result<(), String> {
+    let error = validate_graph(
+        parse_graph_yaml(
+            r#"
+name: misplaced-instructions
+steps:
+  - id: decide
+    run:
+      type: agent-task
+      agent: builder
+      task: decide
+    instructions: Put this in SKILL.md.
+"#,
+        )
+        .map_err(|error| error.to_string())?,
+    )
+    .err()
+    .ok_or_else(|| "expected graph instructions to be rejected".to_owned())?;
+
+    assert!(error.to_string().contains("owning SKILL.md"), "{error}");
+    Ok(())
+}
+
+#[test]
+fn effect_family_is_runtime_owned_and_rejected_from_graph_steps() -> Result<(), String> {
+    let error = validate_graph(
+        parse_graph_yaml(
+            r#"
+name: forged-effect-owner
+steps:
+  - id: fulfill
+    skill: ../pay-fulfill-rail
+    effect_family: harmless
+"#,
+        )
+        .map_err(|error| error.to_string())?,
+    )
+    .err()
+    .ok_or_else(|| "expected author-selected effect_family to be rejected".to_owned())?;
+
+    assert!(
+        error
+            .to_string()
+            .contains("effect ownership is derived from the resolved target"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn runner_rejects_agent_instructions_outside_skill_markdown() -> Result<(), String> {
+    let raw = parse_runner_manifest_yaml(
+        r#"
+skill: misplaced-instructions
+runners:
+  decide:
+    type: agent-task
+    agent: builder
+    task: decide
+    instructions: Put this in SKILL.md.
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let error = runx_parser::validate_runner_manifest(raw)
+        .err()
+        .ok_or_else(|| "expected runner instructions to be rejected".to_owned())?;
+
+    assert!(error.to_string().contains("owning SKILL.md"), "{error}");
+    Ok(())
+}
+
+#[test]
+fn runner_inputs_expand_one_exact_definition_and_validate_nested_examples() -> Result<(), String> {
+    let raw = parse_runner_manifest_yaml(
+        r#"
+skill: typed-inputs
+input_definitions:
+  selector:
+    type: object
+    required: true
+    description: Bounded issue selector.
+    schema:
+      required: [kind, filters]
+      additionalProperties: false
+      properties:
+        kind: { type: string, enum: [issues] }
+        filters:
+          type: object
+          required: [limit]
+          additionalProperties: false
+          properties:
+            limit: { type: integer, minimum: 1, maximum: 25 }
+runners:
+  inspect:
+    default: true
+    type: agent-task
+    agent: operator
+    task: inspect
+    inputs:
+      resources: { definition: selector }
+    examples:
+      - resources: { kind: issues, filters: { limit: 25 } }
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let manifest = runx_parser::validate_runner_manifest(raw).map_err(|error| error.to_string())?;
+    let runner = manifest
+        .runners
+        .get("inspect")
+        .ok_or_else(|| "expanded runner is missing".to_owned())?;
+
+    assert_eq!(
+        runner.inputs["resources"],
+        manifest.input_definitions["selector"]
+    );
+    assert_eq!(runner.examples.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn runner_inputs_reject_definition_overrides_and_invalid_nested_examples() -> Result<(), String> {
+    for (declaration, expected) in [
+        (
+            "{ definition: selector, required: false }",
+            "unknown field 'definition'",
+        ),
+        (
+            "{ definition: selector }",
+            "runners.inspect.examples[0]/resources/filters/limit",
+        ),
+    ] {
+        let example_limit = if declaration.contains("required") {
+            25
+        } else {
+            26
+        };
+        let raw = parse_runner_manifest_yaml(&format!(
+            r#"
+skill: typed-inputs
+input_definitions:
+  selector:
+    type: object
+    required: true
+    schema:
+      required: [filters]
+      properties:
+        filters:
+          type: object
+          required: [limit]
+          properties:
+            limit: {{ type: integer, maximum: 25 }}
+runners:
+  inspect:
+    type: agent-task
+    agent: operator
+    task: inspect
+    inputs:
+      resources: {declaration}
+    examples:
+      - resources: {{ filters: {{ limit: {example_limit} }} }}
+"#
+        ))
+        .map_err(|error| error.to_string())?;
+        let error = runx_parser::validate_runner_manifest(raw)
+            .err()
+            .ok_or_else(|| {
+                "invalid reusable input declaration unexpectedly validated".to_owned()
+            })?;
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+    Ok(())
+}
+
+#[test]
+fn graph_runner_rejects_ambiguous_runner_artifacts() -> Result<(), String> {
+    let raw = parse_runner_manifest_yaml(
+        r#"
+skill: graph-artifacts
+runners:
+  execute:
+    type: graph
+    graph:
+      name: graph-artifacts
+      steps:
+        - id: package
+          run:
+            type: javascript
+            module: package.mjs
+    artifacts:
+      wrap_as: result_packet
+      packet: runx.test.result.v1
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let error = runx_parser::validate_runner_manifest(raw)
+        .err()
+        .ok_or_else(|| "expected graph runner artifacts to be rejected".to_owned())?;
+
+    assert!(
+        error.to_string().contains("terminal output-producing step"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn graph_step_rejects_malformed_artifact_contract() -> Result<(), String> {
+    let raw = parse_graph_yaml(
+        r#"
+name: malformed-step-artifacts
+steps:
+  - id: package
+    run:
+      type: javascript
+      module: package.mjs
+    artifacts:
+      packets:
+        result: runx.test.result.v1
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let error = validate_graph(raw)
+        .err()
+        .ok_or_else(|| "expected malformed graph-step artifacts to be rejected".to_owned())?;
+
+    assert!(
+        error
+            .to_string()
+            .contains("artifacts.packets requires steps.0.artifacts.named_emits"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn graph_runner_rejects_ambiguous_runner_outputs() -> Result<(), String> {
+    let raw = parse_runner_manifest_yaml(
+        r#"
+skill: graph-outputs
+runners:
+  execute:
+    type: graph
+    outputs:
+      result: object
+    graph:
+      name: graph-outputs
+      steps:
+        - id: package
+          run:
+            type: javascript
+            module: package.mjs
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let error = runx_parser::validate_runner_manifest(raw)
+        .err()
+        .ok_or_else(|| "expected graph runner outputs to be rejected".to_owned())?;
+
+    assert!(
+        error.to_string().contains("terminal output-producing step"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn external_adapter_manifest_path_is_rejected_at_parser_boundary() -> Result<(), String> {
+    let raw = parse_runner_manifest_yaml(
+        r#"
+skill: unsafe-external-adapter
+runners:
+  execute:
+    source:
+      type: external-adapter
+      external_adapter:
+        manifest_path: ../adapter.manifest.json
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let error = runx_parser::validate_runner_manifest(raw)
+        .err()
+        .ok_or_else(|| "expected unsafe external-adapter path to be rejected".to_owned())?;
+
+    assert!(
+        error
+            .to_string()
+            .contains("must be a relative path below the skill directory"),
+        "{error}"
     );
     Ok(())
 }

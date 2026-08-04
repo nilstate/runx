@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because signer material parsing, production
+// Module rationale: signer material parsing, production
 // validation, and verifier behavior are audited as one receipt boundary.
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -18,6 +18,9 @@ pub const RECEIPT_SIGNATURE_BASE64_PREFIX: &str = "base64:";
 pub const RUNX_RECEIPT_SIGN_KID_ENV: &str = "RUNX_RECEIPT_SIGN_KID";
 pub const RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV: &str = "RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64";
 pub const RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV: &str = "RUNX_RECEIPT_SIGN_ISSUER_TYPE";
+pub const RUNX_RECEIPT_VERIFY_KID_ENV: &str = "RUNX_RECEIPT_VERIFY_KID";
+pub const RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV: &str =
+    "RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64";
 
 pub(crate) fn is_receipt_signing_env_name(name: &str) -> bool {
     name.starts_with("RUNX_RECEIPT_SIGN_")
@@ -64,6 +67,10 @@ pub enum RuntimeReceiptSigningError {
     )]
     IncompleteSigningEnv,
     #[error(
+        "production receipt verification requires {RUNX_RECEIPT_VERIFY_KID_ENV} and {RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV} to be set together"
+    )]
+    IncompleteVerificationEnv,
+    #[error(
         "governed runtime receipt signing requires {RUNX_RECEIPT_SIGN_KID_ENV}, {RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV}, and {RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV}"
     )]
     MissingSigningEnv,
@@ -74,6 +81,35 @@ pub enum RuntimeReceiptSigningError {
 #[derive(Clone, Default)]
 pub struct RuntimeReceiptSignatureConfig {
     production: Option<Arc<ProductionReceiptSignatureMaterial>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuntimeReceiptVerifierSource {
+    ExplicitVerifier,
+    SigningIdentity,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedReceiptVerifier {
+    verifier: Ed25519ReceiptVerifier,
+    source: RuntimeReceiptVerifierSource,
+}
+
+impl ResolvedReceiptVerifier {
+    #[must_use]
+    pub fn verifier(&self) -> &Ed25519ReceiptVerifier {
+        &self.verifier
+    }
+
+    #[must_use]
+    pub fn into_verifier(self) -> Ed25519ReceiptVerifier {
+        self.verifier
+    }
+
+    #[must_use]
+    pub fn source(&self) -> RuntimeReceiptVerifierSource {
+        self.source
+    }
 }
 
 struct ProductionReceiptSignatureMaterial {
@@ -142,6 +178,52 @@ impl RuntimeReceiptSignatureConfig {
             .as_ref()
             .map(|production| production.signer.production_key())
             .filter(|key| key.kid() == kid)
+    }
+
+    #[must_use]
+    pub fn production_verifier(&self) -> Option<Ed25519ReceiptVerifier> {
+        self.production
+            .as_ref()
+            .map(|production| production.verifier.clone())
+    }
+}
+
+/// Resolve the one production receipt verifier selected by the operator's
+/// environment. An explicit verifier is authoritative. When it is absent, a
+/// complete signing identity supplies its own public verifier so the process
+/// that signs local receipts can inspect them without duplicating key
+/// configuration.
+pub fn receipt_verifier_from_env(
+    env: &BTreeMap<String, String>,
+) -> Result<Option<ResolvedReceiptVerifier>, RuntimeReceiptSigningError> {
+    let kid = non_empty_env(env, RUNX_RECEIPT_VERIFY_KID_ENV);
+    let public_key = non_empty_env(env, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV);
+    match (kid, public_key) {
+        (Some(kid), Some(public_key)) => {
+            Ed25519ReceiptVerifier::from_public_key_base64(kid.to_owned(), public_key).map(
+                |verifier| {
+                    Some(ResolvedReceiptVerifier {
+                        verifier,
+                        source: RuntimeReceiptVerifierSource::ExplicitVerifier,
+                    })
+                },
+            )
+        }
+        (Some(_), None) | (None, Some(_)) => {
+            Err(RuntimeReceiptSigningError::IncompleteVerificationEnv)
+        }
+        (None, None) => match RuntimeReceiptSignatureConfig::from_env(env) {
+            Ok(config) => {
+                Ok(config
+                    .production_verifier()
+                    .map(|verifier| ResolvedReceiptVerifier {
+                        verifier,
+                        source: RuntimeReceiptVerifierSource::SigningIdentity,
+                    }))
+            }
+            Err(RuntimeReceiptSigningError::MissingSigningEnv) => Ok(None),
+            Err(error) => Err(error),
+        },
     }
 }
 
@@ -385,4 +467,63 @@ fn is_well_formed_sha256(value: &str) -> bool {
         return false;
     };
     hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const KID: &str = "operator-signing-key";
+    const SEED: [u8; 32] = [0x42; 32];
+
+    #[test]
+    fn verifier_falls_back_to_complete_signing_identity() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let env = BTreeMap::from([
+            (RUNX_RECEIPT_SIGN_KID_ENV.to_owned(), KID.to_owned()),
+            (
+                RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV.to_owned(),
+                STANDARD.encode(SEED),
+            ),
+            (
+                RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV.to_owned(),
+                "ci".to_owned(),
+            ),
+        ]);
+        let signer = Ed25519ReceiptSigner::from_seed(KID, ReceiptIssuerType::Ci, &SEED)?;
+        let resolved = receipt_verifier_from_env(&env)?.ok_or("missing derived verifier")?;
+        assert_eq!(
+            resolved.source(),
+            RuntimeReceiptVerifierSource::SigningIdentity
+        );
+        let digest = "sha256:receipt";
+        let signature = signer.sign_receipt_body(digest)?;
+
+        resolved
+            .verifier()
+            .verify(&signer.issuer(), &signature, digest)
+            .map_err(|error| std::io::Error::other(format!("{error:?}")))?;
+        Ok(())
+    }
+
+    #[test]
+    fn partial_explicit_verifier_does_not_fall_back_to_signer() {
+        let env = BTreeMap::from([
+            (RUNX_RECEIPT_VERIFY_KID_ENV.to_owned(), KID.to_owned()),
+            (RUNX_RECEIPT_SIGN_KID_ENV.to_owned(), KID.to_owned()),
+            (
+                RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV.to_owned(),
+                STANDARD.encode(SEED),
+            ),
+            (
+                RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV.to_owned(),
+                "ci".to_owned(),
+            ),
+        ]);
+
+        assert_eq!(
+            receipt_verifier_from_env(&env),
+            Err(RuntimeReceiptSigningError::IncompleteVerificationEnv)
+        );
+    }
 }

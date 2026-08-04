@@ -10,12 +10,6 @@
       "./run.mjs"
     ]
   },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
   "inputs": {
     "message": {
       "type": "string",
@@ -23,11 +17,7 @@
       "description": "Message to echo."
     }
   },
-  "output": {},
   "scopes": [
     "fixture.local_echo"
-  ],
-  "source_hash": "sha256:local-inspect-fixture",
-  "schema_hash": "sha256:local-inspect-schema",
-  "toolkit_version": "0.0.0"
+  ]
 }

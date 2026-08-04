@@ -1,13 +1,18 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
+const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+const releaseTopology = JSON.parse(
+  readFileSync(path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json"), "utf8"),
+);
 const TARGETS = {
-  darwinArm64: "aarch64-apple-darwin",
-  darwinX64: "x86_64-apple-darwin",
-  linuxArm64: "aarch64-unknown-linux-musl",
-  linuxX64: "x86_64-unknown-linux-musl",
-  winX64: "x86_64-pc-windows-msvc",
+  darwinArm64: rustTarget("darwin-arm64"),
+  darwinX64: rustTarget("darwin-x64"),
+  linuxArm64: rustTarget("linux-arm64"),
+  linuxX64: rustTarget("linux-x64"),
+  winX64: rustTarget("win32-x64"),
 };
 
 const options = parseArgs(process.argv.slice(2));
@@ -27,8 +32,14 @@ for (const target of Object.values(TARGETS)) {
   const binary = target.includes("windows")
     ? `${archiveStem(manifest.version, target)}/runx.exe`
     : `${archiveStem(manifest.version, target)}/runx`;
+  const worker = target.includes("windows")
+    ? `${archiveStem(manifest.version, target)}/runx-js-worker.exe`
+    : `${archiveStem(manifest.version, target)}/runx-js-worker`;
   if (!entries.has(binary)) {
     failures.push(`${artifact.file} does not contain ${binary}`);
+  }
+  if (!entries.has(worker)) {
+    failures.push(`${artifact.file} does not contain ${worker}`);
   }
 }
 
@@ -67,6 +78,9 @@ expectIncludes("aur aarch64 target branch", aur, `aarch64) target="${TARGETS.lin
 
 const homebrew = readFileSync(path.join(options.channels, "homebrew", "runx.rb"), "utf8");
 expectIncludes("homebrew nested archive install", homebrew, 'bin.install Dir["*/runx"].first => "runx"');
+expectIncludes("homebrew worker install", homebrew, 'bin.install Dir["*/runx-js-worker"].first => "runx-js-worker"');
+expectIncludes("winget worker file", wingetInstaller, `  - RelativeFilePath: ${winStem}\\runx-js-worker.exe`);
+expectIncludes("aur worker install", aur, 'install -Dm755 "runx-${pkgver}-${target}/runx-js-worker" "$pkgdir/usr/bin/runx-js-worker"');
 
 if (failures.length > 0) {
   console.error(JSON.stringify({ status: "failed", failures }, null, 2));
@@ -77,6 +91,14 @@ console.log(JSON.stringify({ status: "ok", checked: Object.values(TARGETS).lengt
 
 function archiveStem(version, target) {
   return `runx-${version}-${target}`;
+}
+
+function rustTarget(platform) {
+  const target = releaseTopology.nativePackages?.[platform]?.rustTarget;
+  if (!target) {
+    throw new Error(`release platform topology is missing rustTarget for ${platform}`);
+  }
+  return target;
 }
 
 function listArchiveEntries(archivePath) {

@@ -1,0 +1,27 @@
+name: non-github-adapter-skips
+kind: skill
+target: ..
+runner: default
+env:
+  RUNX_GITHUB_TOKEN: fixture-token
+inputs:
+  thread:
+    thread_locator: local://fixtures/issue-to-pr/outbox/provider
+    adapter:
+      type: fixture
+      provider: fixture
+  outbox_entry:
+    entry_id: outbox-provider-fixture-1
+    kind: message
+    thread_locator: local://fixtures/issue-to-pr/outbox/provider
+    status: approved
+    body: This fixture proves the provider child refuses an unrelated adapter without mutation.
+  next_status: published
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  source: skills-fixture
+  runner_kind: thread-outbox-provider
+  provider_shape: non_github_skip

@@ -6,6 +6,13 @@ import { fileURLToPath } from "node:url";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const nativeBinary = path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
+const workerBinary = path.join(
+  workspaceRoot,
+  "crates",
+  "target",
+  "debug",
+  process.platform === "win32" ? "runx-js-worker.exe" : "runx-js-worker",
+);
 const globalPrefix = execFileSync("npm", ["prefix", "-g"], {
   cwd: workspaceRoot,
   encoding: "utf8",
@@ -43,7 +50,16 @@ if (mode === "check") {
 }
 
 await access(nativeBinary, constants.X_OK).catch(() => {
-  throw new Error(`native debug binary is not executable: ${nativeBinary}\nRun: cargo build --manifest-path crates/Cargo.toml -p runx-cli`);
+  throw new Error(
+    `native debug binary is not executable: ${nativeBinary}\n`
+    + "Run: cargo build --manifest-path crates/Cargo.toml -p runx-cli -p runx-js-worker --bins",
+  );
+});
+await access(workerBinary, constants.X_OK).catch(() => {
+  throw new Error(
+    `native JavaScript worker is not executable: ${workerBinary}\n`
+    + "Run: cargo build --manifest-path crates/Cargo.toml -p runx-cli -p runx-js-worker --bins",
+  );
 });
 await mkdir(globalBinDir, { recursive: true });
 await rm(globalBinLink, { recursive: true, force: true });

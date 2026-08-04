@@ -1,55 +1,71 @@
-name: newsletter-template-ready
+name: newsletter-candidate-uses-authoritative-contract
 kind: skill
 target: ..
-runner: compose-email
+runner: compose-email-candidate
 inputs:
-  objective: Design our monthly product newsletter template with a hero, two updates, and one call to action.
-  account_status_json: '{"status":"healthy","account":{"tier":"pro"},"brand":{"setup_complete":true,"company_name":"Acme Co"}}'
-  brand_brief: Friendly, concise, one clear button.
-  operator_context: Design and test only; no live audience send.
+  objective: Write our monthly product newsletter with two concrete updates and one call to action.
+  composition_intent:
+    decision: ok
+    provider: nitrosend
+    mode: read
+    operation: compose_campaign_intent
+    tool: nitro_compose_campaign
+    provider_ref: null
+    result:
+      composition_status: intent_ready
+      contract_id: ecc_newsletter_fixture
+      composition_contract:
+        brand_context:
+          ref: brand-context-fixture
+          voice:
+            rules: [Friendly, concise, and concrete.]
+        hard_constraints:
+          urls:
+            primary_cta: https://example.test/updates
+        next_call:
+          composition_mode: validate
+          contract_id: ecc_newsletter_fixture
+          draft_meta:
+            creative_route_id: product_update
+            concrete_anchor: Two shipped improvements
+            why_this_earns_the_inbox: It tells customers exactly what changed.
+    evidence: null
+    blockers: []
+  operator_context: Design and validate only; never persist or send.
 caller:
   answers:
-    agent_task.compose-email-plan.output:
-      email_design:
+    agent_task.compose-email-from-contract.output:
+      campaign_candidate:
         decision: ready
-        template_intent: newsletter
-        subject: Your Acme update for the month
-        preheader: Two new things, one quick read.
-        sections:
-          - type: header
-            summary: Brand logo, empty props so the theme fills it.
-          - type: hero
-            summary: Headline plus a one-line intro.
-          - type: text
-            summary: Two short product update paragraphs.
-          - type: button
-            summary: Single primary call to action.
-          - type: footer
-            summary: Company name, address, unsubscribe; empty props.
-        rationale: A mobile-first single-column newsletter with one CTA, brand auto-applied, reviewed and test-sent before any campaign uses it.
-        ordered_tool_calls:
-          - tool: nitro_manage_template
-            purpose: Create the newsletter template from the section design.
-            requires_confirmation: false
-          - tool: nitro_review_delivery
-            purpose: Validate the template content and check the editor preview.
-            requires_confirmation: false
-          - tool: nitro_send_test_message
-            purpose: Send a test of the template to the saved test recipient.
-            requires_confirmation: false
-        human_actions:
-          - Review the editor preview before reusing the template in a campaign.
+        arguments:
+          composition_mode: validate
+          contract_id: ecc_newsletter_fixture
+          draft_meta:
+            creative_route_id: product_update
+            concrete_anchor: Two shipped improvements
+            why_this_earns_the_inbox: It tells customers exactly what changed.
+          subject: Two useful improvements
+          preheader: A faster review and a clearer handoff.
+          sections:
+            - type: text
+              props:
+                content: "<p>We shipped a faster review and a clearer handoff.</p>"
+            - type: button
+              props:
+                text: See the updates
+                url: https://example.test/updates
+        rationale: Uses the supplied concrete route, voice, and exact CTA URL.
         blockers: []
-        needs_input: []
-        unsupported_requirements: []
-        success_checkpoint:
-          milestone: template_ready
-          description: A brand-applied newsletter template was created, reviewed, and test-sent.
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
+  output:
+    subset:
+      campaign_candidate:
+        decision: ready
+        arguments:
+          composition_mode: validate
+          contract_id: ecc_newsletter_fixture
 metadata:
   public_skill: nitrosend
-  source_case: newsletter-template-ready
+  source_case: newsletter-candidate-uses-authoritative-contract
   source: skills-fixture

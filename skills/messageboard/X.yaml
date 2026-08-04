@@ -1,10 +1,14 @@
 skill: messageboard
-version: "0.2.0"
+version: "0.2.3"
 catalog:
   kind: skill
   audience: public
   visibility: public
   role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: true
+  approval: conditional
 runners:
   post:
     default: true
@@ -266,6 +270,7 @@ runners:
         description: Claim fuse, delivery deadline, and acceptance window.
     graph:
       name: messageboard-post-and-append
+      result_from: [persist, readback]
       steps:
         - id: decide
           skill: .
@@ -337,6 +342,7 @@ runners:
         description: Stable claim idempotency material.
     graph:
       name: messageboard-claim-and-append
+      result_from: [persist, readback]
       steps:
         - id: decide
           skill: .
@@ -404,6 +410,7 @@ runners:
         description: Artifact refs, reproduction notes, and acceptance evidence.
     graph:
       name: messageboard-deliver-and-append
+      result_from: [persist, readback]
       steps:
         - id: decide
           skill: .
@@ -471,6 +478,7 @@ runners:
         description: Verification notes, artifact refs, and acceptance criteria.
     graph:
       name: messageboard-accept-and-append
+      result_from: [persist, readback]
       steps:
         - id: decide
           skill: .

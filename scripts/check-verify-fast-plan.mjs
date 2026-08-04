@@ -12,10 +12,8 @@ const parallelSourceGroup = sliceBetween(
 );
 
 for (const forbidden of [
-  "authoring package contract",
+  "rustfmt",
   "rust:crate-graph",
-  "rust:style",
-  "cutover:legacy-check",
   "build rust binaries",
   "test:fast",
 ]) {
@@ -28,29 +26,21 @@ for (const required of [
   'step("readiness structural guard"',
   'step("demo inventory guard"',
   'step("release version sync"',
+  'step("rustfmt"',
+  'step("runtime architecture"',
+  'step("deterministic module engine decision"',
   'step("catalog version drift"',
+  'step("docs:api:check"',
   'await runSerialGroup("rust structure checks"',
-  'step("cutover:legacy-check"',
   'step("build rust binaries"',
   'step("build workspace"',
-  'step("authoring package contract"',
 ]) {
   if (!source.includes(required)) {
     throw new Error(`verify:fast is missing required serialized step marker: ${required}`);
   }
 }
 
-const buildWorkspaceIndex = source.indexOf('step("build workspace"');
-for (const requiredAfterBuild of [
-  'step("authoring package contract"',
-]) {
-  const stepIndex = source.indexOf(requiredAfterBuild);
-  if (stepIndex < buildWorkspaceIndex) {
-    throw new Error(`verify:fast runs ${requiredAfterBuild} before the workspace build`);
-  }
-}
-
-console.log("verify:fast plan keeps release drift checks early, package checks after build, and Rust-heavy checks serialized.");
+console.log("verify:fast plan keeps release drift checks early and Rust-heavy checks serialized.");
 
 function sliceBetween(contents, start, end) {
   const startIndex = contents.indexOf(start);

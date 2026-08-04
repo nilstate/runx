@@ -1,5 +1,5 @@
-// rust-style-allow: large-file - policy parity wire types stay colocated so serde surface changes are reviewed together.
-use runx_contracts::JsonValue;
+// Module rationale: policy parity wire types stay colocated so serde surface changes are reviewed together.
+use runx_contracts::{ExecutionBoundaryObservation, JsonValue};
 use serde::{Deserialize, Serialize};
 
 // These wire contracts now have their authoritative Rust type in
@@ -10,10 +10,9 @@ pub use runx_contracts::policy_proof::{
     AuthorityProofApprovalDecisionValue, AuthorityProofCredentialMaterial,
     AuthorityProofCredentialMaterialStatus, AuthorityProofRedaction,
     AuthorityProofRedactionSecretMaterial, AuthorityProofRedactionStatus,
-    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSandbox,
-    AuthorityProofSandboxFilesystem, AuthorityProofSandboxNetwork, AuthorityProofSandboxRuntime,
-    AuthorityProofSchemaVersion, CredentialEnvelope, CredentialEnvelopeKind,
-    CredentialGrantReference, ScopeAdmission, ScopeAdmissionStatus,
+    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSchemaVersion,
+    CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference, ScopeAdmission,
+    ScopeAdmissionStatus,
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -38,8 +37,6 @@ pub struct LocalAdmissionSource {
     pub args: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_seconds: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox: Option<SandboxDeclaration>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -56,15 +53,11 @@ pub struct LocalAdmissionOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skip_connected_auth: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub approved_sandbox_escalation: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skip_sandbox_escalation: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub execution_policy: Option<LocalExecutionPolicy>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct LocalExecutionPolicy {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strict_cli_tool_inline_code: Option<bool>,
@@ -125,19 +118,6 @@ pub enum CredentialBindingDecision {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AuthorityProofSandboxDeclaration {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profile: Option<String>,
-    #[serde(alias = "cwd_policy", skip_serializing_if = "Option::is_none")]
-    pub cwd_policy: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<bool>,
-    #[serde(alias = "require_enforcement", skip_serializing_if = "Option::is_none")]
-    pub require_enforcement: Option<bool>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AuthorityProofApprovalGate {
     pub id: String,
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
@@ -153,7 +133,7 @@ pub struct AuthorityProofApproval {
     pub approved: bool,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildAuthorityProofOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -170,10 +150,9 @@ pub struct BuildAuthorityProofOptions {
     pub scope_admission: Option<ScopeAdmission>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential: Option<CredentialEnvelope>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox_declaration: Option<AuthorityProofSandboxDeclaration>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox_metadata: Option<JsonValue>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scopes: Vec<String>,
+    pub execution_boundary: ExecutionBoundaryObservation,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approval: Option<AuthorityProofApproval>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -361,105 +340,11 @@ pub enum GraphScopeAdmissionDecision {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SandboxProfile {
-    Readonly,
-    WorkspaceWrite,
-    Network,
-    UnrestrictedLocalDev,
-}
-
-impl SandboxProfile {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SandboxProfile::Readonly => "readonly",
-            SandboxProfile::WorkspaceWrite => "workspace-write",
-            SandboxProfile::Network => "network",
-            SandboxProfile::UnrestrictedLocalDev => "unrestricted-local-dev",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CwdPolicy {
-    SkillDirectory,
-    Workspace,
-    Custom,
-}
-
-impl CwdPolicy {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            CwdPolicy::SkillDirectory => "skill-directory",
-            CwdPolicy::Workspace => "workspace",
-            CwdPolicy::Custom => "custom",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SandboxDeclaration {
-    pub profile: SandboxProfile,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cwd_policy: Option<CwdPolicy>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub env_allowlist: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub writable_paths: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub require_enforcement: Option<bool>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RequiredSandboxDeclaration {
-    pub profile: SandboxProfile,
-    pub cwd_policy: CwdPolicy,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub env_allowlist: Option<Vec<String>>,
-    pub network: bool,
-    pub writable_paths: Vec<String>,
-    pub require_enforcement: bool,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SandboxAdmissionOptions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub approved_escalation: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub skip_escalation: Option<bool>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(
-    tag = "status",
-    rename_all = "kebab-case",
-    rename_all_fields = "camelCase"
-)]
-pub enum SandboxAdmissionDecision {
-    Allow {
-        reasons: Vec<String>,
-    },
-    #[serde(rename = "approval_required")]
-    ApprovalRequired {
-        reasons: Vec<String>,
-    },
-    Deny {
-        reasons: Vec<String>,
-    },
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
         AdmissionDecision, AuthorityKind, GraphScopeAdmissionDecision, LocalAdmissionGrant,
-        LocalAdmissionGrantStatus, SandboxAdmissionDecision,
+        LocalAdmissionGrantStatus,
     };
 
     // Allow and Deny wire shapes are pinned end-to-end by the kernel policy
@@ -513,23 +398,6 @@ mod tests {
         assert_eq!(
             json,
             r#"{"status":"allow","reasons":["graph step requested no scopes"],"stepId":"deploy","requestedScopes":[],"grantedScopes":[],"grantId":"grant_1"}"#,
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn sandbox_approval_required_uses_snake_case_status() -> Result<(), serde_json::Error> {
-        let decision = SandboxAdmissionDecision::ApprovalRequired {
-            reasons: vec![
-                "unrestricted-local-dev sandbox requires explicit caller approval".to_owned(),
-            ],
-        };
-
-        let json = serde_json::to_string(&decision)?;
-
-        assert_eq!(
-            json,
-            r#"{"status":"approval_required","reasons":["unrestricted-local-dev sandbox requires explicit caller approval"]}"#,
         );
         Ok(())
     }

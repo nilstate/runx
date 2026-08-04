@@ -1,6 +1,8 @@
 use runx_contracts::{JsonObject, JsonValue, ThreadOutboxProviderOperation};
 
-use crate::adapter::{CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA, InvocationStatus, SkillOutput};
+use crate::adapter::{
+    CREDENTIAL_DELIVERY_OBSERVATIONS_METADATA, InvocationOutput, InvocationStatus,
+};
 use crate::outbox_provider::ThreadOutboxProviderProcessOutcome;
 
 use super::{ThreadOutboxProviderSkillAdapterError, json_error};
@@ -12,9 +14,9 @@ const PROVIDER_EVENT_HASH_METADATA: &str = "thread_outbox_provider_event_hash";
 
 pub(super) fn skill_output_from_outcome(
     outcome: ThreadOutboxProviderProcessOutcome,
-) -> Result<SkillOutput, ThreadOutboxProviderSkillAdapterError> {
+) -> Result<InvocationOutput, ThreadOutboxProviderSkillAdapterError> {
     let observation_value = contract_json_value(&outcome.observation, "serializing observation")?;
-    let stdout = stdout_from_outcome(&outcome, observation_value.clone())?;
+    let value = value_from_outcome(&outcome, observation_value.clone());
     let mut metadata = JsonObject::new();
     metadata.insert(OBSERVATION_METADATA.to_owned(), observation_value);
     metadata.insert(
@@ -39,29 +41,30 @@ pub(super) fn skill_output_from_outcome(
             contract_json_value(delivery_observations, "serializing delivery observations")?,
         );
     }
-    Ok(SkillOutput {
-        status: InvocationStatus::Success,
-        stdout,
-        stderr: outcome.redacted_stderr,
-        exit_code: outcome.process_exit_code,
-        duration_ms: outcome.duration_ms,
+    if let Some(execution_boundary) = &outcome.execution_boundary {
+        metadata.extend(execution_boundary.clone());
+    }
+    Ok(InvocationOutput::process_value(
+        InvocationStatus::Success,
+        value,
+        outcome.redacted_stderr,
+        outcome.process_exit_code,
+        outcome.duration_ms,
         metadata,
-    })
+    ))
 }
 
-fn stdout_from_outcome(
+fn value_from_outcome(
     outcome: &ThreadOutboxProviderProcessOutcome,
     observation_value: JsonValue,
-) -> Result<String, ThreadOutboxProviderSkillAdapterError> {
-    let value = match outcome.provider_output.clone() {
+) -> JsonValue {
+    match outcome.provider_output.clone() {
         Some(mut output) => {
             output.insert(OBSERVATION_METADATA.to_owned(), observation_value);
             JsonValue::Object(output)
         }
         None => observation_value,
-    };
-    serde_json::to_string(&value)
-        .map_err(|source| json_error("serializing thread-outbox-provider adapter stdout", source))
+    }
 }
 
 fn operation_label(operation: &ThreadOutboxProviderOperation) -> &'static str {

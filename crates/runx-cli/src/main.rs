@@ -1,20 +1,60 @@
-// rust-style-allow: large-file - native CLI command dispatch remains one audited
+// Module rationale: native CLI command dispatch remains one audited
 // boundary so release shims and exit-code handling are visible in one place.
 use std::env;
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_cli::router::{HarnessPlan, RouterAction, command_help_text, help_text};
 
-const PACKAGE_HARNESS_SIGNING_HINT: &str = "runx: hint: package harnesses seal signed receipts; set RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE together, or unset all three to use local-development receipts.";
-const PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt store contains entries that do not verify with the current issuer; retry with --receipt-dir \"$(mktemp -d)\" for an isolated harness run.";
+const HARNESS_SIGNING_HINT: &str = "runx: hint: harnesses seal signed receipts; set RUNX_RECEIPT_SIGN_KID, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64, and RUNX_RECEIPT_SIGN_ISSUER_TYPE together, or unset all three to use local-development receipts.";
+const HARNESS_STALE_RECEIPT_STORE_HINT: &str = "runx: hint: the receipt store contains entries that do not verify with the current issuer; retry with --receipt-dir .runx/harness-receipts for an isolated project-local harness run.";
 
 fn main() -> ExitCode {
+    if let Err(error) = install_interrupt_handler() {
+        let _ignored = write_stderr_line(&format!(
+            "runx: failed to install terminal interrupt handler: {error}"
+        ));
+        return ExitCode::from(70);
+    }
     let args: Vec<OsString> = env::args_os().skip(1).collect();
+    let workspace = match load_workspace(&args) {
+        Ok(workspace) => workspace,
+        Err(exit_code) => return exit_code,
+    };
+    let action = match workspace.as_ref() {
+        Some(workspace) => runx_cli::router::route_args_with_workspace(args, workspace),
+        None => runx_cli::router::route_args(args),
+    };
+    let exit_code = dispatch(action, workspace.as_ref());
+    if runx_runtime::interrupt::was_interrupted() {
+        ExitCode::from(130)
+    } else {
+        exit_code
+    }
+}
 
-    match runx_cli::router::route_args(args) {
+fn install_interrupt_handler() -> Result<(), ctrlc::Error> {
+    ctrlc::set_handler(|| {
+        if !runx_runtime::interrupt::terminate_active_processes() {
+            std::process::exit(130);
+        }
+        if std::thread::Builder::new()
+            .name("runx-interrupt-watchdog".to_owned())
+            .spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                std::process::exit(130);
+            })
+            .is_err()
+        {
+            std::process::exit(130);
+        }
+    })
+}
+
+fn dispatch(action: RouterAction, workspace: Option<&runx_runtime::WorkspaceEnv>) -> ExitCode {
+    match action {
         RouterAction::Error(message) => {
             let _ignored = write_stderr_line(&format!("runx: {message}"));
             ExitCode::from(64)
@@ -23,6 +63,7 @@ fn main() -> ExitCode {
             write_json_failure(&plan.message, &plan.code, plan.exit_code)
         }
         RouterAction::PrintHelp => write_stdout(&help_text()),
+        RouterAction::PrintHelpJson => write_command_catalog(),
         RouterAction::PrintCommandHelp(command) => {
             write_stdout(&command_help_text(command).unwrap_or_else(help_text))
         }
@@ -34,41 +75,98 @@ fn main() -> ExitCode {
         RouterAction::PrintVersion => {
             write_stdout_line(&format!("runx-cli {}", env!("CARGO_PKG_VERSION")))
         }
-        RouterAction::RunInit(plan) => runx_cli::scaffold::run_native_init(plan),
-        RouterAction::RunNew(plan) => runx_cli::scaffold::run_native_new(plan),
-        RouterAction::RunHistory(plan) => run_native_history(plan.args),
-        RouterAction::RunVerify(plan) => run_native_verify(plan.args),
-        RouterAction::RunList(plan) => run_native_list(plan),
-        RouterAction::RunLogin(plan) => runx_cli::login::run_native_login(plan),
-        RouterAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp(plan),
-        RouterAction::RunHarness(plan) => run_native_harness(plan),
-        RouterAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan),
-        RouterAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan),
-        RouterAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan),
-        RouterAction::RunConfig(plan) => run_native_config(plan),
-        RouterAction::RunConnect(plan) => runx_cli::connect::run_native_connect(plan),
-        RouterAction::RunPolicy(plan) => runx_cli::policy::run_native_policy(plan),
-        RouterAction::RunPublish(plan) => runx_cli::publish::run_native_publish(plan),
-        RouterAction::RunRegistry(plan) => runx_cli::registry::run_native_registry(plan),
-        RouterAction::RunResume(plan) => runx_cli::resume::run_native_resume(plan),
-        RouterAction::RunSkill(plan) => runx_cli::skill::run_native_skill(plan),
-        RouterAction::RunDoctor(plan) => runx_cli::doctor::run_native_doctor(plan),
-        RouterAction::RunDev(plan) => runx_cli::dev::run_native_dev(plan),
-        RouterAction::RunExport(plan) => runx_cli::export::run_native_export(plan),
-        RouterAction::RunTool(plan) => runx_cli::tool::run_native_tool(plan),
-        RouterAction::RunAddUrl(plan) => runx_cli::add::run_native_add(plan),
+        command => {
+            let Some(workspace) = workspace else {
+                return write_json_failure(
+                    "command execution requires a resolved Runx workspace",
+                    "workspace_required",
+                    1,
+                );
+            };
+            dispatch_command(command, workspace)
+        }
     }
 }
 
-fn run_native_history(args: Vec<OsString>) -> ExitCode {
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = write_stderr_line(&format!("runx: failed to resolve cwd: {error}"));
-            return ExitCode::from(1);
+fn dispatch_command(action: RouterAction, workspace: &runx_runtime::WorkspaceEnv) -> ExitCode {
+    match action {
+        RouterAction::RunInit(plan) => runx_cli::run_native_init(plan, workspace),
+        RouterAction::RunNew(plan) => runx_cli::run_native_new_with_workspace(plan, workspace),
+        RouterAction::RunHistory(plan) => run_native_history(plan.args, workspace),
+        RouterAction::RunVerify(plan) => run_native_verify(plan.args, workspace),
+        RouterAction::RunList(plan) => run_native_list(plan, workspace),
+        RouterAction::RunLogin(plan) => runx_cli::login::run_native_login(plan, workspace),
+        RouterAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp_with_workspace(plan, workspace),
+        RouterAction::RunHarness(plan) => run_native_harness(plan, workspace),
+        RouterAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan, workspace),
+        RouterAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan, workspace),
+        RouterAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan, workspace),
+        RouterAction::RunConfig(plan) => run_native_config(plan, workspace),
+        RouterAction::RunConnect(plan) => runx_cli::connect::run_native_connect(plan, workspace),
+        RouterAction::RunCredential(plan) => {
+            runx_cli::credential::run_native_credential_with_workspace(plan, workspace)
         }
-    };
-    match runx_cli::history::run_history_command(&args, &runx_cli::history::env_map(), &cwd) {
+        RouterAction::RunData(plan) => runx_cli::data::run_native_data(plan, workspace),
+        RouterAction::RunPolicy(plan) => runx_cli::policy::run_native_policy(plan, workspace),
+        RouterAction::RunPublish(plan) => runx_cli::publish::run_native_publish(plan, workspace),
+        RouterAction::RunRegistry(plan) => runx_cli::registry::run_native_registry(plan, workspace),
+        RouterAction::RunResume(plan) => {
+            runx_cli::resume::run_native_resume_with_workspace(plan, workspace)
+        }
+        RouterAction::RunSkill(plan) => {
+            runx_cli::skill::run_native_skill_with_workspace(plan, workspace)
+        }
+        RouterAction::RunDoctor(plan) => runx_cli::doctor::run_native_doctor(plan, workspace),
+        RouterAction::RunDev(plan) => runx_cli::dev::run_native_dev(plan, workspace),
+        RouterAction::RunExport(plan) => runx_cli::export::run_native_export(plan, workspace),
+        RouterAction::RunTool(plan) => runx_cli::tool::run_native_tool(plan, workspace),
+        RouterAction::RunAddUrl(plan) => runx_cli::add::run_native_add(plan, workspace),
+        RouterAction::Error(_)
+        | RouterAction::JsonError(_)
+        | RouterAction::PrintHelp
+        | RouterAction::PrintHelpJson
+        | RouterAction::PrintCommandHelp(_)
+        | RouterAction::PrintCommandUsageError(_)
+        | RouterAction::PrintVersion => {
+            let _ignored =
+                write_stderr_line("runx: internal command routing error after workspace admission");
+            ExitCode::from(70)
+        }
+    }
+}
+
+fn load_workspace(args: &[OsString]) -> Result<Option<runx_runtime::WorkspaceEnv>, ExitCode> {
+    if invocation_is_informational(args) {
+        return Ok(None);
+    }
+    let cwd = env::current_dir()
+        .map_err(|error| workspace_error(args, &format!("failed to resolve cwd: {error}")))?;
+    runx_runtime::WorkspaceEnv::load_process(cwd)
+        .map(Some)
+        .map_err(|error| workspace_error(args, &error.to_string()))
+}
+
+fn workspace_error(args: &[OsString], message: &str) -> ExitCode {
+    if runx_cli::router::json_requested(args) {
+        return write_json_failure(message, "workspace_env_error", 1);
+    }
+    let _ignored = write_stderr_line(&format!("runx: {message}"));
+    ExitCode::from(1)
+}
+
+fn invocation_is_informational(args: &[OsString]) -> bool {
+    args.is_empty()
+        || args
+            .iter()
+            .any(|arg| matches!(arg.to_str(), Some("--help" | "-h")))
+        || matches!(
+            args.first().and_then(|arg| arg.to_str()),
+            Some("help" | "--version" | "-V")
+        )
+}
+
+fn run_native_history(args: Vec<OsString>, workspace: &runx_runtime::WorkspaceEnv) -> ExitCode {
+    match runx_cli::history::run_history_command(&args, workspace.env(), workspace.cwd()) {
         Ok(output) => write_stdout(&output.output),
         Err(runx_cli::history::HistoryCliError::InvalidArgs(message)) => {
             let _ignored = write_stderr_line(&format!("runx: {message}"));
@@ -81,19 +179,12 @@ fn run_native_history(args: Vec<OsString>) -> ExitCode {
     }
 }
 
-fn run_native_verify(args: Vec<OsString>) -> ExitCode {
+fn run_native_verify(args: Vec<OsString>, workspace: &runx_runtime::WorkspaceEnv) -> ExitCode {
     let json = runx_cli::router::json_requested(&args);
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = write_stderr_line(&format!("runx: failed to resolve cwd: {error}"));
-            return ExitCode::from(1);
-        }
-    };
     match runx_cli::verify::run_verify_command_with_stdin(
         &args,
-        &runx_cli::history::env_map(),
-        &cwd,
+        workspace.env(),
+        workspace.cwd(),
         io::stdin(),
     ) {
         Ok(result) => {
@@ -121,15 +212,11 @@ fn run_native_verify(args: Vec<OsString>) -> ExitCode {
     }
 }
 
-fn run_native_list(plan: runx_cli::router::ListPlan) -> ExitCode {
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = write_stderr_line(&format!("runx: failed to resolve cwd: {error}"));
-            return ExitCode::from(1);
-        }
-    };
-    match runx_cli::list::run_list_command(&plan, &cwd) {
+fn run_native_list(
+    plan: runx_cli::router::ListPlan,
+    workspace: &runx_runtime::WorkspaceEnv,
+) -> ExitCode {
+    match runx_cli::list::run_list_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => write_stdout(&output),
         Err(error) => {
             let _ignored = write_stderr_line(&format!("runx: {error}"));
@@ -138,15 +225,26 @@ fn run_native_list(plan: runx_cli::router::ListPlan) -> ExitCode {
     }
 }
 
-fn run_native_config(plan: runx_cli::config::ConfigPlan) -> ExitCode {
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = write_stderr_line(&format!("runx: failed to resolve cwd: {error}"));
+fn run_native_config(
+    mut plan: runx_cli::config::ConfigPlan,
+    workspace: &runx_runtime::WorkspaceEnv,
+) -> ExitCode {
+    if plan.value_from_stdin {
+        let mut value = String::new();
+        if let Err(error) = std::io::stdin().read_to_string(&mut value) {
+            let _ignored =
+                write_stderr_line(&format!("runx: failed to read config value: {error}"));
             return ExitCode::from(1);
         }
-    };
-    match runx_cli::config::run_config_command(&plan, &runx_cli::history::env_map(), &cwd) {
+        let value = value.trim_end_matches(['\r', '\n']);
+        if value.is_empty() {
+            let _ignored =
+                write_stderr_line("runx: secret config value from stdin must not be empty");
+            return ExitCode::from(64);
+        }
+        plan.value = Some(value.to_owned());
+    }
+    match runx_cli::config::run_config_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => write_stdout(&output),
         Err(runx_cli::config::ConfigCliError::InvalidArgs(message)) => {
             let _ignored = write_stderr_line(&format!("runx: {message}"));
@@ -159,7 +257,7 @@ fn run_native_config(plan: runx_cli::config::ConfigPlan) -> ExitCode {
     }
 }
 
-fn run_native_harness(plan: HarnessPlan) -> ExitCode {
+fn run_native_harness(plan: HarnessPlan, workspace: &runx_runtime::WorkspaceEnv) -> ExitCode {
     if contains_skill_package(&plan.fixture_paths) {
         let [target] = plan.fixture_paths.as_slice() else {
             let _ignored = write_stderr_line(
@@ -167,21 +265,36 @@ fn run_native_harness(plan: HarnessPlan) -> ExitCode {
             );
             return ExitCode::from(64);
         };
-        return run_package_harness(Path::new(target), plan.receipt_dir.as_ref());
+        return run_package_harness(Path::new(target), plan.receipt_dir.as_ref(), workspace);
     }
-    run_standalone_harness(plan.fixture_paths)
+    run_standalone_harness(plan.fixture_paths, plan.receipt_dir, workspace)
 }
 
-fn run_standalone_harness(fixture_paths: Vec<OsString>) -> ExitCode {
+fn run_standalone_harness(
+    fixture_paths: Vec<OsString>,
+    receipt_dir: Option<OsString>,
+    workspace: &runx_runtime::WorkspaceEnv,
+) -> ExitCode {
     let mut outputs = Vec::new();
-    let orchestrator = runx_cli::runtime::local_orchestrator();
+    let orchestrator = match runx_cli::runtime::local_orchestrator(workspace.env()) {
+        Ok(orchestrator) => orchestrator,
+        Err(error) => {
+            let _ignored = write_stderr_line(&format!(
+                "runx: failed to initialize runtime effects: {error}"
+            ));
+            return ExitCode::from(1);
+        }
+    };
     for fixture_path in fixture_paths {
         let request = runx_runtime::HarnessRunRequest {
             fixture_path: PathBuf::from(fixture_path),
+            receipt_dir: receipt_dir.as_ref().map(PathBuf::from),
         };
         match orchestrator.run_harness_fixture(&request) {
             Ok(output) => {
-                if let Err(error) = runx_cli::runtime::persist_payment_ledger_projection(&output) {
+                if let Err(error) =
+                    runx_cli::runtime::persist_payment_ledger_projection(&output, workspace.env())
+                {
                     let _ignored = write_stderr_line(&format!(
                         "runx: payment ledger projection failed: {error}"
                     ));
@@ -202,10 +315,14 @@ fn run_standalone_harness(fixture_paths: Vec<OsString>) -> ExitCode {
                 );
             }
             Err(error) => {
+                let error_message = error.to_string();
                 let _ignored = write_stderr_line(&format!(
-                    "runx: native harness replay failed for {}: {error}",
+                    "runx: native harness replay failed for {}: {error_message}",
                     request.fixture_path.display()
                 ));
+                if let Some(hint) = harness_failure_hint(&error_message) {
+                    let _ignored = write_stderr_line(hint);
+                }
                 return ExitCode::from(1);
             }
         }
@@ -248,13 +365,25 @@ fn is_skill_package(path: &Path) -> bool {
         .is_some_and(|name| name.eq_ignore_ascii_case("SKILL.md"))
 }
 
-fn run_package_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> ExitCode {
+fn run_package_harness(
+    skill_path: &Path,
+    receipt_dir: Option<&OsString>,
+    workspace: &runx_runtime::WorkspaceEnv,
+) -> ExitCode {
     let request = runx_runtime::PackageHarnessRequest {
         skill_path: skill_path.to_path_buf(),
         receipt_dir: receipt_dir.map(PathBuf::from),
-        env: None,
     };
-    let report = match runx_cli::runtime::local_orchestrator().run_package_harness(&request) {
+    let orchestrator = match runx_cli::runtime::local_orchestrator(workspace.env()) {
+        Ok(orchestrator) => orchestrator,
+        Err(error) => {
+            let _ignored = write_stderr_line(&format!(
+                "runx: failed to initialize runtime effects: {error}"
+            ));
+            return ExitCode::from(1);
+        }
+    };
+    let report = match orchestrator.run_package_harness(&request) {
         Ok(report) => report,
         Err(error) => {
             let error_message = error.to_string();
@@ -262,16 +391,16 @@ fn run_package_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> Exi
                 "runx: package harness failed for {}: {error_message}",
                 skill_path.display()
             ));
-            if let Some(hint) = package_harness_failure_hint(&error_message) {
+            if let Some(hint) = harness_failure_hint(&error_message) {
                 let _ignored = write_stderr_line(hint);
             }
             return ExitCode::from(1);
         }
     };
-    if report.status == "failed" {
-        if let Some(hint) = package_harness_report_hint(&report) {
-            let _ignored = write_stderr_line(hint);
-        }
+    if report.status == "failed"
+        && let Some(hint) = package_harness_report_hint(&report)
+    {
+        let _ignored = write_stderr_line(hint);
     }
     let json = match serde_json::to_string_pretty(&report) {
         Ok(json) => json,
@@ -292,9 +421,9 @@ fn run_package_harness(skill_path: &Path, receipt_dir: Option<&OsString>) -> Exi
     }
 }
 
-fn package_harness_failure_hint(message: &str) -> Option<&'static str> {
+fn harness_failure_hint(message: &str) -> Option<&'static str> {
     if is_receipt_signing_error(message) {
-        return Some(PACKAGE_HARNESS_SIGNING_HINT);
+        return Some(HARNESS_SIGNING_HINT);
     }
     None
 }
@@ -307,14 +436,14 @@ fn package_harness_report_hint(
         .iter()
         .any(|error| is_receipt_signing_error(error))
     {
-        return Some(PACKAGE_HARNESS_SIGNING_HINT);
+        return Some(HARNESS_SIGNING_HINT);
     }
     if report
         .assertion_errors
         .iter()
         .any(|error| error.contains("receipt store index is stale"))
     {
-        return Some(PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT);
+        return Some(HARNESS_STALE_RECEIPT_STORE_HINT);
     }
     None
 }
@@ -331,6 +460,18 @@ fn write_stdout(message: &str) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(1)
+    }
+}
+
+fn write_command_catalog() -> ExitCode {
+    match runx_cli::command_spec::catalog_json() {
+        Ok(catalog) => write_stdout(&catalog),
+        Err(error) => {
+            let _ignored = write_stderr_line(&format!(
+                "runx: failed to serialize the command catalog: {error}"
+            ));
+            ExitCode::from(1)
+        }
     }
 }
 
@@ -374,7 +515,7 @@ mod tests {
 
         assert_eq!(
             package_harness_report_hint(&report),
-            Some(PACKAGE_HARNESS_SIGNING_HINT)
+            Some(HARNESS_SIGNING_HINT)
         );
     }
 
@@ -386,7 +527,7 @@ mod tests {
 
         assert_eq!(
             package_harness_report_hint(&report),
-            Some(PACKAGE_HARNESS_STALE_RECEIPT_STORE_HINT)
+            Some(HARNESS_STALE_RECEIPT_STORE_HINT)
         );
     }
 

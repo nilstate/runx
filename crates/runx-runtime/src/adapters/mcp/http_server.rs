@@ -1,11 +1,11 @@
-// rust-style-allow: large-file -- streamable HTTP serving keeps bearer auth,
+// Module rationale: streamable HTTP serving keeps bearer auth,
 // loopback binding, hyper service adaptation, and transport tests in one module
 // while the MCP HTTP front is still a single gated feature.
 //! Expose the governed MCP server over streamable HTTP/SSE.
 //!
 //! rmcp's [`StreamableHttpService`] is a `tower` service that carries the same
 //! governed [`RmcpProofServer`] the stdio path uses; this drives it over a TCP
-//! listener with hyper. Governance (admission, sandbox, receipt sealing) lives in
+//! listener with hyper. Governance (admission, grants, receipt sealing) lives in
 //! the server, not the transport, so the HTTP surface seals exactly like the stdio
 //! surface. Each session gets a fresh governed server from the same options.
 use std::convert::Infallible;

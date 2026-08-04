@@ -2,9 +2,6 @@ name: "request-review-before-mutation"
 kind: "agent_task"
 runner: "issue-intake"
 inputs:
-  thread_title: "Clarify the affected repo before we start"
-  thread_body: "The report mentions API failures and docs drift, but it is not yet clear whether this is one bounded fix or cross-repo work."
-  thread_locator: "github://example/repo/issues/984"
   outbox_entry:
     entry_id: "github_issue_984"
     kind: "message"
@@ -12,75 +9,82 @@ inputs:
     status: "published"
     thread_locator: "github://example/repo/issues/984"
   product_context: "Workspace repo with multiple bounded mutation surfaces"
+  thread_body: "The report mentions API failures and docs drift, but it is not yet clear whether this is one bounded fix or cross-repo work."
+  thread_locator: "github://example/repo/issues/984"
+  thread_title: "Clarify the affected repo before we start"
 caller:
   answers:
     agent_task.issue-intake.output:
-      intake_report:
-        category: "other"
-        severity: "medium"
-        summary: "The report is directionally actionable but still too ambiguous to start a worker or planner safely."
-        suggested_reply: "Please confirm which repo owns the failing path before we start governed mutation."
-        recommended_lane: "manual-review"
-        rationale: "The maintainer needs to confirm the target surface before runx opens a downstream lane."
-        needs_human: false
-        commence_decision: "approve"
-        action_decision: "request_review"
-        review_target: "thread"
-        review_comment: "Please confirm whether the failing path belongs to the API repo, the docs repo, or both. runx is holding mutation until the target surface is explicit."
-        operator_notes:
-          - "Do not open issue-to-pr until the target repo is explicit."
       change_set:
-        change_set_id: "change_set_support_984"
-        thread_locator: "github://example/repo/issues/984"
-        summary: "Clarify the affected repo before opening a governed worker or plan."
-        category: "other"
-        severity: "medium"
-        recommended_lane: "manual-review"
-        commence_decision: "approve"
         action_decision: "request_review"
+        category: "other"
+        change_set_id: "change_set_support_984"
+        commence_decision: "approve"
         outbox_entry:
           entry_id: "github_issue_984"
           kind: "message"
           locator: "https://github.com/example/repo/issues/984"
           status: "published"
           thread_locator: "github://example/repo/issues/984"
-        target_surfaces:
-          - 
-            surface: "workspace"
-            kind: "other"
-            mutating: false
-            rationale: "Repo ownership is still ambiguous, so the supervisor must stop at a public review comment first."
+        recommended_lane: "manual-review"
+        severity: "medium"
         shared_invariants:
           - "Do not guess the target repo from incomplete issue text."
         success_criteria:
           - "The maintainer confirms the target surface before any planner or worker starts."
+        summary: "Clarify the affected repo before opening a governed worker or plan."
+        target_surfaces:
+          -
+            kind: "other"
+            mutating: false
+            rationale: "Repo ownership is still ambiguous, so the supervisor must stop at a public review comment first."
+            surface: "workspace"
+        thread_locator: "github://example/repo/issues/984"
+      closure:
+        disposition: "closed"
+        reason_code: "issue_intake_completed"
+        summary: "Ambiguous request needs review before mutation."
+      intake_report:
+        action_decision: "request_review"
+        category: "other"
+        commence_decision: "approve"
+        needs_human: false
+        operator_notes:
+          - "Do not open issue-to-pr until the target repo is explicit."
+        rationale: "The maintainer needs to confirm the target surface before runx opens a downstream lane."
+        recommended_lane: "manual-review"
+        review_comment: "Please confirm whether the failing path belongs to the API repo, the docs repo, or both. runx is holding mutation until the target surface is explicit."
+        review_target: "thread"
+        severity: "medium"
+        suggested_reply: "Please confirm which repo owns the failing path before we start governed mutation."
+        summary: "The report is directionally actionable but still too ambiguous to start a worker or planner safely."
       signal:
+        change_set:
+          change_set_id: "change_set_support_984"
+        created_at: "2026-05-15T00:00:00Z"
+        dedupe:
+          algorithm: "sha256"
+          fingerprint: "sha256:ambiguous-api-docs-drift"
+          source_locator: "github://example/repo/issues/984"
         schema: "runx.signal.v1"
         signal_id: "sig_support_984"
-        state: "blocked"
         source_events:
-          - 
+          -
+            body_preview: "The report mentions API failures and docs drift, but target ownership is ambiguous."
             provider: "github"
             source_locator: "github://example/repo/issues/984"
             thread_locator: "github://example/repo/issues/984"
             title: "Clarify the affected repo before we start"
-            body_preview: "The report mentions API failures and docs drift, but target ownership is ambiguous."
-        dedupe:
-          algorithm: "sha256"
-          source_locator: "github://example/repo/issues/984"
-          fingerprint: "sha256:ambiguous-api-docs-drift"
+        state: "blocked"
+        status_summary: "Mutation is blocked until the target surface is confirmed."
         triage:
-          category: "other"
-          severity: "medium"
-          confidence: 0.74
           action: "manual-review"
-          recommended_lane: "manual-review"
+          category: "other"
+          confidence: 0.74
           needs_human: false
           rationale: "The maintainer needs to confirm the target surface before mutation starts."
-        change_set:
-          change_set_id: "change_set_support_984"
-        status_summary: "Mutation is blocked until the target surface is confirmed."
-        created_at: "2026-05-15T00:00:00Z"
+          recommended_lane: "manual-review"
+          severity: "medium"
         updated_at: "2026-05-15T00:00:00Z"
       decision:
         schema: "runx.decision.v1"
@@ -88,19 +92,14 @@ caller:
         choice: "defer"
         summary: "The maintainer needs to confirm the target surface before runx opens a downstream lane."
         recommended_lane: "manual-review"
+  approvals:
+    {}
 expect:
   status: "sealed"
   receipt:
     schema: "runx.receipt.v1"
-    receipt_id: "sha256:ad36dfa7157a84c2763787ae94f4d588cd452526e2d181d88633014a9113a6b8"
-    harness_id: "hrn_request-review-before-mutation_request-review-before-mutation"
     state: "sealed"
     disposition: "closed"
-    reason_code: "process_closed"
-    act_ids:
-      - "act_request-review-before-mutation"
-    decision_ids:
-      - "dec_request-review-before-mutation"
 metadata:
   product_skill: "issue-intake"
   source_case: "request-review-before-mutation"

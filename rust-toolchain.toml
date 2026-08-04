@@ -1,0 +1,6 @@
+# One repository-wide toolchain pin. Root scripts invoke Cargo with
+# --manifest-path, so the pin must live here rather than under crates/.
+# Toolchain upgrades must pass the optimized-worker release smoke.
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]

@@ -1,7 +1,8 @@
-import { spawnSync } from "node:child_process";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { evaluateParserRequestResults } from "./lib/native-parser.mjs";
 
 interface ParserFixture {
   readonly name: string;
@@ -14,10 +15,7 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "parser");
 const check = process.argv.includes("--check");
 const selectedScope = process.argv.find((argument) => argument.startsWith("--scope="))?.slice(8);
-const runx = process.env.RUNX_PARSER_EVAL_BIN
-  ?? process.env.RUNX_DEV_RUST_CLI_BIN
-  ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
-
+const fixtures: Array<{ path: string; fixture: ParserFixture }> = [];
 for (const scope of await parserScopes()) {
   if (selectedScope && scope !== selectedScope) continue;
   const directory = path.join(fixtureRoot, scope);
@@ -25,14 +23,20 @@ for (const scope of await parserScopes()) {
   for (const entry of entries) {
     const fixturePath = path.join(directory, entry);
     const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as ParserFixture;
-    const expected = evaluate(scope, fixture.input);
-    const updated = `${JSON.stringify({ ...fixture, expected })}\n`;
-    if (check) {
-      const current = await readFile(fixturePath, "utf8");
-      if (current !== updated) throw new Error(`parser fixture is stale: ${path.relative(workspaceRoot, fixturePath)}`);
-    } else {
-      await writeFile(fixturePath, updated, "utf8");
-    }
+    fixtures.push({ path: fixturePath, fixture });
+  }
+}
+const results = evaluateParserRequestResults(
+  fixtures.map(({ fixture }) => parserRequest(fixture.scope, fixture.input)),
+) as ParserResult[];
+for (const [index, { path: fixturePath, fixture }] of fixtures.entries()) {
+  const expected = expectedResult(results[index], fixture.scope);
+  const updated = `${JSON.stringify({ ...fixture, expected })}\n`;
+  if (check) {
+    const current = await readFile(fixturePath, "utf8");
+    if (current !== updated) throw new Error(`parser fixture is stale: ${path.relative(workspaceRoot, fixturePath)}`);
+  } else {
+    await writeFile(fixturePath, updated, "utf8");
   }
 }
 
@@ -43,30 +47,21 @@ async function parserScopes(): Promise<readonly string[]> {
   return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
 }
 
-function evaluate(scope: string, input: Readonly<Record<string, unknown>>): unknown {
-  const request = { input: parserRequest(scope, input) };
-  const result = spawnSync(runx, ["parser", "eval", "--input", "-", "--json"], {
-    cwd: workspaceRoot,
-    env: process.env,
-    encoding: "utf8",
-    input: JSON.stringify(request),
-    maxBuffer: 16 * 1024 * 1024,
-  });
-  if (result.error) throw result.error;
-  const response = JSON.parse(result.stdout) as {
-    readonly status?: string;
-    readonly code?: string;
-    readonly message?: string;
-    readonly result?: { readonly value?: unknown };
-  };
-  if (result.status === 0 && response.status === "success" && response.result?.value !== undefined) {
-    return { validated: response.result.value };
+interface ParserResult {
+  readonly status: "success" | "failure";
+  readonly value?: unknown;
+  readonly error?: { readonly code?: string; readonly message?: string };
+}
+
+function expectedResult(result: ParserResult | undefined, scope: string): unknown {
+  if (result?.status === "success" && result.value !== undefined) {
+    return { validated: result.value };
   }
-  if (response.status === "error" && response.message) {
-    const kind = response.code === "parse_error" ? "parse" : "validation";
-    return { rejection: { kind, message: response.message } };
+  if (result?.status === "failure" && result.error?.message) {
+    const kind = result.error.code === "parse_error" ? "parse" : "validation";
+    return { rejection: { kind, message: result.error.message } };
   }
-  throw new Error(`native parser returned an unexpected response for ${scope}: ${result.stderr || result.stdout}`);
+  throw new Error(`native parser returned an unexpected batch result for ${scope}`);
 }
 
 function parserRequest(

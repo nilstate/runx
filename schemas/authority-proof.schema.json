@@ -161,6 +161,35 @@
       ],
       "type": "object"
     },
+    "execution_boundary": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "const": "trusted_host_process",
+              "type": "string"
+            },
+            {
+              "const": "deterministic_worker",
+              "type": "string"
+            },
+            {
+              "const": "native_capability",
+              "type": "string"
+            },
+            {
+              "const": "remote_provider",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
     "redaction": {
       "additionalProperties": false,
       "properties": {
@@ -238,10 +267,6 @@
         "mutating": {
           "type": "boolean"
         },
-        "sandbox_profile": {
-          "minLength": 1,
-          "type": "string"
-        },
         "scope_family": {
           "minLength": 1,
           "type": "string"
@@ -272,78 +297,6 @@
     "run_id": {
       "minLength": 1,
       "type": "string"
-    },
-    "sandbox": {
-      "additionalProperties": false,
-      "properties": {
-        "approval_approved": {
-          "type": "boolean"
-        },
-        "approval_required": {
-          "type": "boolean"
-        },
-        "cwd_policy": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "filesystem": {
-          "additionalProperties": false,
-          "properties": {
-            "enforcement": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "private_tmp": {
-              "type": "boolean"
-            },
-            "readonly_paths": {
-              "type": "boolean"
-            },
-            "writable_paths_enforced": {
-              "type": "boolean"
-            }
-          },
-          "type": "object"
-        },
-        "network": {
-          "additionalProperties": false,
-          "properties": {
-            "declared": {
-              "type": "boolean"
-            },
-            "enforcement": {
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "profile": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "require_enforcement": {
-          "type": "boolean"
-        },
-        "runtime": {
-          "additionalProperties": false,
-          "properties": {
-            "enforcer": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "reason": {
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          "type": "object"
-        }
-      },
-      "required": [
-        "profile"
-      ],
-      "type": "object"
     },
     "schema_version": {
       "anyOf": [
@@ -422,6 +375,7 @@
     "requested",
     "scope_admission",
     "credential_material",
+    "execution_boundary",
     "redaction"
   ],
   "type": "object"

@@ -1,9 +1,0 @@
-{
-  "status": "failure",
-  "stdout": "",
-  "stderr": "Imported tool 'fixture-mcp:fixture.missing' was not found in configured tool catalogs.",
-  "exitCode": null,
-  "signal": null,
-  "durationMs": 0,
-  "errorMessage": "Imported tool 'fixture-mcp:fixture.missing' was not found in configured tool catalogs."
-}

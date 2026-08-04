@@ -3,10 +3,9 @@ use std::fs;
 use std::path::Path;
 
 use runx_runtime::{
-    ConfigError, ConfigKey, LocalProfileSource, ManagedAgentConfig, RunxAgentConfig,
-    RunxConfigFile, SecretString, load_local_agent_api_key, load_local_public_api_token,
-    load_managed_agent_config, load_runx_config_file, lookup_runx_config_value,
-    managed_agent_provider, mask_runx_config_file, resolve_local_skill_profile,
+    ConfigError, ConfigKey, ManagedAgentConfig, RunxAgentConfig, RunxConfigFile, SecretString,
+    load_local_agent_api_key, load_local_public_api_token, load_managed_agent_config,
+    load_runx_config_file, lookup_runx_config_value, managed_agent_provider, mask_runx_config_file,
     resolve_runx_global_home_dir, resolve_runx_workspace_base, update_runx_config_value,
     write_runx_config_file,
 };
@@ -36,6 +35,18 @@ fn config_home_path_anchors_relative_runx_home_to_workspace_base()
         resolve_runx_global_home_dir(&env, &cwd),
         run_dir.join("home")
     );
+    Ok(())
+}
+
+#[test]
+fn config_home_path_uses_the_admitted_environment_snapshot()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let home = temp.path().join("operator-home");
+    let cwd = temp.path().join("workspace");
+    let env = env_map([("HOME", home.to_str().unwrap_or_default())]);
+
+    assert_eq!(resolve_runx_global_home_dir(&env, &cwd), home.join(".runx"));
     Ok(())
 }
 
@@ -126,6 +137,7 @@ fn config_loads_and_writes_supported_keys_only() -> Result<(), Box<dyn std::erro
             api_key_ref: None,
         }),
         public: None,
+        credentials: None,
     };
     write_runx_config_file(&config_path, &config)?;
     assert_private_file(&config_path)?;
@@ -217,6 +229,7 @@ fn config_loads_managed_agent_env_precedence_and_local_key_fallback()
                 api_key_ref: None,
             }),
             public: None,
+            credentials: None,
         },
         ConfigKey::AgentApiKey,
         "local-secret",
@@ -258,6 +271,7 @@ fn config_matches_blank_env_overlay_edges() -> Result<(), Box<dyn std::error::Er
                 api_key_ref: None,
             }),
             public: None,
+            credentials: None,
         },
         ConfigKey::AgentApiKey,
         "local-secret",
@@ -296,63 +310,6 @@ fn config_matches_blank_env_overlay_edges() -> Result<(), Box<dyn std::error::Er
         load_managed_agent_config(&blank_generic_key, temp.path())?.map(|config| config.api_key),
         Some(SecretString::new("local-secret"))
     );
-    Ok(())
-}
-
-#[test]
-fn config_resolves_local_skill_profiles_in_source_order() -> Result<(), Box<dyn std::error::Error>>
-{
-    let temp = tempdir()?;
-    let skill_dir = temp.path().join("skills/runx/demo");
-    fs::create_dir_all(&skill_dir)?;
-    fs::write(skill_dir.join("SKILL.md"), "---\nname: demo\n---\n")?;
-
-    let binding_dir = temp.path().join("bindings/runx/demo");
-    fs::create_dir_all(&binding_dir)?;
-    fs::write(
-        binding_dir.join("X.yaml"),
-        "skill: demo\nversion: '0.1.0'\n",
-    )?;
-    let resolved = resolve_local_skill_profile(&skill_dir, "demo")?;
-    assert_eq!(resolved.source, LocalProfileSource::WorkspaceBindings);
-
-    fs::create_dir_all(skill_dir.join(".runx"))?;
-    fs::write(
-        skill_dir.join(".runx/profile.json"),
-        serde_json::json!({ "profile": { "document": "skill: demo\nversion: state\n" } })
-            .to_string(),
-    )?;
-    let resolved = resolve_local_skill_profile(&skill_dir, "demo")?;
-    assert_eq!(resolved.source, LocalProfileSource::ProfileState);
-
-    fs::write(
-        skill_dir.join("X.yaml"),
-        "skill: demo\nversion: checked-in\n",
-    )?;
-    let resolved = resolve_local_skill_profile(&skill_dir, "demo")?;
-    assert_eq!(resolved.source, LocalProfileSource::SkillProfile);
-    assert!(
-        resolved
-            .profile_document
-            .as_deref()
-            .unwrap_or_default()
-            .contains("checked-in")
-    );
-    Ok(())
-}
-
-#[test]
-fn config_rejects_profile_skill_mismatch() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempdir()?;
-    let skill_dir = temp.path().join("skills/demo");
-    fs::create_dir_all(&skill_dir)?;
-    fs::write(skill_dir.join("X.yaml"), "skill: other\nversion: '0.1.0'\n")?;
-
-    let error = match resolve_local_skill_profile(&skill_dir, "demo") {
-        Ok(_) => return Err("mismatch should fail".into()),
-        Err(error) => error,
-    };
-    assert!(matches!(error, ConfigError::ManifestSkillMismatch { .. }));
     Ok(())
 }
 

@@ -11,13 +11,16 @@ Rust owns the trusted local runtime path:
 - `runx-core` owns pure state-machine and policy decisions.
 - `runx-parser` owns pure skill, graph, runner, and tool manifest parsing.
 - `runx-receipts` owns canonical receipt hashing, signatures, and tree proof.
-- `runx-runtime` owns impure local execution, adapters, sandbox planning,
-  harness replay, journals, registry clients, payment gates, MCP, and receipts.
+- `runx-runtime` owns impure local execution, adapters, process invocation and
+  supervision, harness replay, journals, registry clients, payment gates, MCP,
+  and receipts.
 - `runx-cli` is the native command shell over `runx-runtime`.
 
-TypeScript packages are wrappers, authoring tools, generated contract
-validators/types, client helpers, host adapters, and product integration glue.
-They must not regain trusted local execution fallback behavior.
+TypeScript packages are generated contract validators/types, distribution and
+client wrappers, language-neutral extension helpers, host adapters, and product
+integration glue. Skill authoring belongs to the native authoring service and
+Skill Lab. TypeScript must not regain a second authoring path or trusted local
+execution fallback behavior.
 
 ## Commands
 
@@ -25,7 +28,6 @@ Use the narrowest useful check while iterating:
 
 ```bash
 pnpm typecheck
-pnpm rust:style
 pnpm rust:crate-graph
 pnpm verify:fast
 ```

@@ -2,6 +2,8 @@ name: execute-digest-mismatch-refuses
 kind: skill
 target: ..
 runner: execute
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://twitter/sqlite-mismatch":{"adapter":"data.sqlite","database_path":".runx/data/twitter-mismatch.sqlite","resources":{"twitter_execution":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
 inputs:
   plan_json:
     decision: ready
@@ -17,6 +19,9 @@ inputs:
       human_approval_required: true
       approval_ref: approval:granted
   plan_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  data_source_ref: tenant://twitter/sqlite-mismatch
+  expected_version: 0
+  idempotency_key: twitter:sha256:0000000000000000000000000000000000000000000000000000000000000000:v1
 caller:
   approvals:
     twitter.execute.approval: true
@@ -24,7 +29,14 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
+  steps:
+    - ledger
+    - digest
+    - prepare
+    - apply_noop
 metadata:
   public_skill: twitter
   source_case: execute-digest-mismatch-refuses
   source: skills-fixture
+  runner_kind: graph
+  graph_shape: refused_before_approval

@@ -1,5 +1,5 @@
 skill: send-as
-version: "0.1.4"
+version: "0.1.5"
 catalog:
   kind: skill
   audience: public
@@ -7,7 +7,7 @@ catalog:
   role: canonical
   execution: plan
   completion: plan
-  requires_adapter: true
+  requires_adapter: false
   approval: required
 runners:
   plan:

@@ -123,54 +123,6 @@
         {
           "additionalProperties": false,
           "properties": {
-            "kind": {
-              "const": "policy.normalizeSandboxDeclaration"
-            },
-            "sandbox": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "const": "policy.sandboxRequiresApproval"
-            },
-            "sandbox": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "const": "policy.admitSandbox"
-            },
-            "options": {
-              "type": "object"
-            },
-            "sandbox": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
             "auth": {},
             "grants": {
               "type": "array"

@@ -13,7 +13,7 @@ harness:
       runner: read
       env:
         RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-demo-read
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: repo.read
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["repo.read"]'
       inputs:
         repository: runxhq/runx
         issue_number: "241"
@@ -27,7 +27,7 @@ harness:
       runner: write-refused
       env:
         RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-demo-read
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: repo.read
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["repo.read"]'
       inputs:
         repository: runxhq/runx
         issue_number: "241"

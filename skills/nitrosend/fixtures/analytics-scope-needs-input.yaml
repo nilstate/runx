@@ -4,24 +4,6 @@ target: ..
 runner: analytics
 inputs:
   objective: Show me the numbers.
-  account_status_json: '{"status":"healthy","account":{"tier":"pro","contact_count":4200,"campaign_count":7}}'
-  operator_context: Stop for input when the scope is ambiguous.
-caller:
-  answers:
-    agent_task.analytics-report.output:
-      analytics_report:
-        decision: needs_input
-        scope: none
-        period: ""
-        ordered_tool_calls: []
-        findings: []
-        recommendations: []
-        blockers: []
-        needs_input:
-          - Which scope: account-wide, a specific campaign, or a specific flow? And over what period?
-        success_checkpoint:
-          milestone: awaiting_scope
-          description: The report stops for a scope and period rather than guessing.
 expect:
   status: sealed
   receipt:

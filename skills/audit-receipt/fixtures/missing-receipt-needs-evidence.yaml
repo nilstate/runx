@@ -4,6 +4,7 @@ target: ..
 runner: audit
 inputs:
   objective: Audit the last run.
+  receipt_rows: []
 caller:
   answers:
     agent_task.audit-receipt.output:

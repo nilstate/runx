@@ -24,7 +24,6 @@ node scripts/stripe-spt-charge.mjs --demo --receipt-dir "$RDIR" >"$RDIR/stripe-s
 cat "$RDIR/stripe-spt-demo-report.stdout.json"
 
 echo
-node examples/governed-spend/verify.mjs "$RDIR/stripe-spt-settlement.receipt.json"
+node tools/verify/verify.mjs "$RDIR/stripe-spt-settlement.receipt.json"
 echo
-node examples/governed-spend/verify.mjs "$RDIR/stripe-spt-refusal.receipt.json"
-
+node tools/verify/verify.mjs "$RDIR/stripe-spt-refusal.receipt.json"

@@ -1,7 +1,7 @@
 name: reject-transactional-broadcast
 kind: skill
 target: ..
-runner: send-transactional
+runner: plan-transactional
 inputs:
   objective: Email our whole subscriber list about the spring sale.
   account_status_json: '{"status":"healthy","account":{"tier":"pro","can_send":true,"domain_verified":true},"config":{"from_email":"orders@acme.com"}}'

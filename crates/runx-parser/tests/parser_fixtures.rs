@@ -18,11 +18,8 @@ const GRAPH_FIXTURES: &[&str] = &[
 ];
 
 const SKILL_FIXTURES: &[&str] = &[
-    include_str!("../../../fixtures/parser/skills/cli-tool-sandbox-approved-escalation.json"),
     include_str!("../../../fixtures/parser/skills/graph-source.json"),
-    include_str!("../../../fixtures/parser/skills/network-sandbox-defaults.json"),
     include_str!("../../../fixtures/parser/skills/portable-agent.json"),
-    include_str!("../../../fixtures/parser/skills/validation-invalid-sandbox-profile.json"),
     include_str!("../../../fixtures/parser/skills/validation-missing-command.json"),
 ];
 
@@ -39,7 +36,6 @@ const RUNNER_MANIFEST_FIXTURES: &[&str] = &[
 ];
 
 const TOOL_MANIFEST_FIXTURES: &[&str] = &[
-    include_str!("../../../fixtures/parser/tool-manifests/catalog-tool-json.json"),
     include_str!("../../../fixtures/parser/tool-manifests/cli-tool.json"),
     include_str!("../../../fixtures/parser/tool-manifests/validation-agent-source-not-tool.json"),
 ];
@@ -183,6 +179,28 @@ fn skill_category_accepts_runx_catalog_override() -> Result<(), String> {
 
     assert_eq!(skill.category.as_deref(), Some("documentation"));
     assert_eq!(skill.runx_category.as_deref(), Some("content"));
+    Ok(())
+}
+
+#[test]
+fn skill_registry_owner_preserves_contributor_namespace() -> Result<(), String> {
+    let skill = validate_skill(parse_skill_markdown(
+        "---\nname: docs-demo\ndescription: Demo skill.\nregistry_owner: zhtwangk\n---\n# Demo\n",
+    ).map_err(|error| error.to_string())?)
+    .map_err(|error| error.to_string())?;
+
+    assert_eq!(skill.registry_owner.as_deref(), Some("zhtwangk"));
+    Ok(())
+}
+
+#[test]
+fn skill_registry_owner_rejects_noncanonical_namespace() -> Result<(), String> {
+    let raw = parse_skill_markdown(
+        "---\nname: docs-demo\ndescription: Demo skill.\nregistry_owner: ZHTWangK\n---\n# Demo\n",
+    )
+    .map_err(|error| error.to_string())?;
+
+    assert!(validate_skill(raw).is_err());
     Ok(())
 }
 

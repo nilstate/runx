@@ -12,8 +12,8 @@ fn converted_targeted_grant_admits_exact_requirement() -> Result<(), Box<dyn std
         "scopes": ["repo:read"],
         "scope_family": "github_repo",
         "authority_kind": "read_only",
-        "target_repo": "runxhq/aster",
-        "target_locator": "github:repo:runxhq/aster"
+        "target_repo": "runxhq/runx",
+        "target_locator": "github:repo:runxhq/runx"
     }))?;
     let decision = admit_local_skill(
         &skill,
@@ -55,8 +55,8 @@ fn converted_revoked_grant_denies() -> Result<(), Box<dyn std::error::Error>> {
         "scopes": ["repo:read"],
         "scope_family": "github_repo",
         "authority_kind": "read_only",
-        "target_repo": "runxhq/aster",
-        "target_locator": "github:repo:runxhq/aster"
+        "target_repo": "runxhq/runx",
+        "target_locator": "github:repo:runxhq/runx"
     }))?;
     let decision = admit_local_skill(
         &skill,
@@ -81,8 +81,8 @@ fn local_grant(status: LocalAdmissionGrantStatus) -> LocalAdmissionGrant {
         expires_at: Some("2026-05-23T00:00:00Z".to_owned()),
         scope_family: Some("github_repo".to_owned()),
         authority_kind: Some(AuthorityKind::ReadOnly),
-        target_repo: Some("runxhq/aster".to_owned()),
-        target_locator: Some("github:repo:runxhq/aster".to_owned()),
+        target_repo: Some("runxhq/runx".to_owned()),
+        target_locator: Some("github:repo:runxhq/runx".to_owned()),
     }
 }
 
@@ -96,7 +96,6 @@ fn credential_grant_skill(
             command: Some("true".to_owned()),
             args: None,
             timeout_seconds: None,
-            sandbox: None,
         },
         auth: Some(serde_json::from_value::<JsonValue>(auth)?),
         runtime: None,

@@ -1,25 +1,132 @@
-// rust-style-allow: large-file -- provider permission admission keeps effect
-// parsing, operator-grant validation, witness projection, and tests together so
-// self-attested scope grants remain audited in one place.
-use std::collections::{BTreeMap, BTreeSet};
+#[cfg(feature = "catalog")]
+use std::sync::{Arc, Mutex};
 
-use runx_contracts::{AuthorityVerb, JsonObject, JsonValue, Reference, ReferenceType};
-use runx_core::state_machine::AuthorityAdmissionWitness;
+#[cfg(feature = "catalog")]
+use runx_contracts::JsonValue;
+use runx_contracts::{Reference, ReferenceType};
 
-use super::{EffectAdmission, EffectStepRequest, RuntimeEffect, RuntimeEffectError};
+#[cfg(feature = "catalog")]
+use super::EffectToolRequest;
+use super::{
+    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
+    EffectStepRequest, ProviderEffectResolved, RuntimeEffect, RuntimeEffectError,
+};
+use crate::CapabilityContract;
+#[cfg(feature = "catalog")]
+use crate::{
+    AuthenticatedHostedApiEnvironment, HostedApiEnvironment, HostedProviderGrant, RuntimeError,
+    RuntimeHttpError, RuntimeHttpTransport,
+};
+
+mod approval;
+mod contract;
+#[cfg(feature = "catalog")]
+mod execution;
+mod identity;
+mod policy;
+#[cfg(feature = "catalog")]
+mod readback;
+mod recovery;
+mod scope_transport;
+
+pub use scope_transport::{
+    ProviderScopeTransportError, decode_provider_scopes_env, encode_provider_scopes_env,
+};
+
+use approval::{
+    prepare_provider_effect_output, resolve_provider_approval, resolved_provider_effect,
+};
+use policy::{
+    provider_permission_denial, provider_permission_plan, provider_permission_policy,
+    provider_permission_policy_error, provider_permission_witness, validate_native_provider_policy,
+};
 
 pub const PROVIDER_PERMISSION_EFFECT_FAMILY: &str = "provider_permission";
+pub const PROVIDER_READ_TOOL: &str = "provider.read";
+pub const PROVIDER_MUTATE_TOOL: &str = "provider.mutate";
 pub const PROVIDER_PERMISSION_GRANT_ID_ENV: &str = "RUNX_PROVIDER_PERMISSION_GRANT_ID";
 pub const PROVIDER_PERMISSION_GRANTED_SCOPES_ENV: &str = "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES";
+pub const PROVIDER_PERMISSION_PRINCIPAL_REF_ENV: &str = "RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF";
 
-#[derive(Clone, Debug, Default)]
-pub struct ProviderPermissionEffect;
+pub struct ProviderPermissionEffect {
+    #[cfg(feature = "catalog")]
+    http_transport: Option<Arc<dyn RuntimeHttpTransport + Send + Sync>>,
+    #[cfg(feature = "catalog")]
+    authenticated_environment:
+        Mutex<Option<(HostedApiEnvironment, AuthenticatedHostedApiEnvironment)>>,
+    #[cfg(feature = "catalog")]
+    hosted_grants: Mutex<Option<(HostedApiEnvironment, Vec<HostedProviderGrant>)>>,
+}
+
+impl Default for ProviderPermissionEffect {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "catalog")]
+            http_transport: None,
+            #[cfg(feature = "catalog")]
+            authenticated_environment: Mutex::new(None),
+            #[cfg(feature = "catalog")]
+            hosted_grants: Mutex::new(None),
+        }
+    }
+}
+
+impl std::fmt::Debug for ProviderPermissionEffect {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[cfg(feature = "catalog")]
+        let transport = if self.http_transport.is_some() {
+            "injected"
+        } else {
+            "runtime-owned"
+        };
+        #[cfg(not(feature = "catalog"))]
+        let transport = "unavailable";
+        formatter
+            .debug_struct("ProviderPermissionEffect")
+            .field("http_transport", &transport)
+            .finish_non_exhaustive()
+    }
+}
+
+#[cfg(feature = "catalog")]
+impl ProviderPermissionEffect {
+    /// Inject the transport beneath the production hosted-provider client.
+    /// The provider request, authentication, response validation, effect
+    /// transitions, and receipt path remain unchanged; this seam exists for
+    /// deterministic embedding and production-path verification without live
+    /// provider traffic.
+    pub fn with_http_transport<T>(transport: T) -> Self
+    where
+        T: RuntimeHttpTransport + Send + Sync + 'static,
+    {
+        Self {
+            http_transport: Some(Arc::new(transport)),
+            ..Self::default()
+        }
+    }
+
+    fn http_transport(
+        &self,
+        allow_private_network: bool,
+    ) -> Result<Arc<dyn RuntimeHttpTransport + Send + Sync>, RuntimeHttpError> {
+        self.http_transport.clone().map_or_else(
+            || {
+                crate::hosted_api_transport(allow_private_network)
+                    .map(|transport| Arc::new(transport) as Arc<_>)
+            },
+            Ok,
+        )
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProviderPermissionAdmission {
     pub grant_id: String,
     pub required_scopes: Vec<String>,
     pub granted_scopes: Vec<String>,
+    provider_effect: Option<ProviderEffectResolved>,
+    attempt: Option<super::ProviderEffectAttempt>,
+    recovery: Option<recovery::ProviderRecoveryContext>,
 }
 
 impl RuntimeEffect for ProviderPermissionEffect {
@@ -27,31 +134,78 @@ impl RuntimeEffect for ProviderPermissionEffect {
         PROVIDER_PERMISSION_EFFECT_FAMILY
     }
 
+    fn execution_boundary(&self) -> runx_contracts::ExecutionBoundaryKind {
+        runx_contracts::ExecutionBoundaryKind::RemoteProvider
+    }
+
+    fn matches_target(&self, request: EffectStepRequest<'_>) -> bool {
+        native_provider_access(request.target.tool_ref).is_some()
+            || provider_permission_policy(request.step.policy.as_ref()).is_some()
+    }
+
+    fn capabilities(&self) -> &'static [&'static dyn CapabilityContract] {
+        contract::PROVIDER_CAPABILITIES
+    }
+
     fn admit(
         &self,
         request: EffectStepRequest<'_>,
     ) -> Result<Option<EffectAdmission>, RuntimeEffectError> {
+        let native_access = native_provider_access(request.target.tool_ref);
         let Some(policy) = provider_permission_policy(request.step.policy.as_ref()) else {
+            if native_access.is_some() {
+                return Err(provider_permission_policy_error(
+                    "native provider tools require an explicit provider_permission policy"
+                        .to_owned(),
+                ));
+            }
             return Ok(None);
         };
-        let Some(plan) = provider_permission_plan(&request, policy)? else {
+        if let Some(access) = native_access {
+            validate_native_provider_policy(&request, policy, access)?;
+        }
+        let resolved_provider = native_access
+            .map(|_| self.native_provider_resolution(&request, policy))
+            .transpose()?;
+        let evidence = resolved_provider
+            .as_ref()
+            .map(identity::NativeProviderResolution::grant_evidence);
+        let plan = provider_permission_plan(&request, policy, evidence)?;
+        let Some(plan) = plan else {
+            if native_access.is_some() {
+                return Err(provider_permission_policy_error(
+                    "native provider tools require at least one explicit provider scope".to_owned(),
+                ));
+            }
             return Ok(None);
         };
         if !plan.missing_scopes.is_empty() {
             return Err(provider_permission_denial(&request, &plan));
         }
+        build_provider_admission(&request, plan, native_access, resolved_provider.as_ref())
+            .map(Some)
+    }
 
-        let witness = provider_permission_witness(&request, &plan);
-        Ok(Some(EffectAdmission::new(
-            PROVIDER_PERMISSION_EFFECT_FAMILY,
-            plan.verb.clone(),
-            witness,
-            ProviderPermissionAdmission {
-                grant_id: plan.grant_id,
-                required_scopes: plan.required_scopes,
-                granted_scopes: plan.granted_scopes,
-            },
-        )))
+    fn recover_pending(&self, request: EffectStepRequest<'_>) -> Result<(), RuntimeEffectError> {
+        recovery::recover_pending_provider_effect(request)
+    }
+
+    fn resolve_approval(
+        &self,
+        requirement: EffectApprovalRequirement,
+        step: &runx_parser::GraphStep,
+        admission: EffectAdmission,
+        host: &mut dyn crate::Host,
+    ) -> Result<EffectAdmission, RuntimeEffectError> {
+        resolve_provider_approval(requirement, step, admission, host)
+    }
+
+    fn prepare_output(&self, request: EffectOutputRequest<'_>) -> Result<(), RuntimeEffectError> {
+        prepare_provider_effect_output(request)
+    }
+
+    fn persist(&self, request: EffectReceiptRequest<'_>) -> Result<(), RuntimeEffectError> {
+        recovery::persist_provider_finality(request)
     }
 
     fn authority_grant_refs(
@@ -70,577 +224,82 @@ impl RuntimeEffect for ProviderPermissionEffect {
             &context.grant_id,
         )])
     }
+
+    fn authority_scope_refs(
+        &self,
+        admission: &EffectAdmission,
+    ) -> Result<Vec<Reference>, RuntimeEffectError> {
+        let context = admission
+            .context::<ProviderPermissionAdmission>()
+            .ok_or_else(|| RuntimeEffectError::Failed {
+                family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+                operation: "authority scope evidence",
+                message: "provider permission admission context is missing".to_owned(),
+            })?;
+        Ok(context
+            .required_scopes
+            .iter()
+            .map(|scope| {
+                Reference::with_uri(
+                    ReferenceType::ScopeAdmission,
+                    format!("runx:scope_admission:{scope}"),
+                )
+            })
+            .collect())
+    }
+
+    #[cfg(feature = "catalog")]
+    fn invoke_tool(
+        &self,
+        request: EffectToolRequest<'_>,
+    ) -> Option<Result<JsonValue, RuntimeError>> {
+        let access = native_provider_access(Some(request.tool_ref))?;
+        Some(execution::invoke_provider_tool(self, request, access))
+    }
 }
 
-#[derive(Debug)]
-struct ProviderPermissionPlan {
-    grant_id: String,
-    required_scopes: Vec<String>,
-    granted_scopes: Vec<String>,
-    missing_scopes: Vec<String>,
-    verb: AuthorityVerb,
-}
-
-fn provider_permission_plan(
+fn build_provider_admission(
     request: &EffectStepRequest<'_>,
-    policy: &JsonObject,
-) -> Result<Option<ProviderPermissionPlan>, RuntimeEffectError> {
-    let verb = required_verb_field(policy)?;
-    if policy.contains_key("granted_scopes") {
-        return Err(RuntimeEffectError::Denied {
-            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            verb,
-            message: "provider_permission.granted_scopes is self-attested by the graph policy; provide granted scopes through the operator grant environment instead".to_owned(),
-        });
-    }
-    let required_scopes = string_array_field(policy, "required_scopes")?
-        .unwrap_or_else(|| request.step.scopes.clone());
-    if required_scopes.is_empty() {
-        return Ok(None);
-    }
-    let granted_scopes = granted_scopes_from_env(request.env);
-    let missing_scopes = missing_scopes(&required_scopes, &granted_scopes);
-    let expected_grant_id = string_field(policy, "grant_id");
-    let grant_id = provider_grant_id(request.env, &verb)?;
-    if let Some(expected) = expected_grant_id
-        && expected != grant_id
-    {
-        return Err(RuntimeEffectError::Denied {
-            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            verb,
-            message: format!(
-                "step '{}' requires provider grant '{}', but operator grant '{}' was supplied",
-                request.step.id, expected, grant_id
-            ),
-        });
-    }
-
-    Ok(Some(ProviderPermissionPlan {
-        grant_id,
-        required_scopes,
-        granted_scopes,
-        missing_scopes,
-        verb,
-    }))
-}
-
-fn provider_permission_denial(
-    request: &EffectStepRequest<'_>,
-    plan: &ProviderPermissionPlan,
-) -> RuntimeEffectError {
-    RuntimeEffectError::Denied {
-        family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-        verb: plan.verb.clone(),
-        message: format!(
-            "step '{}' requires scopes [{}], but grant '{}' only provides [{}]",
-            request.step.id,
-            plan.required_scopes.join(", "),
-            plan.grant_id,
-            plan.granted_scopes.join(", ")
-        ),
-    }
-}
-
-fn provider_permission_witness(
-    request: &EffectStepRequest<'_>,
-    plan: &ProviderPermissionPlan,
-) -> AuthorityAdmissionWitness {
-    AuthorityAdmissionWitness {
-        verb: plan.verb.clone(),
-        parent_term_id: format!("provider-permission:{}", plan.grant_id),
-        child_term_id: format!(
-            "provider-permission:{}:{}",
-            request.step.id,
-            plan.required_scopes.join("+")
-        ),
-        idempotency_key: request.step.idempotency_key.clone(),
-        capability_ref: None,
-    }
-}
-
-fn provider_permission_policy(policy: Option<&JsonObject>) -> Option<&JsonObject> {
-    policy?
-        .get(PROVIDER_PERMISSION_EFFECT_FAMILY)
-        .and_then(JsonValue::as_object)
-}
-
-fn string_field<'a>(object: &'a JsonObject, key: &str) -> Option<&'a str> {
-    object.get(key).and_then(JsonValue::as_str)
-}
-
-fn string_array_field(
-    object: &JsonObject,
-    key: &str,
-) -> Result<Option<Vec<String>>, RuntimeEffectError> {
-    let Some(value) = object.get(key) else {
-        return Ok(None);
-    };
-    let Some(values) = value.as_array() else {
-        return Err(provider_permission_policy_error(format!(
-            "{key} must be an array"
-        )));
-    };
-    values
-        .iter()
-        .enumerate()
-        .map(|(index, value)| match value {
-            JsonValue::String(scope) if !scope.trim().is_empty() => Ok(scope.trim().to_owned()),
-            JsonValue::String(_) => Err(provider_permission_policy_error(format!(
-                "{key}[{index}] must be a non-empty string"
-            ))),
-            _ => Err(provider_permission_policy_error(format!(
-                "{key}[{index}] must be a string"
-            ))),
+    plan: policy::ProviderPermissionPlan,
+    native_access: Option<ProviderNativeAccess>,
+    resolution: Option<&identity::NativeProviderResolution>,
+) -> Result<EffectAdmission, RuntimeEffectError> {
+    let witness = provider_permission_witness(request, &plan);
+    let provider_effect = native_access
+        .zip(resolution)
+        .map(|(access, resolved)| {
+            resolved_provider_effect(request, &plan, access, &resolved.principal_ref)
         })
-        .collect::<Result<Vec<_>, _>>()
-        .map(Some)
+        .transpose()?;
+    let recovery = recovery::provider_recovery_context(request, provider_effect.as_ref())?;
+    Ok(EffectAdmission::new(
+        PROVIDER_PERMISSION_EFFECT_FAMILY,
+        plan.verb.clone(),
+        witness,
+        ProviderPermissionAdmission {
+            grant_id: plan.grant_id,
+            required_scopes: plan.required_scopes,
+            granted_scopes: plan.granted_scopes,
+            provider_effect,
+            attempt: None,
+            recovery,
+        },
+    ))
 }
 
-fn provider_grant_id(
-    env: &BTreeMap<String, String>,
-    verb: &AuthorityVerb,
-) -> Result<String, RuntimeEffectError> {
-    env.get(PROVIDER_PERMISSION_GRANT_ID_ENV)
-        .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .map(str::to_owned)
-        .ok_or_else(|| RuntimeEffectError::Denied {
-            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            verb: verb.clone(),
-            message: format!(
-                "provider permission requires explicit operator grant id in {PROVIDER_PERMISSION_GRANT_ID_ENV}"
-            ),
-        })
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ProviderNativeAccess {
+    Read,
+    Mutate,
 }
 
-fn granted_scopes_from_env(env: &BTreeMap<String, String>) -> Vec<String> {
-    env.get(PROVIDER_PERMISSION_GRANTED_SCOPES_ENV)
-        .map(|value| parse_scope_list(value))
-        .unwrap_or_default()
-}
-
-fn parse_scope_list(value: &str) -> Vec<String> {
-    value
-        .split([',', '\n', '\t', ' '])
-        .map(str::trim)
-        .filter(|scope| !scope.is_empty())
-        .map(str::to_owned)
-        .collect()
-}
-
-fn required_verb_field(object: &JsonObject) -> Result<AuthorityVerb, RuntimeEffectError> {
-    let Some(value) = object.get("verb") else {
-        return Err(provider_permission_policy_error(
-            "verb is required".to_owned(),
-        ));
-    };
-    let Some(verb) = value.as_str() else {
-        return Err(provider_permission_policy_error(
-            "verb must be a string".to_owned(),
-        ));
-    };
-    match verb {
-        "read" => Ok(AuthorityVerb::Read),
-        "write" => Ok(AuthorityVerb::Write),
-        "comment" => Ok(AuthorityVerb::Comment),
-        "review" => Ok(AuthorityVerb::Review),
-        "merge" => Ok(AuthorityVerb::Merge),
-        "create" => Ok(AuthorityVerb::Create),
-        "update" => Ok(AuthorityVerb::Update),
-        "delete" => Ok(AuthorityVerb::Delete),
-        "execute" => Ok(AuthorityVerb::Execute),
-        "revoke" => Ok(AuthorityVerb::Revoke),
-        _ => Err(provider_permission_policy_error(format!(
-            "verb {verb:?} is not supported"
-        ))),
+fn native_provider_access(tool_ref: Option<&str>) -> Option<ProviderNativeAccess> {
+    match tool_ref {
+        Some(PROVIDER_READ_TOOL) => Some(ProviderNativeAccess::Read),
+        Some(PROVIDER_MUTATE_TOOL) => Some(ProviderNativeAccess::Mutate),
+        _ => None,
     }
-}
-
-fn provider_permission_policy_error(message: String) -> RuntimeEffectError {
-    RuntimeEffectError::Failed {
-        family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-        operation: "parse provider permission policy",
-        message,
-    }
-}
-
-fn missing_scopes(required: &[String], granted: &[String]) -> Vec<String> {
-    let granted = granted.iter().collect::<BTreeSet<_>>();
-    required
-        .iter()
-        .filter(|scope| !granted.contains(scope))
-        .cloned()
-        .collect()
 }
 
 #[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
-    use std::io;
-    use std::path::Path;
-
-    use runx_contracts::{JsonObject, JsonValue, ReferenceType};
-    use runx_parser::GraphStep;
-
-    use super::*;
-
-    #[test]
-    fn admits_when_required_scopes_are_granted() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let step = test_step("read_issue", vec!["repo.read"], false, "read", false);
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.read");
-
-        let result = effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        });
-        let admission = match result {
-            Ok(Some(admission)) => admission,
-            other => {
-                return Err(io::Error::other(format!(
-                    "unexpected provider permission admission: {other:?}"
-                )));
-            }
-        };
-
-        assert_eq!(admission.family(), PROVIDER_PERMISSION_EFFECT_FAMILY);
-        assert_eq!(admission.verb(), AuthorityVerb::Read);
-        let context = match admission.context::<ProviderPermissionAdmission>() {
-            Some(context) => context,
-            None => {
-                return Err(io::Error::other(
-                    "missing provider permission admission context",
-                ));
-            }
-        };
-        assert_eq!(context.required_scopes, vec!["repo.read"]);
-        assert_eq!(context.granted_scopes, vec!["repo.read"]);
-        let grant_refs = effect
-            .authority_grant_refs(&admission)
-            .map_err(|error| io::Error::other(error.to_string()))?;
-        assert_eq!(grant_refs.len(), 1);
-        assert_eq!(grant_refs[0].reference_type, ReferenceType::Grant);
-        assert_eq!(grant_refs[0].uri, "runx:grant:github-mcp-read");
-        Ok(())
-    }
-
-    #[test]
-    fn admits_revoke_verb_through_grant_ref_path() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let step = test_step("revoke_grant", vec!["repo.write"], true, "revoke", false);
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.write");
-
-        let result = effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        });
-        let admission = match result {
-            Ok(Some(admission)) => admission,
-            other => {
-                return Err(io::Error::other(format!(
-                    "unexpected provider permission admission: {other:?}"
-                )));
-            }
-        };
-
-        assert_eq!(admission.family(), PROVIDER_PERMISSION_EFFECT_FAMILY);
-        assert_eq!(admission.verb(), AuthorityVerb::Revoke);
-        let grant_refs = effect
-            .authority_grant_refs(&admission)
-            .map_err(|error| io::Error::other(error.to_string()))?;
-        assert_eq!(grant_refs.len(), 1);
-        assert_eq!(grant_refs[0].reference_type, ReferenceType::Grant);
-        assert_eq!(grant_refs[0].uri, "runx:grant:github-mcp-read");
-        Ok(())
-    }
-
-    #[test]
-    fn denies_when_required_scope_is_not_granted() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let step = test_step("comment_issue", vec!["repo.write"], true, "write", false);
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.read");
-
-        let result = effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        });
-        let error = match result {
-            Err(error) => error,
-            other => {
-                return Err(io::Error::other(format!(
-                    "unexpected provider permission result: {other:?}"
-                )));
-            }
-        };
-
-        match error {
-            RuntimeEffectError::Denied {
-                family,
-                verb: AuthorityVerb::Write,
-                message,
-            } if family == PROVIDER_PERMISSION_EFFECT_FAMILY
-                && message.contains("repo.write")
-                && message.contains("repo.read") =>
-            {
-                Ok(())
-            }
-            other => Err(io::Error::other(format!(
-                "unexpected denial error: {other:?}"
-            ))),
-        }
-    }
-
-    #[test]
-    fn denies_when_operator_grant_id_is_missing() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let step = test_step("read_issue", vec!["repo.read"], false, "read", false);
-        let inputs = JsonObject::new();
-        let env = scopes_only_env("repo.read");
-
-        let result = effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        });
-        let error = match result {
-            Err(error) => error,
-            other => {
-                return Err(io::Error::other(format!(
-                    "unexpected provider permission result: {other:?}"
-                )));
-            }
-        };
-
-        match error {
-            RuntimeEffectError::Denied { message, .. }
-                if message.contains(PROVIDER_PERMISSION_GRANT_ID_ENV) =>
-            {
-                Ok(())
-            }
-            other => Err(io::Error::other(format!(
-                "unexpected missing-grant denial error: {other:?}"
-            ))),
-        }
-    }
-
-    #[test]
-    fn rejects_self_attested_granted_scopes_in_policy() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let step = test_step("read_issue", vec!["repo.read"], false, "read", true);
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.read");
-
-        let result = effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        });
-        let error = match result {
-            Err(error) => error,
-            other => {
-                return Err(io::Error::other(format!(
-                    "unexpected provider permission result: {other:?}"
-                )));
-            }
-        };
-
-        match error {
-            RuntimeEffectError::Denied { message, .. } if message.contains("self-attested") => {
-                Ok(())
-            }
-            other => Err(io::Error::other(format!(
-                "unexpected self-attested denial error: {other:?}"
-            ))),
-        }
-    }
-
-    #[test]
-    fn rejects_missing_or_unknown_policy_verb() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.read");
-
-        let mut missing_verb = test_step("read_issue", vec!["repo.read"], false, "read", false);
-        provider_permission_policy_mut(&mut missing_verb)?.remove("verb");
-        let error = match effect.admit(EffectStepRequest {
-            step: &missing_verb,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        }) {
-            Ok(_) => {
-                return Err(io::Error::other(
-                    "missing provider permission verb should fail",
-                ));
-            }
-            Err(error) => error,
-        };
-        assert_policy_error(error, "verb is required")?;
-
-        let unknown_verb = test_step("read_issue", vec!["repo.read"], false, "publish", false);
-        let error = match effect.admit(EffectStepRequest {
-            step: &unknown_verb,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        }) {
-            Ok(_) => {
-                return Err(io::Error::other(
-                    "unknown provider permission verb should fail",
-                ));
-            }
-            Err(error) => error,
-        };
-        assert_policy_error(error, "not supported")
-    }
-
-    #[test]
-    fn rejects_malformed_required_scopes() -> Result<(), io::Error> {
-        let effect = ProviderPermissionEffect;
-        let mut step = test_step("read_issue", vec!["repo.read"], false, "read", false);
-        provider_permission_policy_mut(&mut step)?.insert(
-            "required_scopes".to_owned(),
-            JsonValue::Array(vec![
-                JsonValue::String("repo.read".to_owned()),
-                JsonValue::Bool(false),
-            ]),
-        );
-        let inputs = JsonObject::new();
-        let env = provider_env("github-mcp-read", "repo.read");
-
-        let error = match effect.admit(EffectStepRequest {
-            step: &step,
-            inputs: &inputs,
-            env: &env,
-            graph_dir: Path::new("."),
-        }) {
-            Ok(_) => {
-                return Err(io::Error::other(
-                    "malformed provider permission required_scopes should fail",
-                ));
-            }
-            Err(error) => error,
-        };
-
-        assert_policy_error(error, "required_scopes[1] must be a string")
-    }
-
-    fn test_step(
-        id: &str,
-        required_scopes: Vec<&str>,
-        mutating: bool,
-        verb: &str,
-        self_attested_granted_scopes: bool,
-    ) -> GraphStep {
-        let mut permission = JsonObject::new();
-        permission.insert(
-            "grant_id".to_owned(),
-            JsonValue::String("github-mcp-read".to_owned()),
-        );
-        permission.insert("verb".to_owned(), JsonValue::String(verb.to_owned()));
-        if self_attested_granted_scopes {
-            permission.insert(
-                "granted_scopes".to_owned(),
-                JsonValue::Array(vec![JsonValue::String("repo.read".to_owned())]),
-            );
-        }
-        let mut policy = JsonObject::new();
-        policy.insert(
-            PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            JsonValue::Object(permission),
-        );
-        GraphStep {
-            id: id.to_owned(),
-            label: None,
-            skill: None,
-            tool: None,
-            run: None,
-            instructions: None,
-            artifacts: None,
-            runner: None,
-            inputs: JsonObject::new(),
-            context: BTreeMap::new(),
-            context_edges: Vec::new(),
-            context_skills: Vec::new(),
-            scopes: required_scopes
-                .into_iter()
-                .map(str::to_owned)
-                .collect::<Vec<_>>(),
-            allowed_tools: None,
-            retry: None,
-            policy: Some(policy),
-            fanout_group: None,
-            when: None,
-            mutating,
-            idempotency_key: Some(format!("{id}-key")),
-            mint_authority: None,
-            requested_scope_from: None,
-        }
-    }
-
-    fn provider_env(grant_id: &str, scopes: &str) -> BTreeMap<String, String> {
-        [
-            (
-                PROVIDER_PERMISSION_GRANT_ID_ENV.to_owned(),
-                grant_id.to_owned(),
-            ),
-            (
-                PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
-                scopes.to_owned(),
-            ),
-        ]
-        .into_iter()
-        .collect()
-    }
-
-    fn scopes_only_env(scopes: &str) -> BTreeMap<String, String> {
-        [(
-            PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
-            scopes.to_owned(),
-        )]
-        .into_iter()
-        .collect()
-    }
-
-    fn provider_permission_policy_mut(step: &mut GraphStep) -> Result<&mut JsonObject, io::Error> {
-        let Some(value) = step
-            .policy
-            .as_mut()
-            .and_then(|policy| policy.get_mut(PROVIDER_PERMISSION_EFFECT_FAMILY))
-        else {
-            return Err(io::Error::other(
-                "test step should carry provider permission policy",
-            ));
-        };
-        let JsonValue::Object(object) = value else {
-            return Err(io::Error::other(
-                "test step provider permission policy should be an object",
-            ));
-        };
-        Ok(object)
-    }
-
-    fn assert_policy_error(error: RuntimeEffectError, needle: &str) -> Result<(), io::Error> {
-        match error {
-            RuntimeEffectError::Failed {
-                family,
-                operation: "parse provider permission policy",
-                message,
-            } if family == PROVIDER_PERMISSION_EFFECT_FAMILY && message.contains(needle) => Ok(()),
-            other => Err(io::Error::other(format!(
-                "unexpected provider permission policy error: {other:?}"
-            ))),
-        }
-    }
-}
+mod tests;

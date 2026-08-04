@@ -43,6 +43,7 @@ try {
   if (-not $dir) { $dir = Join-Path $env:LOCALAPPDATA "runx\bin" }
   New-Item -ItemType Directory -Path $dir -Force | Out-Null
   Copy-Item "$tmp\runx-$version-$target\runx.exe" "$dir\runx.exe" -Force
+  Copy-Item "$tmp\runx-$version-$target\runx-js-worker.exe" "$dir\runx-js-worker.exe" -Force
   Write-Host "runx: installed to $dir\runx.exe"
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")

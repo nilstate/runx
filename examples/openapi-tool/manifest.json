@@ -6,11 +6,5 @@
   "version": "0.1.0",
   "supported_source_types": ["external-adapter"],
   "transport": { "kind": "process", "command": "node", "args": ["openapi-adapter.mjs"] },
-  "timeouts": { "startup_ms": 5000, "invocation_ms": 30000 },
-  "sandbox_intent": {
-    "profile": "network",
-    "cwd_policy": "skill-directory",
-    "network": true,
-    "writable_paths": []
-  }
+  "timeouts": { "startup_ms": 5000, "invocation_ms": 30000 }
 }

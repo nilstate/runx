@@ -1,0 +1,58 @@
+{
+  "$id": "https://schemas.runx.ai/runx/payment/charge-policy/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accepted_settlement_families": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "type": "array"
+    },
+    "counterparty": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "expires_at": {
+      "minLength": 1,
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$",
+      "type": "string"
+    },
+    "policy_ref": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "price_minor": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "realm": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.payment.charge_policy.v1",
+      "type": "string"
+    }
+  },
+  "required": [
+    "price_minor",
+    "currency",
+    "accepted_settlement_families",
+    "counterparty"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.payment.charge_policy.v1"
+}

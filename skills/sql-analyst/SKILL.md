@@ -1,36 +1,52 @@
 ---
 name: sql-analyst
-description: Turn a bounded data question, schema summary, and sample rows into a reviewable SQL analysis plan.
+description: Produce a schema-validated, read-only SQL analysis plan and explicit governed execution handoff without running raw SQL.
 runx:
   category: data
 ---
 
 # SQL Analyst
 
-Produce a safe, reviewable SQL analysis plan from a bounded question and enough
-schema context to avoid guessing.
+Use this skill to turn a bounded data question into a reviewable read-only query
+plan.
 
-This skill is for read-only analysis. It should help an operator decide what to
-query, how to validate it, and how to interpret the result. It does not execute
-SQL, mutate data, or assume access to live databases. A consuming product or
-front supplies schema summaries, sampled rows, and credentialed execution.
+The schema and optional sample snapshot must carry stable upstream SHA-256
+digests and observation times. Runx treats them as caller-supplied provenance,
+not provider verification. Deterministic admission rejects stale or malformed
+sources, write intent, invalid identifiers or dialects, unknown allowed tables,
+and unbounded row requests before the model runs. The model designs a plan
+against a normalized table/field index. A deterministic finalizer then rejects
+invented tables and fields, untyped joins, unstructured filters, literal filter
+values, invalid limits, incomplete interpretation, and write tokens.
 
-Tie every selected table and field to the supplied schema, state the validation
-checks that would catch a misleading result, and keep interpretation separate
-from observed data. Return `needs_schema` when required tables or fields are
-unknown. Return `unsafe_request` for writes, deletes, unbounded export, or broad
-PII access rather than translating them into SQL.
-
-## Output
-
-- `query_plan`: bounded read-only query shape, tables, fields, joins, and limits.
-- `validation_checks`: tests for completeness, duplication, and interpretation errors.
-- `interpretation_guidance`: how to read the result and what it cannot prove.
-- `residual_risks`: schema gaps, privacy concerns, and unresolved assumptions.
+This skill never emits or executes raw SQL. Without an execution context, a
+ready plan is `planned_only`. With a validated `execution_context`, it emits an
+exact handoff to `data-store.read_projection`, `read_events`, or
+`list_stream_heads`. That handoff reads only a declared bounded resource; it
+does not translate model-authored prose into arbitrary SQL.
 
 ## Inputs
 
-- `question` (required): the business or product question.
-- `schema_summary` (required): table and field summaries available to query.
-- `sample_rows` (optional): representative non-sensitive rows.
-- `constraints` (optional): limits, privacy rules, or allowed tables.
+- `question`: bounded analysis question.
+- `schema_summary`: source-bound available tables and fields.
+- `dialect`: `postgres`, `sqlite`, or `mysql`.
+- `as_of` and `max_schema_age_days`: deterministic source-freshness boundary.
+- `sample_rows`: optional source-bound snapshot containing at most 20
+  non-sensitive rows.
+- `constraints`: allowed tables, maximum rows, and privacy limits.
+- `execution_context`: optional exact governed data-store read runner and
+  bounded resource inputs.
+
+## Output
+
+A `runx.data.sql_analysis_plan.v1` packet with a validated query plan,
+interpretation checks, residual risks, and an explicit non-executed handoff.
+
+## Agent task contracts
+
+### `sql-plan`
+
+Produce sql_plan_draft using only analysis_context tables and qualified fields. Return decision,
+query_plan, validation_checks, interpretation, and residual_risks. The plan is read-only and
+does not execute. Use the declared dialect and bounded limit. Do not invent schema, request
+credentials, expose PII, or emit write SQL.

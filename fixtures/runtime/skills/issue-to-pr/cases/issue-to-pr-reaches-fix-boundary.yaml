@@ -3,29 +3,28 @@ kind: "graph"
 target: "../../../../../skills/issue-to-pr/X.yaml"
 runner: "issue-to-pr"
 inputs:
+  risk: "low"
+  scafld_bin: "../../fixtures/issue-to-pr-harness-scafld.mjs"
+  size: "small"
   task_id: "issue-to-pr-reach-fix"
-  thread_title: "Fix-boundary harness reach"
   thread_body: "Canned markdown spec lets the graph progress to the fix authoring boundary."
   thread_locator: "local://fixtures/issue-to-pr-reach-fix"
-  size: "small"
-  risk: "low"
-  scafld_bin: "./fixtures/issue-to-pr-harness-scafld.mjs"
+  thread_title: "Fix-boundary harness reach"
 caller:
   answers:
     agent_task.issue-to-pr-author-spec.output:
-      spec_contents: "---\nspec_version: '2.0'\ntask_id: issue-to-pr-reach-fix\ncreated: '2026-05-04T00:00:00Z'\nupdated: '2026-05-04T00:00:00Z'\nstatus: draft\nharden_status: not_run\nsize: small\nrisk_level: low\n---\n\n## Current State\n\nStatus: draft\nCurrent phase: none\nNext: none\nReason: none\nBlockers: none\nAllowed follow-up command: none\nLatest runner update: none\nReview gate: not_started\n\n## Summary\n\nUpdate the fixture README with one bounded line.\n\n## Context\n\nCWD: `.`\n\nPackages:\n- fixture\n\nFiles impacted:\n- `README.md`\n\nInvariants:\n- bounded_scope\n\nRelated docs:\n- none\n\n## Objectives\n\n- Replace the fixture README text with approved guidance.\n\n## Scope\n\n- `README.md`\n\n## Dependencies\n\n- None.\n\n## Assumptions\n\n- None.\n\n## Touchpoints\n\n- README fixture content.\n\n## Risks\n\n- None.\n\n## Acceptance\n\nProfile: standard\n\nDefinition of done:\n- [ ] `dod1` README.md contains fixture guidance.\n\nValidation:\n- [ ] `v1` test - README contains fixture guidance.\n  - Command: `grep -q '^fixture guidance$' README.md`\n  - Expected kind: `exit_code_zero`\n  - Timeout seconds: none\n  - Result: none\n  - Status: pending\n  - Evidence: none\n  - Source event: none\n  - Last attempt: none\n  - Checked at: none\n\n## Phase 1: Update fixture README\n\nGoal: Write the bounded README change and validate it.\n\nStatus: pending\nDependencies: none\n\nChanges:\n- `README.md` (all, exclusive) - Replace the contents with fixture guidance.\n\nAcceptance:\n- [ ] `ac1_1` test - README contains fixture guidance.\n  - Command: `grep -q '^fixture guidance$' README.md`\n  - Expected kind: `exit_code_zero`\n  - Timeout seconds: none\n  - Result: none\n  - Status: pending\n  - Evidence: none\n  - Source event: none\n  - Last attempt: none\n  - Checked at: none\n\n## Rollback\n\nStrategy: per_phase\n\nCommands:\n- `git checkout HEAD -- README.md`\n\n## Review\n\nStatus: not_started\nVerdict: none\n\nFindings:\n- none\n\nPasses:\n- none\n\n## Self Eval\n\nStatus: not_started\n\nNotes:\nnone\n\nImprovements:\n- none\n\n## Deviations\n\n- none\n\n## Metadata\n\nTags:\n- fixture\n\n## Origin\n\nSource:\n- harness\n\nRepo:\n- none\n\nGit:\n- none\n\nSync:\n- none\n\nSupersession:\n- none\n\n## Harden Rounds\n\n- none\n\n## Planning Log\n\n- none\n"
+      context_files:
+        - "README.md"
+      spec_contents: "---\nspec_version: '2.0'\ntask_id: issue-to-pr-reach-fix\ncreated: '2026-05-04T00:00:00Z'\nupdated: '2026-05-04T00:00:00Z'\nstatus: draft\nharden_status: not_run\nsize: small\nrisk_level: low\n---\n\n# Harness Task\n\n## Current State\n\nStatus: draft\nCurrent phase: none\nNext: none\nReason: none\nBlockers: none\nAllowed follow-up command: none\nLatest runner update: none\nReview gate: not_started\n\n## Summary\n\nUpdate the fixture README with one bounded line.\n\n## Context\n\nCWD: `.`\n\nPackages:\n- fixture\n\nFiles impacted:\n- `README.md`\n\nInvariants:\n- bounded_scope\n\nRelated docs:\n- none\n\n## Objectives\n\n- Replace the fixture README text with approved guidance.\n\n## Scope\n\n- `README.md`\n\n## Dependencies\n\n- None.\n\n## Assumptions\n\n- None.\n\n## Touchpoints\n\n- README fixture content.\n\n## Risks\n\n- None.\n\n## Acceptance\n\nProfile: standard\n\nDefinition of done:\n- [ ] `dod1` README.md contains fixture guidance.\n\nValidation:\n- [ ] `v1` test - README contains fixture guidance.\n  - Command: `grep -q '^fixture guidance$' README.md`\n  - Expected kind: `exit_code_zero`\n  - Timeout seconds: none\n  - Result: none\n  - Status: pending\n  - Evidence: none\n  - Source event: none\n  - Last attempt: none\n  - Checked at: none\n\n## Phase 1: Update fixture README\n\nGoal: Write the bounded README change and validate it.\n\nStatus: pending\nDependencies: none\n\nChanges:\n- `README.md` (all, exclusive) - Replace the contents with fixture guidance.\n\nAcceptance:\n- [ ] `ac1_1` test - README contains fixture guidance.\n  - Command: `grep -q '^fixture guidance$' README.md`\n  - Expected kind: `exit_code_zero`\n  - Timeout seconds: none\n  - Result: none\n  - Status: pending\n  - Evidence: none\n  - Source event: none\n  - Last attempt: none\n  - Checked at: none\n\n## Rollback\n\nStrategy: per_phase\n\nCommands:\n- `git checkout HEAD -- README.md`\n\n## Review\n\nStatus: not_started\nVerdict: none\n\nFindings:\n- none\n\nPasses:\n- none\n\n## Self Eval\n\nStatus: not_started\n\nNotes:\nnone\n\nImprovements:\n- none\n\n## Deviations\n\n- none\n\n## Metadata\n\nTags:\n- fixture\n\n## Origin\n\nSource:\n- harness\n\nRepo:\n- none\n\nGit:\n- none\n\nSync:\n- none\n\nSupersession:\n- none\n\n## Harden Rounds\n\n- none\n\n## Planning Log\n\n- none\n"
+  approvals:
+    {}
 expect:
   status: "needs_agent"
   receipt:
     schema: "runx.receipt.v1"
-    receipt_id: "sha256:1be8aed088af731b688296c341c321ecf6f1de032dfbd0470d3b0fcec6225c51"
-    harness_id: "hrn_issue-to-pr-reaches-fix-boundary_graph"
     state: "deferred"
     disposition: "deferred"
-    reason_code: "issue-to-pr-reaches-fix-boundary_deferred"
-    child_receipt_refs:
-      - "runx:receipt:sha256:b592914412c5929a253570b02b3c9da3599a034b5a905bb7d304f37ac677afaa"
-      - "runx:receipt:sha256:5964ceae66466557a70c7084fe0e897eb6597a2ea6a4a53244e968baceb54fe2"
+    child_receipt_count: 2
   steps:
     - "author-spec"
     - "author-fix"
@@ -35,9 +34,9 @@ metadata:
   runner_kind: "graph"
   graph_shape: "fixture_replay"
   graph_replay_steps:
-    - 
+    -
       step_id: "author-spec"
       task: "issue-to-pr-author-spec"
-    - 
+    -
       step_id: "author-fix"
       task: "issue-to-pr-apply-fix"

@@ -1,4 +1,7 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+use serde::Serialize;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CommandSpec {
     pub name: &'static str,
     pub top_level_usage: &'static [&'static str],
@@ -9,16 +12,36 @@ pub struct CommandSpec {
 
 mod catalog;
 
-pub use self::catalog::COMMAND_SPECS;
+pub use self::catalog::{COMMAND_SPECS, ROOT_COMMAND_SPEC};
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CommandCatalog {
+    schema: &'static str,
+    root: &'static CommandSpec,
+    commands: &'static [CommandSpec],
+}
 
 pub fn command_spec(name: &str) -> Option<&'static CommandSpec> {
     COMMAND_SPECS.iter().find(|spec| spec.name == name)
 }
 
+pub fn catalog_json() -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(&CommandCatalog {
+        schema: "runx.cli_command_catalog.v1",
+        root: &ROOT_COMMAND_SPEC,
+        commands: COMMAND_SPECS,
+    })
+}
+
 pub fn help_text() -> String {
-    let mut output = String::from(
-        "runx\n\nUsage:\n  runx <command> [args]\n  runx --help\n  runx --version\n\nCommands:\n",
-    );
+    let mut output = String::from("runx\n\nUsage:\n");
+    for usage in ROOT_COMMAND_SPEC.usage {
+        output.push_str("  ");
+        output.push_str(usage);
+        output.push('\n');
+    }
+    output.push_str("\nCommands:\n");
     for spec in COMMAND_SPECS {
         let usage_lines = if spec.top_level_usage.is_empty() {
             spec.usage
@@ -64,7 +87,7 @@ pub fn command_help_text(name: &str) -> Option<String> {
 mod tests {
     use std::collections::BTreeSet;
 
-    use super::{COMMAND_SPECS, command_help_text, help_text};
+    use super::{COMMAND_SPECS, ROOT_COMMAND_SPEC, catalog_json, command_help_text, help_text};
 
     #[test]
     fn command_names_are_unique_and_have_help() {
@@ -74,7 +97,7 @@ mod tests {
             let help = command_help_text(spec.name);
             assert!(help.is_some(), "missing help for {}", spec.name);
         }
-        assert_eq!(COMMAND_SPECS.len(), 23);
+        assert_eq!(COMMAND_SPECS.len(), 25);
     }
 
     #[test]
@@ -90,5 +113,36 @@ mod tests {
                 assert!(help.lines().any(|line| line.trim() == *usage));
             }
         }
+    }
+
+    #[test]
+    fn json_catalog_is_a_direct_projection_of_native_help_specs()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let catalog: serde_json::Value = serde_json::from_str(&catalog_json()?)?;
+
+        assert_eq!(catalog["schema"], "runx.cli_command_catalog.v1");
+        assert_eq!(catalog["root"]["name"], ROOT_COMMAND_SPEC.name);
+        assert_eq!(
+            catalog["commands"].as_array().map(Vec::len),
+            Some(COMMAND_SPECS.len())
+        );
+        let credential = catalog["commands"]
+            .as_array()
+            .and_then(|commands| {
+                commands
+                    .iter()
+                    .find(|command| command["name"] == "credential")
+            })
+            .ok_or_else(|| std::io::Error::other("credential command missing from catalog"))?;
+        assert!(
+            credential["options"]
+                .as_array()
+                .is_some_and(|options| options.iter().any(|option| {
+                    option
+                        .as_str()
+                        .is_some_and(|option| option.starts_with("--audience "))
+                }))
+        );
+        Ok(())
     }
 }

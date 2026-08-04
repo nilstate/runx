@@ -82,20 +82,83 @@ impl fmt::Debug for RuntimeHttpRequest {
 pub struct RuntimeHttpResponse {
     pub status: u16,
     pub body: String,
+    pub headers: Vec<RuntimeHttpHeader>,
+    pub body_digest: String,
+    pub body_bytes: usize,
+    pub truncated: bool,
+}
+
+impl RuntimeHttpResponse {
+    #[must_use]
+    pub fn new(status: u16, body: impl Into<String>) -> Self {
+        let body = body.into();
+        Self {
+            status,
+            body_digest: runx_contracts::sha256_prefixed(body.as_bytes()),
+            body_bytes: body.len(),
+            body,
+            headers: Vec::new(),
+            truncated: false,
+        }
+    }
 }
 
 impl fmt::Debug for RuntimeHttpResponse {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let header_names = self
+            .headers
+            .iter()
+            .map(|header| header.name.as_str())
+            .collect::<Vec<_>>();
         formatter
             .debug_struct("RuntimeHttpResponse")
             .field("status", &self.status)
             .field("body", &format_args!("{} bytes", self.body.len()))
+            .field("header_names", &header_names)
+            .field("body_digest", &self.body_digest)
+            .field("body_bytes", &self.body_bytes)
+            .field("truncated", &self.truncated)
             .finish()
     }
 }
 
 pub trait RuntimeHttpTransport {
     fn send(&self, request: RuntimeHttpRequest) -> Result<RuntimeHttpResponse, RuntimeHttpError>;
+
+    fn send_limited(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        enforce_response_limit(self.send(request)?, response_limit)
+    }
+
+    fn send_idempotent(
+        &self,
+        request: RuntimeHttpRequest,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send(request)
+    }
+
+    fn send_idempotent_limited(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        enforce_response_limit(self.send_idempotent(request)?, response_limit)
+    }
+}
+
+fn enforce_response_limit(
+    response: RuntimeHttpResponse,
+    response_limit: usize,
+) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+    if response.body_bytes > response_limit {
+        return Err(RuntimeHttpError::ResponseBodyTooLarge {
+            limit: response_limit,
+        });
+    }
+    Ok(response)
 }
 
 #[derive(Clone, Debug)]
@@ -108,10 +171,12 @@ pub struct ReqwestHttpTransport {
     pub(super) request_timeout: std::time::Duration,
 }
 
-pub(super) fn sensitive_header_name(name: &str) -> bool {
+pub(crate) fn sensitive_header_name(name: &str) -> bool {
     let normalized = name.to_ascii_lowercase();
     normalized == "authorization"
         || normalized == "proxy-authorization"
+        || normalized == "cookie"
+        || normalized == "set-cookie"
         || normalized.contains("token")
         || normalized.contains("secret")
         || normalized.contains("api-key")

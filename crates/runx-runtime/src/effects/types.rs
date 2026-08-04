@@ -1,19 +1,47 @@
-use std::any::Any;
 use std::collections::BTreeMap;
-use std::fmt;
 use std::path::Path;
-use std::sync::Arc;
 
-use runx_contracts::{AuthorityVerb, JsonObject, Receipt, Reference};
-use runx_core::state_machine::AuthorityAdmissionWitness;
+use runx_contracts::{JsonObject, Receipt, Reference};
 use runx_parser::GraphStep;
 
-use crate::adapter::SkillOutput;
+use crate::CapabilityContract;
+use crate::RuntimeError;
+use crate::adapter::InvocationOutput;
+use crate::credentials::CredentialDelivery;
 
-use super::RuntimeEffectError;
+use super::{EffectAdmission, EffectReplay, RuntimeEffectError};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EffectApprovalRequirement {
+    Forbidden,
+    Required,
+}
 
 pub trait RuntimeEffect: Send + Sync {
     fn family(&self) -> &'static str;
+
+    /// Report where tools owned by this effect family actually execute.
+    /// Provider-backed effects override this rather than letting the generic
+    /// catalog guess from a tool name or scope.
+    fn execution_boundary(&self) -> runx_contracts::ExecutionBoundaryKind {
+        runx_contracts::ExecutionBoundaryKind::NativeCapability
+    }
+
+    /// Return true only when this effect family owns the resolved execution
+    /// target. Graph authors never select a family: the runtime supplies the
+    /// loaded skill or registered tool identity after resolution.
+    fn matches_target(&self, request: EffectStepRequest<'_>) -> bool {
+        let _ = request;
+        false
+    }
+
+    /// Native catalog contracts implemented by this effect family. Keeping the
+    /// contract beside the effect prevents the generic runtime from acquiring
+    /// provider- or domain-specific tool knowledge while still giving graphs,
+    /// managed agents, and operator discovery one typed catalog surface.
+    fn capabilities(&self) -> &'static [&'static dyn CapabilityContract] {
+        &[]
+    }
 
     fn can_run_parallel(&self, step: &GraphStep) -> bool {
         let _ = step;
@@ -39,6 +67,28 @@ pub trait RuntimeEffect: Send + Sync {
     ) -> Result<Option<EffectAdmission>, RuntimeEffectError> {
         let _ = request;
         Ok(None)
+    }
+
+    /// Resolve approval at the effect boundary after authority is known and
+    /// before any provider attempt. Effect-owned capabilities that declare
+    /// `CapabilityApproval::Effect` must override this method; the default
+    /// fails closed instead of trusting graph-authored control flow.
+    fn resolve_approval(
+        &self,
+        requirement: EffectApprovalRequirement,
+        step: &GraphStep,
+        admission: EffectAdmission,
+        host: &mut dyn crate::Host,
+    ) -> Result<EffectAdmission, RuntimeEffectError> {
+        let _ = (step, host);
+        match requirement {
+            EffectApprovalRequirement::Forbidden => Ok(admission),
+            EffectApprovalRequirement::Required => Err(RuntimeEffectError::InvalidMetadata {
+                family: self.family().to_owned(),
+                message: "effect-owned capability requires approval but its owner does not implement the approval transition"
+                    .to_owned(),
+            }),
+        }
     }
 
     fn prepare_output(&self, request: EffectOutputRequest<'_>) -> Result<(), RuntimeEffectError> {
@@ -72,15 +122,15 @@ pub trait RuntimeEffect: Send + Sync {
         Ok(())
     }
 
-    fn refresh_output_metadata(
+    fn authority_grant_refs(
         &self,
-        request: EffectMetadataRefreshRequest<'_>,
-    ) -> Result<(), RuntimeEffectError> {
-        let _ = request;
-        Ok(())
+        admission: &EffectAdmission,
+    ) -> Result<Vec<Reference>, RuntimeEffectError> {
+        let _ = admission;
+        Ok(Vec::new())
     }
 
-    fn authority_grant_refs(
+    fn authority_scope_refs(
         &self,
         admission: &EffectAdmission,
     ) -> Result<Vec<Reference>, RuntimeEffectError> {
@@ -95,21 +145,48 @@ pub trait RuntimeEffect: Send + Sync {
         let _ = replay;
         Ok(Vec::new())
     }
+
+    /// Invoke one catalog tool owned by this effect family.
+    fn invoke_tool(
+        &self,
+        request: EffectToolRequest<'_>,
+    ) -> Option<Result<runx_contracts::JsonValue, RuntimeError>> {
+        let _ = request;
+        None
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct EffectToolRequest<'a> {
+    pub tool_ref: &'a str,
+    pub observed_at: &'a str,
+    pub inputs: &'a JsonObject,
+    pub env: &'a BTreeMap<String, String>,
+    pub skill_directory: &'a Path,
+    pub credential_delivery: &'a CredentialDelivery,
+    pub admission: Option<&'a EffectAdmission>,
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct EffectStepRequest<'a> {
     pub step: &'a GraphStep,
+    pub target: ResolvedEffectTarget<'a>,
     pub inputs: &'a JsonObject,
     pub env: &'a BTreeMap<String, String>,
     pub graph_dir: &'a Path,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ResolvedEffectTarget<'a> {
+    pub skill_name: Option<&'a str>,
+    pub tool_ref: Option<&'a str>,
 }
 
 pub struct EffectOutputRequest<'a> {
     pub step: &'a GraphStep,
     pub admission: &'a EffectAdmission,
     pub claim: &'a JsonObject,
-    pub output: &'a mut SkillOutput,
+    pub output: &'a mut InvocationOutput,
 }
 
 pub struct EffectReceiptRequest<'a> {
@@ -117,161 +194,22 @@ pub struct EffectReceiptRequest<'a> {
     pub graph_dir: &'a Path,
     pub admission: &'a EffectAdmission,
     pub claim: &'a JsonObject,
-    pub output: &'a mut SkillOutput,
+    pub output: &'a mut InvocationOutput,
     pub receipt: &'a Receipt,
     pub env: &'a BTreeMap<String, String>,
+    pub signature_policy: crate::receipts::RuntimeReceiptSignaturePolicy<'a>,
 }
 
 pub struct EffectReplayOutputRequest<'a> {
     pub step: &'a GraphStep,
     pub replay: &'a EffectReplay,
-    pub output: &'a mut SkillOutput,
+    pub output: &'a mut InvocationOutput,
 }
 
 pub struct EffectReplayReceiptRequest<'a> {
     pub step: &'a GraphStep,
     pub replay: &'a EffectReplay,
     pub receipt: &'a Receipt,
-    pub output: &'a SkillOutput,
+    pub output: &'a InvocationOutput,
     pub claim: &'a JsonObject,
-}
-
-pub struct EffectMetadataRefreshRequest<'a> {
-    pub output: &'a mut SkillOutput,
-    pub receipt: &'a Receipt,
-}
-
-#[derive(Clone)]
-pub struct EffectAdmission {
-    family: &'static str,
-    verb: AuthorityVerb,
-    witness: AuthorityAdmissionWitness,
-    context: Arc<dyn Any + Send + Sync>,
-}
-
-impl EffectAdmission {
-    #[must_use]
-    pub fn new<T>(
-        family: &'static str,
-        verb: AuthorityVerb,
-        witness: AuthorityAdmissionWitness,
-        context: T,
-    ) -> Self
-    where
-        T: Any + Send + Sync + 'static,
-    {
-        Self {
-            family,
-            verb,
-            witness,
-            context: Arc::new(context),
-        }
-    }
-
-    #[must_use]
-    pub fn family(&self) -> &'static str {
-        self.family
-    }
-
-    #[must_use]
-    pub fn verb(&self) -> AuthorityVerb {
-        self.verb.clone()
-    }
-
-    #[must_use]
-    pub fn witness(&self) -> &AuthorityAdmissionWitness {
-        &self.witness
-    }
-
-    #[must_use]
-    pub fn context<T: Any>(&self) -> Option<&T> {
-        self.context.as_ref().downcast_ref::<T>()
-    }
-}
-
-impl fmt::Debug for EffectAdmission {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("EffectAdmission")
-            .field("family", &self.family)
-            .field("verb", &self.verb)
-            .field("witness", &self.witness)
-            .finish_non_exhaustive()
-    }
-}
-
-#[derive(Clone)]
-pub struct EffectReplay {
-    family: &'static str,
-    receipt_ref: String,
-    receipt_created_at: String,
-    receipt_digest: String,
-    outputs: JsonObject,
-    context: Arc<dyn Any + Send + Sync>,
-}
-
-impl EffectReplay {
-    #[must_use]
-    pub fn new<T>(
-        family: &'static str,
-        receipt_ref: impl Into<String>,
-        receipt_created_at: impl Into<String>,
-        receipt_digest: impl Into<String>,
-        outputs: JsonObject,
-        context: T,
-    ) -> Self
-    where
-        T: Any + Send + Sync + 'static,
-    {
-        Self {
-            family,
-            receipt_ref: receipt_ref.into(),
-            receipt_created_at: receipt_created_at.into(),
-            receipt_digest: receipt_digest.into(),
-            outputs,
-            context: Arc::new(context),
-        }
-    }
-
-    #[must_use]
-    pub fn family(&self) -> &'static str {
-        self.family
-    }
-
-    #[must_use]
-    pub fn receipt_ref(&self) -> &str {
-        &self.receipt_ref
-    }
-
-    #[must_use]
-    pub fn receipt_created_at(&self) -> &str {
-        &self.receipt_created_at
-    }
-
-    #[must_use]
-    pub fn receipt_digest(&self) -> &str {
-        &self.receipt_digest
-    }
-
-    #[must_use]
-    pub fn outputs(&self) -> &JsonObject {
-        &self.outputs
-    }
-
-    #[must_use]
-    pub fn context<T: Any>(&self) -> Option<&T> {
-        self.context.as_ref().downcast_ref::<T>()
-    }
-}
-
-impl fmt::Debug for EffectReplay {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("EffectReplay")
-            .field("family", &self.family)
-            .field("receipt_ref", &self.receipt_ref)
-            .field("receipt_created_at", &self.receipt_created_at)
-            .field("receipt_digest", &self.receipt_digest)
-            .finish_non_exhaustive()
-    }
 }

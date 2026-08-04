@@ -12,10 +12,8 @@ catalog:
 runners:
   default:
     default: true
-    type: cli-tool
-    command: node
-    args:
-      - run.mjs
+    type: javascript
+    module: reduce.mjs
     artifacts:
       named_emits:
         reduction: reduction

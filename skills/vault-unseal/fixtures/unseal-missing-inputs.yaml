@@ -1,32 +1,9 @@
-name: unseal-missing-inputs
+name: vault-unseal-stops-on-missing-inputs
 kind: skill
 target: ..
 runner: vault-unseal
 inputs:
   purpose: Need a key for the export job
-caller:
-  answers:
-    agent_task.vault-unseal.output:
-      unseal_plan:
-        decision: needs_agent
-        secret_ref: ""
-        purpose: Need a key for the export job
-        ttl: ""
-        scope: {}
-        principal: ""
-        gates:
-          human_approval_required: true
-        blockers:
-          - secret_ref is missing
-          - ttl is missing
-          - scope is missing
-          - principal is missing
-        execution:
-          requires_adapter: true
-          requires_approval: true
 expect:
-  status: sealed
-metadata:
-  public_skill: vault-unseal
-  source_case: unseal-missing-inputs
-  source: skills-fixture
+  status: failure
+metadata: { public_skill: vault-unseal, source_case: missing-inputs, source: skills-fixture }

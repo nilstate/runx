@@ -6,6 +6,7 @@ import {
   stringEnum,
   validateContractSchema,
 } from "../internal.js";
+import { executionBoundaryObservationSchema } from "./execution-boundary.js";
 
 const authorityKinds = ["read_only", "constructive", "destructive"] as const;
 const scopeAdmissionStatuses = ["allow", "deny"] as const;
@@ -78,7 +79,6 @@ const authorityProofRequestedSchema = Type.Object(
     authority_kind: Type.Optional(stringEnum(authorityKinds)),
     target_repo: Type.Optional(Type.String({ minLength: 1 })),
     target_locator: Type.Optional(Type.String({ minLength: 1 })),
-    sandbox_profile: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
@@ -96,46 +96,6 @@ const authorityProofCredentialMaterialSchema = Type.Object(
     authority_kind: Type.Optional(stringEnum(authorityKinds)),
     target_repo: Type.Optional(Type.String({ minLength: 1 })),
     target_locator: Type.Optional(Type.String({ minLength: 1 })),
-  },
-  { additionalProperties: false },
-);
-
-const authorityProofSandboxNetworkSchema = Type.Object(
-  {
-    declared: Type.Optional(Type.Boolean()),
-    enforcement: Type.Optional(Type.String({ minLength: 1 })),
-  },
-  { additionalProperties: false },
-);
-
-const authorityProofSandboxFilesystemSchema = Type.Object(
-  {
-    enforcement: Type.Optional(Type.String({ minLength: 1 })),
-    readonly_paths: Type.Optional(Type.Boolean()),
-    writable_paths_enforced: Type.Optional(Type.Boolean()),
-    private_tmp: Type.Optional(Type.Boolean()),
-  },
-  { additionalProperties: false },
-);
-
-const authorityProofSandboxRuntimeSchema = Type.Object(
-  {
-    enforcer: Type.Optional(Type.String({ minLength: 1 })),
-    reason: Type.Optional(Type.String({ minLength: 1 })),
-  },
-  { additionalProperties: false },
-);
-
-const authorityProofSandboxSchema = Type.Object(
-  {
-    profile: Type.String({ minLength: 1 }),
-    cwd_policy: Type.Optional(Type.String({ minLength: 1 })),
-    require_enforcement: Type.Optional(Type.Boolean()),
-    network: Type.Optional(authorityProofSandboxNetworkSchema),
-    filesystem: Type.Optional(authorityProofSandboxFilesystemSchema),
-    runtime: Type.Optional(authorityProofSandboxRuntimeSchema),
-    approval_required: Type.Optional(Type.Boolean()),
-    approval_approved: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
@@ -170,7 +130,7 @@ const authorityProofTypeSchema = Type.Object(
     requested: authorityProofRequestedSchema,
     scope_admission: scopeAdmissionSchema,
     credential_material: authorityProofCredentialMaterialSchema,
-    sandbox: Type.Optional(authorityProofSandboxSchema),
+    execution_boundary: executionBoundaryObservationSchema,
     approval_gate: Type.Optional(authorityProofApprovalGateSchema),
     redaction: authorityProofRedactionSchema,
   },

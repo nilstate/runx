@@ -17,7 +17,11 @@ pub struct RuntimeReceiptResolver {
 impl RuntimeReceiptResolver {
     #[must_use]
     pub fn new(receipts: impl IntoIterator<Item = Receipt>) -> Self {
-        let receipts = receipts.into_iter().collect::<Vec<_>>();
+        let receipts = deduplicate_identical_receipts(
+            receipts,
+            |receipt| receipt.id.as_str(),
+            |left, right| left == right,
+        );
         let positions = receipt_positions(receipts.iter());
         Self {
             receipts,
@@ -70,7 +74,11 @@ struct RuntimeReceiptRefResolver<'a> {
 
 impl<'a> RuntimeReceiptRefResolver<'a> {
     fn new(receipts: impl IntoIterator<Item = &'a Receipt>) -> Self {
-        let receipts = receipts.into_iter().collect::<Vec<_>>();
+        let receipts = deduplicate_identical_receipts(
+            receipts,
+            |receipt| receipt.id.as_str(),
+            |left, right| left == right,
+        );
         let positions = receipt_positions(receipts.iter().copied());
         Self {
             receipts,
@@ -205,6 +213,30 @@ fn runtime_receipt_path(index: usize) -> String {
     format!("runtime_receipts[{index}]")
 }
 
+fn deduplicate_identical_receipts<T>(
+    receipts: impl IntoIterator<Item = T>,
+    receipt_id: impl for<'a> Fn(&'a T) -> &'a str,
+    identical: impl Fn(&T, &T) -> bool,
+) -> Vec<T> {
+    let mut unique = Vec::<T>::new();
+    let mut positions = BTreeMap::<String, Vec<usize>>::new();
+    for receipt in receipts {
+        let id = receipt_id(&receipt).to_owned();
+        let duplicate = positions.get(&id).is_some_and(|indexes| {
+            indexes
+                .iter()
+                .any(|index| identical(&unique[*index], &receipt))
+        });
+        if duplicate {
+            continue;
+        }
+        let index = unique.len();
+        unique.push(receipt);
+        positions.entry(id).or_default().push(index);
+    }
+    unique
+}
+
 fn receipt_positions<'a>(
     receipts: impl Iterator<Item = &'a Receipt>,
 ) -> BTreeMap<String, Vec<usize>> {
@@ -219,7 +251,10 @@ fn receipt_positions<'a>(
 }
 
 fn runtime_receipt_tree_config(mut config: ReceiptTreeConfig) -> ReceiptTreeConfig {
-    config.require_parent_links = true;
+    // Parent-to-child id+digest links are the immutable DAG edge. A sealed
+    // child can be reused by multiple parents, so no parent back-link is
+    // required on the child itself.
+    config.require_parent_links = false;
     config
 }
 

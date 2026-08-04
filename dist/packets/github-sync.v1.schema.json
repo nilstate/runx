@@ -6,34 +6,72 @@
   "properties": {
     "decision": {
       "type": "string",
-      "enum": ["ready", "blocked", "refused", "needs_agent"]
+      "enum": ["ready", "ready_for_approval", "blocked", "refused", "needs_agent"]
     },
     "repo": { "type": "string", "minLength": 1 },
     "direction": {
       "type": "string",
-      "enum": ["pull", "push"]
+      "enum": ["pull", "push", ""]
     },
+    "resource_selector": { "type": "object", "additionalProperties": true },
     "resources_touched": {
       "type": "array",
       "items": { "type": "object", "additionalProperties": true }
+    },
+    "mutation": {
+      "type": ["object", "null"],
+      "additionalProperties": true
     },
     "diff_summary": {
       "type": "array",
       "items": { "type": "object", "additionalProperties": true }
     },
+    "provider_operation": { "type": "string" },
     "scope_used": { "type": "string", "minLength": 1 },
     "gates": { "type": "object", "additionalProperties": true },
+    "provider_status": { "type": "string", "const": "not_called" },
     "blockers": { "type": "array", "items": { "type": "string" } }
   },
   "required": [
     "decision",
     "repo",
     "direction",
+    "resource_selector",
     "resources_touched",
+    "mutation",
     "diff_summary",
+    "provider_operation",
     "scope_used",
     "gates",
+    "provider_status",
     "blockers"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "direction": { "const": "" } },
+        "required": ["direction"]
+      },
+      "then": {
+        "properties": {
+          "decision": { "enum": ["blocked", "refused", "needs_agent"] },
+          "provider_operation": { "const": "" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "decision": { "enum": ["ready", "ready_for_approval"] } },
+        "required": ["decision"]
+      },
+      "then": {
+        "properties": {
+          "direction": { "enum": ["pull", "push"] },
+          "provider_operation": { "type": "string", "minLength": 1 },
+          "blockers": { "type": "array", "maxItems": 0 }
+        }
+      }
+    }
   ],
   "additionalProperties": false
 }

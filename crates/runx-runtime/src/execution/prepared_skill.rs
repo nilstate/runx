@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - prepared requests keep digest construction,
+// Module rationale: prepared requests keep digest construction,
 // drift guards, approval evidence, and their security fixtures co-located.
 //! Digest-bound preparation for operator-approved skill execution.
 //!
@@ -10,36 +10,28 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use runx_contracts::{JsonValue, Reference, ReferenceType, sha256_prefixed};
-use runx_parser::{SkillRunnerDefinition, SkillRunnerManifest};
+use runx_contracts::{
+    ExecutionBoundaryKind, JsonObject, JsonValue, Reference, ReferenceType, sha256_prefixed,
+};
+use runx_parser::{GraphRetryPolicy, GraphRunTarget, SkillRunnerDefinition, SkillRunnerManifest};
 use serde::{Deserialize, Serialize};
 
 use super::operator_context::{
     SkillOperatorContextChain, SkillOperatorContextNode, SkillOperatorContextOptions,
     load_skill_operator_context_chain,
 };
+use super::orchestrator::ManagedAgentPolicy;
 use super::orchestrator::{LocalCredentialDescriptor, SkillRunRequest};
 use super::skill_front::SkillRunError;
-use super::skill_front::runner_manifest::{
-    load_runner_manifest, resolve_skill_dir, selected_runner,
-};
+use super::skill_front::runner_manifest::selected_runner;
 use crate::RuntimeError;
 
 pub const PREPARED_SKILL_REPORT_SCHEMA: &str = "runx.prepared_skill_run.v1";
 pub(crate) const PREPARED_CONTEXT_DIGEST_ENV: &str = "RUNX_INTERNAL_PREPARED_CONTEXT_DIGEST";
-pub(crate) const PREPARED_APPROVAL_ACTOR_ENV: &str = "RUNX_INTERNAL_PREPARED_APPROVAL_ACTOR";
-pub(crate) const PREPARED_APPROVAL_MODE_ENV: &str = "RUNX_INTERNAL_PREPARED_APPROVAL_MODE";
-pub(crate) const PREPARED_APPROVAL_TIME_ENV: &str = "RUNX_INTERNAL_PREPARED_APPROVAL_TIME";
 pub(crate) const PREPARED_ARTIFACT_GUARDS_ENV: &str = "RUNX_INTERNAL_PREPARED_ARTIFACT_GUARDS";
 
 pub(crate) fn strip_untrusted_prepared_env(env: &mut BTreeMap<String, String>) {
-    for name in [
-        PREPARED_CONTEXT_DIGEST_ENV,
-        PREPARED_APPROVAL_ACTOR_ENV,
-        PREPARED_APPROVAL_MODE_ENV,
-        PREPARED_APPROVAL_TIME_ENV,
-        PREPARED_ARTIFACT_GUARDS_ENV,
-    ] {
+    for name in [PREPARED_CONTEXT_DIGEST_ENV, PREPARED_ARTIFACT_GUARDS_ENV] {
         env.remove(name);
     }
 }
@@ -61,6 +53,7 @@ pub struct PreparedEntryProvenance {
     pub version: Option<String>,
     pub digest: Option<String>,
     pub package_digest: Option<String>,
+    pub execution_closure_digest: Option<String>,
     pub trust_tier: Option<String>,
 }
 
@@ -91,6 +84,7 @@ pub struct PreparedRequestSummary {
     pub answers_path: Option<PathBuf>,
     pub inputs: Vec<PreparedInputSummary>,
     pub credential: Option<PreparedCredentialSummary>,
+    pub managed_agent: ManagedAgentPolicy,
     pub entry: PreparedEntryProvenance,
 }
 
@@ -101,10 +95,13 @@ pub struct PreparedGovernanceSummary {
     pub mutating_steps: Vec<String>,
     pub tool_refs: Vec<String>,
     pub authority_scopes: Vec<String>,
+    pub execution_boundaries: Vec<ExecutionBoundaryKind>,
     pub gates: Vec<String>,
     pub retry_policies: Vec<String>,
     pub idempotency_keys: Vec<String>,
-    pub recovery_notes: Vec<String>,
+    pub managed_agent_acts: usize,
+    pub managed_agent_enabled: bool,
+    pub managed_agent_max_rounds: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,24 +110,6 @@ pub struct PreparedTraceEntry {
     pub stage: String,
     pub outcome: String,
     pub detail: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PreparedSkillRunApproval {
-    pub actor: String,
-    pub mode: String,
-    pub observed_at: String,
-}
-
-impl PreparedSkillRunApproval {
-    #[must_use]
-    pub fn now(actor: impl Into<String>, mode: impl Into<String>) -> Self {
-        Self {
-            actor: actor.into(),
-            mode: mode.into(),
-            observed_at: crate::time::now_iso8601(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -143,6 +122,8 @@ pub struct PreparedSkillRunReport {
     pub chain: Option<SkillOperatorContextChain>,
     pub trace: Vec<PreparedTraceEntry>,
     pub blocked_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refusal_receipt_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -154,21 +135,24 @@ pub(crate) struct PreparedArtifactGuard {
 #[derive(Clone)]
 pub struct PreparedSkillRun {
     request: SkillRunRequest,
+    package_digest: String,
     selected_runner: String,
     manifest: SkillRunnerManifest,
     runner: SkillRunnerDefinition,
     report: PreparedSkillRunReport,
     guards: Vec<PreparedArtifactGuard>,
-    approval: Option<PreparedSkillRunApproval>,
+    context_bound: bool,
 }
 
 impl std::fmt::Debug for PreparedSkillRun {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("PreparedSkillRun")
+            .field("package_digest", &self.package_digest)
             .field("selected_runner", &self.selected_runner)
             .field("report", &self.report)
             .field("guard_count", &self.guards.len())
+            .field("context_bound", &self.context_bound)
             .finish_non_exhaustive()
     }
 }
@@ -185,11 +169,34 @@ impl PreparedSkillRun {
     }
 
     #[must_use]
+    pub(crate) fn package_digest(&self) -> &str {
+        &self.package_digest
+    }
+
+    #[must_use]
+    pub(crate) fn execution_closure_digest(&self) -> Option<&str> {
+        self.report
+            .request
+            .entry
+            .execution_closure_digest
+            .as_deref()
+    }
+
+    #[must_use]
     pub fn is_ready(&self) -> bool {
         self.report.status == PreparedSkillRunStatus::Ready
     }
 
-    pub fn approve(&mut self, approval: PreparedSkillRunApproval) -> Result<(), SkillRunError> {
+    /// Bind the exact prepared context without fabricating action approval.
+    ///
+    /// Consequential actions are approved by their owning graph gate or
+    /// effect boundary after the exact action is known. Preparation binds
+    /// context and artifact drift only.
+    pub fn bind_context(&mut self) -> Result<(), SkillRunError> {
+        self.bind_prepared_context()
+    }
+
+    fn bind_prepared_context(&mut self) -> Result<(), SkillRunError> {
         if !self.is_ready() {
             return Err(SkillRunError::Invalid(
                 self.report
@@ -201,17 +208,6 @@ impl PreparedSkillRun {
         self.request.env.insert(
             PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
             self.report.digest.clone(),
-        );
-        self.request.env.insert(
-            PREPARED_APPROVAL_ACTOR_ENV.to_owned(),
-            approval.actor.clone(),
-        );
-        self.request
-            .env
-            .insert(PREPARED_APPROVAL_MODE_ENV.to_owned(), approval.mode.clone());
-        self.request.env.insert(
-            PREPARED_APPROVAL_TIME_ENV.to_owned(),
-            approval.observed_at.clone(),
         );
         let guards = self
             .guards
@@ -226,13 +222,13 @@ impl PreparedSkillRun {
         self.request
             .env
             .insert(PREPARED_ARTIFACT_GUARDS_ENV.to_owned(), encoded);
-        self.approval = Some(approval);
+        self.context_bound = true;
         Ok(())
     }
 
     #[must_use]
-    pub fn approval(&self) -> Option<&PreparedSkillRunApproval> {
-        self.approval.as_ref()
+    pub const fn is_context_bound(&self) -> bool {
+        self.context_bound
     }
 
     pub(crate) fn request(&self) -> &SkillRunRequest {
@@ -269,12 +265,25 @@ impl PreparedSkillRun {
                 )));
             }
         }
-        Ok(())
+        let loaded = crate::load_validated_skill_package(&self.report.request.skill_path)?;
+        crate::skill_package::verify_loaded_execution_binding(
+            loaded,
+            &self.selected_runner,
+            &self.request.env,
+            Some(&self.package_digest),
+            self.execution_closure_digest(),
+        )
+        .map(|_| ())
+        .map_err(|message| {
+            SkillRunError::Invalid(format!(
+                "skill execution binding drift at execution boundary: {message}"
+            ))
+        })
     }
 }
 
 #[derive(Serialize)]
-struct PreparedAuthorizationPreimage<'a> {
+struct PreparedContextPreimage<'a> {
     schema: &'static str,
     skill_path: &'a Path,
     cwd: &'a Path,
@@ -282,107 +291,264 @@ struct PreparedAuthorizationPreimage<'a> {
     answers_path: Option<&'a Path>,
     inputs: &'a BTreeMap<String, JsonValue>,
     credential: Option<PreparedCredentialSummary>,
+    managed_agent: &'a ManagedAgentPolicy,
     entry: &'a PreparedEntryProvenance,
     chain: Option<&'a SkillOperatorContextChain>,
     blocked_reason: Option<&'a str>,
 }
 
-// rust-style-allow: long-function - preparation builds one canonical snapshot,
-// trace, digest preimage, governance summary, and guard set atomically.
 pub fn prepare_skill_run(
-    mut request: SkillRunRequest,
+    request: SkillRunRequest,
     selected_runner_name: Option<&str>,
     entry: PreparedEntryProvenance,
 ) -> Result<PreparedSkillRun, SkillRunError> {
+    prepare_skill_run_with_effects(
+        request,
+        selected_runner_name,
+        entry,
+        &crate::RuntimeEffectRegistry::default(),
+    )
+}
+
+pub(crate) fn prepare_skill_run_with_effects(
+    mut request: SkillRunRequest,
+    selected_runner_name: Option<&str>,
+    mut entry: PreparedEntryProvenance,
+    effects: &crate::RuntimeEffectRegistry,
+) -> Result<PreparedSkillRun, SkillRunError> {
     strip_untrusted_prepared_env(&mut request.env);
-    let skill_dir = resolve_skill_dir(&request.skill_path)?;
-    let manifest = load_runner_manifest(&skill_dir)?;
+    let loaded = crate::load_validated_skill_package(&request.skill_path)?;
+    let manifest = loaded.manifest().cloned().ok_or_else(|| {
+        SkillRunError::Invalid(format!(
+            "skill package {} does not declare X.yaml runners",
+            loaded.directory.display()
+        ))
+    })?;
+    let package_digest = loaded.package.package_digest.clone();
+    let skill_dir = loaded.directory.clone();
     let runner = selected_runner(&manifest, selected_runner_name)?.clone();
-    super::skill_front::apply_runner_input_defaults(&mut request.inputs, &runner);
-    let request_summary = request_summary(&request, &skill_dir, &runner.name, entry);
-    let missing = missing_required_inputs(&runner, &request.inputs);
-
-    let mut trace = vec![PreparedTraceEntry {
-        node_path: "entry".to_owned(),
-        stage: "resolve_runner".to_owned(),
-        outcome: "resolved".to_owned(),
-        detail: format!("selected runner {}", runner.name),
-    }];
-    let (status, chain, blocked_reason) = if missing.is_empty() {
-        match load_skill_operator_context_chain(
-            &skill_dir,
-            Some(&runner.name),
-            SkillOperatorContextOptions::new(request.env.clone(), request.cwd.clone()),
-        ) {
-            Ok(chain) => {
-                trace.push(PreparedTraceEntry {
-                    node_path: "entry".to_owned(),
-                    stage: "expand_chain".to_owned(),
-                    outcome: "resolved".to_owned(),
-                    detail: format!("expanded {} nodes", chain.node_count),
-                });
-                (PreparedSkillRunStatus::Ready, Some(chain), None)
-            }
-            Err(error) => {
-                let reason = error.to_string();
-                trace.push(PreparedTraceEntry {
-                    node_path: trace_node_path(&reason),
-                    stage: "expand_chain".to_owned(),
-                    outcome: "blocked".to_owned(),
-                    detail: reason.clone(),
-                });
-                (PreparedSkillRunStatus::Blocked, None, Some(reason))
-            }
+    let execution_closure_digest = crate::skill_package::verify_loaded_execution_binding(
+        loaded,
+        &runner.name,
+        &request.env,
+        entry.package_digest.as_deref(),
+        entry.execution_closure_digest.as_deref(),
+    )
+    .map_err(|error| SkillRunError::Invalid(error.to_string()))?;
+    if entry.execution_closure_digest.is_none() {
+        entry.execution_closure_digest = execution_closure_digest.clone();
+    }
+    crate::input_contract::apply_defaults(&runner.inputs, &mut request.inputs);
+    let input_failure = match crate::input_contract::materialize_present_runner_inputs(
+        &runner.inputs,
+        &request.inputs,
+    ) {
+        Ok(inputs) => {
+            request.inputs = inputs;
+            None
         }
+        Err(error) => Some(error.into_runtime_error()),
+    };
+    let request_summary = request_summary(&request, &skill_dir, &runner.name, entry);
+    let context = input_failure.as_ref().map_or_else(
+        || resolve_prepared_context(&request, &skill_dir, &runner, effects),
+        |error| {
+            blocked_prepared_context(
+                vec![PreparedTraceEntry {
+                    node_path: "entry".to_owned(),
+                    stage: "resolve_runner".to_owned(),
+                    outcome: "resolved".to_owned(),
+                    detail: format!("selected runner {}", runner.name),
+                }],
+                "entry",
+                "validate_inputs",
+                error.to_string(),
+            )
+        },
+    );
+    let governance = prepared_governance(&request, &context);
+    let digest = prepared_context_digest(&request, &request_summary, &context)?;
+    let refusal_receipt_id = if context.status == PreparedSkillRunStatus::Blocked {
+        let mut failure = input_failure.as_ref().map_or_else(
+            || {
+                JsonObject::from([
+                    (
+                        "code".to_owned(),
+                        JsonValue::String("prepared_context_blocked".to_owned()),
+                    ),
+                    (
+                        "message".to_owned(),
+                        JsonValue::String(
+                            context
+                                .blocked_reason
+                                .clone()
+                                .unwrap_or_else(|| "skill preparation was blocked".to_owned()),
+                        ),
+                    ),
+                ])
+            },
+            RuntimeError::public_failure_projection,
+        );
+        failure.insert(
+            "prepared_context_digest".to_owned(),
+            JsonValue::String(digest.clone()),
+        );
+        if let Some(stage) = context.trace.last().map(|entry| entry.stage.clone()) {
+            failure.insert("stage".to_owned(), JsonValue::String(stage));
+        }
+        Some(super::skill_front::seal_skill_preflight_refusal(
+            &request,
+            &manifest,
+            &runner,
+            &package_digest,
+            execution_closure_digest.as_deref(),
+            failure,
+        )?)
     } else {
-        let reason = format!("missing required inputs: {}", missing.join(", "));
-        trace.push(PreparedTraceEntry {
-            node_path: "entry".to_owned(),
-            stage: "validate_inputs".to_owned(),
-            outcome: "blocked".to_owned(),
-            detail: reason.clone(),
-        });
-        (PreparedSkillRunStatus::Blocked, None, Some(reason))
+        None
     };
-
-    let governance = chain.as_ref().map(governance_summary).unwrap_or_default();
-    // Receipt storage and generated run identity are execution bookkeeping, not
-    // authority. Keeping them out of this preimage lets an operator approve the
-    // same semantic run contract regardless of where its evidence is written.
-    let preimage = PreparedAuthorizationPreimage {
-        schema: PREPARED_SKILL_REPORT_SCHEMA,
-        skill_path: &request_summary.skill_path,
-        cwd: &request_summary.cwd,
-        runner: &request_summary.runner,
-        answers_path: request_summary.answers_path.as_deref(),
-        inputs: &request.inputs,
-        credential: request_summary.credential.clone(),
-        entry: &request_summary.entry,
-        chain: chain.as_ref(),
-        blocked_reason: blocked_reason.as_deref(),
-    };
-    let bytes = serde_json::to_vec(&preimage)
-        .map_err(|source| RuntimeError::json("serializing prepared skill digest", source))?;
-    let digest = sha256_prefixed(&bytes);
-    let guards = chain.as_ref().map(artifact_guards).unwrap_or_default();
+    let guards = context
+        .chain
+        .as_ref()
+        .map(artifact_guards)
+        .unwrap_or_default();
     Ok(PreparedSkillRun {
         request,
+        package_digest,
         selected_runner: runner.name.clone(),
         manifest,
         runner,
         report: PreparedSkillRunReport {
             schema: PREPARED_SKILL_REPORT_SCHEMA.to_owned(),
-            status,
+            status: context.status,
             digest,
             request: request_summary,
             governance,
-            chain,
-            trace,
-            blocked_reason,
+            chain: context.chain,
+            trace: context.trace,
+            blocked_reason: context.blocked_reason,
+            refusal_receipt_id,
         },
         guards,
-        approval: None,
+        context_bound: false,
     })
+}
+
+struct PreparedContextResolution {
+    status: PreparedSkillRunStatus,
+    chain: Option<SkillOperatorContextChain>,
+    trace: Vec<PreparedTraceEntry>,
+    blocked_reason: Option<String>,
+}
+
+fn prepared_governance(
+    request: &SkillRunRequest,
+    context: &PreparedContextResolution,
+) -> PreparedGovernanceSummary {
+    let mut governance = context
+        .chain
+        .as_ref()
+        .map(governance_summary)
+        .unwrap_or_default();
+    governance.managed_agent_enabled = request.managed_agent.is_inline();
+    governance.managed_agent_max_rounds = request.managed_agent.max_rounds();
+    governance
+}
+
+fn prepared_context_digest(
+    request: &SkillRunRequest,
+    summary: &PreparedRequestSummary,
+    context: &PreparedContextResolution,
+) -> Result<String, SkillRunError> {
+    // Receipt storage and generated run identity are execution bookkeeping, so
+    // the same semantic run has the same prepared-context identity.
+    let preimage = PreparedContextPreimage {
+        schema: PREPARED_SKILL_REPORT_SCHEMA,
+        skill_path: &summary.skill_path,
+        cwd: &summary.cwd,
+        runner: &summary.runner,
+        answers_path: summary.answers_path.as_deref(),
+        inputs: &request.inputs,
+        credential: summary.credential.clone(),
+        managed_agent: &request.managed_agent,
+        entry: &summary.entry,
+        chain: context.chain.as_ref(),
+        blocked_reason: context.blocked_reason.as_deref(),
+    };
+    let bytes = serde_json::to_vec(&preimage)
+        .map_err(|source| RuntimeError::json("serializing prepared skill digest", source))?;
+    Ok(sha256_prefixed(&bytes))
+}
+
+fn resolve_prepared_context(
+    request: &SkillRunRequest,
+    skill_dir: &Path,
+    runner: &SkillRunnerDefinition,
+    effects: &crate::RuntimeEffectRegistry,
+) -> PreparedContextResolution {
+    let trace = vec![PreparedTraceEntry {
+        node_path: "entry".to_owned(),
+        stage: "resolve_runner".to_owned(),
+        outcome: "resolved".to_owned(),
+        detail: format!("selected runner {}", runner.name),
+    }];
+    let missing = crate::input_contract::missing_required(&runner.inputs, &request.inputs);
+    if !missing.is_empty() {
+        let reason = format!("missing required inputs: {}", missing.join(", "));
+        return blocked_prepared_context(trace, "entry", "validate_inputs", reason);
+    }
+
+    match load_skill_operator_context_chain(
+        skill_dir,
+        Some(&runner.name),
+        SkillOperatorContextOptions::new(request.env.clone(), request.cwd.clone())
+            .with_effects(effects.clone()),
+    ) {
+        Ok(chain) => ready_prepared_context(trace, chain),
+        Err(error) => {
+            let reason = error.to_string();
+            let node_path = trace_node_path(&reason);
+            blocked_prepared_context(trace, &node_path, "expand_chain", reason)
+        }
+    }
+}
+
+fn ready_prepared_context(
+    mut trace: Vec<PreparedTraceEntry>,
+    chain: SkillOperatorContextChain,
+) -> PreparedContextResolution {
+    trace.push(PreparedTraceEntry {
+        node_path: "entry".to_owned(),
+        stage: "expand_chain".to_owned(),
+        outcome: "resolved".to_owned(),
+        detail: format!("expanded {} nodes", chain.node_count),
+    });
+    PreparedContextResolution {
+        status: PreparedSkillRunStatus::Ready,
+        chain: Some(chain),
+        trace,
+        blocked_reason: None,
+    }
+}
+
+fn blocked_prepared_context(
+    mut trace: Vec<PreparedTraceEntry>,
+    node_path: &str,
+    stage: &str,
+    reason: String,
+) -> PreparedContextResolution {
+    trace.push(PreparedTraceEntry {
+        node_path: node_path.to_owned(),
+        stage: stage.to_owned(),
+        outcome: "blocked".to_owned(),
+        detail: reason.clone(),
+    });
+    PreparedContextResolution {
+        status: PreparedSkillRunStatus::Blocked,
+        chain: None,
+        trace,
+        blocked_reason: Some(reason),
+    }
 }
 
 pub(crate) fn prepared_receipt_references(env: &BTreeMap<String, String>) -> Vec<Reference> {
@@ -395,28 +561,11 @@ pub(crate) fn prepared_receipt_references(env: &BTreeMap<String, String>) -> Vec
         uri: format!("runx:artifact:operator_context:{digest_id}").into(),
         provider: Some("runx".to_owned().into()),
         locator: Some(digest.clone().into()),
-        label: Some("approved operator context".to_owned().into()),
+        label: Some("prepared operator context".to_owned().into()),
         observed_at: None,
         proof_kind: None,
     };
-    let actor = env
-        .get(PREPARED_APPROVAL_ACTOR_ENV)
-        .map(String::as_str)
-        .unwrap_or("local_operator");
-    let mode = env
-        .get(PREPARED_APPROVAL_MODE_ENV)
-        .map(String::as_str)
-        .unwrap_or("explicit_digest");
-    let decision = Reference {
-        reference_type: ReferenceType::Decision,
-        uri: format!("runx:decision:operator_context_approval:{digest_id}").into(),
-        provider: Some("runx".to_owned().into()),
-        locator: Some(format!("actor={actor};mode={mode}").into()),
-        label: Some("operator context approval".to_owned().into()),
-        observed_at: env.get(PREPARED_APPROVAL_TIME_ENV).cloned().map(Into::into),
-        proof_kind: None,
-    };
-    vec![artifact, decision]
+    vec![artifact]
 }
 
 pub(crate) fn verify_prepared_artifact_at_use(
@@ -495,6 +644,7 @@ fn request_summary(
             })
             .collect(),
         credential: request.local_credential.as_ref().map(credential_summary),
+        managed_agent: request.managed_agent.clone(),
         entry,
     }
 }
@@ -507,23 +657,6 @@ fn credential_summary(value: &LocalCredentialDescriptor) -> PreparedCredentialSu
         material_ref_sha256: sha256_prefixed(value.material_ref.as_bytes()),
         scopes: value.scopes.clone(),
     }
-}
-
-/// Required inputs the runner declares that are absent (and carry no default).
-/// The single source of truth for the required-input contract, shared by the
-/// prepare stage and the inline harness so both enforce it identically.
-pub(crate) fn missing_required_inputs(
-    runner: &SkillRunnerDefinition,
-    inputs: &BTreeMap<String, JsonValue>,
-) -> Vec<String> {
-    runner
-        .inputs
-        .iter()
-        .filter(|(name, input)| {
-            input.required && input.default.is_none() && !inputs.contains_key(*name)
-        })
-        .map(|(name, _)| name.clone())
-        .collect()
 }
 
 fn json_type(value: &JsonValue) -> &'static str {
@@ -545,6 +678,8 @@ fn governance_summary(chain: &SkillOperatorContextChain) -> PreparedGovernanceSu
     summary.tool_refs.dedup();
     summary.authority_scopes.sort();
     summary.authority_scopes.dedup();
+    summary.execution_boundaries.sort();
+    summary.execution_boundaries.dedup();
     summary.gates.sort();
     summary.gates.dedup();
     summary.retry_policies.sort();
@@ -555,49 +690,82 @@ fn governance_summary(chain: &SkillOperatorContextChain) -> PreparedGovernanceSu
 }
 
 fn summarize_node(node: &SkillOperatorContextNode, summary: &mut PreparedGovernanceSummary) {
+    if node.runner.mutating {
+        summary.mutating_steps.push(node.node_path.clone());
+    }
+    summary
+        .authority_scopes
+        .extend(node.runner.scopes.iter().cloned());
+    if let Some(observation) = node.runner.execution_boundary {
+        summary.execution_boundaries.push(observation.kind);
+    }
+    summary
+        .execution_boundaries
+        .extend(node.tools.iter().map(|tool| tool.execution_boundary.kind));
+    if matches!(
+        node.runner.source_type.as_str(),
+        "agent" | "agent-task" | "agent-step"
+    ) {
+        summary.managed_agent_acts += 1;
+    }
     for step in &node.steps {
-        if json_field(&step.raw, "when").is_some() {
+        let definition = &step.definition;
+        if definition.when.is_some() {
             summary.conditional_steps += 1;
         } else {
             summary.declared_steps += 1;
         }
-        if step.mutating {
+        if definition.mutating {
             summary.mutating_steps.push(step.node_path.clone());
         }
         summary.tool_refs.extend(step.tool_refs.iter().cloned());
-        collect_string_values(&step.raw, "authority", &mut summary.authority_scopes);
-        collect_string_values(&step.raw, "approval", &mut summary.gates);
-        collect_string_values(&step.raw, "gate", &mut summary.gates);
-        collect_string_values(&step.raw, "retry", &mut summary.retry_policies);
-        collect_string_values(&step.raw, "idempotency_key", &mut summary.idempotency_keys);
-        collect_string_values(&step.raw, "recovery", &mut summary.recovery_notes);
+        if let Some(observation) = step.execution_boundary {
+            summary.execution_boundaries.push(observation.kind);
+        }
+        summary
+            .authority_scopes
+            .extend(definition.scopes.iter().cloned());
+        if matches!(definition.run, Some(GraphRunTarget::Approval)) {
+            summary.gates.push(approval_gate_label(step));
+        }
+        if let Some(retry) = &definition.retry {
+            summary
+                .retry_policies
+                .push(retry_policy_label(&step.node_path, retry));
+        }
+        if let Some(idempotency_key) = &definition.idempotency_key {
+            summary.idempotency_keys.push(idempotency_key.clone());
+        }
+        if matches!(
+            &definition.run,
+            Some(GraphRunTarget::Source(source))
+                if matches!(source.source_type.as_str(), "agent" | "agent-task" | "agent-step")
+        ) {
+            summary.managed_agent_acts += 1;
+        }
         if let Some(child) = &step.child {
             summarize_node(child, summary);
         }
     }
 }
 
-fn collect_string_values(value: &JsonValue, key: &str, output: &mut Vec<String>) {
-    if let Some(value) = json_field(value, key) {
-        match value {
-            JsonValue::String(value) => output.push(value.clone()),
-            JsonValue::Array(values) => output.extend(
-                values
-                    .iter()
-                    .filter_map(JsonValue::as_str)
-                    .map(str::to_owned),
-            ),
-            other => output.push(
-                serde_json::to_string(other).unwrap_or_else(|_| "<unserializable>".to_owned()),
-            ),
-        }
-    }
+fn approval_gate_label(step: &super::operator_context::SkillOperatorContextStep) -> String {
+    step.definition
+        .inputs
+        .get("gate_id")
+        .and_then(JsonValue::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(&step.node_path)
+        .to_owned()
 }
 
-fn json_field<'a>(value: &'a JsonValue, key: &str) -> Option<&'a JsonValue> {
-    match value {
-        JsonValue::Object(object) => object.get(key),
-        _ => None,
+fn retry_policy_label(node_path: &str, retry: &GraphRetryPolicy) -> String {
+    match retry.backoff_ms {
+        Some(backoff_ms) => format!(
+            "{node_path}: max_attempts={}, backoff_ms={backoff_ms}",
+            retry.max_attempts
+        ),
+        None => format!("{node_path}: max_attempts={}", retry.max_attempts),
     }
 }
 
@@ -625,8 +793,26 @@ fn collect_node_guards(node: &SkillOperatorContextNode, guards: &mut BTreeMap<Pa
     }
     for step in &node.steps {
         for context in &step.context_skills {
-            if let Some(path) = &context.document.path {
-                guards.insert(path.clone(), context.document.sha256.clone());
+            if let (Some(path), Some(digest)) = (
+                context.artifact.get("path").and_then(JsonValue::as_str),
+                context
+                    .artifact
+                    .get("manual_sha256")
+                    .and_then(JsonValue::as_str),
+            ) {
+                guards.insert(PathBuf::from(path), digest.to_owned());
+            }
+            if let (Some(path), Some(digest)) = (
+                context
+                    .artifact
+                    .get("profile_path")
+                    .and_then(JsonValue::as_str),
+                context
+                    .artifact
+                    .get("profile_sha256")
+                    .and_then(JsonValue::as_str),
+            ) {
+                guards.insert(PathBuf::from(path), digest.to_owned());
             }
         }
         if let Some(child) = &step.child {
@@ -652,15 +838,21 @@ mod tests {
     use tempfile::tempdir;
 
     use super::*;
+    use crate::RunStatus;
 
-    fn write_skill(directory: &Path, inputs: &str, body: &str) -> Result<(), Box<dyn Error>> {
+    fn write_manual(directory: &Path, name: &str, body: &str) -> Result<(), Box<dyn Error>> {
         fs::create_dir_all(directory)?;
         fs::write(
             directory.join("SKILL.md"),
             format!(
-                "---\nname: prepared\ndescription: Test skill for prepared execution.\n---\n\n{body}\n"
+                "---\nname: {name}\ndescription: Test skill for prepared execution.\n---\n\n{body}\n"
             ),
         )?;
+        Ok(())
+    }
+
+    fn write_skill(directory: &Path, inputs: &str, body: &str) -> Result<(), Box<dyn Error>> {
+        write_manual(directory, "prepared", body)?;
         fs::write(
             directory.join("X.yaml"),
             format!(
@@ -682,6 +874,7 @@ mod tests {
             // credentials and resolves inline against the live provider.
             env: BTreeMap::from([("RUNX_HOME".to_owned(), path.to_string_lossy().into_owned())]),
             cwd: path.to_path_buf(),
+            managed_agent: ManagedAgentPolicy::HostDriven,
             local_credential: None,
         }
     }
@@ -708,6 +901,186 @@ mod tests {
             .insert("prompt".to_owned(), JsonValue::String("changed".to_owned()));
         let changed = prepare_skill_run(changed, None, PreparedEntryProvenance::default())?;
         assert_ne!(first.digest(), changed.digest());
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_skill_rejects_execution_package_drift() -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let error = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance {
+                package_digest: Some("sha256:not-the-package".to_owned()),
+                ..PreparedEntryProvenance::default()
+            },
+        )
+        .err()
+        .ok_or("mismatched execution package digest did not fail closed")?;
+
+        assert!(error.to_string().contains("skill package digest mismatch"));
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_skill_rejects_execution_closure_drift() -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let error = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance {
+                execution_closure_digest: Some("sha256:not-the-closure".to_owned()),
+                ..PreparedEntryProvenance::default()
+            },
+        )
+        .err()
+        .ok_or("mismatched execution closure digest did not fail closed")?;
+
+        assert!(
+            error
+                .to_string()
+                .contains("skill execution closure digest mismatch")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_skill_rechecks_sibling_closure_at_execution_boundary() -> Result<(), Box<dyn Error>>
+    {
+        let temp = tempdir()?;
+        let entry = temp.path().join("twitter");
+        let child = temp.path().join("data-store");
+        write_manual(&entry, "twitter", "# Twitter")?;
+        write_manual(&child, "data-store", "# Data store")?;
+        fs::write(
+            child.join("X.yaml"),
+            "skill: data-store\nrunners:\n  read:\n    default: true\n    type: javascript\n    module: run.mjs\n    outputs:\n      version:\n        type: integer\n        required: true\n",
+        )?;
+        fs::write(
+            child.join("run.mjs"),
+            "export default () => ({ version: 1 });\n",
+        )?;
+        fs::write(
+            entry.join("X.yaml"),
+            "skill: twitter\nrunners:\n  inspect:\n    default: true\n    type: graph\n    graph:\n      name: twitter\n      result_from: [store]\n      steps:\n        - id: store\n          skill: ../data-store\n          runner: read\n",
+        )?;
+        let closure = crate::skill_package::inspect_loaded_execution_closure_binding(
+            crate::load_validated_skill_package(&entry)?,
+            "inspect",
+            &BTreeMap::new(),
+        )?;
+        assert!(closure.fully_bound);
+        let prepared = prepare_skill_run(
+            request(&entry),
+            Some("inspect"),
+            PreparedEntryProvenance {
+                execution_closure_digest: Some(closure.digest),
+                ..PreparedEntryProvenance::default()
+            },
+        )?;
+
+        fs::write(
+            child.join("run.mjs"),
+            "export default () => ({ version: 2 });\n",
+        )?;
+        let error = prepared
+            .verify_artifacts()
+            .err()
+            .ok_or("sibling package drift did not invalidate the bound closure")?;
+        assert!(
+            error
+                .to_string()
+                .contains("skill execution binding drift at execution boundary")
+        );
+        assert!(
+            error
+                .to_string()
+                .contains("skill execution closure digest mismatch")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn bound_continuation_rechecks_execution_closure_without_reapproval()
+    -> Result<(), Box<dyn Error>> {
+        use crate::execution::orchestrator::LocalOrchestrator;
+
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let error = LocalOrchestrator::default()
+            .run_skill_with_binding(
+                &request(temp.path()),
+                Some("main"),
+                None,
+                Some("sha256:not-the-closure"),
+            )
+            .err()
+            .ok_or("resumed continuation discarded its execution closure binding")?;
+        assert!(
+            error
+                .to_string()
+                .contains("skill execution closure digest mismatch")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn bound_continuation_persists_closure_for_resume() -> Result<(), Box<dyn Error>> {
+        use crate::execution::orchestrator::LocalOrchestrator;
+
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let loaded = crate::load_validated_skill_package(temp.path())?;
+        let package_digest = loaded.package.package_digest.clone();
+        let closure = crate::skill_package::inspect_loaded_execution_closure_binding(
+            loaded,
+            "main",
+            &BTreeMap::new(),
+        )?;
+        assert!(closure.fully_bound);
+        let closure = closure.digest;
+        let receipt_dir = temp.path().join("receipts");
+        let mut bound_request = request(temp.path());
+        bound_request.receipt_dir = Some(receipt_dir.clone());
+
+        let result = LocalOrchestrator::default().run_skill_with_binding(
+            &bound_request,
+            Some("main"),
+            Some(&package_digest),
+            Some(&closure),
+        )?;
+        assert_eq!(result.status, RunStatus::NeedsAgent);
+        let ledger = fs::read_dir(receipt_dir.join("ledgers"))?
+            .next()
+            .ok_or("bound continuation did not write a pause ledger")??;
+        let persisted = fs::read_to_string(ledger.path())?;
+        assert!(persisted.contains(&format!("\"execution_closure_digest\":\"{closure}\"")));
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_skill_binds_and_reports_managed_agent_consent() -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let host_driven = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+        let mut inline_request = request(temp.path());
+        inline_request.managed_agent = ManagedAgentPolicy::inline(3)?;
+        let inline = prepare_skill_run(inline_request, None, PreparedEntryProvenance::default())?;
+
+        assert_ne!(host_driven.digest(), inline.digest());
+        assert_eq!(inline.report().governance.managed_agent_acts, 1);
+        assert!(inline.report().governance.managed_agent_enabled);
+        assert_eq!(inline.report().governance.managed_agent_max_rounds, Some(3));
+        assert_eq!(
+            inline.report().request.managed_agent,
+            ManagedAgentPolicy::Inline { max_rounds: 3 }
+        );
         Ok(())
     }
 
@@ -769,11 +1142,10 @@ mod tests {
             "    inputs:\n      prompt:\n        type: string\n        required: true\n",
             "# Prepared",
         )?;
-        let prepared = prepare_skill_run(
-            request(temp.path()),
-            None,
-            PreparedEntryProvenance::default(),
-        )?;
+        let receipt_dir = temp.path().join("receipts");
+        let mut request = request(temp.path());
+        request.receipt_dir = Some(receipt_dir.clone());
+        let prepared = prepare_skill_run(request, None, PreparedEntryProvenance::default())?;
         assert_eq!(prepared.report().status, PreparedSkillRunStatus::Blocked);
         assert!(
             prepared
@@ -790,6 +1162,53 @@ mod tests {
                 .iter()
                 .any(|entry| entry.outcome == "blocked")
         );
+        let refusal_receipt_id = prepared
+            .report()
+            .refusal_receipt_id
+            .as_deref()
+            .ok_or("blocked preparation did not expose its refusal receipt")?;
+        let receipts = crate::services::ReceiptServices::from_env_or_local_development(
+            &prepared.request().env,
+        )?
+        .list_local_receipts(&receipt_dir)?;
+        assert!(
+            receipts
+                .iter()
+                .any(|receipt| receipt.id.as_str() == refusal_receipt_id),
+            "blocked preparation did not persist its refusal receipt"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_skill_invalid_input_receipt_never_echoes_the_rejected_value()
+    -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_skill(
+            temp.path(),
+            "    inputs:\n      secret_ref:\n        type: string\n        required: true\n        schema: { pattern: '^secret://' }\n",
+            "# Prepared",
+        )?;
+        let sentinel = "PLAINTEXT-SECRET-MUST-NOT-APPEAR";
+        let receipt_dir = temp.path().join("receipts");
+        let mut request = request(temp.path());
+        request.receipt_dir = Some(receipt_dir.clone());
+        request.inputs.insert(
+            "secret_ref".to_owned(),
+            JsonValue::String(sentinel.to_owned()),
+        );
+
+        let prepared = prepare_skill_run(request, None, PreparedEntryProvenance::default())?;
+        assert_eq!(prepared.report().status, PreparedSkillRunStatus::Blocked);
+        assert!(prepared.report().refusal_receipt_id.is_some());
+        let receipts = crate::services::ReceiptServices::from_env_or_local_development(
+            &prepared.request().env,
+        )?
+        .list_local_receipts(&receipt_dir)?;
+        let public = serde_json::to_string(&(prepared.report(), receipts))?;
+        assert!(!public.contains(sentinel));
+        assert!(public.contains("/secret_ref"));
+        assert!(public.contains("input_contract_invalid"));
         Ok(())
     }
 
@@ -801,7 +1220,9 @@ mod tests {
         let sentinel = "SECRET-SENTINEL-DO-NOT-PRINT";
         let mut request = request(temp.path());
         request.local_credential = Some(LocalCredentialDescriptor {
+            profile: Some("example-main".to_owned()),
             provider: "example".to_owned(),
+            audience: None,
             auth_mode: "token".to_owned(),
             env_var: "EXAMPLE_TOKEN".to_owned(),
             material_ref: "opaque-material".to_owned(),
@@ -818,11 +1239,10 @@ mod tests {
     #[test]
     fn prepared_skill_strict_tool_resolution_blocks_with_trace() -> Result<(), Box<dyn Error>> {
         let temp = tempdir()?;
-        fs::create_dir_all(temp.path())?;
-        fs::write(temp.path().join("SKILL.md"), "# Prepared")?;
+        write_manual(temp.path(), "prepared", "# Prepared")?;
         fs::write(
             temp.path().join("X.yaml"),
-            "skill: prepared\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: prepared\n      steps:\n        - id: call\n          tool: missing.tool\n",
+            "skill: prepared\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: prepared\n      result_from: [call]\n      steps:\n        - id: call\n          tool: missing.tool\n",
         )?;
         let prepared = prepare_skill_run(
             request(temp.path()),
@@ -842,6 +1262,138 @@ mod tests {
     }
 
     #[test]
+    fn prepared_skill_blocks_missing_result_contract_before_mutating_tool()
+    -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        let sentinel = temp.path().join("tool-ran");
+        write_manual(temp.path(), "prepared", "# Prepared")?;
+        fs::create_dir_all(temp.path().join("tools/example/record"))?;
+        fs::write(
+            temp.path().join("tools/example/record/manifest.json"),
+            r#"{
+  "schema": "runx.tool.manifest.v1",
+  "name": "example.record",
+  "source": {
+    "type": "cli-tool",
+    "command": "sh",
+    "args": ["-c", "touch \"$RUNX_CWD/tool-ran\""],
+    "input_mode": "none"
+  },
+  "mutating": true
+}
+"#,
+        )?;
+        fs::write(
+            temp.path().join("X.yaml"),
+            "skill: prepared\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: prepared\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          mutation: true\n          idempotency_key: record-1\n",
+        )?;
+
+        let prepared = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+
+        assert_eq!(prepared.report().status, PreparedSkillRunStatus::Blocked);
+        assert!(
+            prepared
+                .report()
+                .blocked_reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains("declares no semantic output contract"))
+        );
+        assert!(!sentinel.exists(), "preparation executed the mutating tool");
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_governance_consumes_typed_graph_step_contract() -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_manual(temp.path(), "prepared", "# Prepared")?;
+        fs::write(
+            temp.path().join("X.yaml"),
+            r#"skill: prepared
+runners:
+  main:
+    default: true
+    type: graph
+    graph:
+      name: prepared
+      result_from: [approve-publish]
+      steps:
+        - id: approve-publish
+          run:
+            type: approval
+          inputs:
+            gate_id: release.publish.approval
+            reason: Approve the exact release.
+          scopes:
+            - release:publish
+          retry:
+            max_attempts: 3
+            backoff_ms: 250
+          when:
+            field: input.ready
+            equals: true
+          mutation: true
+          idempotency_key: release-publish-1
+"#,
+        )?;
+
+        let prepared = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+        let governance = &prepared.report().governance;
+
+        assert_eq!(governance.declared_steps, 0);
+        assert_eq!(governance.conditional_steps, 1);
+        assert_eq!(governance.mutating_steps, ["entry.approve-publish"]);
+        assert_eq!(governance.authority_scopes, ["release:publish"]);
+        assert_eq!(governance.gates, ["release.publish.approval"]);
+        assert_eq!(
+            governance.retry_policies,
+            ["entry.approve-publish: max_attempts=3, backoff_ms=250"]
+        );
+        assert_eq!(governance.idempotency_keys, ["release-publish-1"]);
+        assert_eq!(governance.managed_agent_acts, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_governance_includes_terminal_runner_mutation_and_scopes()
+    -> Result<(), Box<dyn Error>> {
+        let temp = tempdir()?;
+        write_manual(temp.path(), "prepared", "# Prepared")?;
+        fs::write(
+            temp.path().join("X.yaml"),
+            r#"skill: prepared
+runners:
+  mutate:
+    default: true
+    type: cli-tool
+    command: example-mutator
+    mutating: true
+    scopes: [example:write]
+"#,
+        )?;
+
+        let prepared = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+
+        assert_eq!(prepared.report().governance.mutating_steps, ["entry"]);
+        assert_eq!(
+            prepared.report().governance.authority_scopes,
+            ["example:write"]
+        );
+        Ok(())
+    }
+
+    #[test]
     fn prepared_skill_execution_matches_unprepared_and_rejects_drift() -> Result<(), Box<dyn Error>>
     {
         use crate::execution::orchestrator::LocalOrchestrator;
@@ -856,11 +1408,11 @@ mod tests {
             None,
             PreparedEntryProvenance::default(),
         )?;
-        prepared.approve(PreparedSkillRunApproval::now("test", "explicit_digest"))?;
+        prepared.bind_context()?;
         let prepared_result = orchestrator.run_prepared_skill(&prepared)?;
         assert_eq!(baseline.status, prepared_result.status);
 
-        fs::write(temp.path().join("SKILL.md"), "# Changed after approval")?;
+        fs::write(temp.path().join("SKILL.md"), "# Changed after preparation")?;
         let Err(error) = orchestrator.run_prepared_skill(&prepared) else {
             return Err("prepared artifact drift must fail closed".into());
         };
@@ -873,6 +1425,64 @@ mod tests {
     }
 
     #[test]
+    fn prepared_context_binding_does_not_fabricate_human_approval() -> Result<(), Box<dyn Error>> {
+        use crate::execution::orchestrator::LocalOrchestrator;
+
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let orchestrator = LocalOrchestrator::default();
+        let mut prepared = orchestrator.prepare_skill(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+
+        let Err(error) = orchestrator.run_prepared_skill(&prepared) else {
+            return Err("unbound prepared context must fail closed".into());
+        };
+        assert!(error.to_string().contains("context to be bound"));
+
+        prepared.bind_context()?;
+        assert!(prepared.is_context_bound());
+        let references = prepared_receipt_references(&prepared.request().env);
+        assert_eq!(references.len(), 1);
+        assert_eq!(references[0].reference_type, ReferenceType::Artifact);
+        assert_eq!(
+            references[0].label.as_ref().map(AsRef::as_ref),
+            Some("prepared operator context")
+        );
+        assert_eq!(
+            orchestrator.run_prepared_skill(&prepared)?.status,
+            RunStatus::NeedsAgent
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_context_binding_does_not_fabricate_mutation_approval() -> Result<(), Box<dyn Error>>
+    {
+        let temp = tempdir()?;
+        write_skill(temp.path(), "", "# Prepared")?;
+        let mut prepared = prepare_skill_run(
+            request(temp.path()),
+            None,
+            PreparedEntryProvenance::default(),
+        )?;
+        prepared
+            .report
+            .governance
+            .mutating_steps
+            .push("entry.publish".to_owned());
+
+        prepared.bind_context()?;
+        assert!(prepared.is_context_bound());
+        let references = prepared_receipt_references(&prepared.request().env);
+        assert_eq!(references.len(), 1);
+        assert_eq!(references[0].reference_type, ReferenceType::Artifact);
+        Ok(())
+    }
+
+    #[test]
     fn prepared_skill_execution_rejects_child_drift_at_load_boundary() -> Result<(), Box<dyn Error>>
     {
         use crate::execution::graph::{StepSkillLoadOptions, load_step_skill};
@@ -880,20 +1490,19 @@ mod tests {
         let temp = tempdir()?;
         let entry = temp.path().join("entry");
         let child = entry.join("child");
-        fs::create_dir_all(&child)?;
-        fs::write(entry.join("SKILL.md"), "# Entry")?;
-        fs::write(child.join("SKILL.md"), "# Child")?;
+        write_manual(&entry, "entry", "# Entry")?;
+        write_manual(&child, "child", "# Child")?;
         fs::write(
             child.join("X.yaml"),
             "skill: child\nrunners:\n  child:\n    default: true\n    type: agent-task\n    agent: reviewer\n    task: before\n",
         )?;
         fs::write(
             entry.join("X.yaml"),
-            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      steps:\n        - id: child\n          skill: ./child\n",
+            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [child]\n      steps:\n        - id: child\n          skill: ./child\n          artifacts:\n            wrap_as: child_result\n",
         )?;
         let mut prepared =
             prepare_skill_run(request(&entry), None, PreparedEntryProvenance::default())?;
-        prepared.approve(PreparedSkillRunApproval::now("test", "explicit_digest"))?;
+        prepared.bind_context()?;
         fs::write(
             child.join("X.yaml"),
             "skill: child\nrunners:\n  child:\n    default: true\n    type: agent-task\n    agent: reviewer\n    task: after\n",
@@ -921,10 +1530,9 @@ mod tests {
     }
 
     #[test]
-    fn prepared_skill_receipt_binds_context_artifact_and_approval_decision()
+    fn prepared_skill_receipt_binds_context_artifact_without_approval_decision()
     -> Result<(), Box<dyn Error>> {
-        use crate::adapter::{InvocationStatus, SkillOutput};
-        use crate::execution::output_projection::project_step_output;
+        use crate::adapter::InvocationOutput;
         use crate::receipts::{
             RuntimeReceiptSignaturePolicy, StepSeal, StepSealClosure, seal_step,
         };
@@ -935,42 +1543,33 @@ mod tests {
             PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
             "sha256:abc123".to_owned(),
         );
-        env.insert(
-            PREPARED_APPROVAL_ACTOR_ENV.to_owned(),
-            "test-operator".to_owned(),
+        let output = InvocationOutput::runtime_success(
+            JsonValue::Object(BTreeMap::new()),
+            0,
+            BTreeMap::new(),
         );
-        env.insert(
-            PREPARED_APPROVAL_MODE_ENV.to_owned(),
-            "explicit_digest".to_owned(),
-        );
-        env.insert(
-            PREPARED_APPROVAL_TIME_ENV.to_owned(),
-            "2026-07-12T00:00:00Z".to_owned(),
-        );
-        let output = SkillOutput {
-            status: InvocationStatus::Success,
-            stdout: "{}".to_owned(),
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 0,
-            metadata: BTreeMap::new(),
-        };
-        let projection = project_step_output(&output);
+        let mut projection =
+            crate::execution::output_projection::project_step_claim(BTreeMap::new());
         let receipt = seal_step(
             StepSeal {
                 graph_name: "prepared",
                 step_id: "execute",
                 attempt: 1,
                 output: &output,
-                projection: &projection,
+                claim: &projection.outputs,
+                projection_refs: std::mem::take(&mut projection.refs),
                 created_at: "2026-07-12T00:00:00Z",
                 authority_grant_refs: Vec::new(),
+                authority_scope_refs: Vec::new(),
                 operator_refs: prepared_receipt_references(&env),
+                child_receipts: &[],
+                descendant_receipts: &[],
                 closure: Some(StepSealClosure {
                     disposition: ClosureDisposition::Closed,
                     reason_code: "prepared_complete".to_owned(),
                     summary: "prepared run completed".to_owned(),
                 }),
+                receipt_metadata: None,
             },
             RuntimeReceiptSignaturePolicy::local_development(),
         )?;
@@ -979,40 +1578,30 @@ mod tests {
             reference.reference_type == ReferenceType::Artifact
                 && reference.uri.as_str().contains("operator_context:abc123")
         }));
-        assert!(refs.iter().any(|reference| {
-            reference.reference_type == ReferenceType::Decision
-                && reference
-                    .locator
-                    .as_ref()
-                    .is_some_and(|value| value.as_str().contains("test-operator"))
-        }));
         assert!(
             receipt.seal.criteria[0]
                 .verification_refs
                 .iter()
-                .any(|reference| reference.reference_type == ReferenceType::Decision)
+                .all(|reference| reference.reference_type != ReferenceType::Decision)
         );
         assert!(prepared_receipt_references(&BTreeMap::new()).is_empty());
+
+        let safe_env = BTreeMap::from([(
+            PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
+            "sha256:safe123".to_owned(),
+        )]);
+        let safe_refs = prepared_receipt_references(&safe_env);
+        assert_eq!(safe_refs.len(), 1);
+        assert_eq!(safe_refs[0].reference_type, ReferenceType::Artifact);
         Ok(())
     }
 
     #[test]
     fn prepared_skill_untrusted_env_cannot_forge_receipt_references() {
-        let mut env = BTreeMap::from([
-            (
-                PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
-                "sha256:forged".to_owned(),
-            ),
-            (
-                PREPARED_APPROVAL_ACTOR_ENV.to_owned(),
-                "attacker".to_owned(),
-            ),
-            (PREPARED_APPROVAL_MODE_ENV.to_owned(), "forged".to_owned()),
-            (
-                PREPARED_APPROVAL_TIME_ENV.to_owned(),
-                "2026-07-12T00:00:00Z".to_owned(),
-            ),
-        ]);
+        let mut env = BTreeMap::from([(
+            PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
+            "sha256:forged".to_owned(),
+        )]);
         strip_untrusted_prepared_env(&mut env);
         assert!(prepared_receipt_references(&env).is_empty());
         assert!(
@@ -1028,31 +1617,19 @@ mod tests {
         use crate::execution::orchestrator::LocalOrchestrator;
 
         let temp = tempdir()?;
-        fs::write(temp.path().join("SKILL.md"), "# Unprepared")?;
+        write_manual(temp.path(), "unprepared", "# Unprepared")?;
         fs::write(
             temp.path().join("X.yaml"),
             "skill: unprepared\nrunners:\n  main:\n    default: true\n    type: cli-tool\n    command: \"true\"\n    args: []\n",
         )?;
         let mut request = request(temp.path());
-        request.env.extend([
-            (
-                PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
-                "sha256:forged".to_owned(),
-            ),
-            (
-                PREPARED_APPROVAL_ACTOR_ENV.to_owned(),
-                "attacker".to_owned(),
-            ),
-            (PREPARED_APPROVAL_MODE_ENV.to_owned(), "forged".to_owned()),
-            (
-                PREPARED_APPROVAL_TIME_ENV.to_owned(),
-                "2026-07-12T00:00:00Z".to_owned(),
-            ),
-        ]);
+        request.env.insert(
+            PREPARED_CONTEXT_DIGEST_ENV.to_owned(),
+            "sha256:forged".to_owned(),
+        );
         let result = LocalOrchestrator::default().run_skill(&request)?;
         let output = serde_json::to_string(&result.output)?;
         assert!(!output.contains("operator_context"));
-        assert!(!output.contains("attacker"));
         assert!(!output.contains("forged"));
         Ok(())
     }

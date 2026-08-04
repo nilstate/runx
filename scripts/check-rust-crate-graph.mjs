@@ -10,6 +10,7 @@ const expectedMembers = [
   "runx-contracts",
   "runx-contracts-derive",
   "runx-core",
+  "runx-js-worker",
   "runx-pay",
   "runx-parser",
   "runx-receipts",
@@ -35,10 +36,11 @@ const publishableLibraryCrates = new Set([
 ]);
 
 const allowedRunxDeps = new Map([
-  ["runx-cli", new Set(["runx-runtime", "runx-contracts", "runx-pay", "runx-receipts"])],
+  ["runx-cli", new Set(["runx-runtime", "runx-contracts", "runx-pay", "runx-parser", "runx-receipts"])],
   ["runx-contracts", new Set(["runx-contracts-derive"])],
   ["runx-contracts-derive", new Set()],
   ["runx-core", new Set(["runx-contracts"])],
+  ["runx-js-worker", new Set(["runx-contracts", "runx-parser"])],
   [
     "runx-pay",
     new Set(["runx-contracts", "runx-core", "runx-parser", "runx-receipts", "runx-runtime"]),
@@ -51,6 +53,7 @@ const allowedRunxDeps = new Map([
 
 const requiredRunxDeps = new Map([
   ["runx-core", new Set(["runx-contracts"])],
+  ["runx-js-worker", new Set(["runx-contracts", "runx-parser"])],
   ["runx-pay", new Set(["runx-contracts", "runx-core", "runx-parser", "runx-runtime"])],
   ["runx-parser", new Set(["runx-contracts", "runx-core"])],
   ["runx-receipts", new Set(["runx-contracts"])],
@@ -252,8 +255,8 @@ function checkPublishingReadiness(crateName, manifest) {
       findings.push(`${crateName}/Cargo.toml must remain publishable so the crates.io package can be reserved or updated`);
     }
   }
-  if (crateName === "runx-cli" && hasPublishFalse) {
-    findings.push("runx-cli should remain publishable because it is the usable launcher package");
+  if (crateName === "runx-cli" && !hasPublishFalse) {
+    findings.push("runx-cli must remain unpublished until its internal Rust dependencies have a coordinated library release");
   }
 }
 

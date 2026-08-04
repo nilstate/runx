@@ -6,31 +6,51 @@
       "package": "@runxhq/cli-darwin-arm64",
       "os": "darwin",
       "cpu": "arm64",
-      "binary": "bin/runx"
+      "runner": "macos-14",
+      "rustTarget": "aarch64-apple-darwin",
+      "archiveExtension": "tar.gz",
+      "binary": "bin/runx",
+      "worker": "bin/runx-js-worker"
     },
     "darwin-x64": {
       "package": "@runxhq/cli-darwin-x64",
       "os": "darwin",
       "cpu": "x64",
-      "binary": "bin/runx"
+      "runner": "macos-15-intel",
+      "rustTarget": "x86_64-apple-darwin",
+      "archiveExtension": "tar.gz",
+      "binary": "bin/runx",
+      "worker": "bin/runx-js-worker"
     },
     "linux-arm64": {
       "package": "@runxhq/cli-linux-arm64",
       "os": "linux",
       "cpu": "arm64",
-      "binary": "bin/runx"
+      "runner": "ubuntu-24.04-arm",
+      "rustTarget": "aarch64-unknown-linux-musl",
+      "archiveExtension": "tar.gz",
+      "binary": "bin/runx",
+      "worker": "bin/runx-js-worker"
     },
     "linux-x64": {
       "package": "@runxhq/cli-linux-x64",
       "os": "linux",
       "cpu": "x64",
-      "binary": "bin/runx"
+      "runner": "ubuntu-24.04",
+      "rustTarget": "x86_64-unknown-linux-musl",
+      "archiveExtension": "tar.gz",
+      "binary": "bin/runx",
+      "worker": "bin/runx-js-worker"
     },
     "win32-x64": {
       "package": "@runxhq/cli-win32-x64",
       "os": "win32",
       "cpu": "x64",
-      "binary": "bin/runx.exe"
+      "runner": "windows-latest",
+      "rustTarget": "x86_64-pc-windows-msvc",
+      "archiveExtension": "zip",
+      "binary": "bin/runx.exe",
+      "worker": "bin/runx-js-worker.exe"
     }
   }
 }

@@ -457,18 +457,22 @@ fn newtype_inner_schema(
 /// Strip a leading `Option<...>`, returning the inner type and whether it was
 /// optional.
 fn unwrap_option(ty: &Type) -> (Type, bool) {
-    if let Type::Path(type_path) = ty {
-        if let Some(segment) = type_path.path.segments.last() {
-            if segment.ident == "Option" {
-                if let PathArguments::AngleBracketed(args) = &segment.arguments {
-                    if let Some(GenericArgument::Type(inner)) = args.args.first() {
-                        return (inner.clone(), true);
-                    }
-                }
-            }
-        }
+    let Type::Path(type_path) = ty else {
+        return (ty.clone(), false);
+    };
+    let Some(segment) = type_path.path.segments.last() else {
+        return (ty.clone(), false);
+    };
+    if segment.ident != "Option" {
+        return (ty.clone(), false);
     }
-    (ty.clone(), false)
+    let PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return (ty.clone(), false);
+    };
+    let Some(GenericArgument::Type(inner)) = arguments.args.first() else {
+        return (ty.clone(), false);
+    };
+    (inner.clone(), true)
 }
 
 /// The top-level identity an emitted document carries, parsed from the

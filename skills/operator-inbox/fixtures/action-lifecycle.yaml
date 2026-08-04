@@ -1,0 +1,93 @@
+name: action-lifecycle-persists-disposition
+kind: graph
+target: ../harness/action-lifecycle.yaml
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"local://runx/operator-inbox/action-lifecycle":{"adapter":"data.sqlite","database_path":".runx/data/operator-inbox-action-lifecycle.sqlite","resources":{"operator_inbox_actions":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: graph_closed
+    child_receipt_count: 5
+  steps:
+    - plan-observation
+    - append-observation
+    - plan-disposition
+    - append-disposition
+    - readback
+  step_outputs:
+    plan-observation:
+      subset:
+        transition:
+          data:
+            operation: action_observation
+            expected_version: 0
+            event:
+              type: operator_inbox.action.open
+              payload:
+                reason: observed
+                action:
+                  schema: runx.operator_inbox.action.v1
+                  status: open
+                  latest_message:
+                    preview: Please review the analytics result.
+    append-observation:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            status: committed
+            after_version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    plan-disposition:
+      subset:
+        transition:
+          data:
+            operation: disposition
+            expected_version: 1
+            event:
+              type: operator_inbox.action.resolved
+              payload:
+                reason: disposition
+                action:
+                  status: resolved
+                  disposition:
+                    status: resolved
+                    actor: operator-1
+    append-disposition:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            status: committed
+            before_version: 1
+            after_version: 2
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    readback:
+      subset:
+        data_operation_result:
+          data:
+            operation: read_projection
+            status: read
+            projection:
+              aggregate_id: action-04a315f3a0af034c1c2022c0a15eb6b6b2819a63839f02f77187fd30163d1cd1
+              event_count: 2
+              version: 2
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+metadata:
+  public_skill: operator-inbox
+  source_case: action-lifecycle-persists-disposition
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: durable_action_lifecycle

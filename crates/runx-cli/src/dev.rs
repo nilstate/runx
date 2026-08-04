@@ -1,30 +1,36 @@
-use std::env;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use runx_runtime::dev::DevLane;
-use runx_runtime::{DevLoopOptions, DevReport, DevReportStatus, render_dev_result, run_dev_once};
+use runx_runtime::{
+    DevFixtureLane, DevLoopOptions, DevReport, DevReportStatus, WorkspaceEnv, render_dev_result,
+    run_dev_once,
+};
 
 use crate::router::DevPlan;
 
-pub fn run_native_dev(plan: DevPlan) -> ExitCode {
-    let current_dir = match env::current_dir() {
-        Ok(path) => path,
-        Err(error) => {
-            let _ignored =
-                crate::cli_io::write_stderr(&format!("runx: failed to resolve cwd: {error}\n"));
-            return ExitCode::from(1);
-        }
-    };
-    let root = resolve_root(&current_dir);
+pub fn run_native_dev(plan: DevPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    let root = resolve_root(workspace.env(), workspace.cwd());
 
     let mut options = DevLoopOptions::new(&root);
+    options.env = workspace.env().clone();
     options.unit_path = plan
         .root
         .as_ref()
         .map(|path| resolve_unit_path(&root, path));
     if let Some(lane) = &plan.lane {
-        options.lane = DevLane::from(lane.as_str());
+        options.lane = if lane == "all" {
+            None
+        } else {
+            match lane.parse::<DevFixtureLane>() {
+                Ok(lane) => Some(lane),
+                Err(error) => {
+                    let _ignored =
+                        crate::cli_io::write_stderr(&format!("runx: invalid dev lane: {error}\n"));
+                    return ExitCode::from(2);
+                }
+            }
+        };
     }
     let report = match run_dev_once(&options) {
         Ok(report) => report,
@@ -55,11 +61,11 @@ pub fn run_native_dev(plan: DevPlan) -> ExitCode {
     ExitCode::from(exit_code)
 }
 
-fn resolve_root(current_dir: &Path) -> PathBuf {
-    env::var("RUNX_PROJECT_DIR")
-        .or_else(|_| env::var("RUNX_CWD"))
+fn resolve_root(env: &BTreeMap<String, String>, current_dir: &Path) -> PathBuf {
+    env.get("RUNX_PROJECT_DIR")
+        .or_else(|| env.get("RUNX_CWD"))
         .map(PathBuf::from)
-        .unwrap_or_else(|_| current_dir.to_path_buf())
+        .unwrap_or_else(|| current_dir.to_path_buf())
 }
 
 fn resolve_unit_path(root: &Path, path: &Path) -> PathBuf {

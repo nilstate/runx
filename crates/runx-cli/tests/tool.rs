@@ -154,14 +154,7 @@ fn assert_build_oracle(
         .env("RUNX_CWD", &temp_root)
         .output()?;
 
-    assert_oracle_output(oracle_name, &output, None)?;
-    if let Some(expected_manifest) =
-        optional_oracle_contents(&format!("{oracle_name}.manifest.json"))?
-    {
-        let manifest = fs::read_to_string(temp_root.join(tool_path).join("manifest.json"))?;
-        assert_eq!(manifest, expected_manifest);
-    }
-    Ok(())
+    assert_oracle_output(oracle_name, &output, None)
 }
 
 fn assert_oracle_output(

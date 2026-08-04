@@ -1,10 +1,63 @@
 skill: n8n-handoff
-version: "0.1.0"
+version: "0.1.6"
 catalog:
   kind: graph
   audience: operator
   visibility: public
   role: context
+  execution: execute
+  completion: provider_readback
+  requires_adapter: false
+  approval: required
+credentials:
+  n8n:
+    provider: n8n
+    auth:
+      bearer:
+        delivery:
+          env: N8N_WEBHOOK_TOKEN
+input_definitions:
+  event_id:
+    type: string
+    required: true
+    description: Stable event id used by n8n for deduplication and by Runx for mutation idempotency.
+    schema: { pattern: '^[A-Za-z0-9._:-]{3,200}$' }
+  handoff_audience:
+    type: string
+    required: false
+    default: n8n:workflow:runx-governed-effect
+    description: Exact n8n workflow audience expected by the receiver.
+    schema: { pattern: '^n8n:workflow:[^\s{}]+$' }
+  execution_context:
+    type: json
+    packet: runx.orchestrator.execution_context.v1
+    required: true
+    description: Caller, principal, workflow, or upstream-run context for the handoff.
+  payload:
+    type: json
+    required: true
+    description: Non-empty business payload delivered intact inside the canonical envelope.
+  source:
+    type: string
+    required: false
+    default: runx
+    description: Human-readable source label.
+    schema: { minLength: 1, maxLength: 256 }
+  receiver:
+    type: json
+    required: false
+    description: Optional receiver metadata; a supplied url must be public HTTPS.
+  webhook_host:
+    type: string
+    required: true
+    description: Public n8n host, without scheme or path.
+    schema: { pattern: '^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]{1,5})?$' }
+  workflow_slug:
+    type: string
+    required: false
+    default: runx-governed-effect
+    description: Single safe n8n webhook path segment.
+    schema: { pattern: '^[A-Za-z0-9_-]+$', maxLength: 128 }
 harness:
   cases:
     - name: n8n-handoff-preflight-ready
@@ -26,6 +79,23 @@ harness:
           disposition: closed
         steps:
           - build-handoff-context
+        step_outputs:
+          build-handoff-context:
+            subset:
+              handoff_context:
+                data:
+                  platform: n8n
+                  event_id: evt_n8n_demo_001
+                  status: ready
+                  idempotency:
+                    key: evt_n8n_demo_001
+                    receiver_should_dedupe: true
+                  receiver_validation:
+                    require_scope: orchestrator.n8n.workflow.invoke
+                    require_audience: n8n:workflow:runx-governed-effect
+                  receipt_expectations:
+                    outbound_effect_must_be_receipted: true
+                    receiver_response_must_be_captured: true
 runners:
   preflight:
     default: false
@@ -34,42 +104,28 @@ runners:
       category: ops
     inputs:
       event_id:
-        type: string
-        required: true
-        description: Stable event id used by n8n for deduplication.
+        definition: event_id
       handoff_audience:
-        type: string
-        required: false
-        default: n8n:workflow:runx-governed-effect
-        description: Expected n8n receiver audience.
+        definition: handoff_audience
       execution_context:
-        type: json
-        required: true
-        description: Explicit caller/workflow context for the handoff.
+        definition: execution_context
       payload:
-        type: json
-        required: true
-        description: Business payload to deliver to the n8n workflow.
+        definition: payload
       source:
-        type: string
-        required: false
-        default: runx
-        description: Human-readable source label.
-      idempotency_key:
-        type: string
-        required: false
-        description: Optional explicit idempotency key. Defaults to event_id.
+        definition: source
       receiver:
-        type: json
-        required: false
-        description: Optional receiver metadata such as workflow id, endpoint ref, or support owner.
+        definition: receiver
+    examples:
+      - event_id: evt_n8n_demo_001
+        handoff_audience: n8n:workflow:runx-governed-effect
+        execution_context: { caller: runx-cli, workflow_ref: self-hosted-n8n-demo }
+        payload: { hello: workflow }
     graph:
       name: n8n-handoff-preflight
+      result_from: [build-handoff-context]
       steps:
         - id: build-handoff-context
-          tool: orchestrators.build_handoff_context
-          scopes:
-            - orchestrator.handoff.prepare
+          tool: control.prepare_handoff
           inputs:
             platform: n8n
             event_id: $input.event_id
@@ -78,58 +134,41 @@ runners:
             execution_context: $input.execution_context
             payload: $input.payload
             source: $input.source
-            idempotency_key: $input.idempotency_key
             receiver: $input.receiver
   send:
     default: true
     type: graph
+    credential: n8n
     inputs:
       webhook_host:
-        type: string
-        required: true
-        description: Public n8n host, without scheme or path.
+        definition: webhook_host
       workflow_slug:
-        type: string
-        required: false
-        default: runx-governed-effect
-        description: Single safe n8n webhook path segment.
+        definition: workflow_slug
       event_id:
-        type: string
-        required: true
-        description: Stable event id used by n8n for deduplication.
+        definition: event_id
       handoff_audience:
-        type: string
-        required: false
-        default: n8n:workflow:runx-governed-effect
-        description: Expected n8n receiver audience.
+        definition: handoff_audience
       execution_context:
-        type: json
-        required: true
-        description: Explicit caller/workflow context for the handoff.
+        definition: execution_context
       payload:
-        type: json
-        required: true
-        description: Business payload to deliver to the n8n workflow.
+        definition: payload
       source:
-        type: string
-        required: false
-        default: runx
-        description: Human-readable source label.
-      idempotency_key:
-        type: string
-        required: false
-        description: Optional explicit idempotency key. Defaults to event_id.
+        definition: source
       receiver:
-        type: json
-        required: false
-        description: Optional receiver metadata such as workflow id, endpoint ref, or support owner.
+        definition: receiver
+    examples:
+      - webhook_host: n8n.example.com
+        workflow_slug: runx-governed-effect
+        event_id: evt_n8n_demo_001
+        handoff_audience: n8n:workflow:runx-governed-effect
+        execution_context: { caller: runx-cli, workflow_ref: self-hosted-n8n-demo }
+        payload: { hello: workflow }
     graph:
       name: n8n-handoff-send
+      result_from: [post-to-n8n]
       steps:
         - id: build-handoff-context
-          tool: orchestrators.build_handoff_context
-          scopes:
-            - orchestrator.handoff.prepare
+          tool: control.prepare_handoff
           inputs:
             platform: n8n
             event_id: $input.event_id
@@ -138,19 +177,45 @@ runners:
             execution_context: $input.execution_context
             payload: $input.payload
             source: $input.source
-            idempotency_key: $input.idempotency_key
             receiver: $input.receiver
+            request:
+              id: n8n-handoff
+              url: https://{webhook_host}/webhook/{workflow_slug}
+              path:
+                webhook_host: $input.webhook_host
+                workflow_slug: $input.workflow_slug
+
+        - id: approve-handoff
+          run:
+            type: approval
+          inputs:
+            gate_id: n8n-handoff.send.approval
+            reason: Approve the exact native-prepared webhook request and delivery envelope.
+          context:
+            handoff_context: build-handoff-context.handoff_context.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+
         - id: post-to-n8n
-          tool: orchestrators.n8n_handoff
+          tool: http.execute
+          mutation: true
+          idempotency_key: $input.event_id
           scopes:
             - orchestrator.n8n.workflow.invoke
+            - net:http
           inputs:
-            webhook_host: $input.webhook_host
-            workflow_slug: $input.workflow_slug
-            event_id: $input.event_id
-            handoff_scope: orchestrator.n8n.workflow.invoke
-            handoff_audience: $input.handoff_audience
-            execution_context: $input.execution_context
-            payload: $input.payload
-            source: $input.source
-            idempotency_key: $input.idempotency_key
+            allowed_hosts:
+              - $input.webhook_host
+            auth:
+              type: bearer
+              secret_env: N8N_WEBHOOK_TOKEN
+            stop_on_error: true
+          context:
+            requests: build-handoff-context.handoff_context.data.requests
+
+      policy:
+        guards:
+          - step: post-to-n8n
+            field: approve-handoff.approval_decision.data.approved
+            equals: true

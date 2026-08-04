@@ -11,6 +11,9 @@ document into agent contexts as `voice_profile`, and pins its hash in signed
 receipt criteria. An explicit `RUNX_VOICE_PROFILE_PATH` or a workspace profile
 can replace the bundled default for a governed run.
 
+This default applies across users and projects. Project-specific voice belongs
+in an explicit workspace profile.
+
 ## Lexical Anti-Patterns
 
 Banned openers:

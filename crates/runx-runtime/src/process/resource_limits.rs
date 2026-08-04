@@ -1,6 +1,7 @@
 #[cfg(unix)]
 use rustix::process::{Resource, Rlimit, getrlimit};
 
+#[cfg(unix)]
 use super::ProcessSpec;
 
 #[cfg(unix)]
@@ -18,7 +19,11 @@ const CHILD_MAX_FILE_BYTES: u64 = 512 * 1024 * 1024;
 #[cfg(unix)]
 const CHILD_MAX_CPU_SECONDS: u64 = 60;
 #[cfg(any(target_os = "linux", target_os = "android"))]
-const CHILD_MAX_ADDRESS_SPACE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+// Node 24 reserves large V8 pointer-compression and WebAssembly address regions
+// before its TypeScript loader executes user code. Smaller ceilings kill an
+// otherwise bounded tool during runtime initialization. This remains a virtual-
+// address limit; CPU, file, descriptor, process, and output bounds still apply.
+const CHILD_MAX_ADDRESS_SPACE_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 
 #[cfg(unix)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -133,11 +138,10 @@ pub(super) fn child_resource_limit_value(flag: &str) -> Option<u64> {
         .map(|limit| limit.value)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn shell_limit_value_clamps_to_inherited_hard_limit() {
         let unlimited = Rlimit {
@@ -162,7 +166,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn resource_limit_shell_args_do_not_interpolate_requested_command() {
         let spec = ProcessSpec::new("test", "echo $(touch should-not-run)", 128)

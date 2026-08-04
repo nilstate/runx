@@ -1,139 +1,104 @@
 ---
 name: dispute-respond
-description: Prepare a governed dispute response artifact from a linked charge receipt.
+description: Prepare and explicitly file an evidence-bound payment dispute response using native receipt proof, approval, provider execution, and independent readback.
 runx:
   category: payments
 ---
 
 # Dispute Respond
 
-Prepare a profile-local dispute response artifact for a counterparty-initiated
-payment dispute.
+Turn one provider dispute event and the exact Runx payment history behind it
+into a reviewable response posture. A good dispute packet does not merely tell a
+persuasive story: it proves which charge and refund receipts were consulted,
+which external evidence may be cited, what remains unknown, and why the operator
+should accept, contest, review, or acknowledge an existing refund.
 
-This skill attaches the linked sealed charge receipt, prior refund receipts,
-and provider evidence, then selects a response posture. It does not settle the
-dispute or produce a rail closure receipt.
+The default runner prepares evidence and wording without external mutation. The
+explicit `file` runner can submit that exact packet through a configured payment
+provider, but only after human approval and only when independent provider
+readback confirms what was filed. Neither runner closes a dispute, moves money,
+or invents provider acceptance.
 
-## What this skill does
+## When to use it
 
-1. **Bind the dispute to a charge.** Match the dispute event to the original
-   sealed charge receipt and the provider-side charge identity.
-2. **Collect linked receipts.** Attach prior refund, verification, reversal, or
-   recovery receipts so the response does not hide previous action.
-3. **Classify the posture.** Recommend `accept`, `contest`, `refund_already_sent`,
-   `needs_more_evidence`, or `operator_review` from the evidence and operator
-   posture.
-4. **Prepare the response artifact.** Emit the evidence packet a rail adapter or
-   operator can submit: receipt refs, provider evidence refs, redactions,
-   timeline, posture, and open questions.
-5. **Stop on ambiguity.** Return `needs_agent` when the dispute id, linked charge
-   receipt, prior refunds, evidence posture, or submission authority is unclear.
+Use `dispute-respond` after a provider has created a bounded dispute event and
+the original charge should exist in Runx receipt history. Use `refund` when the
+operator chooses a new reversal rather than a dispute response. If the original
+settlement cannot be proven, gather that evidence before contesting.
 
-It does not submit the response to Stripe, x402, MPP, or another rail; it does
-not issue a refund; and it does not mark a dispute closed.
+## How it works
 
-## When to use this skill
+1. Normalize provider, dispute, charge, amount, currency, reason, and optional
+   response deadline.
+2. Resolve the exact original charge and every prior refund by content-addressed
+   Runx receipt id. Caller-supplied receipt rows or summary projections are not
+   accepted as substitutes.
+3. Require complete production-signature verification and redacted native
+   detail for each linked receipt tree.
+4. Admit external evidence only as bounded ref, SHA-256 digest, kind, and
+   summary. Raw provider payloads and credentials remain outside the packet.
+5. Draft one posture using only admitted receipt ids and evidence refs.
+6. Deterministic finalization rejects invented citations, effect claims, and
+   any completion state the evidence cannot support.
+7. When the operator deliberately invokes `file`, Runx validates the unchanged
+   ready packet, binds it to a SHA-256 digest, obtains approval, and calls the
+   configured provider under the narrow `dispute.file` scope.
+8. Runx projects only the filing reference, dispute id, request digest, and
+   status from the provider result, then performs an independent
+   `dispute.read` and requires those fields to match before reporting success.
 
-- A provider receives a chargeback, payment dispute, or counterparty complaint
-  tied to a runx-sealed charge.
-- An operator wants a defensible response packet before deciding whether to
-  contest or accept the dispute.
-- A future rail-specific dispute adapter needs the normalized evidence and
-  posture before submission.
+A contest posture must cite delivery or consent evidence. A verified prior
+refund forces `refund_already_sent` or `operator_review`; the model cannot ignore
+it to produce a stronger contest narrative.
 
-## When not to use this skill
+## Inputs and result
 
-- To silently refund a disputed charge. Disputes and refunds are separate
-  governed actions with separate receipts.
-- To respond without a sealed original charge receipt.
-- To fabricate product, delivery, identity, or consent evidence that is not
-  already present in receipts, provider logs, or operator-supplied refs.
-- To close the rail dispute. This skill prepares the artifact; a rail-specific
-  action submits and later records closure.
+The input includes the normalized dispute event, exact original receipt id,
+prior refund ids, and bounded external evidence. The result contains the
+posture, response summary, cited receipt ids and evidence refs, open questions,
+validation, and an exact provider-filing handoff for later review.
 
-## Procedure
+`ready_for_review` means only that the packet is complete enough for an
+operator. The preparation result always reports `filing.status: not_filed`,
+`provider_status: not_called`, and `approval_status: not_requested`.
 
-1. Validate that `dispute_event` and `original_receipt_ref` are present.
-2. Resolve the original sealed charge receipt. Confirm it matches the dispute
-   amount, currency, provider, counterparty, operation, and settlement family
-   when those fields are available.
-3. Resolve `prior_refund_receipt_refs` and record whether any refund fully or
-   partially covers the disputed amount.
-4. Normalize provider evidence refs into a timeline: price, challenge,
-   verification, service delivery, user consent, prior support contact, refund,
-   and recovery events.
-5. Apply `operator_posture` only as a preference. Evidence still controls the
-   final posture; a contest request without evidence returns `needs_agent`.
-6. Redact raw secrets and personal data that do not need to be submitted.
-7. Emit `dispute_response`, `dispute_evidence`, `linked_receipts`, `posture`,
-   `open_questions`, and a submission readiness decision.
+Use the named `file` runner only after reviewing that packet. Supply the exact
+packet, the configured provider name, and one stable idempotency key for that
+filing. Runx injects the key into the provider request, rejects a conflicting
+nested key, refuses a packet whose decision or filing state has drifted, and
+does not accept the mutation response as proof by itself. A successful run must
+also return matching `dispute.read` evidence. Provider credentials remain in
+the configured adapter boundary; they never belong in skill inputs or output.
 
-## Edge cases and stop conditions
+## Stop conditions
 
-- **Missing or unsealed original receipt:** return `needs_agent`; do not prepare
-  a contest packet.
-- **Dispute does not match the receipt:** return `needs_agent` with the
-  mismatched fields.
-- **Prior refund exists:** do not recommend a silent second refund. Set posture
-  `refund_already_sent` or `operator_review` and cite the refund receipt.
-- **Evidence is stale or unauthenticated:** include it as low confidence or
-  return `needs_agent` when it is required for the posture.
-- **Operator wants to contest with no delivery or consent evidence:** return
-  `needs_agent`; do not fabricate narrative.
-- **PII or credentials in evidence:** redact before output and list each
-  redaction.
-- **Rail submission authority absent:** prepare the local artifact only and
-  return `needs_agent` for submission.
+- Return `needs_more_evidence` for missing, invalid, local-development, or
+  incompletely verified receipt trees.
+- Refuse caller-authored receipt detail, raw provider evidence, credentials, or
+  citations not present in the admitted set.
+- Do not contest without evidence of delivery, consent, or the provider-specific
+  fact on which the response depends.
+- Do not file a packet that is incomplete, failed validation, already marked as
+  filed, or different from the packet approved by the operator.
+- Do not claim filing from the mutation response alone. Require the independent
+  provider readback, and do not equate a filed response with dispute acceptance,
+  closure, settlement, or a refund.
 
-## Output schema (`dispute_response_artifact`)
+## Example
 
-```yaml
-decision: ready | needs_agent
-dispute_response:
-  dispute_id: string
-  posture: accept | contest | refund_already_sent | needs_more_evidence | operator_review
-  amount: string | null
-  currency: string | null
-  counterparty: string | null
-  settlement_family: string | null
-dispute_evidence:
-  timeline:
-    - at: string
-      kind: price | challenge | verify | delivery | refund | support | recovery | dispute
-      ref: string
-      summary: string
-  redactions:
-    - field: string
-      reason: string
-linked_receipts:
-  original_charge: string
-  verification: [string]
-  refunds: [string]
-  recoveries: [string]
-open_questions: [string]
-recommendation: string
-```
+A dispute alleges an unrecognized charge. Native history proves the charge but
+contains no consent evidence. The packet may recommend `operator_review` and
+name the missing evidence; it should not contest by inference. If a verified
+refund receipt already covers the amount, the posture becomes
+`refund_already_sent` and cites that exact receipt. If the operator later invokes
+`file`, the approved packet—not a rewritten summary—is what reaches the provider,
+and matching provider readback is the completion proof.
 
-A `ready` decision means the artifact is complete for review or downstream rail
-submission. It does not mean the dispute has been submitted or closed.
+## Agent task contract
 
-## Worked example
+### `dispute-response-draft`
 
-A Stripe test-mode dispute `dp_test_01` references charge receipt `rcpt_charge`.
-The receipt proves the caller accepted challenge `ch_test_01` for `0.08 USD`,
-verification receipt `rcpt_verify` sealed, and the provider delivery log ref
-shows the paid result was returned. No refund receipts exist. The skill returns
-`decision: ready`, posture `contest`, linked receipts, redacted evidence refs,
-and a recommendation to submit the packet through the Stripe dispute adapter.
-
-If refund receipt `rcpt_refund` already covers the full disputed amount, the
-skill returns posture `refund_already_sent`, cites the refund receipt, and
-warns against an untracked second refund.
-
-## Inputs
-
-- `dispute_event` (required): provider-initiated dispute or chargeback event.
-- `original_receipt_ref` (required): linked sealed charge receipt reference.
-- `prior_refund_receipt_refs` (optional): prior refund receipts.
-- `evidence_refs` (optional): provider evidence references.
-- `operator_posture` (optional): requested response posture.
+Choose `accept`, `contest`, `refund_already_sent`, `needs_more_evidence`, or
+`operator_review` from the admitted dispute, evidence refs, and native redacted
+receipt detail. Cite only exact admitted ids and refs. Never claim filing,
+provider acceptance, closure, settlement, or a refund not proven by the packet.

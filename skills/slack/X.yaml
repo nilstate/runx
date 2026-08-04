@@ -1,0 +1,352 @@
+skill: slack
+version: "0.2.5"
+
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: branded
+  canonical_skill: runx/send-as
+  provider: slack
+  runtime_path: slack
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: conditional
+
+runners:
+  search:
+    default: true
+    type: graph
+    inputs:
+      query:
+        type: object
+        required: true
+        description: Bounded Slack search object; requires author_external_id (member-id string), mentions_connected_subject (boolean), or keywords (one phrase string, never an array).
+        schema:
+          additionalProperties: false
+          properties:
+            author_external_id: { type: string, pattern: '^[UW][A-Z0-9]{2,}$', maxLength: 100 }
+            mentions_connected_subject: { const: true }
+            keywords: { type: string, minLength: 1, maxLength: 500, pattern: '^[^?\r\n\u0000-\u001f]+$' }
+            after: { type: string, format: date-time, maxLength: 100 }
+            before: { type: string, format: date-time, maxLength: 100 }
+            channel_types:
+              type: array
+              minItems: 1
+              maxItems: 4
+              uniqueItems: true
+              items: { type: string, enum: [public_channel, private_channel, mpim, im] }
+            limit: { type: integer, minimum: 1, maximum: 20, default: 20 }
+            cursor: { type: string, minLength: 1, maxLength: 500 }
+          anyOf:
+            - required: [author_external_id]
+            - required: [mentions_connected_subject]
+            - required: [keywords]
+    examples:
+      - query: { keywords: release readiness, channel_types: [public_channel, private_channel], limit: 20 }
+    graph:
+      name: slack-search
+      result_from: [search]
+      steps:
+        - id: search
+          tool: provider.read
+          scopes: [messages.search]
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: messages.search
+            target: slack://messages
+            expected_provider: slack
+            result_fields: [external_tenant_ref, connected_subject_ref, messages, next_cursor]
+            input: $input.query
+
+  read_thread:
+    type: graph
+    inputs:
+      thread_locator:
+        type: string
+        required: true
+        description: Exact slack://workspace/channel/timestamp thread locator.
+        schema: { pattern: '^slack://[A-Z][A-Z0-9]+/[CGD][A-Z0-9]+/[0-9]+\.[0-9]+$', maxLength: 300 }
+      limit:
+        type: integer
+        required: false
+        default: 15
+        description: Bounded messages to return; provider maximum is 15.
+        schema: { minimum: 1, maximum: 15 }
+      cursor:
+        type: string
+        required: false
+        description: Opaque cursor returned by the preceding thread page.
+    examples:
+      - thread_locator: slack://T123ABC/C123ABC/1750000000.000001
+        limit: 15
+    graph:
+      name: slack-read-thread
+      result_from: [read]
+      steps:
+        - id: read
+          tool: provider.read
+          scopes: [thread.read]
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: thread.read
+            target: $input.thread_locator
+            expected_provider: slack
+            expected_result:
+              thread_locator: $input.thread_locator
+            result_fields: [external_tenant_ref, connected_subject_ref, thread_locator, messages, next_cursor]
+            input:
+              thread_locator: $input.thread_locator
+              limit: $input.limit
+              cursor: $input.cursor
+
+  read_link:
+    type: graph
+    inputs:
+      permalink:
+        type: string
+        required: true
+        description: Exact https://workspace.slack.com/archives/channel/message permalink.
+        schema: { pattern: '^https://[^/]+\.slack\.com/archives/[A-Z0-9]+/p[0-9]+$', maxLength: 2048 }
+      limit:
+        type: integer
+        required: false
+        default: 15
+        description: Bounded messages to return; provider maximum is 15.
+        schema: { minimum: 1, maximum: 15 }
+      cursor:
+        type: string
+        required: false
+        description: Opaque cursor returned by the preceding thread page.
+    examples:
+      - permalink: https://example.slack.com/archives/C123ABC/p1750000000000001
+        limit: 15
+    graph:
+      name: slack-read-link
+      result_from: [read]
+      steps:
+        - id: read
+          tool: provider.read
+          scopes: [thread.read]
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: thread.read
+            target: $input.permalink
+            expected_provider: slack
+            result_fields: [external_tenant_ref, connected_subject_ref, thread_locator, messages, next_cursor]
+            input:
+              thread_locator: $input.permalink
+              limit: $input.limit
+              cursor: $input.cursor
+
+  read_file:
+    type: graph
+    inputs:
+      file_locator:
+        type: string
+        required: true
+        description: Exact slack-file://workspace/file locator returned by read_thread.
+        schema: { pattern: '^slack-file://[A-Z][A-Z0-9]+/F[A-Z0-9]+$', maxLength: 300 }
+    examples:
+      - file_locator: slack-file://T123ABC/F123ABC
+    graph:
+      name: slack-read-file
+      result_from: [read]
+      steps:
+        - id: read
+          tool: provider.read
+          scopes: [file.read]
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: file.read
+            target: $input.file_locator
+            expected_provider: slack
+            expected_result:
+              file_locator: $input.file_locator
+            result_fields: [external_tenant_ref, connected_subject_ref, file_locator, name, mimetype, size_bytes, image_width, image_height, content_digest, data_base64]
+            input:
+              file_locator: $input.file_locator
+
+  plan_reply:
+    type: graph
+    inputs:
+      principal:
+        type: string
+        required: true
+        description: Principal represented by the connected Slack identity.
+      thread_locator:
+        type: string
+        required: true
+        description: Exact Slack thread that would receive the reply.
+        schema: { pattern: '^slack://[A-Z][A-Z0-9]+/[CGD][A-Z0-9]+/[0-9]+\.[0-9]+$', maxLength: 300 }
+      text:
+        type: string
+        required: true
+        description: Exact proposed reply text.
+        schema: { minLength: 1, maxLength: 4000 }
+      provider_context:
+        type: json
+        required: false
+        description: Connector and workspace readiness supplied to send-as.
+      operator_context:
+        type: string
+        required: false
+        description: Purpose, constraints, and approval posture for this reply.
+    examples:
+      - principal: user:kam
+        thread_locator: slack://T123ABC/C123ABC/1750000000.000001
+        text: I’ll verify this now.
+        provider_context: { connector: runx-connect, workspace: T123ABC }
+        operator_context: Reply only in the supplied thread and require approval before delivery.
+    graph:
+      name: slack-plan-reply
+      result_from: [authorize]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: $input.text
+            encoding: utf8_text
+        - id: authorize
+          skill: ../send-as
+          runner: plan
+          inputs:
+            objective: Authorize one exact Slack thread reply for later provider delivery.
+            principal: $input.principal
+            provider_context: $input.provider_context
+            audience:
+              type: thread
+              ref: $input.thread_locator
+              requires_reconfirmation: false
+            operator_context: $input.operator_context
+          context:
+            content_ref: digest.digest_result.data
+
+  deliver_reply:
+    type: graph
+    inputs:
+      send_plan:
+        type: json
+        packet: runx.send_as.plan.v1
+        required: true
+        description: Exact send_plan emitted by plan_reply.
+      thread_locator:
+        type: string
+        required: true
+        description: Exact Slack thread locator bound by the plan and Connect grant.
+        schema: { pattern: '^slack://[A-Z][A-Z0-9]+/[CGD][A-Z0-9]+/[0-9]+\.[0-9]+$', maxLength: 300 }
+      text:
+        type: string
+        required: true
+        description: Exact reply text whose digest must match the plan.
+        schema: { minLength: 1, maxLength: 4000 }
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable UUID for this exact Slack reply.
+        schema: { format: uuid }
+    examples:
+      - send_plan:
+          decision: ready
+          action_family: send-as
+          principal: { type: user, ref: "user:kam" }
+          provider: { name: slack, account_ref: "workspace:T123ABC", runtime_path: slack }
+          send_class: internal
+          channel: chat
+          audience: { type: thread, ref: 'slack://T123ABC/C123ABC/1750000000.000001', requires_reconfirmation: false }
+          content:
+            draft_ref: inline
+            digest: 'sha256:8604f5c08db8d76b6fa8066c769fbdc6a4992101373d0d17bcfe426cf8e77647'
+            subject_or_title: Slack thread reply
+          gates: { preflight_required: true, human_approval_required: true, approval_ref: slack.deliver-reply.approval }
+          blockers: []
+          provider_actions: [thread.reply]
+          evidence_refs: []
+          success_checkpoint:
+            milestone: plan_ready
+            description: Digest-bound Slack reply awaits approved provider execution.
+        thread_locator: slack://T123ABC/C123ABC/1750000000.000001
+        text: I’ll verify this now.
+        idempotency_key: 178d473e-8431-4d15-8de6-e29227bfa90d
+    graph:
+      name: slack-deliver-reply
+      result_from: [readback]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: $input.text
+            encoding: utf8_text
+        - id: bind-plan
+          tool: data.compare
+          inputs:
+            actual:
+              decision: $input.send_plan.decision
+              provider: $input.send_plan.provider.name
+              channel: $input.send_plan.channel
+              audience: $input.send_plan.audience.ref
+              approval_required: $input.send_plan.gates.human_approval_required
+            expected:
+              decision: ready
+              provider: slack
+              channel: chat
+              audience: $input.thread_locator
+              approval_required: true
+        - id: bind-content
+          tool: data.compare
+          when:
+            field: bind-plan.comparison.data.equal
+            equals: true
+          inputs:
+            expected: $input.send_plan.content.digest
+          context:
+            actual: digest.digest_result.data.digest
+        - id: deliver
+          tool: provider.mutate
+          scopes: [thread.reply]
+          mutation: true
+          idempotency_key: $input.idempotency_key
+          when:
+            field: bind-content.comparison.data.equal
+            equals: true
+          policy:
+            provider_permission:
+              verb: write
+          inputs:
+            operation: thread.reply
+            target: $input.thread_locator
+            expected_provider: slack
+            idempotency_key: $input.idempotency_key
+            expected_result:
+              thread_locator: $input.thread_locator
+              content_digest: $input.send_plan.content.digest
+            result_fields: [message_locator, conversation_locator, thread_locator, content_digest, occurred_at]
+            input:
+              thread_locator: $input.thread_locator
+              text: $input.text
+        - id: readback
+          when:
+            field: bind-content.comparison.data.equal
+            equals: true
+          tool: provider.read
+          scopes: [thread.reply.read]
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: thread.reply.read
+            target: $input.thread_locator
+            expected_provider: slack
+            result_fields: [message_locator, conversation_locator, thread_locator, content_digest, occurred_at]
+          context:
+            expected_result: deliver.provider_operation.data.result
+            input: deliver.provider_operation.data.result

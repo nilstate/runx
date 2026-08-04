@@ -1,0 +1,79 @@
+name: ghostwrite-draft-binds-writing-context
+kind: skill
+target: ..
+runner: draft
+inputs:
+  objective: Explain the strongest Runx architecture signal.
+  audience: operators
+  channel: brief
+  evidence_pack:
+    decision: ready
+    research_brief: { objective: Explain the strongest Runx architecture signal. }
+    evidence_log:
+      - claim: Receipts bind actions to authority evidence.
+        source_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    source_evidence:
+      - evidence_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    validation: { status: pass, findings: [] }
+  brand_context:
+    decision: ready
+    brand_voice:
+      voice_principles: [Lead with governed action and proof.]
+      vocabulary: { use: [receipt], avoid: [magic] }
+      cadence: [Concise engineering sentences.]
+      claim_rules: { safe: [Receipts bind actions to authority evidence.], forbidden: [], requires_proof: [] }
+      channel_adjustments: []
+    evidence:
+      bindings:
+        - { rule: Lead with governed action and proof. }
+        - { rule: receipt }
+        - { rule: magic }
+        - { rule: Concise engineering sentences. }
+        - { rule: Receipts bind actions to authority evidence. }
+    validation: { status: pass, findings: [] }
+  taste_context:
+    decision: ready
+    taste_profile:
+      principles: [Make the workflow visible.]
+      likes: [Dense operational surfaces.]
+      dislikes: [Decorative filler.]
+      decision_rules: [Choose operational clarity.]
+    evidence:
+      bindings:
+        - { rule: Make the workflow visible. }
+        - { rule: Dense operational surfaces. }
+        - { rule: Decorative filler. }
+        - { rule: Choose operational clarity. }
+    validation: { status: pass, findings: [] }
+caller:
+  answers:
+    agent_task.ghostwrite-draft.output:
+      content_draft:
+        decision: ready
+        content_brief: { objective: Explain the strongest Runx architecture signal., audience: operators, channel: brief }
+        draft:
+          title: Governed action stays visible
+          body: Receipts bind actions to authority evidence.
+          claim_refs:
+            - claim: Receipts bind actions to authority evidence.
+              source_digests: [sha256:1111111111111111111111111111111111111111111111111111111111111111]
+        context_binding:
+          applied:
+            - packet_digest: sha256:191384d14eac0d65c2c599e243c777fba9106bb58456cf1c286e2de59ac997c5
+              applied_rules: [Lead with governed action and proof.]
+            - packet_digest: sha256:14ac2374b19b3341c270be471b9d232430d24396b2603f8093ff9a0d30b4e509
+              applied_rules: [Choose operational clarity.]
+        review_checklist: []
+        distribution_notes: { primary_channel: brief }
+expect:
+  status: sealed
+  steps: [digest-evidence, digest-brand-context, digest-taste-context, prepare, author, finalize]
+  step_outputs:
+    finalize:
+      subset:
+        content_draft_packet:
+          data:
+            decision: ready
+            validation: { status: pass }
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: ghostwrite, source_case: bound-writing-context, source: skills-fixture }

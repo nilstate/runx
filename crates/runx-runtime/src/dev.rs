@@ -1,6 +1,7 @@
 //! Native runtime support for `runx dev` fixture loops.
 
 pub mod r#loop;
+mod materialize;
 pub mod presentation;
 mod skill;
 mod support;
@@ -12,10 +13,11 @@ pub use r#loop::{
     dev_receipt_metadata, discover_fixture_paths, run_dev_once, run_dev_once_with_executor,
 };
 pub use presentation::{DevRenderTheme, render_dev_result, render_dev_result_with_theme};
+pub use runx_parser::DevFixtureLane;
 pub use types::{
     DevError, DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureExecutionRoots,
-    DevFixtureExecutor, DevFixtureResult, DevFixtureStatus, DevLane, DevLoopOptions, DevReport,
-    DevReportStatus, LocalDevFixtureExecutor, ParsedDevFixture, PreparedDevFixtureWorkspace,
+    DevFixtureExecutor, DevFixtureResult, DevFixtureStatus, DevLoopOptions, DevReport,
+    DevReportStatus, LoadedDevFixture, LocalDevFixtureExecutor, PreparedDevFixtureWorkspace,
 };
 pub use watch::{
     DEFAULT_DEV_WATCH_DEBOUNCE_MS, DevWatchError, DevWatchEvent, DevWatchEventKind,

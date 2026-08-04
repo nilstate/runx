@@ -1,133 +1,114 @@
 ---
 name: release
-description: Prepare, gate, publish, and verify a versioned release of a package or project through a project-owned release profile.
+description: Prepare, approve, execute, and independently verify a versioned release through a project-owned exact-command profile.
 runx:
   category: code
 ---
 
 # Release
 
-Turn a proposed release into an audited publication. The skill owns the release
-decision process: evidence gathering, changelog preparation, approval, publish
-handoff, verification, and announcement. It does not own a project's custom
-release implementation. Project-specific topology lives in a release profile
-that names existing commands, workflows, registries, deploy targets, and
-verification readbacks.
+A release is a project-owned operation, not a universal shell recipe. This
+skill gives Runx one common governance sequence—prepare, describe, approve,
+publish, and independently verify—while leaving the actual build and provider
+commands in a versioned profile owned by the project.
 
-Every version and changelog claim must trace to commits, tags, checks, package
-metadata, or explicit operator context. Write release material for package
-consumers: say why this version matters and what they should do next, without
-generic launch language or positive wording that hides a blocker. Stop in
-`prepare` or at approval when checks fail, versioning is unclear, evidence is
-thin, or the announcement would overstate what shipped.
+Use it when a package or project already knows how to prepare, publish, and
+verify itself but needs one digest-bound approval and receipt chain around those
+commands. Do not use it to invent a release process for an unconfigured project
+or to replace the project's tests, packaging, or registry tooling.
 
-Two runners:
+A release profile is the project adapter. It declares exact argv commands that
+the project already owns; this skill validates their release semantics but does
+not recreate the project's release implementation.
 
-- **`prepare`** (read-only) — survey the commit range since the last tag,
-  classify commits, stage a changelog, run the declared checks, and emit a
-  `release_brief` describing what would ship, what is blocked, and what
-  remains unresolved. Safe to run unattended and in CI.
-- **`release`** (default, graph) — wires `prepare` → approval gate →
-  `publish` → `verify`. `publish` is not exposed as a standalone runner; it is
-  only reachable inside the graph after the approval transition clears.
+Runx core owns bounded profile reads, path and symlink containment, command-plan
+digests, sanitized child environments, process-tree supervision, timeouts,
+credential redaction, and output evidence. Package JavaScript only validates the
+release profile and interprets the three release-specific provider states.
 
-Invoke `runx skill release prepare` for a CI dry-run. Invoke
-`runx skill release` to run the governed end-to-end flow.
+Use `prepare` to execute the profile's preparation command and produce an
+evidence-bound release brief. Use the default `release` runner to approve the
+exact publish plan, execute it without a shell, then run a separate verification
+command. The publish command is refused if its normalized argv plan drifts after
+approval. Publication is never inferred from an agent answer or a zero exit code.
 
-## Phases
+## Project profile
 
-### prepare
+`project_root` is resolved inside the current Runx workspace and must be a
+relative directory (normally `.` when Runx is invoked from the project root).
+`profile_ref` must name a JSON file inside that directory:
 
-The read-only phase. Reads git history, classifies each commit since the
-previous semver tag (`feat`, `fix`, `refactor`, `chore`, `breaking`),
-stages a changelog, reads the project release profile when supplied, and runs
-the declared release checks. Emits a `release_brief` with the findings.
+```json
+{
+  "schema": "runx.release.profile.v1",
+  "id": "my-project/npm",
+  "channel": "npm",
+  "commands": {
+    "prepare": { "argv": ["pnpm", "release:check"], "cwd": ".", "timeout_ms": 300000 },
+    "publish": { "argv": ["gh", "workflow", "run", "release.yml"], "cwd": "." },
+    "verify": { "argv": ["pnpm", "release:check:live"], "cwd": "." }
+  }
+}
+```
 
-The brief is the only artifact that flows forward. If it is not
-`publishable`, the graph stops at the approval gate with the reasons
-attached.
+Commands are argv arrays, never shell strings. Paths cannot escape the project.
+These commands are trusted host processes: Runx fixes and digests their argv,
+working directory, admitted environment, and timeout, but does not claim to
+confine their filesystem, network, or syscalls. Keep profiles project-owned,
+versioned, and narrowly scoped; the publish command still requires the exact
+digest-bound approval before execution.
+Credential-shaped arguments and inline environment values are rejected; commands
+receive credentials only through Runx credential delivery or existing local CLI
+profiles. The release profile is context and topology, not authority.
 
-### approve-publish
+Every command must print one bounded JSON object. Preparation returns
+`status: ready`; publish returns `status: submitted` or `published`;
+verification returns `status: verified`, the exact `version` and `channel`,
+and at least one stable locator. Optional fields are `release_id`,
+`commit_ref`, `checks`, and `locators`. Raw stdout and stderr are not copied
+into release artifacts; only parsed bounded fields and runtime evidence digests
+are sealed.
 
-A typed approval step. The gate id is `release.publish.approval`. The
-brief is provided as context so the approver sees what would ship before
-deciding.
+## Authority and closure
 
-The policy transition only advances to `publish-release` when
-`approve-publish.approval_decision.data.approved` is `true`. No back
-channel, no implicit approval on timeout.
+Preparation and note drafting do not require human approval. The one approval
+gate binds the profile digest, version, channel, and native publish command-plan
+digest. Only publish crosses the consequential external boundary. Verification
+is independent readback and is the only path to `verified`. Failed commands,
+identity drift, plan drift, invalid JSON, or missing locators never produce a
+success claim.
 
-### publish-release
+## Stop conditions and recovery
 
-The destructive phase. Takes the approved `release_brief` from graph context and
-hands off to the project-declared release interface: an existing CLI command,
-GitHub Actions workflow, hosted API route, provider tool, or manual release
-gate. Every side effect is recorded in `publish_report.side_effects[]` with its
-locator and evidence; the graph receipt seals the trail.
+- Stop when the profile escapes the project root, follows an unsafe symlink,
+  uses shell strings, embeds credential-shaped arguments or environment values,
+  or omits one of the three command roles.
+- Stop when preparation does not return bounded `ready` JSON or when the
+  requested version and channel differ from the profile evidence.
+- Approval binds the exact publish argv plan. Any normalized plan drift requires
+  a new preparation and approval rather than opportunistic execution.
+- A zero exit code or `submitted` provider response is not verification. The
+  independent verify command must return the exact version, channel, and stable
+  locator.
+- Preserve a failed or ambiguous publish as recovery evidence; do not rerun a
+  potentially consequential command under a different identity without
+  inspecting provider state.
 
-Refuses to act if the brief is missing, unpublishable, or not carried
-through the approval gate. Refuses to act if the project profile asks the agent
-to reimplement release logic instead of naming an existing execution surface.
+## Example
 
-### verify-release
+An npm project profile runs a local release check, dispatches a GitHub release
+workflow, and verifies the exact version from the registry. Runx can prepare a
+brief and notes, bind approval to the workflow-dispatch argv, execute it, and
+seal only after registry readback names the requested version. If the publish
+command changes between preparation and approval or verification cannot find
+the version, the run does not claim a successful release.
 
-The proof phase. Reads the `publish_report`, release brief, and project profile,
-then verifies external state: registry versions, release assets, deploy health,
-site/changelog readbacks, package-manager manifests, or any other project-owned
-release acceptance criteria. Emits a `release_report` for operator review and
-public audit.
+## Agent task contracts
 
+### `release-notes`
 
-## Inputs
-
-| Name | Required | Description |
-|---|---|---|
-| `project_root` | yes | Absolute path to the project being released. |
-| `channel` | yes | Publishing target (`npm`, `pypi`, `github-release`). |
-| `profile_ref` | no | Path or registry ref for a project-owned release profile. The profile describes existing commands/workflows and verification expectations; it is not authority. |
-| `last_tag` | no | Previous release anchor. Defaults to the latest semver tag reachable from the current branch. |
-| `operator_context` | no | Cadence, campaign, or posture guidance for this release. |
-
-## Outputs
-
-- `prepare` emits `release_brief_packet` carrying `release_brief`:
-  changelog, check results, proposed version, unresolved flags,
-  publishable verdict.
-- The graph emits a graph receipt that links the prepare brief, the
-  approval decision, publish report, and verification report into one auditable
-  trail.
-- `publish-release` (inside the graph) emits `publish_report`: registry
-  URL, release tag, announcement packet, and a `side_effects[]` list with
-  a locator and evidence per write action.
-- `verify-release` emits `release_report`: expected lanes, observed readbacks,
-  missing artifacts, conditional skips, and final release verdict.
-
-## Trust boundary
-
-`prepare` is safe to run unattended and in CI. The destructive work is only
-reachable through the graph, and the graph refuses to transition to
-`publish-release` without an approved decision from `release.publish.approval`.
-The graph enforces the gate; the skill does not bypass it.
-
-Project profiles are context, not authority. A profile may say which workflow,
-command, registry, or URL should be used. It cannot grant credentials, skip
-approval, or authorize a destructive release by itself.
-
-## Scopes
-
-- `runx:release:read` — required by the prepare phase.
-- `runx:release:publish` — required by the publish phase; the graph grant
-  must include this only when the approval transition has cleared.
-- `runx:release:verify` — required by the verification phase.
-
-## Tasks
-
-- `release-prepare` — the read-only phase task. Provides the
-  `release_brief` output shape.
-- `release-publish` — the destructive phase task. Only reachable inside
-  the graph; requires the approved brief in context.
-- `release-verify` — the proof phase task. Reads external state and reports
-  whether the release actually landed.
-
-These are managed-agent task contracts carried by the skill package and its
-`X.yaml` graph definition. They are not a separate registered task catalog.
+Draft only consumer-facing release notes from the admitted profile, exact version, preparation
+checks, last tag, and operator context. Return headline, summary, changelog with
+added/fixed/changed/removed/ breaking arrays, upgrade_guidance, and risks. Do not claim a tag,
+registry version, deployment, publication, verification, provider acknowledgement, URL, or side
+effect.

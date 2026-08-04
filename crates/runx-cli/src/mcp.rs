@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::{collections::BTreeMap, env};
+
+use runx_runtime::WorkspaceEnv;
 
 use crate::cli_args::{flag_value, optional_flag_value_or, os_arg, os_flag_value, split_flag};
 
@@ -17,7 +19,7 @@ pub struct McpPlan {
     pub http_allow_non_loopback: bool,
 }
 
-// rust-style-allow: long-function -- flag parsing is kept in one linear pass so
+// Function rationale: flag parsing is kept in one linear pass so
 // CLI usage errors preserve exact native argument semantics.
 pub fn parse_mcp_plan(args: &[OsString]) -> Result<McpPlan, String> {
     let subcommand = os_arg(args, 1, "mcp")?;
@@ -86,9 +88,16 @@ pub fn parse_mcp_plan(args: &[OsString]) -> Result<McpPlan, String> {
     })
 }
 
-// rust-style-allow: long-function -- native MCP startup owns one cohesive
+// Function rationale: native MCP startup owns one cohesive
 // stdio-vs-HTTP transport selection and error presentation boundary.
-pub fn run_native_mcp(plan: McpPlan) -> ExitCode {
+pub fn run_native_mcp_with_workspace(plan: McpPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    let credential_deliveries = match resolve_mcp_credential_deliveries(&plan, workspace) {
+        Ok(deliveries) => deliveries,
+        Err(error) => {
+            let _ignored = writeln!(std::io::stderr(), "runx: {error}");
+            return ExitCode::from(1);
+        }
+    };
     let options =
         match runx_runtime::adapters::mcp::McpServerOptions::from_skill_paths_with_execution(
             &plan.refs,
@@ -97,7 +106,8 @@ pub fn run_native_mcp(plan: McpPlan) -> ExitCode {
             runx_runtime::adapters::mcp::McpServerExecutionOptions {
                 runner: plan.runner,
                 receipt_dir: plan.receipt_dir,
-                env: mcp_execution_env(),
+                env: workspace.env().clone(),
+                credential_deliveries,
             },
         ) {
             Ok(options) => options,
@@ -153,14 +163,38 @@ pub fn run_native_mcp(plan: McpPlan) -> ExitCode {
     }
 }
 
-fn mcp_execution_env() -> BTreeMap<String, String> {
-    let mut env = env::vars().collect::<BTreeMap<_, _>>();
-    if let Ok(cwd) = env::current_dir() {
-        let workspace = runx_runtime::resolve_runx_workspace_base(&env, &cwd);
-        env.insert(
-            runx_runtime::RUNX_CWD_ENV.to_owned(),
-            workspace.to_string_lossy().into_owned(),
-        );
+fn resolve_mcp_credential_deliveries(
+    plan: &McpPlan,
+    workspace: &WorkspaceEnv,
+) -> Result<BTreeMap<PathBuf, runx_runtime::CredentialDelivery>, String> {
+    let mut deliveries = BTreeMap::new();
+    for skill_ref in &plan.refs {
+        let Some(context) = runx_runtime::resolve_skill_credential_for_path(
+            skill_ref,
+            plan.runner.as_deref(),
+            None,
+            workspace,
+        )
+        .map_err(|error| error.to_string())?
+        else {
+            continue;
+        };
+        if !context.resolution.is_ready() {
+            return Err(format!(
+                "skill '{}' needs a {} credential; configure it with: runx credential set {} --from-stdin",
+                context.request.skill_name,
+                context.request.requirement.provider,
+                context.request.requirement.provider
+            ));
+        }
+        let canonical = skill_ref
+            .canonicalize()
+            .map_err(|error| format!("could not resolve {}: {error}", skill_ref.display()))?;
+        let delivery = context
+            .resolution
+            .delivery(workspace)
+            .map_err(|error| error.to_string())?;
+        deliveries.insert(canonical, delivery);
     }
-    env
+    Ok(deliveries)
 }

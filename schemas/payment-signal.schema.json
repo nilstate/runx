@@ -1,0 +1,58 @@
+{
+  "$id": "https://schemas.runx.ai/runx/payment/signal/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "amount_minor": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "challenge_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "counterparty": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "operation": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "rail": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "realm": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.payment.signal.v1",
+      "type": "string"
+    },
+    "signal_type": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount_minor",
+    "currency",
+    "counterparty",
+    "operation"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.payment.signal.v1"
+}

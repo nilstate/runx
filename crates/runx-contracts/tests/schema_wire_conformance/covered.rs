@@ -3,7 +3,7 @@ use runx_contracts::act::assignment::ActAssignment;
 use runx_contracts::act::result::ActResultEnvelope;
 use runx_contracts::agent_context::AgentContextEnvelope;
 use runx_contracts::artifact::Artifact;
-use runx_contracts::authority::{Authority, AuthoritySubsetProof};
+use runx_contracts::authority::{Authority, AuthoritySubsetProof, AuthorityTerm};
 use runx_contracts::credential_delivery::{
     CredentialDeliveryObservation, CredentialDeliveryProfile, CredentialDeliveryRequest,
     CredentialDeliveryResponse,
@@ -25,6 +25,9 @@ use runx_contracts::ledger::LedgerEntry;
 use runx_contracts::list::RunxListReport;
 use runx_contracts::operational_policy::OperationalPolicy;
 use runx_contracts::operational_proposal::OperationalProposal;
+use runx_contracts::orchestrator_handoff::{
+    OrchestratorExecutionContext, OrchestratorHandoffContext,
+};
 use runx_contracts::output::Output;
 use runx_contracts::packet_index::PacketIndex;
 use runx_contracts::policy_proof::{AuthorityProof, CredentialEnvelope, ScopeAdmission};
@@ -208,6 +211,11 @@ pub(super) fn covered() -> Vec<Covered> {
             corpus: authority_corpus(),
         },
         Covered {
+            file_name: "authority-term.schema.json",
+            emitted: AuthorityTerm::json_schema(),
+            corpus: authority_term_corpus(),
+        },
+        Covered {
             file_name: "operational-policy.schema.json",
             emitted: OperationalPolicy::json_schema(),
             corpus: operational_policy_corpus(),
@@ -216,6 +224,16 @@ pub(super) fn covered() -> Vec<Covered> {
             file_name: "operational-proposal.schema.json",
             emitted: OperationalProposal::json_schema(),
             corpus: operational_proposal_corpus(),
+        },
+        Covered {
+            file_name: "orchestrator-execution-context.schema.json",
+            emitted: OrchestratorExecutionContext::json_schema(),
+            corpus: orchestrator_execution_context_corpus(),
+        },
+        Covered {
+            file_name: "orchestrator-handoff-context.schema.json",
+            emitted: OrchestratorHandoffContext::json_schema(),
+            corpus: orchestrator_handoff_context_corpus(),
         },
         Covered {
             file_name: "act.schema.json",

@@ -3,7 +3,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
-use runx_contracts::{JsonNumber, JsonObject, JsonValue};
+use runx_contracts::{EnvironmentRequirements, JsonNumber, JsonObject, JsonValue};
 use runx_parser::SkillSource;
 use runx_runtime::adapters::a2a::{
     A2aAdapter, A2aGetTaskRequest, A2aSendMessageRequest, A2aTask, A2aTaskStatus, A2aTransport,
@@ -31,9 +31,8 @@ fn a2a_fixture_transport_submits_completed_task() -> Result<(), Box<dyn std::err
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout, "hi");
-    assert_eq!(output.stderr, "");
-    assert_eq!(output.exit_code, Some(0));
+    assert_eq!(output.value, JsonValue::String("hi".to_owned()));
+    assert_eq!(output.exit_code(), None);
     let a2a = metadata_a2a(&output.metadata)?;
     assert_eq!(a2a.get("agent_identity"), Some(&string("echo-agent")));
     assert_eq!(a2a.get("task"), Some(&string("echo")));
@@ -62,8 +61,11 @@ fn a2a_fixture_transport_sanitizes_failed_tasks() -> Result<(), Box<dyn std::err
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
-    assert_eq!(output.stdout, "");
-    assert_eq!(output.stderr, "A2A task failed.");
+    assert_eq!(output.value, JsonValue::Null);
+    assert_eq!(
+        output.failure_message().as_deref(),
+        Some("A2A task failed.")
+    );
     assert!(!format!("{output:?}").contains("super-secret-value"));
     let a2a = metadata_a2a(&output.metadata)?;
     assert_eq!(a2a.get("task_status"), Some(&string("failed")));
@@ -78,10 +80,39 @@ fn a2a_reports_missing_metadata_as_user_failure() -> Result<(), Box<dyn std::err
 
     assert_eq!(output.status, InvocationStatus::Failure);
     assert_eq!(
-        output.stderr,
-        "A2A source requires agent_card_url and task metadata."
+        output.failure_message().as_deref(),
+        Some("A2A source requires agent_card_url and task metadata.")
     );
     assert!(output.metadata.is_empty());
+    Ok(())
+}
+
+#[test]
+fn a2a_rejects_missing_declared_environment_before_transport()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut request = invocation(
+        source(
+            Some("fixture://echo-agent"),
+            Some("echo"),
+            Some(template_message()),
+        ),
+        [("message".to_owned(), string("hi"))].into(),
+    );
+    request.requirements.environment = EnvironmentRequirements {
+        required: vec!["A2A_REGION".to_owned()],
+        optional: Vec::new(),
+    };
+
+    let error = match A2aAdapter::new(FixtureA2aTransport::new()).invoke(request) {
+        Ok(_) => return Err("missing required environment unexpectedly reached A2A".into()),
+        Err(error) => error,
+    };
+
+    assert!(matches!(
+        error,
+        runx_runtime::RuntimeError::MissingEnvironment { names }
+            if names == ["A2A_REGION".to_owned()]
+    ));
     Ok(())
 }
 
@@ -239,7 +270,10 @@ fn a2a_timeout_cancels_when_transport_supports_cancellation()
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
-    assert_eq!(output.stderr, "A2A task timed out after 50ms.");
+    assert_eq!(
+        output.failure_message().as_deref(),
+        Some("A2A task timed out after 50ms.")
+    );
     assert_eq!(transport.cancel_count.get(), 1);
     let a2a = metadata_a2a(&output.metadata)?;
     assert_eq!(a2a.get("task_id"), Some(&string("a2a_hanging")));
@@ -278,25 +312,29 @@ fn a2a_cancel_failure_is_sanitized_in_metadata() -> Result<(), Box<dyn std::erro
 fn harness_replay_runs_a2a_skill_fixture() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile::tempdir()?;
     let skill_dir = temp.path().join("skill");
-    std::fs::create_dir_all(&skill_dir)?;
-    std::fs::write(
-        skill_dir.join("SKILL.md"),
+    crate::support::write_test_skill_package(
+        &skill_dir,
         r#"---
 name: fixture-a2a
 description: Fixture A2A skill.
-source:
-  type: a2a
-  agent_card_url: fixture://echo-agent
-  agent_identity: echo-agent
-  task: echo
-  arguments:
-    message: "{{message}}"
-inputs:
-  message:
-    type: string
-    required: true
 ---
 Echo through A2A.
+"#,
+        r#"skill: fixture-a2a
+runners:
+  fixture-a2a:
+    default: true
+    source:
+      type: a2a
+      agent_card_url: fixture://echo-agent
+      agent_identity: echo-agent
+      task: echo
+      arguments:
+        message: "{{message}}"
+    inputs:
+      message:
+        type: string
+        required: true
 "#,
     )?;
     let fixture_path = temp.path().join("harness.yaml");
@@ -324,14 +362,17 @@ expect:
         .skill_output
         .ok_or_else(|| std::io::Error::other("missing replay skill output"))?;
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout, "hello from harness");
+    assert_eq!(
+        output.value,
+        JsonValue::String("hello from harness".to_owned())
+    );
     Ok(())
 }
 
 fn fixture_runtime_options() -> RuntimeOptions {
     RuntimeOptions {
         created_at: FIXTURE_CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }
 
@@ -416,10 +457,15 @@ impl A2aTransport for &RecordingTransport {
 fn invocation(source: SkillSource, inputs: JsonObject) -> SkillInvocation {
     SkillInvocation {
         skill_name: "fixture.a2a".to_owned(),
+        step_id: None,
+        requirements: Default::default(),
+        artifacts: None,
+        allowed_tools: None,
         source,
         inputs,
         resolved_inputs: JsonObject::new(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: ".".into(),
         env: BTreeMap::new(),
         credential_delivery: runx_runtime::CredentialDelivery::none(),
@@ -435,23 +481,25 @@ fn source(
         act: None,
         source_type: runx_parser::SourceKind::A2a,
         command: None,
+        module: None,
+        javascript_export: None,
+        pages: None,
         args: Vec::new(),
         cwd: None,
         timeout_seconds: Some(0),
         input_mode: None,
-        sandbox: None,
+        environment: Default::default(),
         server: None,
-        catalog_ref: None,
         tool: None,
         arguments,
         agent_card_url: agent_card_url.map(str::to_owned),
         agent_identity: Some("echo-agent".to_owned()),
         agent: None,
         task: task.map(str::to_owned),
-        hook: None,
         outputs: None,
         graph: None,
-        http: None,
+        external_adapter: None,
+        thread_outbox_provider: None,
         raw: JsonObject::new(),
     }
 }

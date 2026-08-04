@@ -1,5 +1,5 @@
 skill: mock-charge
-version: "0.1.1"
+version: "0.3.1"
 catalog:
   kind: graph
   audience: operator
@@ -9,7 +9,7 @@ catalog:
     - runx/charge
 harness:
   cases:
-    - name: mock-charge-models-receipt-before-forward
+    - name: mock-charge-mock-path
       runner: mock
       inputs:
         mcp_tool_call:
@@ -17,126 +17,80 @@ harness:
           arguments:
             query: runx
         provider_policy:
+          policy_ref: policy:provider-demo
           price_minor: 125
           currency: USD
           accepted_settlement_families:
             - mock
           counterparty: provider:demo
+          realm: test
         returned_credential:
           family: mock
           credential_ref: credential:mock:paid-search-001
         verify_capability_ref: capability:charge-verify:paid-search-001
         idempotency_seed: paid-search-001
-      caller:
-        answers:
-          agent_task.charge-price.output:
-            charge_price:
-              price_id: charge_price_demo_001
-              amount_minor: 125
-              currency: USD
-              settlement_families:
-                - mock
-            requested_payment_authority:
-              authority_ref: authority:payment:charge-price-demo-001
-            price_evidence:
-              source_refs:
-                - policy:provider-demo
-                - tool-call:search.paid
-              redactions: []
-            policy_metadata:
-              provider_realm: test
-              direction: provider_charge
-            open_questions: []
-          agent_task.charge-challenge.output:
-            effect_required_signal:
-              signal_type: effect_required
-              challenge_id: charge_challenge_demo_001
-            charge_challenge:
-              challenge_id: charge_challenge_demo_001
-              receipt_before_forward_required: true
-            idempotency:
-              key: charge:paid-search-001
-            accepted_settlement_families:
-              - mock
-            open_questions: []
-          agent_task.charge-verify.output:
-            verification_result:
-              status: verified
-              settlement_family: mock
-            settlement_proof:
-              proof_ref: receipt-proof:mock-charge:paid-search-001
-              idempotency_key: charge:paid-search-001
-            sealed_receipt_ref: receipt:charge:mock:paid-search-001
-            redactions:
-              - credential_material
-            recovery_hint:
-              status: sealed
-          agent_task.seal.output:
-            sealed: true
-            receipt_ref: receipt:charge:mock:paid-search-001
-          agent_task.forward.output:
-            forwarded: true
-            result_ref: result:search:paid-search-001
-        approvals: {}
       expect:
         status: sealed
+        steps:
+          - charge
+        step_outputs:
+          charge:
+            subset:
+              charge_plan:
+                data:
+                  decision: ready_for_provider_verification
+                  provider_status: not_called
+                  receipt_status: not_sealed
+                  forwarding_status: not_forwarded
         receipt:
           schema: runx.receipt.v1
           state: sealed
           disposition: closed
-          reason_code: graph_closed
-        steps:
-          - price
-          - challenge
-          - verify
-          - seal
-          - forward
 runners:
   mock:
     default: true
     type: graph
     inputs:
       mcp_tool_call:
-        type: object
+        type: json
+        packet: runx.payment.tool_call.v1
         required: true
         description: Inbound MCP operation request.
       provider_policy:
-        type: object
+        type: json
+        packet: runx.payment.charge_policy.v1
         required: true
-        description: Provider price and settlement family policy.
+        description: Provider-owned price and settlement-family policy.
       returned_credential:
-        type: object
+        type: json
+        packet: runx.payment.credential_reference.v1
         required: true
-        description: Returned mock payment credential.
-      parent_payment_authority:
-        type: object
-        required: false
-        description: Parent payment authority term or ref.
+        description: Opaque mock credential family and reference.
       verify_capability_ref:
         type: string
         required: true
-        description: Single-use verification capability reference.
+        description: Single-use verifier capability reference.
       idempotency_seed:
         type: string
-        required: false
-        description: Stable challenge idempotency seed.
+        required: true
+        description: Stable caller-owned challenge seed.
     graph:
       name: mock-charge
+      result_from: [charge]
       steps:
         - id: charge
           skill: ../charge
           runner: mock
           inputs:
-            mcp_tool_call: "$input.mcp_tool_call"
-            provider_policy: "$input.provider_policy"
-            returned_credential: "$input.returned_credential"
-            parent_payment_authority: "$input.parent_payment_authority"
-            verify_capability_ref: "$input.verify_capability_ref"
-            idempotency_seed: "$input.idempotency_seed"
+            mcp_tool_call: $input.mcp_tool_call
+            provider_policy: $input.provider_policy
+            returned_credential: $input.returned_credential
+            verify_capability_ref: $input.verify_capability_ref
+            idempotency_seed: $input.idempotency_seed
     runx:
       payment_authority:
         direction: provider_charge
-        phase: graph
+        phase: plan
         resource_family: effect
         settlement_family: mock
         receipt_before_forward_required: true

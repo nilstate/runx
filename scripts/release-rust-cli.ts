@@ -10,6 +10,7 @@ const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 interface Options {
   readonly artifactDir: string;
   readonly binary: string;
+  readonly worker: string;
   readonly dryRun: boolean;
   readonly platform: string | null;
   readonly publish: boolean;
@@ -29,6 +30,8 @@ run(pnpm, [
   "scripts/package-rust-cli.ts",
   "--binary",
   options.binary,
+  "--worker",
+  options.worker,
   "--out-dir",
   options.artifactDir,
   ...(options.platform ? ["--platform", options.platform] : []),
@@ -62,13 +65,15 @@ if (!options.dryRun && !process.env.NPM_TOKEN) {
 const publishTargets = packageDirs(path.resolve(workspaceRoot, options.artifactDir));
 assertPublishTargets(publishTargets);
 for (const packageDir of publishTargets) {
-  run(npm, ["publish", options.dryRun ? "--dry-run" : "", "--access", "public", "--tag", options.tag].filter(Boolean), {
-    cwd: packageDir,
-  });
+  if (options.dryRun) {
+    run(npm, ["pack", "--dry-run", "--json"], { cwd: packageDir });
+  } else {
+    run(npm, ["publish", "--access", "public", "--tag", options.tag], { cwd: packageDir });
+  }
 }
 
 console.log(JSON.stringify({
-  status: options.dryRun ? "dry_run_published" : "published",
+  status: options.dryRun ? "dry_run_validated" : "published",
   artifact_dir: options.artifactDir,
   tag: options.tag,
 }, null, 2));
@@ -76,6 +81,7 @@ console.log(JSON.stringify({
 function parseArgs(argv: readonly string[]): Options {
   let artifactDir = ".runx/rust-cli-artifacts";
   let binary = "target/debug/runx";
+  let worker = "target/debug/runx-js-worker";
   let dryRun = true;
   let platform: string | null = null;
   let publish = false;
@@ -95,6 +101,11 @@ function parseArgs(argv: readonly string[]): Options {
     }
     if (arg === "--binary") {
       binary = argv[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+    if (arg === "--worker") {
+      worker = argv[index + 1] ?? "";
       index += 1;
       continue;
     }
@@ -130,6 +141,9 @@ function parseArgs(argv: readonly string[]): Options {
   if (!binary) {
     throw new Error("--binary requires a path");
   }
+  if (!worker) {
+    throw new Error("--worker requires a path");
+  }
   if (signatureManifest === "") {
     throw new Error("--signature-manifest requires a path");
   }
@@ -142,7 +156,7 @@ function parseArgs(argv: readonly string[]): Options {
   if (!tag) {
     throw new Error("--tag requires a value");
   }
-  return { artifactDir, binary, dryRun, platform, publish, signatureManifest, tag };
+  return { artifactDir, binary, worker, dryRun, platform, publish, signatureManifest, tag };
 }
 
 function packageDirs(root: string): readonly string[] {
@@ -193,5 +207,5 @@ function run(command: string, args: readonly string[], options: { readonly cwd?:
 }
 
 function printUsage(): void {
-  console.log("Usage: pnpm exec tsx scripts/release-rust-cli.ts [--artifact-dir .runx/rust-cli-artifacts] [--binary target/debug/runx] [--platform darwin-arm64|darwin-x64|linux-arm64|linux-x64|win32-x64] --signature-manifest native/signatures.json [--publish] [--no-dry-run] [--tag next]");
+  console.log("Usage: pnpm exec tsx scripts/release-rust-cli.ts [--artifact-dir .runx/rust-cli-artifacts] [--binary target/debug/runx] [--worker target/debug/runx-js-worker] [--platform darwin-arm64|darwin-x64|linux-arm64|linux-x64|win32-x64] --signature-manifest native/signatures.json [--publish] [--no-dry-run] [--tag next]");
 }

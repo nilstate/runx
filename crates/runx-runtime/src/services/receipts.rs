@@ -3,11 +3,15 @@ use std::path::Path;
 
 use runx_contracts::Receipt;
 
+use crate::RuntimeError;
 use crate::receipts::paths::{
     ReceiptPathInputs, ResolvedReceiptPath, RuntimeReceiptConfig, resolve_receipt_path,
 };
 use crate::receipts::store::{LocalReceiptStore, ReceiptStoreError};
-use crate::receipts::{RuntimeReceiptSignatureConfig, RuntimeReceiptSigningError};
+use crate::receipts::{
+    Ed25519ReceiptVerifier, RuntimeReceiptSignatureConfig, RuntimeReceiptSigningError,
+    receipt_verifier_from_env,
+};
 use crate::services::WorkspaceEnv;
 
 #[derive(Clone, Debug)]
@@ -40,7 +44,7 @@ impl ReceiptServices {
         &self.signature_config
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "cli-tool", test))]
     pub(crate) fn from_signature_config(signature_config: RuntimeReceiptSignatureConfig) -> Self {
         Self { signature_config }
     }
@@ -69,13 +73,56 @@ impl ReceiptServices {
             .write_receipt_with_policy(receipt, self.signature_config.signature_policy())
     }
 
+    #[cfg(any(feature = "cli-tool", feature = "mcp"))]
+    pub(crate) fn write_local_receipts<'a>(
+        &self,
+        receipts: impl IntoIterator<Item = &'a Receipt>,
+        receipt_dir: &Path,
+    ) -> Result<(), ReceiptStoreError> {
+        LocalReceiptStore::new(receipt_dir)
+            .write_receipts_with_policy(receipts, self.signature_config.signature_policy())
+    }
+
+    #[cfg(feature = "cli-tool")]
+    pub(crate) fn list_local_receipts(
+        &self,
+        receipt_dir: &Path,
+    ) -> Result<Vec<Receipt>, ReceiptStoreError> {
+        LocalReceiptStore::new(receipt_dir)
+            .list_with_policy(self.signature_config.signature_policy())
+    }
+
+    #[cfg(feature = "cli-tool")]
+    pub(crate) fn read_local_receipt(
+        &self,
+        receipt_id: &str,
+        receipt_dir: &Path,
+    ) -> Result<Receipt, ReceiptStoreError> {
+        LocalReceiptStore::new(receipt_dir)
+            .read_exact_with_policy(receipt_id, self.signature_config.signature_policy())
+    }
+
     #[cfg(feature = "mcp")]
     pub(crate) fn write_local_receipt_dir(
         &self,
         receipt: &Receipt,
         receipt_dir: &Path,
     ) -> Result<(), ReceiptStoreError> {
-        LocalReceiptStore::new(receipt_dir)
-            .write_receipt_with_policy(receipt, self.signature_config.signature_policy())
+        self.write_local_receipts(std::iter::once(receipt), receipt_dir)
+    }
+}
+
+pub(crate) fn production_receipt_verifier(
+    env: &BTreeMap<String, String>,
+) -> Result<Option<Ed25519ReceiptVerifier>, RuntimeError> {
+    receipt_verifier_from_env(env)
+        .map(|resolved| resolved.map(|verifier| verifier.into_verifier()))
+        .map_err(|error| receipt_read_error(error.to_string()))
+}
+
+fn receipt_read_error(message: impl Into<String>) -> RuntimeError {
+    RuntimeError::SkillFailed {
+        skill_name: "receipt.read".to_owned(),
+        message: message.into(),
     }
 }

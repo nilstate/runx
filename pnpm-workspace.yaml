@@ -1,2 +1,5 @@
 packages:
   - "packages/*"
+
+overrides:
+  "ajv>fast-uri": "3.1.4"

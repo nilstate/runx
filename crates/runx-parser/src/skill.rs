@@ -3,12 +3,13 @@ use runx_contracts::{ExecutionSemantics, JsonObject, JsonValue};
 use crate::{ValidationError, json_fields::JsonFieldReader};
 
 mod catalog;
+mod credential;
+mod environment;
 mod execution_semantics;
 mod fixtures;
 mod governance;
 mod markdown;
 mod runner_definition;
-mod sandbox;
 mod source;
 mod types;
 
@@ -22,25 +23,34 @@ pub use fixtures::{
 };
 pub use governance::validate_skill_artifact_contract;
 pub use markdown::parse_skill_markdown;
+pub use runner_definition::validate_input_examples;
 pub use source::validate_skill_source;
 pub use types::{
-    ActDeclaration, InputMode, RawSkillIr, SkillArtifactContract, SkillHttpSource,
-    SkillIdempotencyPolicy, SkillInput, SkillMcpServer, SkillRetryPolicy, SkillRunnerDefinition,
-    SkillSandbox, SkillSource, SourceKind, ValidateSkillMode, ValidateSkillOptions, ValidatedSkill,
+    ActDeclaration, ArtifactPageFraming, ArtifactPageSource, CredentialRequirement, InputMode,
+    RawSkillIr, SkillArtifactContract, SkillExternalAdapterManifest, SkillIdempotencyPolicy,
+    SkillInput, SkillMcpServer, SkillRetryPolicy, SkillRunnerDefinition, SkillSource,
+    SkillThreadOutboxProviderSource, SourceKind, ValidateSkillMode, ValidateSkillOptions,
+    ValidatedSkill,
 };
 
 pub(crate) use catalog::validate_catalog_metadata;
+pub(crate) use credential::{
+    validate_credential_requirements, validate_runner_credential_references,
+};
+pub(crate) use environment::validate_environment_requirements;
 pub(crate) use fixtures::validate_harness_manifest;
+pub(crate) use governance::validate_inputs;
 pub(crate) use runner_definition::validate_runner_definition;
+pub(crate) use source::validate_inline_graph_source;
 
 use execution_semantics::validate_execution_semantics;
 use governance::validate_skill_governance;
 use governance::{
-    validate_allowed_tools, validate_artifact_contract, validate_idempotency, validate_inputs,
-    validate_mutating, validate_retry,
+    validate_allowed_tools, validate_artifact_contract, validate_idempotency, validate_mutating,
+    validate_retry,
 };
-use sandbox::validate_sandbox;
 use source::default_agent_source;
+use source::flattened_source_record;
 use source::validate_source;
 use source::validate_source_fields;
 
@@ -77,18 +87,21 @@ pub fn validate_skill_with_options(
     let governance = validate_skill_governance(&raw, runx.as_ref(), risk.as_ref())?;
     let category = validate_portable_skill_category(&raw)?;
     let runx_category = validate_runx_skill_category(runx.as_ref())?;
+    let registry_owner = validate_registry_owner(&raw)?;
 
     Ok(ValidatedSkill {
         name: FIELDS.required_string(raw.frontmatter.get("name"), "name")?,
         description: FIELDS.optional_string(raw.frontmatter.get("description"), "description")?,
         category,
         runx_category,
+        registry_owner,
         body: raw.body.clone(),
-        source: validate_source(&source, runx.as_ref())?,
+        source: validate_source(&source)?,
         inputs: validate_inputs(
             FIELDS
                 .optional_object(raw.frontmatter.get("inputs"), "inputs")?
                 .unwrap_or_default(),
+            "inputs",
         )?,
         auth: raw.frontmatter.get("auth").cloned(),
         risk: risk.clone(),
@@ -102,6 +115,24 @@ pub fn validate_skill_with_options(
         runx,
         raw,
     })
+}
+
+fn validate_registry_owner(raw: &RawSkillIr) -> Result<Option<String>, ValidationError> {
+    let owner = FIELDS.optional_string(raw.frontmatter.get("registry_owner"), "registry_owner")?;
+    let Some(owner) = owner else {
+        return Ok(None);
+    };
+    if owner != owner.to_ascii_lowercase()
+        || owner.starts_with('-')
+        || owner.ends_with('-')
+        || !owner.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'_' | b'-')
+        })
+    {
+        return Err(FIELDS
+            .validation_error("registry_owner must be a canonical lowercase registry namespace."));
+    }
+    Ok(Some(owner))
 }
 
 fn validate_portable_skill_category(raw: &RawSkillIr) -> Result<Option<String>, ValidationError> {

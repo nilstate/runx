@@ -7,10 +7,6 @@
       "id": "env-json",
       "mode": "inspect-env",
       "timeout_seconds": 1,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "skill-directory"
-      },
       "inputs": {
         "message": "hi",
         "thread.title": "Docs",
@@ -20,7 +16,7 @@
         "status": "sealed",
         "stdout_json": {
           "cwd_basename": "skill",
-          "inputs_source": "json",
+          "inputs_source": "path",
           "message": "hi",
           "mode": "inspect-env",
           "repeated_separator_env": "ok",
@@ -34,10 +30,6 @@
       "mode": "inspect-stdin",
       "input_mode": "stdin",
       "timeout_seconds": 1,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "skill-directory"
-      },
       "inputs": {
         "message": "from stdin"
       },
@@ -58,10 +50,6 @@
       "mode": "inspect-large-input",
       "large_input_bytes": 81920,
       "timeout_seconds": 1,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "skill-directory"
-      },
       "inputs": {
         "message": "large"
       },
@@ -81,10 +69,6 @@
       "mode": "inspect-env",
       "cwd": "../workspace-target",
       "timeout_seconds": 1,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "workspace"
-      },
       "inputs": {
         "message": "cwd"
       },
@@ -92,7 +76,7 @@
         "status": "sealed",
         "stdout_json": {
           "cwd_basename": "workspace-target",
-          "inputs_source": "json",
+          "inputs_source": "path",
           "message": "cwd",
           "mode": "inspect-env",
           "repeated_separator_env": null,
@@ -105,15 +89,10 @@
       "id": "large-output",
       "mode": "large-output",
       "timeout_seconds": 1,
-      "sandbox": {
-        "profile": "readonly",
-        "cwd_policy": "skill-directory"
-      },
       "inputs": {},
       "expected": {
-        "status": "failure",
-        "stdout_bytes": 0,
-        "stderr_contains": "stdout/stderr omitted"
+        "status": "sealed",
+        "stdout_bytes": 2097152
       }
     }
   ]

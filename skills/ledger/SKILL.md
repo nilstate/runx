@@ -21,35 +21,37 @@ writes.
 
 ## What this skill does
 
-`ledger` parses one audit question into a bounded ledger query over principal,
-skill ref, status, and time range, then returns the receipts that satisfy it as
-id-keyed stubs (`receipt_id`, `skill_ref`, `status`, `created_at`), never a
-receipt body. When `proof` asks for it, the skill confirms the matched stretch of
+`ledger` applies an explicit bounded query over receipt ids, principal, skill
+ref, status, and time range, then returns the receipts that satisfy it as
+id-keyed stubs (`receipt_id`, `skill_ref`, `status`, `created_at`, verification
+status). Exact-id reads also return `receipt_details` from the native redacted
+inspection projection: signed authority, decisions, acts, artifact references,
+lineage, seal, and verification without execution bodies, credential material,
+or local paths. When `proof` asks for it, the skill confirms the matched stretch of
 the chain is intact, naming any break by the receipt ids involved. The chain is
 the proof; a count that looks plausible is not. The skill answers the question in
 one or two sentences grounded only in the matched set and the verification
 result, and stops with `needs_more_evidence` when the ledger is silent rather
 than reporting a fabricated zero.
 
-The skill ships two runners over the same `runx.ledger_answer.v1` packet. The
-default `ledger` runner is an agent task that reasons over a caller-supplied
-view. The `read` runner is a read-only `cli-tool` front to the shipped receipt
-engine: it shells `runx history --json` to list the matched receipts from the
-sandbox's own receipt store (rooted at `RUNX_RECEIPT_DIR`) and, when `proof` is
-requested, `runx verify --json` for the chain verdict. It is the in-sandbox way
-for an agent to read its OWN sealed receipts before a gated action, with no
-caller-supplied stubs. Both runners project to id-stubs only; neither returns a
-receipt body, act payload, or secret field.
+The default `read` runner invokes the native `receipt.query` service directly.
+The service resolves the same receipt store and signature policy as Runx's CLI,
+projects bounded history rows, resolves exact ids through the redacted detail
+reader, and optionally verifies each matched receipt tree. There is no child
+process, command-string construction, or package-local receipt parser. It is
+the in-runtime way for an agent to inspect its own sealed receipts before a
+gated action. The detail packet is curated in Rust and never returns execution
+bodies, credential material, or local paths.
 
-The `read` runner accepts one optional `receipts` input: explicit ledger rows
-for replay or controlled evaluation. When present it uses those rows directly
-instead of shelling `runx history`, which is how the inline harness seeds a
-deterministic ledger without a populated store.
+The `read` runner accepts optional `receipts` and `receipt_details` inputs for
+replay or controlled evaluation. When present it uses those projections instead
+of the native store. Replay is labelled as supplied evidence and never becomes
+a live proof path.
 
 It queries and proves history across many runs; `audit-receipt` audits the
 integrity of a single receipt chain. Its nearest neighbor is
-`run-history`, which also reads the ledger but returns graded platform
-metrics (seal rate, refusal rate, maturity spread) and routes them to governance
+`run-history`, which also reads the ledger but returns deterministic platform
+outcome and catalog-coverage metrics and routes them to governance
 lanes. `ledger` answers one precise audit question with the receipt ids that
 match and a verified chain walk, not an aggregate health report.
 
@@ -84,7 +86,7 @@ match and a verified chain walk, not an aggregate health report.
 4. With zero matches, return `needs_more_evidence` and name the query that found
    nothing.
 5. When `proof` requests chain verification, take the chain verdict from the
-   engine's tree-rooted verify report (`runx verify`), not a hand-rolled link
+   engine's tree-rooted native proof report, not a hand-rolled link
    walk: `intact` follows the report's overall validity, and each `break` is
    derived from a tree's missing parent or a verification finding, named by the
    receipt ids involved. When the engine has no verify keys
@@ -134,6 +136,13 @@ matched_receipts:         # id-keyed stubs only; never a receipt body
     skill_ref: string
     status: string
     created_at: string
+receipt_details:          # exact-id reads only; Rust-curated, bounded, redacted
+  - id: string
+    authority: object
+    decisions: array
+    acts: array
+    artifact_refs: array
+    lineage_refs: array
 chain_verification:
   checked: boolean        # was verification requested
   intact: boolean | null  # null when unchecked
@@ -145,7 +154,7 @@ summary: string           # one or two sentences answering the question
 ```
 
 The `ledger_answer` object is the named packet `runx.ledger_answer.v1`. Scope is
-`ledger:read` only; no gate is required because the skill cannot mutate, and a
+`receipt.read` only; no gate is required because the skill cannot mutate, and a
 delete, redact, reseal, or reorder request is refused, not gated. The run's own
 receipt carries the question, the resolved query, the matched count, the list of
 matched `receipt_id` values, and the chain-verification result; it carries no
@@ -167,17 +176,21 @@ the store. The `summary` reads: two sealed spend runs over $500 ran for
 `principal:ops` in the window, and the verify verdict is intact. Had the window
 matched zero receipts, the run would stop at `needs_more_evidence` naming the
 query, not report a clean zero. Run through the `read` runner, the same answer
-comes straight from `runx history`/`runx verify` over the sandbox's own store;
+comes straight from the native history and proof services over the resolved store;
 when the verify keys are absent the chain is reported unverified rather than
 intact.
 
 ## Inputs
 
-- `question` (required): the audit question to answer against the ledger.
+- `question` (optional): the audit question bounding the ledger read. Without
+  one the runner returns `needs_agent` and does not query.
 - `filter` (optional): JSON narrowing the query by `principal`, `skill_ref`,
-  `status`, and `time_range` (`from`/`to`).
+  `status`, `time_range` (`from`/`to`), and `limit` (default 500, maximum 5000).
+- `receipt_ids` (optional): up to 100 exact receipt ids to resolve and verify.
 - `proof` (optional): JSON requesting chain verification over the matched
   receipts, for example `{ "verify_chain": true }`.
-- `receipts` (optional, `read` runner only): explicit ledger rows for replay or
-  controlled evaluation; when present the `read` runner uses them instead of
-  shelling `runx history`.
+- `receipts` (optional): explicit ledger rows for replay or controlled
+  evaluation; when present the `read` runner does not query live native
+  history.
+- `receipt_details` (optional): explicit native redacted detail projections for
+  deterministic replay only.

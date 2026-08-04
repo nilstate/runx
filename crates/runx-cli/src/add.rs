@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 use std::process::ExitCode;
 
+use runx_runtime::WorkspaceEnv;
 use runx_runtime::registry::{
     GithubRepoRef, IndexGithubRepoOptions, IndexResponse, IndexWarning, IndexedListing,
     IndexedRepo, TrustTier, index_github_repo, parse_github_repo_ref,
@@ -14,13 +15,9 @@ use serde::Serialize;
 
 use crate::router::AddUrlPlan;
 
-pub fn run_native_add(plan: AddUrlPlan) -> ExitCode {
-    let env = crate::history::env_map();
-    let cwd = match std::env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => return fail(&format!("failed to resolve cwd: {error}")),
-    };
-    let environment = match resolve_public_api_environment(&plan, &env, &cwd) {
+pub fn run_native_add(plan: AddUrlPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    let environment = match resolve_public_api_environment(&plan, workspace.env(), workspace.cwd())
+    {
         Ok(environment) => environment,
         Err(error) => return fail(&error.to_string()),
     };
@@ -30,12 +27,12 @@ pub fn run_native_add(plan: AddUrlPlan) -> ExitCode {
         Err(error) => return fail(&error.to_string()),
     };
 
-    let transport =
-        match crate::public_api::transport(crate::public_api::private_network_allowed(false, &env))
-        {
-            Ok(transport) => transport,
-            Err(error) => return fail(&format!("failed to initialize HTTP transport: {error}")),
-        };
+    let transport = match runx_runtime::hosted_api_transport(
+        runx_runtime::hosted_private_network_allowed(false, workspace.env()),
+    ) {
+        Ok(transport) => transport,
+        Err(error) => return fail(&format!("failed to initialize HTTP transport: {error}")),
+    };
 
     let options = IndexGithubRepoOptions {
         base_url: environment.base_url(),
@@ -53,8 +50,8 @@ fn resolve_public_api_environment(
     plan: &AddUrlPlan,
     env: &BTreeMap<String, String>,
     cwd: &std::path::Path,
-) -> Result<crate::public_api::ApiEnvironment, crate::public_api::ApiEnvironmentError> {
-    crate::public_api::ApiEnvironment::resolve_unauthenticated(
+) -> Result<runx_runtime::HostedApiEnvironment, runx_runtime::HostedApiError> {
+    runx_runtime::HostedApiEnvironment::resolve_unauthenticated(
         plan.api_base_url.as_deref(),
         env,
         cwd,

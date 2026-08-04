@@ -1,9 +1,0 @@
-{
-  "status": "failure",
-  "stdout": "",
-  "stderr": "Catalog source requires source.catalog_ref metadata.",
-  "exitCode": null,
-  "signal": null,
-  "durationMs": 0,
-  "errorMessage": "Catalog source requires source.catalog_ref metadata."
-}

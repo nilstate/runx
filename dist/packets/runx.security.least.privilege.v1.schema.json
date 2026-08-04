@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.runx.ai/runx/security/least_privilege/v1.json",
   "x-runx-packet-id": "runx.security.least_privilege.v1",
-  "x-runx-generated-from": "skills/least-privilege/X.yaml#root.runners.audit",
+  "x-runx-generated-from": "skills/least-privilege/X.yaml#root.runners.audit.graph.steps.1",
   "type": "object",
   "required": [
     "attenuation_proposals",
@@ -14,6 +14,306 @@
       "type": "array"
     },
     "audit_report": {
+      "additionalProperties": false,
+      "properties": {
+        "attenuated_grant": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "deferred_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "evidence": {
+          "additionalProperties": false,
+          "properties": {
+            "chain_verification": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "grant_source": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limitations": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "matched_receipt_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "missing_receipt_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "observation_source": {
+              "enum": [
+                "native_receipt_detail",
+                "supplied_replay",
+                "none"
+              ],
+              "type": "string"
+            },
+            "receipt_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "receipt_window": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "receipt_ids",
+            "matched_receipt_ids",
+            "missing_receipt_ids",
+            "chain_verification",
+            "observation_source",
+            "receipt_window",
+            "grant_source",
+            "limitations"
+          ],
+          "type": "object"
+        },
+        "kept_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "narrowed_scopes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "receipt_expectations": {
+          "additionalProperties": false,
+          "properties": {
+            "classification_counts": {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "stop_status": {
+              "type": "string"
+            },
+            "unresolved_questions": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "classification_counts",
+            "stop_status",
+            "unresolved_questions"
+          ],
+          "type": "object"
+        },
+        "removed_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "residual_risk": {
+          "items": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "reviewer_action": {
+          "enum": [
+            "applyable_now",
+            "gather_more_receipts",
+            "none"
+          ],
+          "type": "string"
+        },
+        "scope_diff": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "classification": {
+                "enum": [
+                  "keep",
+                  "narrow",
+                  "remove",
+                  "defer"
+                ],
+                "type": "string"
+              },
+              "granted_scope": {
+                "type": "string"
+              },
+              "normalized": {
+                "additionalProperties": false,
+                "properties": {
+                  "conditions": {
+                    "additionalProperties": true,
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "resource": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "verb": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "verb",
+                  "resource",
+                  "conditions"
+                ],
+                "type": "object"
+              },
+              "observed_use": {
+                "additionalProperties": false,
+                "properties": {
+                  "count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "receipt_refs": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "resources": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "scopes": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "verbs": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "count",
+                  "verbs",
+                  "resources",
+                  "receipt_refs",
+                  "scopes"
+                ],
+                "type": "object"
+              },
+              "proposal": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "granted_scope",
+              "normalized",
+              "observed_use",
+              "classification",
+              "proposal",
+              "rationale"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "needs_more_evidence",
+            "attenuation_proposed",
+            "no_change"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "subject",
+        "evidence",
+        "scope_diff",
+        "attenuated_grant",
+        "removed_scopes",
+        "narrowed_scopes",
+        "kept_scopes",
+        "deferred_scopes",
+        "residual_risk",
+        "reviewer_action",
+        "receipt_expectations"
+      ],
       "type": "object"
     },
     "verdict": {

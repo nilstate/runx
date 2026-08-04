@@ -86,18 +86,33 @@ For remote publishes the CLI sends a bounded skill package:
 - `SKILL.md` is the portable skill contract and is sent as the primary document.
 - `X.yaml`, when present, is the execution profile and is sent as the profile
   document.
-- Package files are selected by a small allowlist that mirrors what runx can
-  consume from a skill package:
-  - root-level `.js` / `.mjs` runner files referenced by `X.yaml`;
+- Package files are the exact parser-admitted material for the package:
+  - process entrypoints and their complete static local source closure;
+  - deterministic modules reachable from execution profiles;
   - nested `SKILL.md` / `X.yaml` files for graph stages, context skills, and
     local sub-skills called by the graph;
+  - harness-only support files explicitly declared in `harness.files`, confined
+    to the owning profile's `fixtures/` directory and staged profile-relative
+    into the isolated harness workspace;
   - `references/**/*.md` advisory markdown;
-  - `tools/**/manifest.json` plus minimal `tools/**/run.js` or `run.mjs`
-    runtimes for local tool manifests.
+  - bundled tool manifests and their complete static local source closure.
 
-Nothing else is package material. Fixtures, source trees, build output,
-`node_modules`, assets, dotfiles, local registry state, repo metadata, and random
-helper files are not uploaded. Secret-looking allowed file names such as `.env`,
+Publishers that need the exact artifact without writing a registry row use the
+same native materializer:
+
+```bash
+runx registry package ./skills/<your-skill> --json
+```
+
+The command is read-only. Its `markdown`, `profile_document`, and
+`package_files` output is the sole portable package shape used by hosted
+tooling; hosted code must not rediscover those files with a parallel crawler.
+
+Nothing else is package material. Undeclared fixtures, build output,
+`node_modules`, assets, dotfiles, local registry state, repo metadata, and
+random helper files are not uploaded. A `src/` directory is not special: only
+files proven reachable from an admitted entrypoint are included. Secret-looking
+admitted file names such as `.env`,
 `.npmrc`, credentials JSON, private keys, and certificate/key bundles still fail
 the publish before any remote upload.
 
@@ -141,6 +156,10 @@ runx treats it like every other governed action, with no special-casing:
   same allowlisted package files that hosted runx validated. Signed run receipts
   and hosted verified-run evidence are separate signals recorded when the skill
   is executed.
+- When a contributor-owned package is accepted into the Runx repository,
+  `registry_owner` in `SKILL.md` frontmatter preserves that contributor's
+  namespace for later hardened versions. Repository inclusion does not silently
+  transfer the registry row to `runx/*`; such a transfer must be explicit.
 
 ## After you publish
 

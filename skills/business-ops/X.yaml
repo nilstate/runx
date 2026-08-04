@@ -1,11 +1,15 @@
 skill: business-ops
-version: "0.1.2"
+version: "0.1.6"
 
 catalog:
   kind: graph
   audience: public
   visibility: public
   role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: true
+  approval: conditional
 
 runners:
   main:
@@ -22,6 +26,7 @@ runners:
         description: Optional product policy, topology, audience constraints, or provider state. Context only, not authority.
     graph:
       name: business-ops
+      result_from: [package-route]
       steps:
         - id: classify
           skill: ./graph/ops-lane
@@ -65,6 +70,28 @@ runners:
             lane: receipt-audit
             signal: "$input.signal"
             operator_context: "$input.operator_context"
+        - id: package-route
+          inputs:
+            signal: "$input.signal"
+          context:
+            classify: classify.lane_packet.data
+            docs: docs.lane_packet.data
+            release: release.lane_packet.data
+            issue: issue.lane_packet.data
+            send: send.lane_packet.data
+            spend: spend.lane_packet.data
+            audit: audit.lane_packet.data
+          run:
+            type: javascript
+            module: business-ops.mjs
+            export: packageRoute
+            outputs:
+              lane_packets: object
+          artifacts:
+            named_emits:
+              lane_packets: lane_packets
+            packets:
+              lane_packets: runx.business_ops_route.v1
 
   route_and_append:
     type: graph
@@ -99,6 +126,7 @@ runners:
         description: Optional product policy, topology, audience constraints, or provider state. Context only, not authority.
     graph:
       name: business-ops-route-and-append
+      result_from: [persist-route, readback]
       steps:
         - id: classify
           skill: ./graph/ops-lane

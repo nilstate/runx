@@ -1,91 +1,88 @@
 ---
 name: lead-router
-description: Qualify a lead and route it to the right governed action, direct outreach, a nurture campaign, or a recorded hold, sealing which path was taken and why.
+description: Route a validated lead to direct outreach planning, nurture planning, or a recorded hold, preserving why that path was chosen.
 runx:
   category: growth
 ---
 
 # Lead Router
 
-Not every lead gets the same treatment, and pretending otherwise is how teams
-burn their list. `lead-router` qualifies a lead once and then takes exactly
-one path: reach out now, drop it into nurture, or hold and leave it alone. The
-choice is governed and sealed, so a month later you can see why this lead got a
-personal email and that one did not.
+Not every lead should receive the same treatment. `lead-router` takes one
+validated enrichment packet and chooses exactly one governed posture:
+`reach_out`, `nurture`, or `hold`. The route and its evidence remain visible in
+the receipt, so the decision is reviewable instead of disappearing inside an
+ad-hoc prompt.
 
-This is the first skill built on the graph's `when` primitive. A single
-`qualify` step decides a route, and three branches each declare the route they
-serve. The runtime runs the branch that matches and skips the rest; the receipt
-records the route, the rationale, and the one path that executed. There is no
-hidden routing inside an agent, the branch is a visible, auditable part of the
-graph.
+This is a routing and planning skill. It does not send a message, enroll a
+campaign, or mutate a CRM. Reach-out and nurture outcomes prepare the exact
+input for the canonical `send-as` planning boundary. A hold is recorded in the
+Runx receipt only; it is not an external suppression-list update.
 
-## What this skill does
+## When to use it
 
-`lead-router` is a graph that composes existing skills behind one routing
-decision:
+Use `lead-router` after `lead-enrichment` has produced a validated packet and a
+team needs one consistent qualify-then-plan decision. Use a campaign or
+provider-specific skill directly when the audience and authorization are
+already decided and no lead-level routing remains.
 
-1. `qualify` reads the lead and engagement signals and emits a `route`:
-   `reach_out`, `nurture`, or `hold`, with a rationale.
-2. `when route == reach_out`, the `send-as` skill plans a direct, approval-gated
-   outreach message.
-3. `when route == nurture`, the `send-as` skill plans a governed nurture
-   campaign handoff for whichever provider adapter the operator has configured.
-4. `when route == hold`, a hold is recorded with the reason, and nothing is sent.
+Never use it to bypass consent, contact a suppressed lead, or draft bespoke copy
+from raw signals. Enrichment owns evidence synthesis; content skills own copy;
+provider adapters own delivery.
 
-Exactly one branch runs. The unselected branches are skipped, not blocked, and
-the run seals normally on whichever path executed. Authority narrows per branch:
-the outreach and nurture branches carry their own send scopes and approval gates,
-the hold branch sends nothing at all.
+## How it works
 
-## When to use this skill
+1. Runx digests and admits the enrichment packet, preserving its signal
+   references and validation state.
+2. Consent and suppression outrank model judgment. A do-not-contact packet takes
+   the deterministic `hold` path.
+3. For a ready packet, bounded judgment selects `reach_out`, `nurture`, or
+   `hold` and cites admitted signal references in the rationale.
+4. Finalization produces either a deterministic hold or an exact, non-executed
+   `send-as` handoff marked `prepared_for_send_planning`.
+5. The later send lane performs content preflight, obtains any required
+   approval, binds idempotency, invokes the provider, and verifies readback.
 
-- An inbound or sourced lead needs a consistent, governed qualify-then-act
-  decision rather than an ad-hoc judgment call.
-- You want the routing decision (and the reason) on the receipt, not buried in a
-  prompt.
-- Outreach, nurture, and do-not-contact are all real outcomes the workflow must
-  choose between.
+Ambiguity should become a hold, not an optimistic send plan. A hold is a clean,
+auditable terminal state rather than a workflow failure.
 
-## When not to use this skill
+## Inputs and result
 
-- To send the same message to everyone. That is a campaign; route through
-  `send-as` and then a provider adapter.
-- To draft copy only. Use a drafting skill; this skill decides and routes.
-- To contact a lead with no consent basis or against a suppression list. The
-  `hold` route exists for exactly that case.
+- `enrichment_packet` is validated `runx.growth.lead_enrichment.v1` data.
+- `principal` names the proposed downstream sender; it is not itself send
+  authority.
+- `objective` describes the intended follow-up.
+- `provider_context` may narrow a future provider binding but cannot authorize
+  delivery.
 
-## How the branch is wired
+The result is a `runx.growth.lead_route.v1` packet with one route, rationale,
+evidence references, enrichment digest, and either a hold record or a canonical
+downstream planning handoff. It never reports enrollment or delivery.
 
-- `qualify` produces `route` (the scalar the branches test) plus `rationale` and
-  `segment`.
-- each branch declares `when: { field: qualify.route, equals: <route> }`; a
-  branch whose route does not match is skipped and the graph continues.
-- the run seals after the matching branch; the receipt shows `qualify`'s route
-  and the single branch that ran, so the path is provable after the fact.
+## Stop conditions
 
-## Edge cases and stop conditions
+- Deterministically hold when consent or suppression forbids contact.
+- Prefer hold when evidence is contradictory, insufficient, or cannot justify a
+  channel.
+- Reject invented signal references and packets that did not pass enrichment
+  validation.
+- Do not draft content, authorize a send, or reinterpret provider context as a
+  grant.
+- If the downstream send is denied or blocked, preserve the route decision but
+  do not claim the action occurred.
 
-- **No `lead`:** the run returns `needs_agent`; there is nothing to qualify.
-- **`route: hold`:** outreach and nurture are skipped; the hold branch records
-  the reason and the run seals with nothing sent.
-- **An ambiguous qualification:** `qualify` should route to `hold` rather than
-  guess; a hold is a clean, recorded outcome, not a failure.
-- **Send blocked downstream:** the chosen branch carries its own approval gate;
-  if approval is withheld, that branch stops at its gate, and the receipt shows
-  the route was chosen but the send was not authorized.
+## Example
 
-## Output
+A validated packet shows recent product interest, an appropriate role, and
+email consent. The router may choose `reach_out` and prepare a `send-as` input
+whose rationale cites those exact signals. If consent is missing or a
+suppression flag exists, it records `hold`; no nurture or outreach handoff is
+created.
 
-The run seals to `runx.receipt.v1`. The receipt links `qualify` (the route and
-rationale) and the single branch that executed (`send_plan` or `hold_record`).
-The branches that did not match are recorded as skipped, so the receipt proves
-both the decision and the one action taken.
+## Agent task contract
 
-## Inputs
+### `lead-route`
 
-- `lead` (required): lead, account, and engagement signals to qualify.
-- `principal` (required): principal the outreach or nurture is sent as.
-- `objective` (optional): what the outreach should accomplish.
-- `operator_context` (optional): compliance, consent posture, or campaign
-  constraints.
+Choose `reach_out`, `nurture`, or `hold` from the admitted enrichment context.
+Return the route, rationale, segment, and exact evidence references. Prefer
+`hold` when evidence is ambiguous. Do not draft content, authorize a send, or
+claim enrollment, provider mutation, or delivery.

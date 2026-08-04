@@ -1,269 +1,136 @@
 skill: pay-reserve
-version: "0.1.0"
+version: "0.2.1"
 catalog:
   kind: skill
   audience: operator
   visibility: internal
   role: graph-stage
-  part_of:
-    - runx/spend
+  part_of: [runx/spend]
 harness:
   cases:
-    - name: pay-reserve-selected
+    - name: pay-reserve-native-subset
       runner: reserve
       inputs:
         payment_quote_packet:
-          payment_quote:
-            quote_id: quote_demo_001
-            amount_minor: 125
-            currency: USD
-            rails:
-              - mock
-            counterparty: merchant:demo
-            operation: search.paid
+          payment_quote: { quote_id: quote_demo_001, amount_minor: 125, currency: USD, rails: [mock], counterparty: "merchant:demo", operation: search.paid, realm: test }
           requested_payment_authority:
-            term_id: authority-term:payment:quote-demo-001
-            principal_ref:
-              type: host
-              uri: principal:operator:test
-            resource_ref:
-              type: surface
-              uri: merchant:demo
+            term_id: payment-request-demo
+            principal_ref: { type: principal, uri: "principal:operator:test" }
+            resource_ref: { type: surface, uri: "merchant:demo" }
             resource_family: effect
-            verbs:
-              - prepare
-              - commit
+            verbs: [prepare, commit]
             bounds:
               effect_limits:
                 - family: payment
                   unit: USD
                   max_per_call_units: 125
-                  channels:
-                    - mock
+                  max_per_run_units: 125
+                  channels: [mock]
                   realm: test
-                  peer: merchant:demo
+                  peer: "merchant:demo"
                   operation: search.paid
+                  authorization_form: single_use_capability
+                  idempotency_required: true
+                  recovery_required: true
+                  receipt_before_success: true
+                  single_use_capability: true
             conditions: []
             approvals: []
-            capabilities: []
-            issued_by_ref:
-              type: host
-              uri: authority:payment:test
+            capabilities: [effect_single_use_capability]
+            expires_at: 2026-05-22T00:00:00Z
+            issued_by_ref: { type: host, uri: "authority:payment:test" }
+          challenge_evidence: { source_refs: ["signal:ch_mock_001"], redactions: [] }
+          risk_notes: []
+          open_questions: []
         parent_payment_authority:
-          authority_ref: authority:payment:test
+          term_id: authority-term:payment:test
+          principal_ref: { type: principal, uri: "principal:operator:test" }
+          resource_ref: { type: surface, uri: "merchant:demo" }
+          resource_family: effect
+          verbs: [prepare, commit]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 1000
+                max_per_run_units: 5000
+                channels: [mock]
+                realm: test
+                peer: "merchant:demo"
+                operation: search.paid
+                authorization_form: single_use_capability
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          expires_at: 2026-05-22T00:00:00Z
+          issued_by_ref: { type: host, uri: "authority:payment:test" }
         idempotency_seed: demo-search-001
-      caller:
-        answers:
-          agent_task.pay-reserve.output:
-            payment_decision:
-              decision_id: decision_payment_demo_001
-              choice: continue
-              amount_minor: 125
-              currency: USD
-              inputs:
-                signal_refs: []
-                target_ref: null
-                opportunity_refs: []
-                selection_ref: null
-              proposed_intent:
-                purpose: complete a bounded payment
-                legitimacy: authorized by selected reservation decision
-                success_criteria: []
-                constraints: []
-                derived_from: []
-              selected_act_id: act_fulfill
-              selected_harness_ref: null
-              justification:
-                summary: reservation selected a bounded spend act
-                evidence_refs: []
-              closure: null
-              artifact_refs: []
-            reserved_payment_authority:
-              parent_authority:
-                term_id: authority-term:payment:quote-demo-001
-                principal_ref:
-                  type: host
-                  uri: principal:operator:test
-                resource_ref:
-                  type: surface
-                  uri: merchant:demo
-                resource_family: effect
-                verbs:
-                  - prepare
-                  - commit
-                bounds:
-                  effect_limits:
-                    - family: payment
-                      unit: USD
-                      max_per_call_units: 125
-                      max_per_run_units: 125
-                      channels:
-                        - mock
-                      realm: test
-                      peer: merchant:demo
-                      operation: search.paid
-                      idempotency_required: true
-                      recovery_required: true
-                      receipt_before_success: true
-                      single_use_capability: true
-                      authorization_form: single_use_capability
-                conditions: []
-                approvals: []
-                capabilities:
-                  - effect_single_use_capability
-                issued_by_ref:
-                  type: host
-                  uri: authority:payment:test
-              child_authority:
-                term_id: authority-term:payment:reserve-demo-001
-                principal_ref:
-                  type: host
-                  uri: principal:operator:test
-                resource_ref:
-                  type: surface
-                  uri: merchant:demo
-                resource_family: effect
-                verbs:
-                  - commit
-                capabilities:
-                  - effect_single_use_capability
-                bounds:
-                  effect_limits:
-                    - family: payment
-                      unit: USD
-                      max_per_call_units: 125
-                      max_per_run_units: 125
-                      channels:
-                        - mock
-                      realm: test
-                      peer: merchant:demo
-                      operation: search.paid
-                      idempotency_required: true
-                      recovery_required: true
-                      receipt_before_success: true
-                      single_use_capability: true
-                      authorization_form: single_use_capability
-                conditions: []
-                approvals: []
-                issued_by_ref:
-                  type: host
-                  uri: authority:payment:test
-              reservation_decision:
-                decision_id: decision_payment_demo_001
-                choice: continue
-                inputs:
-                  signal_refs: []
-                  target_ref: null
-                  opportunity_refs: []
-                  selection_ref: null
-                proposed_intent:
-                  purpose: complete a bounded payment
-                  legitimacy: authorized by selected reservation decision
-                  success_criteria: []
-                  constraints: []
-                  derived_from: []
-                selected_act_id: act_fulfill
-                selected_harness_ref: null
-                justification:
-                  summary: reservation selected a bounded spend act
-                  evidence_refs: []
-                closure: null
-                artifact_refs: []
-              subset_proof:
-                parent_authority_ref:
-                  type: surface
-                  uri: merchant:demo
-                comparison_algorithm: runx.payment-authority-subset.v1
-                result: subset
-                compared_terms:
-                  - child_term_id: authority-term:payment:reserve-demo-001
-                    parent_term_id: authority-term:payment:quote-demo-001
-                    relation: subset
-                checked_at: 2026-05-22T00:00:00Z
-              child_harness_ref:
-                type: harness
-                uri: runx:harness:pay-reserve_fulfill
-              spend_capability_binding:
-                child_harness_ref:
-                  type: harness
-                  uri: runx:harness:pay-reserve_fulfill
-                act_id: act_fulfill
-                reservation_decision_id: decision_payment_demo_001
-                idempotency_key: payment:demo-search-001
-                amount_minor: 125
-                currency: USD
-                counterparty: merchant:demo
-                rail: mock
-              consumed_spend_capability_refs: []
-            idempotency:
-              key: payment:demo-search-001
-              recovery_required: true
-            spend_capability_ref:
-              type: credential
-              uri: capability:payment:demo-search-001
-            approval:
-              required: false
-              status: not_required
-            core_requirements:
-              - payment_authority_subset
-              - reserve_before_rail
-              - receipt_before_success
-            open_questions: []
+        target_harness_ref: { type: harness, uri: "runx:harness:spend" }
+        target_act_id: act_fulfill
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: payment_reservation_closed
+        receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+        steps: [reserve]
+    - name: pay-reserve-refuses-quote-over-parent-ceiling
+      runner: reserve
+      inputs:
+        payment_quote_packet:
+          payment_quote: { quote_id: quote_bad, amount_minor: 2000, currency: USD, rails: [mock], counterparty: "merchant:demo", operation: search.paid }
+          requested_payment_authority:
+            term_id: payment-request-bad
+            principal_ref: { type: principal, uri: "principal:operator:test" }
+            resource_ref: { type: surface, uri: "merchant:demo" }
+            resource_family: effect
+            verbs: [prepare, commit]
+            bounds:
+              effect_limits:
+                - { family: payment, unit: USD, max_per_call_units: 2000, max_per_run_units: 2000, channels: [mock], peer: "merchant:demo", operation: search.paid, authorization_form: single_use_capability, idempotency_required: true, recovery_required: true, receipt_before_success: true, single_use_capability: true }
+            conditions: []
+            approvals: []
+            capabilities: [effect_single_use_capability]
+            issued_by_ref: { type: host, uri: "authority:payment:test" }
+        parent_payment_authority:
+          term_id: authority-term:payment:test
+          principal_ref: { type: principal, uri: "principal:operator:test" }
+          resource_ref: { type: surface, uri: "merchant:demo" }
+          resource_family: effect
+          verbs: [prepare, commit]
+          bounds:
+            effect_limits:
+              - { family: payment, unit: USD, max_per_call_units: 1000, max_per_run_units: 5000, channels: [mock], peer: "merchant:demo", operation: search.paid, authorization_form: single_use_capability, idempotency_required: true, recovery_required: true, receipt_before_success: true, single_use_capability: true }
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          issued_by_ref: { type: host, uri: "authority:payment:test" }
+        idempotency_seed: bad
+        target_harness_ref: { type: harness, uri: "runx:harness:spend" }
+        target_act_id: act_fulfill
+      expect: { status: failure }
 runners:
   reserve:
     default: true
-    type: agent-task
-    agent: operator
-    task: pay-reserve
-    mutating: true
-    outputs:
-      payment_decision: object
-      reserved_payment_authority: object
-      spend_capability_ref: object
-      idempotency: object
-      approval: object
-      core_requirements: array
-      open_questions: array
-    artifacts:
-      wrap_as: payment_reservation_packet
-      packet: runx.payment.reservation.v1
-    runx:
-      payment_authority:
-        phase: reserve
-        resource_family: effect
-        verbs:
-          - prepare
-        core_owned:
-          - authority_subset_proof
-          - atomic_budget_hold
-          - idempotency_key
-        mutates_rail: false
-        receives_funding_material: false
+    type: graph
     inputs:
-      payment_quote_packet:
-        type: object
-        required: true
-        description: Output from pay-quote.
-      parent_payment_authority:
-        type: object
-        required: true
-        description: Parent payment authority term or authority reference.
-      spend_policy:
-        type: object
-        required: false
-        description: Policy limits, period caps, and approval thresholds.
-      approval_context:
-        type: object
-        required: false
-        description: Operator, system, or prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable seed if not already supplied by the quote.
+      payment_quote_packet: { type: object, required: true, description: Native payment.quote packet data. }
+      parent_payment_authority: { type: json, packet: runx.authority_term.v1, required: true, description: Full typed parent AuthorityTerm used to recompute attenuation. }
+      idempotency_seed: { type: string, required: true, description: Stable caller-owned reservation seed. }
+      target_harness_ref: { type: object, required: true, description: Exact downstream harness Reference. }
+      target_act_id: { type: string, required: true, description: Exact downstream payment act id. }
+    graph:
+      name: pay-reserve
+      result_from: [reserve]
+      steps:
+        - id: reserve
+          tool: payment.reserve
+          mutation: true
+          scopes: [payment:reserve]
+          inputs:
+            payment_quote_packet: $input.payment_quote_packet
+            parent_payment_authority: $input.parent_payment_authority
+            idempotency_seed: $input.idempotency_seed
+            target_harness_ref: $input.target_harness_ref
+            target_act_id: $input.target_act_id
