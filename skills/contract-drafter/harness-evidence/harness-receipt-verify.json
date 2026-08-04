@@ -1,0 +1,25 @@
+{
+  "schema": "runx.verify_verdict.v1",
+  "receipt_id": "sha256:d08325ce502c11e65abb6e095c03bdbeb3310f1bcea23e5772af6a96b25497fc",
+  "valid": true,
+  "digest": {
+    "status": "valid",
+    "expected": "sha256:e5e547a0278efec3e2331c7718e61281a29ba8ec92fb22212dfa0cdb41196405",
+    "actual": "sha256:e5e547a0278efec3e2331c7718e61281a29ba8ec92fb22212dfa0cdb41196405"
+  },
+  "content_address": {
+    "status": "valid",
+    "expected": "sha256:d08325ce502c11e65abb6e095c03bdbeb3310f1bcea23e5772af6a96b25497fc",
+    "actual": "sha256:d08325ce502c11e65abb6e095c03bdbeb3310f1bcea23e5772af6a96b25497fc"
+  },
+  "signature": {
+    "mode": "production",
+    "status": "valid",
+    "kid": "frantic-86-contract-drafter"
+  },
+  "lineage": {
+    "status": "unverified",
+    "message": "single receipt verification cannot prove receipt-tree lineage"
+  },
+  "findings": []
+}

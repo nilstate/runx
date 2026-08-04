@@ -1,0 +1,57 @@
+{
+  "template": {
+    "id": "msa-basic-v1",
+    "version": "1.0",
+    "title": "Services Agreement",
+    "required_terms": [
+      "effective_date",
+      "services",
+      "fee_usd",
+      "payment_due_days",
+      "term_months",
+      "termination_notice_days",
+      "governing_law"
+    ],
+    "clauses": [
+      {
+        "id": "parties",
+        "heading": "Parties",
+        "baseline": "This Services Agreement is between {{provider.legal_name}} and {{customer.legal_name}}."
+      },
+      {
+        "id": "governing-law",
+        "heading": "Governing Law",
+        "baseline": "This Agreement is governed by {{terms.governing_law}}."
+      }
+    ]
+  },
+  "parties": {
+    "provider": {
+      "legal_name": "Acme Labs LLC",
+      "address": "100 Market Street, Wilmington, DE 19801",
+      "principal_ref": "organization:acme-labs"
+    },
+    "customer": {
+      "legal_name": "Beacon Studio Inc.",
+      "address": "200 Pine Street, San Francisco, CA 94104",
+      "audience_ref": "organization:beacon-studio"
+    }
+  },
+  "terms": {
+    "effective_date": "2026-08-15",
+    "services": "monthly accessibility review and remediation recommendations",
+    "fee_usd": 4800,
+    "payment_due_days": 15,
+    "term_months": 6,
+    "termination_notice_days": 45,
+    "clause_changes": []
+  },
+  "expected": {
+    "status": "refused",
+    "reason": "missing required term: governing_law",
+    "outputs_absent": [
+      "draft_doc",
+      "send_proposal"
+    ]
+  }
+}

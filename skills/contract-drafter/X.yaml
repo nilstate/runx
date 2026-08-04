@@ -1,0 +1,214 @@
+skill: contract-drafter
+version: "0.1.0"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: context
+  execution: plan
+  completion: plan
+  requires_adapter: false
+  approval: required
+
+harness:
+  cases:
+    - name: sealed_complete_template_parties_terms
+      inputs:
+        template:
+          id: msa-basic-v1
+          version: "1.0"
+          title: Services Agreement
+          required_terms:
+            - effective_date
+            - services
+            - fee_usd
+            - payment_due_days
+            - term_months
+            - termination_notice_days
+            - governing_law
+          clauses:
+            - id: parties
+              heading: Parties
+              baseline: This Services Agreement is between {{provider.legal_name}} and {{customer.legal_name}}.
+            - id: services
+              heading: Services
+              baseline: Provider will perform {{terms.services}}.
+            - id: fees
+              heading: Fees and Payment
+              baseline: Customer will pay USD {{terms.fee_usd}} within 30 days after invoice.
+            - id: term
+              heading: Term and Termination
+              baseline: The term is {{terms.term_months}} months and either party may terminate on 30 days written notice.
+            - id: governing-law
+              heading: Governing Law
+              baseline: This Agreement is governed by {{terms.governing_law}}.
+        parties:
+          provider:
+            legal_name: Acme Labs LLC
+            address: 100 Market Street, Wilmington, DE 19801
+            principal_ref: organization:acme-labs
+          customer:
+            legal_name: Beacon Studio Inc.
+            address: 200 Pine Street, San Francisco, CA 94104
+            audience_ref: organization:beacon-studio
+        terms:
+          effective_date: 2026-08-15
+          services: monthly accessibility review and remediation recommendations
+          fee_usd: 4800
+          payment_due_days: 15
+          term_months: 6
+          termination_notice_days: 45
+          governing_law: State of Delaware
+          clause_changes:
+            - clause: fees
+              baseline: payment due within 30 days after invoice
+              proposed_change: payment due within 15 days after invoice
+              source_term: payment_due_days
+              rationale: supplied commercial term
+            - clause: term
+              baseline: termination on 30 days written notice
+              proposed_change: termination on 45 days written notice
+              source_term: termination_notice_days
+              rationale: supplied commercial term
+      caller:
+        answers:
+          agent_task.contract-drafter-assemble.output:
+            draft_doc:
+              draft_ref: contract-drafter:msa-basic-v1:2026-08-15:acme-labs:beacon-studio
+              template_id: msa-basic-v1
+              template_version: "1.0"
+              title: Services Agreement
+              parties:
+                - Acme Labs LLC
+                - Beacon Studio Inc.
+              body: |-
+                SERVICES AGREEMENT
+                Effective date: 2026-08-15
+
+                Parties
+                This Services Agreement is between Acme Labs LLC, 100 Market Street, Wilmington, DE 19801, and Beacon Studio Inc., 200 Pine Street, San Francisco, CA 94104.
+
+                Services
+                Acme Labs LLC will perform monthly accessibility review and remediation recommendations.
+
+                Fees and Payment
+                Beacon Studio Inc. will pay USD 4800 within 15 days after invoice.
+
+                Term and Termination
+                The term is 6 months and either party may terminate on 45 days written notice.
+
+                Governing Law
+                This Agreement is governed by State of Delaware.
+              source_clause_ids:
+                - parties
+                - services
+                - fees
+                - term
+                - governing-law
+              unresolved_placeholders: []
+              review_status: draft_for_review
+              delivery_status: not_sent
+            deviations:
+              - clause: fees
+                baseline: payment due within 30 days after invoice
+                proposed_change: payment due within 15 days after invoice
+                source_term: payment_due_days
+                rationale: supplied commercial term
+              - clause: term
+                baseline: termination on 30 days written notice
+                proposed_change: termination on 45 days written notice
+                source_term: termination_notice_days
+                rationale: supplied commercial term
+            send_proposal:
+              skill: send-as
+              runner: plan
+              objective: Review and optionally route the supplied Services Agreement draft through a separately approved provider lane.
+              principal: organization:acme-labs
+              audience:
+                type: recipient
+                ref: organization:beacon-studio
+              content_ref:
+                draft_ref: contract-drafter:msa-basic-v1:2026-08-15:acme-labs:beacon-studio
+                template_id: msa-basic-v1
+                template_version: "1.0"
+              operator_context: Draft only; require human approval and legal review. No provider delivery has occurred.
+              human_approval_required: true
+              legal_review_required: true
+              provider_delivery: not_executed
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+
+    - name: refused_missing_required_term
+      inputs:
+        template:
+          id: msa-basic-v1
+          version: "1.0"
+          title: Services Agreement
+          required_terms:
+            - effective_date
+            - services
+            - fee_usd
+            - payment_due_days
+            - term_months
+            - termination_notice_days
+            - governing_law
+          clauses:
+            - id: parties
+              heading: Parties
+              baseline: This Services Agreement is between {{provider.legal_name}} and {{customer.legal_name}}.
+            - id: governing-law
+              heading: Governing Law
+              baseline: This Agreement is governed by {{terms.governing_law}}.
+        parties:
+          provider:
+            legal_name: Acme Labs LLC
+            address: 100 Market Street, Wilmington, DE 19801
+            principal_ref: organization:acme-labs
+          customer:
+            legal_name: Beacon Studio Inc.
+            address: 200 Pine Street, San Francisco, CA 94104
+            audience_ref: organization:beacon-studio
+        terms:
+          effective_date: 2026-08-15
+          services: monthly accessibility review and remediation recommendations
+          fee_usd: 4800
+          payment_due_days: 15
+          term_months: 6
+          termination_notice_days: 45
+          clause_changes: []
+      expect:
+        status: needs_agent
+
+runners:
+  draft:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: contract-drafter-assemble
+    outputs:
+      draft_doc: object
+      deviations: array
+      send_proposal: object
+    artifacts:
+      named_emits:
+        draft_doc: draft_doc
+        deviations: deviations
+        send_proposal: send_proposal
+    runx:
+      category: planning
+    inputs:
+      template:
+        type: json
+        required: true
+        description: Versioned contract template with stable clauses and required term keys.
+      parties:
+        type: json
+        required: true
+        description: Explicit party records referenced by the template; no party may be inferred.
+      terms:
+        type: json
+        required: true
+        description: Explicit required deal terms and declared clause changes.

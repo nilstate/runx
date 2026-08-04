@@ -1,0 +1,190 @@
+{
+  "capabilities": {
+    "approval": "required",
+    "completion": "plan",
+    "execution": "plan",
+    "requires_adapter": false
+  },
+  "catalog": {
+    "audience": "public",
+    "kind": "skill",
+    "role": "context",
+    "visibility": "public"
+  },
+  "description": "Assemble a review-only contract draft from a supplied template, parties, and deal terms while exposing every template deviation and emitting a gated send-as proposal that never sends.",
+  "examples": [
+    "refused_missing_required_term",
+    "sealed_complete_template_parties_terms"
+  ],
+  "execution_closure": {
+    "agent_acts": 1,
+    "closure_digest": "sha256:b2b639cd54747d314ec2386b13ff7d7432cc71e8504efff71df4fc1526dc5a20",
+    "components": [],
+    "declared_artifact": true,
+    "direct_external_skill_edges": [],
+    "fully_bound": true,
+    "package_bindings": [
+      {
+        "package_digest": "sha256:31bb15529767e8c2750d92216c5790758ed4c5a08420c9bed30d46d74b42ebd6",
+        "runner": "draft",
+        "skill": "contract-drafter",
+        "source_files": [
+          "SKILL.md",
+          "X.yaml",
+          "fixtures/refused-missing-required-term.json",
+          "fixtures/sealed-complete-contract.json"
+        ],
+        "source_path": "\\\\?\\D:\\kun\\读研\\codex\\daily_10_yuan\\frantic_runx_work\\runx_86_contract_drafter\\skills\\contract-drafter"
+      }
+    ],
+    "profiles": [
+      "X.yaml#draft"
+    ],
+    "runtime_release": "0.8.2",
+    "skill_edges": [],
+    "summary": "1 agent act -> declared artifact",
+    "unresolved_skill_edges": []
+  },
+  "manual_digest": "sha256:e9cd0da23a81c9f930792eac28e5f6406eb4b3fcd4088c1e2796bdcf8f4af275",
+  "name": "contract-drafter",
+  "package_digest": "sha256:31bb15529767e8c2750d92216c5790758ed4c5a08420c9bed30d46d74b42ebd6",
+  "readiness": {
+    "status": "ready"
+  },
+  "resume": {
+    "command": "runx resume <run-id> answers.json",
+    "may_pause": true
+  },
+  "runner": {
+    "artifacts": {
+      "named_emits": {
+        "deviations": "deviations",
+        "draft_doc": "draft_doc",
+        "send_proposal": "send_proposal"
+      }
+    },
+    "inputs": [
+      {
+        "description": "Explicit party records referenced by the template; no party may be inferred.",
+        "name": "parties",
+        "required": true,
+        "type": "json"
+      },
+      {
+        "description": "Versioned contract template with stable clauses and required term keys.",
+        "name": "template",
+        "required": true,
+        "type": "json"
+      },
+      {
+        "description": "Explicit required deal terms and declared clause changes.",
+        "name": "terms",
+        "required": true,
+        "type": "json"
+      }
+    ],
+    "name": "draft",
+    "outputs": [
+      {
+        "name": "deviations",
+        "type": "array"
+      },
+      {
+        "name": "draft_doc",
+        "type": "object"
+      },
+      {
+        "name": "send_proposal",
+        "type": "object"
+      }
+    ],
+    "requirements": {},
+    "type": "agent-task"
+  },
+  "runner_inspections": [
+    {
+      "execution_closure": {
+        "agent_acts": 1,
+        "closure_digest": "sha256:b2b639cd54747d314ec2386b13ff7d7432cc71e8504efff71df4fc1526dc5a20",
+        "components": [],
+        "declared_artifact": true,
+        "direct_external_skill_edges": [],
+        "fully_bound": true,
+        "package_bindings": [
+          {
+            "package_digest": "sha256:31bb15529767e8c2750d92216c5790758ed4c5a08420c9bed30d46d74b42ebd6",
+            "runner": "draft",
+            "skill": "contract-drafter",
+            "source_files": [
+              "SKILL.md",
+              "X.yaml",
+              "fixtures/refused-missing-required-term.json",
+              "fixtures/sealed-complete-contract.json"
+            ],
+            "source_path": "\\\\?\\D:\\kun\\读研\\codex\\daily_10_yuan\\frantic_runx_work\\runx_86_contract_drafter\\skills\\contract-drafter"
+          }
+        ],
+        "profiles": [
+          "X.yaml#draft"
+        ],
+        "runtime_release": "0.8.2",
+        "skill_edges": [],
+        "summary": "1 agent act -> declared artifact",
+        "unresolved_skill_edges": []
+      },
+      "runner": {
+        "artifacts": {
+          "named_emits": {
+            "deviations": "deviations",
+            "draft_doc": "draft_doc",
+            "send_proposal": "send_proposal"
+          }
+        },
+        "inputs": [
+          {
+            "description": "Explicit party records referenced by the template; no party may be inferred.",
+            "name": "parties",
+            "required": true,
+            "type": "json"
+          },
+          {
+            "description": "Versioned contract template with stable clauses and required term keys.",
+            "name": "template",
+            "required": true,
+            "type": "json"
+          },
+          {
+            "description": "Explicit required deal terms and declared clause changes.",
+            "name": "terms",
+            "required": true,
+            "type": "json"
+          }
+        ],
+        "name": "draft",
+        "outputs": [
+          {
+            "name": "deviations",
+            "type": "array"
+          },
+          {
+            "name": "draft_doc",
+            "type": "object"
+          },
+          {
+            "name": "send_proposal",
+            "type": "object"
+          }
+        ],
+        "requirements": {},
+        "type": "agent-task"
+      }
+    }
+  ],
+  "runners": [
+    "draft"
+  ],
+  "schema": "runx.skill.inspect.v1",
+  "skill_path": "\\\\?\\D:\\kun\\读研\\codex\\daily_10_yuan\\frantic_runx_work\\runx_86_contract_drafter\\skills\\contract-drafter",
+  "status": "ok",
+  "version": "0.1.0"
+}
