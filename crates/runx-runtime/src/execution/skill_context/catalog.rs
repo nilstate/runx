@@ -1,40 +1,15 @@
-use std::fs;
-use std::path::Path;
-
 use crate::RuntimeError;
 
-pub(super) fn validate_local_context_manifest(
+pub(super) fn validate_context_manifest(
     step_id: &str,
     reference: &str,
-    skill_dir: &Path,
+    manifest: Option<&runx_parser::SkillRunnerManifest>,
 ) -> Result<(), RuntimeError> {
-    let manifest_path = skill_dir.join("X.yaml");
-    if !manifest_path.exists() {
-        return Ok(());
-    }
-    let source = fs::read_to_string(&manifest_path).map_err(|source| {
-        RuntimeError::io(format!("reading {}", manifest_path.display()), source)
-    })?;
-    let manifest = runx_parser::validate_runner_manifest(
-        runx_parser::parse_runner_manifest_yaml(&source).map_err(RuntimeError::from)?,
+    validate_context_catalog(
+        step_id,
+        reference,
+        manifest.and_then(|manifest| manifest.catalog.as_ref()),
     )
-    .map_err(RuntimeError::from)?;
-    validate_context_catalog(step_id, reference, manifest.catalog.as_ref())
-}
-
-pub(super) fn validate_registry_context_profile(
-    step_id: &str,
-    reference: &str,
-    profile_document: Option<&str>,
-) -> Result<(), RuntimeError> {
-    let Some(profile_document) = profile_document else {
-        return Ok(());
-    };
-    let manifest = runx_parser::validate_runner_manifest(
-        runx_parser::parse_runner_manifest_yaml(profile_document).map_err(RuntimeError::from)?,
-    )
-    .map_err(RuntimeError::from)?;
-    validate_context_catalog(step_id, reference, manifest.catalog.as_ref())
 }
 
 fn validate_context_catalog(

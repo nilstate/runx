@@ -5,14 +5,39 @@ import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { parse as parseYaml } from "yaml";
 
 import {
-  type ValidatedRunnerManifest as SkillRunnerManifest,
+  validateHarnessFixtureYamlBatch,
   validateRunnerManifestYaml as validateNativeRunnerManifestYaml,
-  validateSkillMarkdown,
-} from "./parser-eval.js";
+  validateRunnerManifestYamlBatch as validateNativeRunnerManifestYamlBatch,
+  validateSkillMarkdownBatch as validateNativeSkillMarkdownBatch,
+} from "../scripts/lib/native-parser.mjs";
 import { resolveRunxBinary } from "./runx-binary.js";
+
+type SkillRunner = {
+  readonly name: string;
+  readonly default: boolean;
+  readonly source: {
+    readonly type: string;
+    readonly graph?: { readonly steps: readonly unknown[] };
+  };
+};
+
+type SkillRunnerManifest = {
+  readonly catalog?: Record<string, unknown>;
+  readonly runners: Readonly<Record<string, SkillRunner>>;
+  readonly harness?: {
+    readonly cases: readonly {
+      readonly name: string;
+      readonly runner?: string;
+      readonly inputs?: unknown;
+      readonly env?: unknown;
+      readonly caller?: unknown;
+      readonly expect?: unknown;
+    }[];
+  };
+  readonly raw: { readonly document: Record<string, unknown> };
+};
 
 const currentPaymentRegistrySkillIds = [
   "runx/charge",
@@ -39,9 +64,6 @@ const paymentGraphStageOwners: Readonly<Record<string, string>> = {
   "pay-quote": "spend",
   "pay-recover": "spend",
   "pay-reserve": "spend",
-  "refund-quote": "refund",
-  "refund-recover": "refund",
-  "refund-reserve": "refund",
 };
 
 const issueToPrGraphStageOwners: Readonly<Record<string, string>> = {
@@ -92,7 +114,6 @@ const harnessedShowcasePackages = [
   "deep-research",
   "ghostwrite",
   "vuln-disclosure",
-  "evolve",
   "issue-intake",
   "issue-triage",
   "ecosystem-brief",
@@ -120,7 +141,7 @@ const receiptSigningEnv = {
 
 describe("official skill catalog", () => {
   it("ships official skills as portable packages plus checked-in execution profiles", async () => {
-    for (const skillName of officialSkillPackages()) {
+    const packages = await Promise.all(officialSkillPackages().map(async (skillName) => {
       const skillDir = path.resolve("skills", skillName);
       const skillMarkdownPath = path.join(skillDir, "SKILL.md");
       const manifestPath = path.join(skillDir, "X.yaml");
@@ -128,10 +149,21 @@ describe("official skill catalog", () => {
       expect(existsSync(skillDir)).toBe(true);
       expect(existsSync(skillMarkdownPath)).toBe(true);
       expect(existsSync(manifestPath)).toBe(true);
-
-      const skill = validateSkillMarkdown(await readFile(skillMarkdownPath, "utf8"));
-      const manifest = validateRunnerManifestYaml(await readFile(manifestPath, "utf8"));
-
+      return {
+        skillName,
+        markdown: await readFile(skillMarkdownPath, "utf8"),
+        profile: await readFile(manifestPath, "utf8"),
+      };
+    }));
+    const skills = validateNativeSkillMarkdownBatch(packages.map((entry) => entry.markdown)) as Array<{
+      readonly name: string;
+    }>;
+    const manifests = validateNativeRunnerManifestYamlBatch(
+      packages.map((entry) => entry.profile),
+    ) as SkillRunnerManifest[];
+    for (const [index, { skillName }] of packages.entries()) {
+      const skill = skills[index];
+      const manifest = manifests[index];
       expect(skill.name).toBe(skillName);
       expect(manifest.catalog).toBeDefined();
       expect(Object.keys(manifest.runners).length).toBeGreaterThan(0);
@@ -151,6 +183,19 @@ describe("official skill catalog", () => {
     expect(publicLockSkills).toEqual(publicSkills);
   });
 
+  it("keeps static agent instructions exclusively in SKILL.md", () => {
+    for (const manifestPath of skillManifestPaths(path.resolve("skills"))) {
+      const manifest = validateRunnerManifestYaml(readFileSync(manifestPath, "utf8")).raw.document;
+      expect(findObjectKeyPaths(manifest, "instructions"), manifestPath).toEqual([]);
+
+      if (findAgentTaskNames(manifest).length === 0) {
+        continue;
+      }
+      const skillMarkdownPath = path.join(path.dirname(manifestPath), "SKILL.md");
+      expect(existsSync(skillMarkdownPath), manifestPath).toBe(true);
+    }
+  });
+
   it("keeps internal review rubrics out of public skill guidance", () => {
     for (const skillName of officialSkillPackages()) {
       if (catalogVisibility(skillName) !== "public") {
@@ -163,7 +208,7 @@ describe("official skill catalog", () => {
 
       expect(
         hasMarkdownHeading(skillMarkdown, "Quality Profile"),
-        `${skillName} should express quality criteria through execution instructions, not a public rubric`,
+        `${skillName} should express operating criteria through SKILL.md, not a public rubric`,
       ).toBe(false);
     }
   });
@@ -181,8 +226,22 @@ describe("official skill catalog", () => {
       const inlineCases = manifest.harness?.cases ?? [];
 
       expect(fixtures.length + inlineCases.length, `${skillName} needs executable proof`).toBeGreaterThan(0);
-      expect(fixtures.every((entry) => entry.kind === "skill"), `${skillName} fixtures must target the skill`).toBe(true);
-      expect(fixtures.every((entry) => entry.target === ".."), `${skillName} fixtures must target their parent skill`).toBe(true);
+      expect(
+        fixtures.every((entry) => entry.kind === "skill" || entry.kind === "graph"),
+        `${skillName} fixtures must target a skill or operator journey`,
+      ).toBe(true);
+      expect(
+        fixtures
+          .filter((entry) => entry.kind === "skill")
+          .every((entry) => entry.target === ".." || entry.target?.startsWith("../graph/") === true),
+        `${skillName} skill fixtures must stay within their package`,
+      ).toBe(true);
+      expect(
+        fixtures
+          .filter((entry) => entry.kind === "graph")
+          .every((entry) => entry.target?.startsWith("../harness/") === true),
+        `${skillName} journey fixtures must target their package harness`,
+      ).toBe(true);
     }
   });
 
@@ -273,7 +332,7 @@ describe("official skill catalog", () => {
           const result = spawnSync(nativeRunx, ["harness", fixturePath, "--json"], {
             cwd: workspaceRoot,
             encoding: "utf8",
-            env: { ...process.env, ...receiptSigningEnv, RUNX_KERNEL_EVAL_BIN: nativeRunx },
+            env: { ...process.env, ...receiptSigningEnv, RUNX_RUST_CLI_BIN: nativeRunx },
             maxBuffer: 8 * 1024 * 1024,
           });
 
@@ -301,6 +360,46 @@ function officialSkillPackages(): readonly string[] {
     .filter((entry) => existsSync(path.resolve("skills", entry.name, "X.yaml")))
     .map((entry) => entry.name)
     .sort();
+}
+
+function skillManifestPaths(root: string): readonly string[] {
+  const paths: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const entryPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      paths.push(...skillManifestPaths(entryPath));
+    } else if (entry.name === "X.yaml") {
+      paths.push(entryPath);
+    }
+  }
+  return paths.sort();
+}
+
+function findObjectKeyPaths(value: unknown, key: string, prefix = "$"): readonly string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) => findObjectKeyPaths(entry, key, `${prefix}[${index}]`));
+  }
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  return Object.entries(value as Record<string, unknown>).flatMap(([name, entry]) => [
+    ...(name === key ? [`${prefix}.${name}`] : []),
+    ...findObjectKeyPaths(entry, key, `${prefix}.${name}`),
+  ]);
+}
+
+function findAgentTaskNames(value: unknown): readonly string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(findAgentTaskNames);
+  }
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  const record = value as Record<string, unknown>;
+  const current = record.type === "agent-task" && typeof record.task === "string"
+    ? [record.task]
+    : [];
+  return [...current, ...Object.values(record).flatMap(findAgentTaskNames)];
 }
 
 function catalogVisibility(skillName: string): "public" | "internal" {
@@ -338,10 +437,11 @@ function publicSkillFixtureCases(skillName: string): readonly PublicSkillFixture
   if (!existsSync(fixturesDir)) {
     return [];
   }
-  return readdirSync(fixturesDir)
+  const documents = readdirSync(fixturesDir)
     .filter((entry) => entry.endsWith(".yaml") || entry.endsWith(".yml"))
     .sort()
-    .map((entry) => parseYaml(readFileSync(path.join(fixturesDir, entry), "utf8")) as PublicSkillFixtureCase);
+    .map((entry) => readFileSync(path.join(fixturesDir, entry), "utf8"));
+  return validateHarnessFixtureYamlBatch(documents) as PublicSkillFixtureCase[];
 }
 
 function validateRunnerManifestYaml(profileDocument: string): SkillRunnerManifest {

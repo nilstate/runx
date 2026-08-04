@@ -5,6 +5,7 @@ use crate::config::{
     load_runx_config_file, resolve_runx_home_dir,
 };
 use crate::credentials::CredentialDelivery;
+use crate::credentials::credential_audience_host;
 use crate::execution::orchestrator::LocalCredentialDescriptor;
 use crate::services::WorkspaceEnv;
 
@@ -85,13 +86,13 @@ fn resolve_hosted_credential(
                     actual: provider,
                 });
             }
-            return Ok(Some(SkillCredentialResolution::Ready(
+            return Ok(Some(SkillCredentialResolution::Ready(Box::new(
                 ResolvedSkillCredential {
                     source: SkillCredentialSource::HostedHandle,
                     profile: None,
                     descriptor: None,
                 },
-            )));
+            ))));
         }
     }
     Ok(None)
@@ -123,18 +124,21 @@ fn resolve_environment_credential(
         });
     }
     if let Some((auth_mode, env_var, secret)) = environment_matches.first() {
-        return Ok(SkillCredentialResolution::Ready(ResolvedSkillCredential {
-            source: SkillCredentialSource::Environment,
-            profile: None,
-            descriptor: Some(descriptor(
-                request,
-                None,
-                auth_mode,
-                env_var,
-                "environment",
-                (*secret).clone(),
-            )),
-        }));
+        return Ok(SkillCredentialResolution::Ready(Box::new(
+            ResolvedSkillCredential {
+                source: SkillCredentialSource::Environment,
+                profile: None,
+                descriptor: Some(descriptor(
+                    request,
+                    None,
+                    auth_mode,
+                    env_var,
+                    "environment",
+                    request.requirement.audience.clone(),
+                    (*secret).clone(),
+                )),
+            },
+        )));
     }
     Ok(SkillCredentialResolution::Missing)
 }
@@ -152,19 +156,23 @@ fn resolve_profile(
         }
     })?;
     let delivery_env = validate_profile(request, profile_name, profile)?;
+    let audience = resolve_profile_audience(request, profile_name, profile)?;
     let secret = load_local_credential_secret(config_dir, &profile.secret_ref)?;
-    Ok(SkillCredentialResolution::Ready(ResolvedSkillCredential {
-        source,
-        profile: Some(profile_name.to_owned()),
-        descriptor: Some(descriptor(
-            request,
-            Some(profile_name),
-            &profile.auth_mode,
-            &delivery_env,
-            profile_name,
-            secret,
-        )),
-    }))
+    Ok(SkillCredentialResolution::Ready(Box::new(
+        ResolvedSkillCredential {
+            source,
+            profile: Some(profile_name.to_owned()),
+            descriptor: Some(descriptor(
+                request,
+                Some(profile_name),
+                &profile.auth_mode,
+                &delivery_env,
+                profile_name,
+                audience,
+                secret,
+            )),
+        },
+    )))
 }
 
 fn validate_profile(
@@ -197,17 +205,44 @@ fn validate_profile(
     Ok(delivery_env.clone())
 }
 
+fn resolve_profile_audience(
+    request: &SkillCredentialRequest,
+    profile_name: &str,
+    profile: &RunxCredentialProfile,
+) -> Result<Option<String>, SkillCredentialError> {
+    match (
+        request.requirement.audience.as_deref(),
+        profile.audience.as_deref(),
+    ) {
+        (Some(required), Some(configured)) => {
+            if credential_audience_host(required)? != credential_audience_host(configured)? {
+                return Err(SkillCredentialError::AudienceMismatch {
+                    profile: profile_name.to_owned(),
+                    expected: required.to_owned(),
+                    actual: configured.to_owned(),
+                });
+            }
+            Ok(Some(required.to_owned()))
+        }
+        (Some(required), None) => Ok(Some(required.to_owned())),
+        (None, Some(configured)) => Ok(Some(configured.to_owned())),
+        (None, None) => Ok(None),
+    }
+}
+
 fn descriptor(
     request: &SkillCredentialRequest,
     profile: Option<&str>,
     auth_mode: &str,
     env_var: &str,
     material_identity: &str,
+    audience: Option<String>,
     secret: String,
 ) -> LocalCredentialDescriptor {
     LocalCredentialDescriptor {
         profile: profile.map(str::to_owned),
         provider: request.requirement.provider.clone(),
+        audience,
         auth_mode: auth_mode.to_owned(),
         env_var: env_var.to_owned(),
         material_ref: format!("local:{}:{material_identity}", request.requirement.provider),
@@ -262,7 +297,10 @@ mod tests {
         }
     }
 
-    fn workspace(root: &std::path::Path, env: BTreeMap<String, String>) -> WorkspaceEnv {
+    fn workspace(
+        root: &std::path::Path,
+        env: BTreeMap<String, String>,
+    ) -> Result<WorkspaceEnv, crate::services::WorkspaceEnvError> {
         let mut env = env;
         env.insert(
             "RUNX_HOME".to_owned(),
@@ -288,6 +326,20 @@ mod tests {
         }
     }
 
+    fn dynamic_audience_request(profile: &str) -> SkillCredentialRequest {
+        SkillCredentialRequest {
+            skill_name: "n8n-handoff".to_owned(),
+            requirement_name: "n8n".to_owned(),
+            requirement: CredentialRequirement {
+                provider: "n8n".to_owned(),
+                audience: None,
+                deliveries: BTreeMap::from([("bearer".to_owned(), "N8N_WEBHOOK_TOKEN".to_owned())]),
+            },
+            scopes: vec!["orchestrator.n8n.workflow.invoke".to_owned()],
+            explicit_profile: Some(profile.to_owned()),
+        }
+    }
+
     #[test]
     fn environment_fallback_resolves_declared_name_without_leaking_debug()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -298,7 +350,7 @@ mod tests {
                 "NITROSEND_API_KEY".to_owned(),
                 "environment-secret-sentinel".to_owned(),
             )]),
-        );
+        )?;
         let resolved = resolve_skill_credential(&request(None), &workspace)?;
         let SkillCredentialResolution::Ready(resolved) = resolved else {
             return Err("credential should resolve".into());
@@ -313,12 +365,13 @@ mod tests {
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         fs::create_dir_all(temp.path().join(".runx"))?;
-        let workspace = workspace(temp.path(), BTreeMap::new());
+        let workspace = workspace(temp.path(), BTreeMap::new())?;
         set_local_credential_profile(
             &workspace,
             "default",
             "nitrosend",
             "api_key",
+            None,
             "default-secret-sentinel",
         )?;
         set_local_credential_profile(
@@ -326,6 +379,7 @@ mod tests {
             "account-one",
             "nitrosend",
             "api_key",
+            None,
             "account-one-secret-sentinel",
         )?;
         bind_project_credential(&workspace, "provider:nitrosend", "default")?;
@@ -354,12 +408,13 @@ mod tests {
     fn stored_profile_auth_mode_selects_declared_delivery() -> Result<(), Box<dyn std::error::Error>>
     {
         let temp = tempfile::tempdir()?;
-        let workspace = workspace(temp.path(), BTreeMap::new());
+        let workspace = workspace(temp.path(), BTreeMap::new())?;
         set_local_credential_profile(
             &workspace,
             "twitter-app",
             "twitter",
             "bearer",
+            None,
             "bearer-secret-sentinel",
         )?;
         let resolved =
@@ -374,6 +429,70 @@ mod tests {
     }
 
     #[test]
+    fn stored_profile_can_bind_a_dynamic_provider_to_one_https_audience()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let workspace = workspace(temp.path(), BTreeMap::new())?;
+        set_local_credential_profile(
+            &workspace,
+            "n8n-workflow",
+            "n8n",
+            "bearer",
+            Some("https://n8n.example.com"),
+            "n8n-secret-sentinel",
+        )?;
+        set_local_credential_profile(
+            &workspace,
+            "n8n-workflow",
+            "n8n",
+            "bearer",
+            None,
+            "rotated-n8n-secret-sentinel",
+        )?;
+
+        let resolved =
+            resolve_skill_credential(&dynamic_audience_request("n8n-workflow"), &workspace)?;
+        let SkillCredentialResolution::Ready(resolved) = resolved else {
+            return Err("credential should resolve".into());
+        };
+        assert_eq!(
+            resolved
+                .descriptor
+                .ok_or("missing local descriptor")?
+                .audience
+                .as_deref(),
+            Some("https://n8n.example.com")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn profile_audience_cannot_override_a_skill_audience() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let temp = tempfile::tempdir()?;
+        let workspace = workspace(temp.path(), BTreeMap::new())?;
+        set_local_credential_profile(
+            &workspace,
+            "wrong-host",
+            "nitrosend",
+            "api_key",
+            Some("https://attacker.example"),
+            "profile-secret-sentinel",
+        )?;
+
+        let error = match resolve_skill_credential(&request(Some("wrong-host")), &workspace) {
+            Ok(_) => return Err("profile audience unexpectedly widened the skill audience".into()),
+            Err(error) => error,
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("does not satisfy required audience")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn multiple_environment_auth_modes_fail_closed() -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
         let workspace = workspace(
@@ -382,7 +501,7 @@ mod tests {
                 ("TWITTER_BEARER_TOKEN".to_owned(), "bearer".to_owned()),
                 ("TWITTER_USER_AUTH".to_owned(), "oauth".to_owned()),
             ]),
-        );
+        )?;
         let error = match resolve_skill_credential(&multi_auth_request(None), &workspace) {
             Ok(_) => return Err("ambiguous ambient credentials unexpectedly resolved".into()),
             Err(error) => error,

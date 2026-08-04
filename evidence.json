@@ -1,0 +1,231 @@
+{
+  "summary": "Evidence for the runx overlay-open-skill-2 skill (codeboost-tr/overlay-open-skill-2@0.1.3): a governed-EXECUTION overlay over a public open-ecosystem SKILL.md. The upstream (anthropics/skills skills/theme-factory/SKILL.md @ ef740771ac901e03fbca3ce4e1c453a96010f30a, Apache-2.0) is wrapped BY REFERENCE under the pinned digest sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552; the upstream file is never copied or edited. Unlike a pin-and-refuse demo, the overlay RUNS the wrapped effect under that authorization: in a real post-publish dogfood of the PUBLISHED remote package (registry_source=remote, version=0.1.3) the runner recomputed the upstream digest from the real bytes (content-recompute == pin), applied the wrapped theme (ocean-depths: Cream=#f1faee, Deep Navy=#1a2332, Seafoam=#a8dadc, Teal=#2d8b8b; header/body fonts) to a target artifact, and WROTE the themed result (493 bytes, output_sha256 sha256:975f15c2ea7c1055256e5c825ca68dc4914f4b563d6d9731e4fadc0d1ef6ab2a) under the governed allowed_output_prefix `.overlay-out/`. The sealed runx.receipt.v1 records execution_performed=true, wrapped_ran=true and passes runx verify with a production signature. The attenuation is CONSUMED, not echoed: the digest gate, the scope/output-prefix gate and the operator-approval gate each refuse in a dedicated harness case (4/4, 0 assertion errors). source_url, X.yaml, SKILL.md and verification.json all resolve at one source revision (commit d7b92faa30b493c7ae6cae5256d31b46b9df58a3); this evidence packet and the report are its direct child. The committed skill files are the files published as codeboost-tr/overlay-open-skill-2@0.1.3. Upstream is distinct from the companion overlay-open-skill-1 (obra/superpowers verification-before-completion (MIT)).",
+  "dogfood": {
+    "package": "codeboost-tr/overlay-open-skill-2@0.1.3",
+    "input": {
+      "resolved_upstream_source": "https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md",
+      "theme_name": "ocean-depths",
+      "theme_spec_source": "https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/themes/ocean-depths.md",
+      "output_dir": ".overlay-out/",
+      "output_name": "themed-ocean.html",
+      "approved": true
+    },
+    "command": "UP=https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md\nTHEME=https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/themes/ocean-depths.md\nrunx skill codeboost-tr/overlay-open-skill-2@0.1.3 default --registry https://api.runx.ai -R ./receipts -j \\\n  --input-json resolved_upstream_content=\"$(curl -sL $UP | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')\" \\\n  -i resolved_upstream_source=$UP \\\n  --input-json theme_spec=\"$(curl -sL $THEME | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')\" \\\n  -i theme_name=ocean-depths -i output_dir=.overlay-out/ -i output_name=themed-ocean.html \\\n  --input-json approved=true",
+    "receipt_ref": "runx:receipt:sha256:9b38d1a7e98184665350c32663354432943b49be9c606c61e68ffa7cb0dc109d",
+    "verify_verdict": "valid",
+    "output": {
+      "decision": "ready",
+      "execution_performed": true,
+      "wrapped_ran": true,
+      "authorization": {
+        "allowed_tools": [
+          "fs.read",
+          "fs.write",
+          "net.fetch"
+        ],
+        "granted_scope": {
+          "allowed_output_prefix": ".overlay-out/",
+          "theme": "ocean-depths"
+        },
+        "pinned_digest": "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552",
+        "resolution_mode": "content-recompute",
+        "resolved_source": "https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md",
+        "wraps_ref": "https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md"
+      },
+      "effect": {
+        "act": "theme.apply",
+        "applied": {
+          "colors": {
+            "Cream": "#f1faee",
+            "Deep Navy": "#1a2332",
+            "Seafoam": "#a8dadc",
+            "Teal": "#2d8b8b"
+          },
+          "fonts": {
+            "body": "DejaVu Sans",
+            "header": "DejaVu Sans Bold"
+          }
+        },
+        "bytes_written": 493,
+        "output_ref": "/home/test/.runx/registry-skills/ba1ac16b631195fd/codeboost-tr/overlay-open-skill-2/0.1.3/b82bdc40e14f716b/codeboost-tr/overlay-open-skill-2/0.1.3/.overlay-out/themed-ocean.html",
+        "output_relpath": ".overlay-out/themed-ocean.html",
+        "output_sha256": "sha256:975f15c2ea7c1055256e5c825ca68dc4914f4b563d6d9731e4fadc0d1ef6ab2a",
+        "theme": "ocean-depths",
+        "tools_used": [
+          "fs.read",
+          "fs.write"
+        ]
+      }
+    },
+    "harness_cases": [
+      {
+        "name": "in-scope-applies-and-seals",
+        "status": "sealed"
+      },
+      {
+        "name": "digest-stale-refuses",
+        "status": "refused"
+      },
+      {
+        "name": "scope-exceeded-refuses",
+        "status": "refused"
+      },
+      {
+        "name": "approval-denied-refuses",
+        "status": "refused"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "type": "runx_version",
+      "value": "runx-cli 0.6.14",
+      "detail": "Exact runx --version output; publish/install/dogfood/verify/harness all run with this binary (/usr/local/bin/runx, == the 0.6.14 floor)."
+    },
+    {
+      "type": "publisher_owner",
+      "value": "codeboost-tr",
+      "detail": "Publisher owner of the skill (matches the verified claimant account)."
+    },
+    {
+      "type": "package_name",
+      "value": "overlay-open-skill-2",
+      "detail": "Exact published package name (no near-name or rename)."
+    },
+    {
+      "type": "version",
+      "value": "0.1.3",
+      "detail": "Published package version; X.yaml declares the same version (asserted in the build script)."
+    },
+    {
+      "type": "registry_ref",
+      "value": "codeboost-tr/overlay-open-skill-2@0.1.3",
+      "detail": "Fully qualified registry reference; runx registry read codeboost-tr/overlay-open-skill-2@0.1.3 --json resolves published metadata and digests."
+    },
+    {
+      "type": "public_url",
+      "value": "https://runx.ai/x/codeboost-tr/overlay-open-skill-2@0.1.3",
+      "detail": "Live registry listing / canonical adoption page."
+    },
+    {
+      "type": "pr_url",
+      "value": "https://github.com/runxhq/runx/pull/345",
+      "detail": "Public PR against runxhq/runx containing the full package: X.yaml, SKILL.md, run.mjs, fixtures, and harness evidence."
+    },
+    {
+      "type": "source_url",
+      "value": "https://github.com/codeboost-tr/runx/tree/d7b92faa30b493c7ae6cae5256d31b46b9df58a3",
+      "detail": "Public source/provenance revision (single source revision)."
+    },
+    {
+      "type": "raw_x_yaml",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/d7b92faa30b493c7ae6cae5256d31b46b9df58a3/skills/overlay-open-skill-2/X.yaml",
+      "detail": "Raw X.yaml at the source revision (PR head lineage)."
+    },
+    {
+      "type": "raw_skill_md",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/d7b92faa30b493c7ae6cae5256d31b46b9df58a3/skills/overlay-open-skill-2/SKILL.md",
+      "detail": "Raw SKILL.md at the source revision (PR head lineage)."
+    },
+    {
+      "type": "verification_json",
+      "value": "https://raw.githubusercontent.com/codeboost-tr/runx/d7b92faa30b493c7ae6cae5256d31b46b9df58a3/verification.json",
+      "detail": "Raw runx verify verdict at the source revision."
+    },
+    {
+      "type": "publish_method",
+      "value": "runx login --provider github --for publish, then runx registry publish ./skills/overlay-open-skill-2 --registry https://api.runx.ai --version 0.1.3",
+      "detail": "Authenticate + publish (purpose-scoped publish credential; no tokens or secrets appear in any artifact)."
+    },
+    {
+      "type": "install_command",
+      "value": "runx add codeboost-tr/overlay-open-skill-2@0.1.3 --registry https://api.runx.ai",
+      "detail": "Clean install (verified: source=remote, status=installed, digest sha256:55309759d7ba939bd46bea601fb724415b827d58e533bc9576b653e86e3bb1dc; installed files include run.mjs, X.yaml, SKILL.md)."
+    },
+    {
+      "type": "harness_cases",
+      "value": "in-scope-applies-and-seals (sealed), digest-stale-refuses (refused), scope-exceeded-refuses (refused), approval-denied-refuses (refused)",
+      "detail": "Harness case names + status: in-scope-applies-and-seals (the wrapped effect runs and seals execution_performed=true); digest-stale-refuses (resolved digest != pin -> runx.overlay.digest.stale); scope-exceeded-refuses (output path escapes allowed_output_prefix -> runx.overlay.scope.exceeded); approval-denied-refuses (no operator approval -> runx.overlay.approval.denied)."
+    },
+    {
+      "type": "hosted_harness_status",
+      "value": "WSL Linux local `runx harness ./skills/overlay-open-skill-2` passed 4/4 cases, 0 assertion errors (in-scope-applies-and-seals (sealed), digest-stale-refuses (refused), scope-exceeded-refuses (refused), approval-denied-refuses (refused)). The committed skill files are byte-identical to what was published (content digest sha256:55309759d7ba939bd46bea601fb724415b827d58e533bc9576b653e86e3bb1dc), so the reviewer's hosted harness runs the same cases. Environment: WSL Linux local + remote registry install.",
+      "detail": "Harness status with explicit environment labeling."
+    },
+    {
+      "type": "dogfood_command",
+      "value": "UP=https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md\nTHEME=https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/themes/ocean-depths.md\nrunx skill codeboost-tr/overlay-open-skill-2@0.1.3 default --registry https://api.runx.ai -R ./receipts -j \\\n  --input-json resolved_upstream_content=\"$(curl -sL $UP | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')\" \\\n  -i resolved_upstream_source=$UP \\\n  --input-json theme_spec=\"$(curl -sL $THEME | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')\" \\\n  -i theme_name=ocean-depths -i output_dir=.overlay-out/ -i output_name=themed-ocean.html \\\n  --input-json approved=true",
+      "detail": "Exact post-publish dogfood command (runs the PUBLISHED remote package, not a local path)."
+    },
+    {
+      "type": "receipt_ref",
+      "value": "runx:receipt:sha256:9b38d1a7e98184665350c32663354432943b49be9c606c61e68ffa7cb0dc109d",
+      "detail": "Sealed receipt id from the post-publish dogfood run of codeboost-tr/overlay-open-skill-2@0.1.3 \u2014 NOT a harness fixture seal (harness receipts are separate, under skills/overlay-open-skill-2/harness/receipts/)."
+    },
+    {
+      "type": "runx_verify_verdict",
+      "value": "valid=True, signature_mode=production, signature_status=valid, digest=valid, content_address=valid",
+      "detail": "runx verify --receipt dogfood_receipt.json --json verdict for the dogfood receipt."
+    },
+    {
+      "type": "registry_provenance",
+      "value": "registry_source=remote https://api.runx.ai, skill_id=codeboost-tr/overlay-open-skill-2, version=0.1.3, trust_state=trusted, trust_tier=community",
+      "detail": "Receipt registry provenance: the dogfood resolved the PUBLISHED package from the remote registry at the exact published version."
+    },
+    {
+      "type": "execution_performed",
+      "value": "True (wrapped_ran=True)",
+      "detail": "The overlay RAN the wrapped effect in the dogfood; it did not defer an inert authorization ticket. This is the exact gap the prior six rejections named."
+    },
+    {
+      "type": "effect_act",
+      "value": "theme.apply: theme=ocean-depths",
+      "detail": "The consumed effect: the wrapped theme-apply action executed under the pinned authorization."
+    },
+    {
+      "type": "effect_output",
+      "value": "output_sha256=sha256:975f15c2ea7c1055256e5c825ca68dc4914f4b563d6d9731e4fadc0d1ef6ab2a, bytes_written=493, output=.overlay-out/themed-ocean.html",
+      "detail": "The governed effect WROTE a real themed artifact under allowed_output_prefix; the sha256 is reproducible from the recorded inputs."
+    },
+    {
+      "type": "attenuation_applied",
+      "value": "colors[Cream=#f1faee, Deep Navy=#1a2332, Seafoam=#a8dadc, Teal=#2d8b8b]; fonts[header=DejaVu Sans Bold, body=DejaVu Sans]",
+      "detail": "The wrapped theme spec was parsed and applied to the target artifact (a real transform, not an echo)."
+    },
+    {
+      "type": "digest_recompute",
+      "value": "mode=content-recompute, resolved==pin=True (sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552)",
+      "detail": "The upstream digest is recomputed from the real resolved bytes at run time and compared to the pin; a reviewer recomputes it from https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md."
+    },
+    {
+      "type": "allowed_tools",
+      "value": "fs.read, fs.write, net.fetch",
+      "detail": "Explicit allowed-tool set (no wildcard); the effect used fs.read + fs.write. net.fetch is declared for live-resolution runs."
+    },
+    {
+      "type": "scope_bounds",
+      "value": "allowed_output_prefix=.overlay-out/, granted_theme=ocean-depths",
+      "detail": "Non-empty scope bounds; the scope-exceeded and approval-denied harness cases prove the bounds are enforced, not decorative."
+    },
+    {
+      "type": "upstream_provenance",
+      "value": "repo=anthropics/skills, path=skills/theme-factory/SKILL.md, commit=ef740771ac901e03fbca3ce4e1c453a96010f30a, license=Apache-2.0, pinned_digest=sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552, raw=https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md",
+      "detail": "The wrapped upstream is public, permissively licensed (Apache-2.0, real LICENSE.txt) and actively maintained; the digest recomputes from these exact bytes."
+    },
+    {
+      "type": "distinct_from_companion",
+      "value": "overlay-open-skill-2 wraps anthropics/skills @ ef740771ac901e03fbca3ce4e1c453a96010f30a; the companion overlay-open-skill-1 wraps obra/superpowers verification-before-completion (MIT) \u2014 different upstreams.",
+      "detail": "The upstream target differs from the companion overlay in this round."
+    },
+    {
+      "type": "receipt_id",
+      "value": "sha256:9b38d1a7e98184665350c32663354432943b49be9c606c61e68ffa7cb0dc109d",
+      "detail": "Sealed receipt id of the post-publish dogfood run (same id as receipt_ref)."
+    },
+    {
+      "type": "how_to_use",
+      "value": "Install: runx add codeboost-tr/overlay-open-skill-2@0.1.3 --registry https://api.runx.ai. Run the dogfood command above (resolves the upstream + theme from their pinned raw URLs and applies the theme under governance). Verify: runx verify --receipt ./receipts/receipt.json --json (expects valid=true, signature_mode=production). No private context: the skill is public on the registry, the source is public in the PR, the upstream is a public Apache-2.0 file, and the inputs are plain strings documented in SKILL.md.",
+      "detail": "End-to-end install/run/verify for a new user without private context."
+    }
+  ]
+}

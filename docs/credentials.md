@@ -27,10 +27,10 @@ runners:
     credential: nitrosend
 ```
 
-The delivery name is part of the skill contract, not operator setup. Tool
-`env_allowlist` is for ordinary ambient configuration and must not repeat a
-declared credential name. The runtime carries credential delivery separately
-and injects it only at the adapter boundary.
+The delivery name is part of the skill contract, not operator setup. A runner's
+`environment.required` and `environment.optional` lists are for ordinary,
+non-secret runtime configuration. The runtime carries credential delivery
+separately and injects it only at the adapter boundary.
 
 A provider may expose more than one auth mode:
 
@@ -64,6 +64,13 @@ printf '%s' "$TWITTER_BEARER_TOKEN" |
     --profile twitter-app \
     --auth-mode bearer \
     --from-stdin
+
+printf '%s' "$N8N_WEBHOOK_TOKEN" |
+  runx credential set n8n \
+    --profile workflow \
+    --auth-mode bearer \
+    --audience https://n8n.example.com \
+    --from-stdin
 ```
 
 Then run explicitly:
@@ -73,6 +80,11 @@ runx skill ./skills/nitrosend status --profile account-one --json
 ```
 
 `runx credential set` makes the stored profile the provider's global default.
+`--audience` binds material to one canonical HTTPS host. Use it for providers
+whose destination is selected at runtime, such as a self-hosted n8n instance.
+When both a skill and a profile declare an audience, their normalized hosts
+must match; a profile can narrow an undeclared skill audience but can never
+widen a skill-owned binding.
 Use a project binding when a workspace should choose a different profile
 without repeating `--profile`:
 
@@ -109,10 +121,11 @@ extracts hosted provider tokens.
 
 ## Workspace environment
 
-`runx skill`, `runx resume`, and `runx mcp serve` discover the workspace root
-and parse its exact `.env` file as data. Runx does not source
-a shell. Exported process values win; `.env` fills only missing names. One
-immutable snapshot is used for the whole command or MCP server session.
+Every executing Runx CLI command discovers the workspace root and parses its
+exact `.env` file as data; help and version rendering do not depend on
+workspace state. Runx does not source a shell. Exported process values win;
+`.env` fills only missing names. One immutable snapshot is used for the whole
+command or MCP server session.
 
 This makes an ignored project `.env` a useful zero-setup development path:
 
@@ -149,6 +162,43 @@ Secrets never appear in:
 Resume checkpoints persist only the selected profile name. `runx resume`
 captures a new workspace snapshot and re-resolves current material, so profile
 rotation takes effect immediately.
+
+## Hosted provider grants
+
+Local credential profiles and hosted Connect grants solve different problems.
+A profile delivers operator-owned material to a declared local adapter. A
+Connect grant keeps provider material in Cloud and authorizes only named
+provider operations.
+
+Skills use native `provider.read` and `provider.mutate` tools for Connect. The
+runtime authenticates the operator, lists bounded active grant metadata, and
+selects the unique grant matching the skill's `expected_provider` and declared
+scopes. Reads do not need human approval. Mutations are still gated at the
+consequential graph step, and Cloud checks the tool's expected read/mutate
+classification against the provider driver's authoritative descriptor before
+dispatch.
+
+The `runx connect` command manages grant setup, status, listing, and revocation;
+it does not expose raw provider invocation. Provider operations stay inside a
+skill run so admission, approval when required, projection, and receipt sealing
+remain one path.
+
+A skill may also declare `expected_result` to require exact top-level resource
+identity fields and `result_fields` to allow only named provider result fields
+into the receipt. This is mandatory for secret-adjacent operations and useful
+whenever provider evidence must bind to one exact repository, message, post,
+charge, or other resource.
+
+`provider.mutate` additionally requires one native `idempotency_key`. Runx
+injects that key into the credential-free provider payload and rejects skills
+that duplicate it inside `input`, leaving one auditable source for retry
+identity.
+
+No grant id is needed when exactly one active grant matches. If multiple grants
+match, select one with `RUNX_PROVIDER_PERMISSION_GRANT_ID`; Runx resolves its
+current scopes from Connect rather than asking the skill or agent to attest
+them. Provider tokens never enter `.env`, skill inputs, command arguments, or
+receipts.
 
 ## Readiness on every surface
 

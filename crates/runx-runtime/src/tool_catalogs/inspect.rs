@@ -1,17 +1,13 @@
-// rust-style-allow: large-file - tool inspection keeps local manifest
+// Module rationale: tool inspection keeps local manifest
 // resolution, fixture fallback, provenance, and JSON projection in one
 // read-only diagnostic surface.
 use std::collections::BTreeMap;
-use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use runx_contracts::tools::{
-    JsonPayload, RuntimeCommand, ToolBuildStatus, ToolInput, ToolInspectImportedFrom,
-    ToolInspectOrigin, ToolInspectProvenance, ToolInspectReport, ToolInspectResult,
-    ToolInspectRunx,
+    ToolBuildStatus, ToolInput, ToolInspectOrigin, ToolInspectProvenance, ToolInspectReport,
+    ToolInspectResult,
 };
-
-use runx_contracts::sha256_hex;
 
 use super::error::ToolCatalogError;
 use super::search::{FixtureTool, fixture_catalog_allowed, fixture_tool};
@@ -30,10 +26,23 @@ pub struct ToolInspectOptions {
 #[derive(Clone, Debug)]
 pub struct LocalToolResolution {
     pub manifest_path: PathBuf,
+    pub manifest_source: String,
     pub tool: runx_parser::ValidatedTool,
 }
 
 pub fn inspect_tool(options: &ToolInspectOptions) -> Result<ToolInspectReport, ToolCatalogError> {
+    inspect_tool_with_effects(options, &crate::RuntimeEffectRegistry::default())
+}
+
+pub fn inspect_tool_with_effects(
+    options: &ToolInspectOptions,
+    effects: &crate::RuntimeEffectRegistry,
+) -> Result<ToolInspectReport, ToolCatalogError> {
+    if native_source_allowed(options.source.as_deref(), &options.tool_ref, effects)
+        && let Some(report) = super::native::inspect(&options.tool_ref, &options.root, effects)
+    {
+        return Ok(report);
+    }
     match resolve_local_manifest(options) {
         Ok(manifest_path) => {
             let tool = read_local_tool_manifest(&manifest_path)?;
@@ -59,14 +68,30 @@ pub fn inspect_tool(options: &ToolInspectOptions) -> Result<ToolInspectReport, T
     )))
 }
 
+fn native_source_allowed(
+    source: Option<&str>,
+    tool_ref: &str,
+    effects: &crate::RuntimeEffectRegistry,
+) -> bool {
+    let source = source.map(str::trim).map(str::to_ascii_lowercase);
+    match source.as_deref() {
+        None | Some("") | Some("all") | Some("native") => true,
+        Some("runx-runtime") => super::native::is_core_tool(tool_ref),
+        Some(source) => effects
+            .capability(tool_ref)
+            .is_some_and(|capability| capability.definition().owner.eq_ignore_ascii_case(source)),
+    }
+}
+
 pub fn resolve_local_tool(
     options: &ToolInspectOptions,
 ) -> Result<LocalToolResolution, ToolCatalogError> {
     let manifest_path = resolve_local_manifest(options)?;
-    let tool = read_local_tool_manifest(&manifest_path)?;
+    let document = super::manifest::read_document(&manifest_path)?;
     Ok(LocalToolResolution {
         manifest_path,
-        tool,
+        manifest_source: document.source,
+        tool: document.tool,
     })
 }
 
@@ -88,18 +113,7 @@ fn resolve_fixture_tool(options: &ToolInspectOptions) -> Option<FixtureTool> {
 fn read_local_tool_manifest(
     manifest_path: &Path,
 ) -> Result<runx_parser::ValidatedTool, ToolCatalogError> {
-    let manifest_source = fs::read_to_string(manifest_path)
-        .map_err(|error| ToolCatalogError::io("reading tool manifest", manifest_path, error))?;
-    let raw = runx_parser::parse_tool_manifest_json(&manifest_source).map_err(|error| {
-        ToolCatalogError::InvalidManifest {
-            path: manifest_path.to_path_buf(),
-            message: error.to_string(),
-        }
-    })?;
-    runx_parser::validate_tool_manifest(raw).map_err(|error| ToolCatalogError::InvalidManifest {
-        path: manifest_path.to_path_buf(),
-        message: error.to_string(),
-    })
+    super::manifest::read(manifest_path)
 }
 
 fn inspect_local_tool(
@@ -112,12 +126,11 @@ fn inspect_local_tool(
         name: tool.name,
         description: tool.description,
         execution_source_type: tool.source.source_type.as_str().to_owned(),
-        inputs: convert_inputs(tool.inputs)?,
+        inputs: tool.inputs,
         scopes: tool.scopes,
         mutating: tool.mutating,
-        runtime: convert_optional_runtime(tool.runtime)?,
-        risk: convert_optional_json(tool.risk)?,
-        runx: convert_optional_object(tool.runx)?,
+        runtime: super::projection::runtime_command(&tool.source),
+        risk: tool.risk,
         reference_path: display_path(manifest_path),
         skill_directory: manifest_path
             .parent()
@@ -152,7 +165,6 @@ fn inspect_fixture_tool(tool_ref: &str, tool: &FixtureTool, root: &Path) -> Tool
         mutating: None,
         runtime: None,
         risk: None,
-        runx: Some(imported_runx(tool)),
         reference_path: format!("catalog:{}:{}", tool.source, tool.qualified_name()),
         skill_directory: display_path(root),
         provenance: ToolInspectProvenance {
@@ -181,27 +193,12 @@ fn fixture_inputs(tool: &FixtureTool) -> BTreeMap<String, ToolInput> {
                     description: input.description.map(str::to_owned),
                     default: None,
                     artifact: None,
+                    packet: None,
+                    schema: None,
                 },
             )
         })
         .collect()
-}
-
-fn imported_runx(tool: &FixtureTool) -> ToolInspectRunx {
-    let digest_payload = format!(
-        r#"{{"source":"{}","namespace":"{}","external_name":"{}","source_type":"{}"}}"#,
-        tool.source, tool.namespace, tool.external_name, tool.source_type
-    );
-    ToolInspectRunx::Imported {
-        imported_from: ToolInspectImportedFrom {
-            source: tool.source.to_owned(),
-            source_label: tool.source_label.to_owned(),
-            source_type: tool.source_type.to_owned(),
-            namespace: tool.namespace.to_owned(),
-            external_name: tool.external_name.to_owned(),
-            digest: sha256_hex(digest_payload.as_bytes()),
-        },
-    }
 }
 
 fn resolve_local_manifest(options: &ToolInspectOptions) -> Result<PathBuf, ToolCatalogError> {
@@ -297,66 +294,6 @@ fn push_existing_dirs(roots: &mut Vec<PathBuf>, candidates: impl IntoIterator<It
             roots.push(candidate);
         }
     }
-}
-
-fn convert_inputs(
-    inputs: BTreeMap<String, runx_parser::SkillInput>,
-) -> Result<BTreeMap<String, ToolInput>, ToolCatalogError> {
-    inputs
-        .into_iter()
-        .map(|(name, input)| {
-            Ok((
-                name,
-                ToolInput {
-                    input_type: input.input_type,
-                    required: input.required,
-                    description: input.description,
-                    default: convert_optional_json(input.default)?,
-                    artifact: None,
-                },
-            ))
-        })
-        .collect()
-}
-
-fn convert_optional_object(
-    value: Option<runx_contracts::JsonObject>,
-) -> Result<Option<ToolInspectRunx>, ToolCatalogError> {
-    value
-        .map(|value| convert_json(runx_contracts::JsonValue::Object(value)))
-        .transpose()?
-        .map(|value| match value {
-            JsonPayload::Object(object) => Ok(ToolInspectRunx::Object(object)),
-            _ => Err(ToolCatalogError::InvalidRequest(
-                "expected JSON object while converting tool metadata".to_owned(),
-            )),
-        })
-        .transpose()
-}
-
-fn convert_optional_runtime(
-    value: Option<runx_contracts::JsonValue>,
-) -> Result<Option<RuntimeCommand>, ToolCatalogError> {
-    value
-        .map(|value| {
-            let json = serde_json::to_string(&value)
-                .map_err(|error| ToolCatalogError::InvalidRequest(error.to_string()))?;
-            serde_json::from_str(&json)
-                .map_err(|error| ToolCatalogError::InvalidRequest(error.to_string()))
-        })
-        .transpose()
-}
-
-fn convert_optional_json(
-    value: Option<runx_contracts::JsonValue>,
-) -> Result<Option<JsonPayload>, ToolCatalogError> {
-    value.map(convert_json).transpose()
-}
-
-fn convert_json(value: runx_contracts::JsonValue) -> Result<JsonPayload, ToolCatalogError> {
-    let json = serde_json::to_string(&value)
-        .map_err(|error| ToolCatalogError::InvalidRequest(error.to_string()))?;
-    serde_json::from_str(&json).map_err(|error| ToolCatalogError::InvalidRequest(error.to_string()))
 }
 
 fn display_path(path: &Path) -> String {

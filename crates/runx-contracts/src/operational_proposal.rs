@@ -1,5 +1,5 @@
 //! Operational proposal contract: reviewable handoffs over existing actions.
-// rust-style-allow: large-file because the proposal schema, the open reference
+// Module rationale: the proposal schema, the open reference
 // type vocabulary, the human-gate and outcome shapes, and the RunxSchema
 // reflection together form one cross-language wire surface.
 use serde::{Deserialize, Serialize};
@@ -149,7 +149,7 @@ pub struct OperationalProposal {
 }
 
 impl RunxSchema for OperationalProposal {
-    // rust-style-allow: long-function - the public proposal schema is a single
+    // Function rationale: the public proposal schema is a single
     // closed contract document, and keeping its field list contiguous makes
     // review against the wire contract less error-prone.
     fn json_schema() -> Value {

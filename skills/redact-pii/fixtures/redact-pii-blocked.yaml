@@ -3,36 +3,39 @@ kind: skill
 target: ..
 runner: redact-pii
 inputs:
-  content: "Patient narrative with diagnosis, full home address, and date of birth woven through free text that cannot be scrubbed without losing clinical meaning."
+  content: "Patient Avery Chen, born 1987-04-12, lives at 14 King Street."
   mode: block
   locale: en-US
 caller:
   answers:
-    agent_task.redact-pii.output:
-      redaction_report:
+    agent_task.redact-pii-detect.output:
+      redaction_draft:
         decision: blocked
-        detected:
-          - class: postal_address
-            span: [33, 52]
-            confidence: 0.88
-          - class: date_of_birth
-            span: [58, 73]
-            confidence: 0.74
-          - class: health_condition
-            span: [21, 30]
-            confidence: 0.69
-        redacted_digest: null
+        detected: []
         residual_risk:
           level: high
-          reason: "quasi-identifiers are interleaved with clinical free text; removing them strips the meaning, and date-of-birth confidence is below threshold. block mode emits no usable residual."
-        policy:
-          classes:
-            - postal_address
-            - date_of_birth
-            - health_condition
-          mode: block
+          reason_code: policy_block
 expect:
   status: sealed
+  steps:
+    - digest-source
+    - detect
+    - scrub
+    - digest-redacted
+    - finalize
+  step_outputs:
+    finalize:
+      subset:
+        redaction_report:
+          data:
+            decision: blocked
+            redacted_digest: null
+            residual_risk:
+              level: high
+              reason_code: policy_block
+            scanner:
+              status: block
+        redacted_content: ""
   receipt:
     schema: runx.receipt.v1
 metadata:

@@ -18,6 +18,8 @@ fn credential_command_sets_lists_binds_and_removes_without_exposing_material()
         "nitrosend",
         "--profile",
         "account-one",
+        "--audience",
+        "https://api.nitrosend.com",
         "--from-stdin",
         "--json",
     ]);
@@ -25,6 +27,10 @@ fn credential_command_sets_lists_binds_and_removes_without_exposing_material()
     assert_success_without_secret(&set)?;
     let set_json = serde_json::from_slice::<serde_json::Value>(&set.stdout)?;
     assert_eq!(set_json["credential"]["profile"]["name"], "account-one");
+    assert_eq!(
+        set_json["credential"]["profile"]["audience"],
+        "https://api.nitrosend.com"
+    );
     assert_eq!(set_json["credential"]["profile"]["is_default"], true);
 
     let list = command(&root, &home)?

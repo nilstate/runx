@@ -15,16 +15,6 @@
     "scopes": [
       "fixture.echo"
     ],
-    "runx": {
-      "imported_from": {
-        "source": "fixture-mcp",
-        "source_label": "Fixture MCP Catalog",
-        "source_type": "mcp",
-        "namespace": "fixture",
-        "external_name": "echo",
-        "digest": "4f47a953ab076a06780963c4c97580a0fd8c9e8a2d64c5d85a6fa82ddac42636"
-      }
-    },
     "reference_path": "catalog:fixture-mcp:fixture.echo",
     "skill_directory": "<repo>",
     "provenance": {

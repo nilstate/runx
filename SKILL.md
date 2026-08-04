@@ -1,14 +1,6 @@
 ---
 name: runx
 description: "Governed runtime for agent skills: discover and install portable skills, run bounded skill graphs with explicit authority, and inspect signed receipts for what happened."
-source:
-  type: cli-tool
-  command: runx
-inputs:
-  prompt:
-    type: string
-    required: true
-    description: Natural-language description of the governed work to delegate.
 runx:
   tags:
     - runtime

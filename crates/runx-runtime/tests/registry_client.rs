@@ -6,12 +6,15 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ring::signature::KeyPair;
 use runx_contracts::sha256_prefixed;
 use runx_runtime::registry::{
-    AcquireOptions, HttpMethod, HttpRequest, HttpResponse, InstallCandidate, InstallError,
-    InstallLocalSkillOptions, InstallStatus, RegistryClient, RegistryClientError,
-    RegistryManifestSignature, RegistryManifestSigner, RegistryManifestSourceAuthority,
-    RegistryResolveError, RegistrySignedManifest, RuntimeHttpError, Transport, TrustTier,
+    AcquireOptions, InstallCandidate, InstallError, InstallLocalSkillOptions, InstallStatus,
+    RegistryClient, RegistryClientError, RegistryManifestSignature, RegistryManifestSigner,
+    RegistryManifestSourceAuthority, RegistryResolveError, RegistrySignedManifest, TrustTier,
     TrustedRegistryManifestKey, install_local_skill, materialization_cache_path,
     materialization_digest_marker, parse_registry_ref,
+};
+use runx_runtime::{
+    HttpMethod, RuntimeHttpError, RuntimeHttpRequest as HttpRequest,
+    RuntimeHttpResponse as HttpResponse, RuntimeHttpTransport as Transport,
 };
 use serde_json::json;
 use tempfile::tempdir;
@@ -29,30 +32,21 @@ struct MockTransport {
 impl MockTransport {
     fn with(response: serde_json::Value) -> Self {
         Self {
-            responses: RefCell::new(vec![HttpResponse {
-                status: 200,
-                body: response.to_string(),
-            }]),
+            responses: RefCell::new(vec![HttpResponse::new(200, response.to_string())]),
             requests: RefCell::new(Vec::new()),
         }
     }
 
     fn with_status(status: u16, response: serde_json::Value) -> Self {
         Self {
-            responses: RefCell::new(vec![HttpResponse {
-                status,
-                body: response.to_string(),
-            }]),
+            responses: RefCell::new(vec![HttpResponse::new(status, response.to_string())]),
             requests: RefCell::new(Vec::new()),
         }
     }
 
     fn with_body(status: u16, body: impl Into<String>) -> Self {
         Self {
-            responses: RefCell::new(vec![HttpResponse {
-                status,
-                body: body.into(),
-            }]),
+            responses: RefCell::new(vec![HttpResponse::new(status, body)]),
             requests: RefCell::new(Vec::new()),
         }
     }

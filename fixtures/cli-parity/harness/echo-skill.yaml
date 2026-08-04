@@ -7,9 +7,9 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
-    harness_id: hrn_cli-parity-echo-skill_echo
+    harness_id: hrn_cli-parity-echo-skill_default
     state: sealed
     disposition: closed
     reason_code: process_closed
     act_ids:
-      - act_echo
+      - act_default

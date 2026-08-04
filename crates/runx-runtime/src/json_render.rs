@@ -1,7 +1,7 @@
-#[cfg(any(feature = "catalog", feature = "mcp"))]
+#[cfg(feature = "mcp")]
 use runx_contracts::JsonNumber;
 
-#[cfg(any(feature = "catalog", feature = "mcp"))]
+#[cfg(feature = "mcp")]
 pub(crate) fn json_number_string(value: &JsonNumber) -> String {
     match value {
         JsonNumber::I64(value) => value.to_string(),

@@ -58,7 +58,7 @@ pub struct ResolvedSkillCredential {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SkillCredentialResolution {
-    Ready(ResolvedSkillCredential),
+    Ready(Box<ResolvedSkillCredential>),
     Missing,
 }
 
@@ -89,7 +89,8 @@ impl SkillCredentialResolution {
                     descriptor.material_ref.clone(),
                     descriptor.scopes.clone(),
                     descriptor.secret.clone(),
-                )?),
+                )?
+                .bind_audience(descriptor.audience.as_deref())?),
                 None => {
                     let raw = workspace
                         .env()
@@ -115,6 +116,8 @@ pub struct CredentialProfileSummary {
     pub name: String,
     pub provider: String,
     pub auth_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audience: Option<String>,
     pub is_default: bool,
 }
 
@@ -134,6 +137,14 @@ pub enum SkillCredentialError {
         "credential profile '{profile}' auth mode '{actual}' does not satisfy required auth mode '{expected}'"
     )]
     AuthModeMismatch {
+        profile: String,
+        expected: String,
+        actual: String,
+    },
+    #[error(
+        "credential profile '{profile}' audience '{actual}' does not satisfy required audience '{expected}'"
+    )]
+    AudienceMismatch {
         profile: String,
         expected: String,
         actual: String,

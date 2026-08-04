@@ -153,6 +153,7 @@ fn base(id: &str, kind: NonEmptyString, subject_id: &str) -> Receipt {
             mandate_ref: None,
             enforcement: ReceiptEnforcement {
                 profile_hash: format!("sha256:{}", "5".repeat(64)).into(),
+                execution_boundary: None,
                 redaction_refs: Vec::new(),
                 setup_refs: Vec::new(),
                 teardown_refs: Vec::new(),

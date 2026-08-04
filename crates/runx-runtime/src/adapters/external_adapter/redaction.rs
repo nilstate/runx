@@ -4,9 +4,7 @@
 //! the credential delivery's `redact_text` so adapter stdout, stderr,
 //! telemetry, and structured artifacts cannot leak credential material.
 
-use runx_contracts::{
-    ExternalAdapterResponse, ExternalAdapterTelemetryValue, JsonObject, JsonValue,
-};
+use runx_contracts::{ExternalAdapterResponse, ExternalAdapterTelemetryValue};
 
 use crate::credentials::CredentialDelivery;
 
@@ -29,10 +27,10 @@ pub(super) fn redact_response(
         response.stderr = Some(credential_delivery.redact_text(stderr));
     }
     if let Some(output) = response.output.as_mut() {
-        redact_json_object(output, credential_delivery);
+        credential_delivery.redact_json_object(output);
     }
     if let Some(metadata) = response.metadata.as_mut() {
-        redact_json_object(metadata, credential_delivery);
+        credential_delivery.redact_json_object(metadata);
     }
     if let Some(artifacts) = response.artifacts.as_mut() {
         for artifact in artifacts {
@@ -58,26 +56,5 @@ pub(super) fn redact_response(
                 *value = credential_delivery.redact_text(std::mem::take(value));
             }
         }
-    }
-}
-
-fn redact_json_object(object: &mut JsonObject, credential_delivery: &CredentialDelivery) {
-    for value in object.values_mut() {
-        redact_json_value(value, credential_delivery);
-    }
-}
-
-fn redact_json_value(value: &mut JsonValue, credential_delivery: &CredentialDelivery) {
-    match value {
-        JsonValue::String(text) => {
-            *text = credential_delivery.redact_text(std::mem::take(text));
-        }
-        JsonValue::Array(values) => {
-            for value in values {
-                redact_json_value(value, credential_delivery);
-            }
-        }
-        JsonValue::Object(object) => redact_json_object(object, credential_delivery),
-        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) => {}
     }
 }

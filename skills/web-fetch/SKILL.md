@@ -28,6 +28,10 @@ paraphrase. The calling agent decides which sources matter and synthesizes
 across them; `web-fetch` retrieves exactly one source and refuses anything off
 the allowlist.
 
+The request path is native Runx code. Skills do not supply a JavaScript HTTP
+client: the runtime owns public-network enforcement, redirect admission,
+timeouts, retries, byte limits, response digests, and receipt-safe evidence.
+
 ## When to use this skill
 
 - An agent has chosen a specific page and needs its content bound to a

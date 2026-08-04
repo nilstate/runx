@@ -3,6 +3,8 @@ lane: deterministic
 target:
   kind: tool
   ref: acme.executable
+inputs:
+  script_path: $RUNX_FIXTURE_ROOT/run.sh
 workspace:
   executable_files:
     run.sh: |

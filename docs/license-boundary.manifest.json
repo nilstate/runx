@@ -22,6 +22,11 @@
       "phase1_state": "keep",
       "decision": "Policy and authority enforcement stay MIT; no brokerage or provider calls."
     },
+    "runx-js-worker": {
+      "class": "mit-oss",
+      "phase1_state": "keep",
+      "decision": "The resource-bounded deterministic JavaScript worker stays MIT; it has no host or provider capabilities."
+    },
     "runx-pay": {
       "class": "mit-oss",
       "phase1_state": "keep",
@@ -40,7 +45,7 @@
     "runx-runtime": {
       "class": "mit-oss",
       "phase1_state": "keep",
-      "decision": "Keep MIT. Runtime owns local credential consumption, enforcement, sandbox delivery, and redaction only."
+      "decision": "Keep MIT. Runtime owns local credential consumption, resolved delivery, process supervision, and redaction only."
     },
     "runx-sdk": {
       "class": "mit-oss",

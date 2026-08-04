@@ -29,12 +29,12 @@ __pycache__/
 build/
 !fixtures/tool-catalogs/build/
 !fixtures/tool-catalogs/build/**
+!tools/sourcey/build/
+!tools/sourcey/build/**
 *.egg-info/
 *.egg
 .eggs/
 packages/cli/*.tgz
-packages/cli/skills/
-packages/cli/tools/
 
 # environment
 .env
@@ -53,3 +53,10 @@ runx-answers.json
 
 # local harness-sweep scratch output
 .runx-tmp/
+tmp/
+
+# package-local runtime evidence and debug output
+skills/**/fixtures/receipt-store/
+!skills/refund/fixtures/receipt-store/
+!skills/refund/fixtures/receipt-store/*.json
+skills/**/*-debug.json

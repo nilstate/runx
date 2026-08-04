@@ -1,6 +1,8 @@
 use std::io::Read;
 use std::thread::{self, JoinHandle};
 
+use sha2::{Digest, Sha256};
+
 use super::ProcessSupervisorError;
 
 pub(super) type CaptureHandle = JoinHandle<std::io::Result<CapturedOutput>>;
@@ -9,6 +11,8 @@ pub(super) type CaptureHandle = JoinHandle<std::io::Result<CapturedOutput>>;
 pub(crate) struct CapturedOutput {
     pub(crate) bytes: Vec<u8>,
     pub(crate) truncated: bool,
+    pub(crate) total_bytes: u64,
+    pub(crate) sha256: String,
 }
 
 pub(super) fn capture_pipe<R>(
@@ -32,6 +36,8 @@ where
     thread::spawn(move || {
         let mut captured = Vec::new();
         let mut truncated = false;
+        let mut total_bytes = 0_u64;
+        let mut digest = Sha256::new();
         let mut buffer = [0_u8; 8192];
         loop {
             let count = reader.read(&mut buffer)?;
@@ -39,8 +45,12 @@ where
                 return Ok(CapturedOutput {
                     bytes: captured,
                     truncated,
+                    total_bytes,
+                    sha256: format!("sha256:{}", runx_contracts::hex_lower(&digest.finalize())),
                 });
             }
+            digest.update(&buffer[..count]);
+            total_bytes = total_bytes.saturating_add(u64::try_from(count).unwrap_or(u64::MAX));
             let remaining = output_limit_bytes.saturating_sub(captured.len());
             if remaining > 0 {
                 captured.extend_from_slice(&buffer[..count.min(remaining)]);
@@ -63,5 +73,31 @@ pub(super) fn join_capture(
             context,
             std::io::Error::other("output reader thread failed"),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn bounded_capture_retains_a_prefix_but_hashes_the_complete_stream()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let complete = b"complete process output".to_vec();
+        let output = join_capture(
+            capture_stream(Cursor::new(complete.clone()), 8),
+            "capturing test output".to_owned(),
+        )?;
+
+        assert_eq!(output.bytes, &complete[..8]);
+        assert!(output.truncated);
+        assert_eq!(
+            output.total_bytes,
+            u64::try_from(complete.len()).map_err(|error| error.to_string())?
+        );
+        assert_eq!(output.sha256, runx_contracts::sha256_prefixed(&complete));
+        Ok(())
     }
 }

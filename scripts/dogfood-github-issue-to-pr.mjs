@@ -422,7 +422,7 @@ async function buildDogfoodPreflight({ args: argsRecord, issueRef, workspace, sc
       "workspace is on the intended issue branch or --prepare-branch is explicit",
       "dirty worktrees block branch preparation",
       "scafld list --json succeeds from the target workspace",
-      "explicit GitHub token env is present for the provider-push sandbox",
+      "explicit GitHub token env is present for the provider process",
       "human merge remains outside the harness",
     ],
     checks,
@@ -1109,7 +1109,7 @@ function collectReceiptRefs(nativeOutput) {
     }
   };
   push(nativeOutput?.receipt_id);
-  const steps = Array.isArray(nativeOutput?.payload?.steps) ? nativeOutput.payload.steps : [];
+  const steps = Array.isArray(nativeOutput?.trace?.steps) ? nativeOutput.trace.steps : [];
   for (const step of steps) {
     push(step?.receipt_id);
   }
@@ -1445,7 +1445,7 @@ function inspectGitHubPublishAuth(env) {
       name: "github_publish_auth",
       status: "ready",
       source: present,
-      reason: "explicit token env is available to the provider-push sandbox.",
+      reason: "explicit token env is available to the provider process.",
     };
   }
   return {

@@ -12,8 +12,8 @@ inputs:
   locale: en-US
 caller:
   answers:
-    agent_task.redact-pii.output:
-      redaction_report:
+    agent_task.redact-pii-detect.output:
+      redaction_draft:
         decision: ready
         detected:
           - class: name
@@ -25,18 +25,38 @@ caller:
           - class: phone
             span: [104, 116]
             confidence: 0.96
-        redacted_digest: "sha256:6b1d4c9e2af0b73c8e51a0d9f4c2b18e7a3d5c0f9e2b4a16d8c3f0a7b9e1d2c4"
         residual_risk:
           level: low
-          reason: "order id is a record reference, not a personal identifier; all three personal spans removed at high confidence."
-        policy:
-          classes:
-            - name
-            - email
-            - phone
-          mode: redact
+          reason_code: none
 expect:
   status: sealed
+  steps:
+    - digest-source
+    - detect
+    - scrub
+    - digest-redacted
+    - finalize
+  step_outputs:
+    finalize:
+      subset:
+        redaction_report:
+          data:
+            decision: ready
+            redacted_digest: sha256:03b11b6388500f1edfc6daab6492eed600a775443462ae9539d6cc2a51abe695
+            residual_risk:
+              level: low
+              reason_code: none
+            scanner:
+              status: pass
+              findings: []
+            policy:
+              classes:
+                - email
+                - name
+                - phone
+              mode: redact
+              locale: en-US
+        redacted_content: "Customer [REDACTED:NAME] wrote in from [REDACTED:EMAIL] about order #44120; callback number on file is [REDACTED:PHONE]."
   receipt:
     schema: runx.receipt.v1
 metadata:

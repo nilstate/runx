@@ -7,9 +7,10 @@ runx:
 
 # Run History
 
-Read the local Runx ledger through `runx history --json` and the installed
-catalog through `runx list skills --ok-only --json`. The runner computes the
-report itself; it does not ask an agent to invent commands or transcribe counts.
+Read the local Runx ledger through the native `receipt.query` service and the
+installed catalog through `runx.skill.inspect`. The runner computes the report
+itself; it does not ask an agent to invent commands, launch subprocesses, or
+transcribe counts.
 
 Use it for operational questions about recent Runx activity, failed or blocked
 runs, pending runs, frequently used receipt subjects, and skill entries without
@@ -19,11 +20,14 @@ usage is available for grant attenuation.
 
 ## Evidence boundary
 
-- Live execution reads only the native history and catalog JSON projections.
+- Live execution reads only the native receipt and catalog projections. These
+  services share the same store resolution, signature policy, and catalog
+  parser as the Runx CLI without routing back through the CLI as a subprocess.
 - History reads are bounded to 1,000 rows by default and 10,000 at most.
 - `history_receipts`, `pending_runs`, and `catalog_items` are replay inputs for
-  harnesses and controlled analysis; when supplied, no native history or list
-  command is executed.
+  harnesses and controlled analysis. `history_receipts` and `catalog_items`
+  must be supplied together; replay never silently mixes caller data with live
+  native state.
 - Empty history returns `needs_more_evidence` rather than a healthy verdict.
 - `closed_rate` is the share of terminal receipt rows whose status is `closed`.
 - `refusal_rate` counts `blocked` and `declined` terminal rows. It is reported
@@ -35,7 +39,8 @@ usage is available for grant attenuation.
 
 `history_report` contains:
 
-- the exact resolved query and native source commands;
+- the exact resolved query and source labels (`native_receipt_store`,
+  `native_skill_catalog`, or `supplied_replay`);
 - terminal and pending counts, status counts, closed/refusal rates;
 - the most frequent receipt subjects;
 - catalog entry and test-coverage counts;

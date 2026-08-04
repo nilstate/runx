@@ -1,0 +1,227 @@
+skill: overlay-open-skill-2
+version: "0.1.3"
+
+catalog:
+  kind: skill
+  audience: public
+  visibility: public
+  role: canonical
+
+# --- overlay governance contract ---------------------------------------------
+# The upstream open-ecosystem SKILL.md is wrapped BY REFERENCE (raw URL) under a
+# pinned sha256 digest. The overlay never copies or edits the upstream file; a
+# reviewer recomputes the digest from `overlay.wraps.path`.
+runx:
+  mutating: true
+  overlay:
+    wraps:
+      path: "https://raw.githubusercontent.com/anthropics/skills/ef740771ac901e03fbca3ce4e1c453a96010f30a/skills/theme-factory/SKILL.md"
+      version: "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552"
+    pinned_digest: "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552"
+  scopes:
+    - overlay.theme.apply
+  allowed_tools:
+    - fs.read
+    - fs.write
+    - net.fetch
+  policy:
+    allowed_output_prefix: ".overlay-out/"
+    allowed_themes:
+      - arctic-frost
+      - botanical-garden
+      - desert-rose
+      - forest-canopy
+      - golden-hour
+      - midnight-galaxy
+      - modern-minimalist
+      - ocean-depths
+      - sunset-boulevard
+      - tech-innovation
+    approval:
+      required: true
+      flag: approved
+    verifier_notes:
+      - The overlay runs the wrapped skill's effect under the pinned digest; it does not defer an inert authorization ticket to a host.
+      - Every effect receipt with execution_performed=true wrote themed bytes under allowed_output_prefix; output_sha256 records what was produced.
+      - A resolved-content digest that no longer matches the pin raises runx.overlay.digest.stale and refuses before any effect.
+      - A theme outside scope bounds or an output path outside allowed_output_prefix raises runx.overlay.scope.exceeded and refuses.
+      - A missing operator approval flag raises runx.overlay.approval.denied and refuses.
+
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+    scopes:
+      - overlay.theme.apply
+    policy:
+      reads:
+        - wrapped upstream SKILL.md (by reference, for digest verification)
+        - wrapped theme spec (the upstream theme file being applied)
+        - target artifact to be themed
+      calls:
+        - net.fetch (live upstream resolution during a real run)
+      writes:
+        - themed artifact under .overlay-out/
+      disallows:
+        - editing or copying the upstream SKILL.md
+        - writing outside allowed_output_prefix
+        - running when the resolved digest does not match the pin
+        - running without operator approval
+    inputs:
+      resolved_digest:
+        type: string
+        required: false
+        description: sha256 of the resolved upstream content (deterministic harness resolution).
+      resolved_upstream_url:
+        type: string
+        required: false
+        description: Raw URL of the upstream to fetch and hash live (real run resolution).
+      resolved_upstream_path:
+        type: string
+        required: false
+        description: Local path to a resolved upstream snapshot to read and hash.
+      theme_name:
+        type: string
+        required: true
+        description: The theme to apply; must be within the declared scope bounds.
+      theme_spec:
+        type: string
+        required: true
+        description: The wrapped skill's theme file content (palette + font pairing) to apply.
+      artifact:
+        type: string
+        required: false
+        description: The target HTML artifact to theme.
+      output_dir:
+        type: string
+        required: false
+        description: Output directory; must stay under allowed_output_prefix.
+      output_name:
+        type: string
+        required: false
+        description: Output file name for the themed artifact.
+      approved:
+        type: boolean
+        required: true
+        description: Operator approval flag; the governed effect refuses without approved=true.
+    outputs:
+      decision: string
+      execution_performed: boolean
+      authorization: object
+      effect: object
+
+# --- inline harness: one in-scope pass + three governed refusals --------------
+harness:
+  cases:
+    - name: in-scope-applies-and-seals
+      description: >
+        Pin matches, theme is in scope, output stays under the prefix, and the
+        operator approved. The overlay runs the wrapped theme-apply effect and
+        seals an effect receipt with execution_performed=true.
+      runner: default
+      inputs:
+        resolved_digest: "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552"
+        theme_name: "ocean-depths"
+        approved: true
+        output_dir: ".overlay-out/"
+        output_name: "themed-ocean.html"
+        artifact: "<!doctype html><html><head><title>Deck</title></head><body><h1>Q3 Review</h1><p>Body.</p></body></html>"
+        theme_spec: |
+          # Ocean Depths
+
+          A professional and calming maritime theme that evokes the serenity of deep ocean waters.
+
+          ## Color Palette
+
+          - **Deep Navy**: `#1a2332` - Primary background color
+          - **Teal**: `#2d8b8b` - Accent color for highlights and emphasis
+          - **Seafoam**: `#a8dadc` - Secondary accent for lighter elements
+          - **Cream**: `#f1faee` - Text and light backgrounds
+
+          ## Typography
+
+          - **Headers**: DejaVu Sans Bold
+          - **Body Text**: DejaVu Sans
+
+          ## Best Used For
+
+          Corporate presentations, financial reports, professional consulting decks, trust-building content.
+      expect:
+        status: sealed
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: closed
+
+    - name: digest-stale-refuses
+      description: >
+        The resolved wrapped content no longer matches the pinned digest. The
+        overlay raises runx.overlay.digest.stale and refuses before any effect.
+      runner: default
+      inputs:
+        resolved_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        theme_name: "ocean-depths"
+        approved: true
+        output_dir: ".overlay-out/"
+        output_name: "themed-ocean.html"
+        theme_spec: |
+          # Ocean Depths
+          - **Deep Navy**: `#1a2332`
+          - **Headers**: DejaVu Sans Bold
+          - **Body Text**: DejaVu Sans
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+
+    - name: scope-exceeded-refuses
+      description: >
+        Pin matches and approval is present, but the requested output path
+        escapes allowed_output_prefix. The overlay raises
+        runx.overlay.scope.exceeded and refuses without running the effect.
+      runner: default
+      inputs:
+        resolved_digest: "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552"
+        theme_name: "ocean-depths"
+        approved: true
+        output_dir: "../escape/"
+        output_name: "themed.html"
+        theme_spec: |
+          # Ocean Depths
+          - **Deep Navy**: `#1a2332`
+          - **Headers**: DejaVu Sans Bold
+          - **Body Text**: DejaVu Sans
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed
+
+    - name: approval-denied-refuses
+      description: >
+        Pin matches and the theme is in scope, but the operator approval flag is
+        absent. The overlay raises runx.overlay.approval.denied and refuses.
+      runner: default
+      inputs:
+        resolved_digest: "sha256:c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552"
+        theme_name: "ocean-depths"
+        approved: false
+        output_dir: ".overlay-out/"
+        output_name: "themed.html"
+        theme_spec: |
+          # Ocean Depths
+          - **Deep Navy**: `#1a2332`
+          - **Headers**: DejaVu Sans Bold
+          - **Body Text**: DejaVu Sans
+      expect:
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
+          state: sealed
+          disposition: failed

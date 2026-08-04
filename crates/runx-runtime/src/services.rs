@@ -1,16 +1,29 @@
 mod env;
+mod receipt_proof;
+mod receipt_query;
 mod receipts;
-#[cfg(any(feature = "cli-tool", feature = "mcp"))]
-mod sandbox;
+#[cfg(feature = "catalog")]
+mod skill_packages;
 mod tool_roots;
+mod verified_receipts;
+mod workspace_files;
 
-#[cfg(any(feature = "cli-tool", feature = "mcp", feature = "agent"))]
-pub(crate) use env::process_env_snapshot;
 pub use env::{WorkspaceEnv, WorkspaceEnvError};
 pub(crate) use env::{merge_inferred_tool_roots, process_env_value};
+pub(crate) use receipt_proof::prove_receipts;
+pub(crate) use receipt_query::{ReceiptQueryInput, query_receipts};
 pub(crate) use receipts::ReceiptServices;
-#[cfg(any(feature = "cli-tool", feature = "mcp"))]
-pub(crate) use sandbox::SandboxServices;
+#[cfg(feature = "catalog")]
+pub(crate) use skill_packages::{
+    apply_skill_change, bind_skill_change, inspect_skill_workspace, plan_skill_architecture,
+    validate_skill_package,
+};
+pub use verified_receipts::VerifiedReceiptStore;
+pub(crate) use workspace_files::{
+    ArtifactPageEncoding, ArtifactRecordPage, DEFAULT_ARTIFACT_PAGE_BYTES, LocalArtifact,
+    LocalArtifactService, WorkspaceFile, resolve_scoped_root,
+};
+pub use workspace_files::{WorkspaceFileError, read_workspace_text};
 
 #[cfg(test)]
 mod tests {
@@ -22,8 +35,8 @@ mod tests {
     use crate::services::{ReceiptServices, WorkspaceEnv};
 
     #[test]
-    fn skill_env_injects_workspace_and_project_paths() {
-        let workspace = WorkspaceEnv::new(BTreeMap::new(), PathBuf::from("/tmp/runx-work"));
+    fn skill_env_injects_workspace_and_project_paths() -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = WorkspaceEnv::new(BTreeMap::new(), PathBuf::from("/tmp/runx-work"))?;
 
         let env = workspace.skill_env_for_skill(Path::new("/tmp/runx-work/skills/demo"));
 
@@ -32,6 +45,7 @@ mod tests {
             env.get(RUNX_PROJECT_DIR_ENV),
             Some(&"/tmp/runx-work/.runx".to_owned())
         );
+        Ok(())
     }
 
     #[test]
@@ -40,7 +54,7 @@ mod tests {
         let skill_dir = temp.path().join("skills/demo");
         let tools_dir = skill_dir.join("tools");
         std::fs::create_dir_all(&tools_dir)?;
-        let workspace = WorkspaceEnv::new(BTreeMap::new(), temp.path().to_path_buf());
+        let workspace = WorkspaceEnv::new(BTreeMap::new(), temp.path().to_path_buf())?;
 
         let env = workspace.skill_env_for_skill(&skill_dir);
 
@@ -53,9 +67,10 @@ mod tests {
     }
 
     #[test]
-    fn receipt_services_resolve_paths_from_workspace_env() {
+    fn receipt_services_resolve_paths_from_workspace_env() -> Result<(), Box<dyn std::error::Error>>
+    {
         let env = BTreeMap::from([(RUNX_PROJECT_DIR_ENV.to_owned(), ".runx-custom".to_owned())]);
-        let workspace = WorkspaceEnv::new(env, PathBuf::from("/tmp/runx-work"));
+        let workspace = WorkspaceEnv::new(env, PathBuf::from("/tmp/runx-work"))?;
         let receipts = ReceiptServices::from_signature_config(
             RuntimeReceiptSignatureConfig::local_development(),
         );
@@ -66,6 +81,7 @@ mod tests {
             resolved.path,
             PathBuf::from("/tmp/runx-work/.runx-custom/receipts")
         );
+        Ok(())
     }
 
     #[test]

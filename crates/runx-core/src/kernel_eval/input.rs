@@ -7,7 +7,7 @@ use crate::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest, SandboxAdmissionOptions, SandboxDeclaration,
+    RetryAdmissionRequest,
 };
 use crate::state_machine::{
     FanoutBranchResult, FanoutGroupPolicy, SequentialGraphEvent, SequentialGraphState,
@@ -42,16 +42,6 @@ pub(super) enum KernelInput {
     AdmitRetryPolicy { request: RetryAdmissionRequest },
     #[serde(rename = "policy.admitGraphStepScopes")]
     AdmitGraphStepScopes { request: GraphScopeAdmissionRequest },
-    #[serde(rename = "policy.normalizeSandboxDeclaration")]
-    NormalizeSandboxDeclaration { sandbox: Option<SandboxDeclaration> },
-    #[serde(rename = "policy.sandboxRequiresApproval")]
-    SandboxRequiresApproval { sandbox: Option<SandboxDeclaration> },
-    #[serde(rename = "policy.admitSandbox")]
-    AdmitSandbox {
-        sandbox: Option<SandboxDeclaration>,
-        #[serde(default)]
-        options: SandboxAdmissionOptions,
-    },
     #[serde(rename = "policy.buildLocalScopeAdmission")]
     BuildLocalScopeAdmission {
         auth: Option<JsonValue>,
@@ -143,9 +133,6 @@ pub(super) fn is_supported_kernel_kind(kind: &str) -> bool {
         "policy.admitLocalSkill"
             | "policy.admitRetryPolicy"
             | "policy.admitGraphStepScopes"
-            | "policy.normalizeSandboxDeclaration"
-            | "policy.sandboxRequiresApproval"
-            | "policy.admitSandbox"
             | "policy.buildLocalScopeAdmission"
             | "policy.buildAuthorityProofMetadata"
             | "policy.validateCredentialBinding"

@@ -10,18 +10,16 @@ use runx_contracts::{
     CredentialDeliveryObservationStatus, Reference, ReferenceType,
 };
 use runx_core::policy::{CredentialBindingDecision, CredentialEnvelope};
-use runx_parser::{SkillSandbox, SkillSource};
+use runx_parser::SkillSource;
 use runx_runtime::adapters::cli_tool::CliToolAdapter;
-use runx_runtime::adapters::mcp::{FixtureMcpTransport, McpAdapter, ProcessMcpTransport};
+use runx_runtime::adapters::mcp::{FixtureMcpTransport, McpAdapter};
 use runx_runtime::{
     CredentialDelivery, CredentialDeliveryError, CredentialDeliveryProfile,
-    InMemoryMaterialResolver, InvocationStatus, ResolvedCredentialMaterial, RuntimeError,
-    SkillAdapter, SkillInvocation,
+    InMemoryMaterialResolver, InvocationStatus, ResolvedCredentialMaterial, SkillAdapter,
+    SkillInvocation,
 };
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
-
 /// A minimal delivered-credential observation for the resolution tests, which
 /// assert on the delivered secret, not on the observation contents.
 fn delivered_observation() -> CredentialDeliveryObservation {
@@ -294,18 +292,26 @@ fn cli_tool_delivers_and_redacts_declared_credential() -> Result<(), Box<dyn std
     let delivery = allowed_delivery()?;
     let output = CliToolAdapter.invoke(SkillInvocation {
         skill_name: "credential.echo".to_owned(),
+        step_id: None,
+        artifacts: None,
+        allowed_tools: None,
         source: cli_source(),
         inputs: Default::default(),
         resolved_inputs: Default::default(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: std::env::current_dir()?,
         env: process_env(),
+        requirements: Default::default(),
         credential_delivery: delivery,
     })?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout.trim(), "[redacted-credential]");
-    assert!(!output.stdout.contains("ghs_secret_token"));
+    assert_eq!(
+        output.value,
+        runx_contracts::JsonValue::String("[redacted-credential]\n".to_owned())
+    );
+    assert!(!output.rendered_value().contains("ghs_secret_token"));
     Ok(())
 }
 
@@ -313,20 +319,29 @@ fn cli_tool_delivers_and_redacts_declared_credential() -> Result<(), Box<dyn std
 fn cli_tool_omits_truncated_output_before_redaction() -> Result<(), Box<dyn std::error::Error>> {
     let output = CliToolAdapter.invoke(SkillInvocation {
         skill_name: "credential.large-output".to_owned(),
+        step_id: None,
+        artifacts: None,
+        allowed_tools: None,
         source: large_output_cli_source(),
         inputs: Default::default(),
         resolved_inputs: Default::default(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: std::env::current_dir()?,
         env: process_env(),
+        requirements: Default::default(),
         credential_delivery: CredentialDelivery::none(),
     })?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
-    assert_eq!(output.stdout, "");
-    assert!(output.stderr.contains("stdout/stderr omitted"));
-    assert!(!output.stdout.contains("ghs_secret_token"));
-    assert!(!output.stderr.contains("ghs_secret_token"));
+    assert_eq!(
+        output.value,
+        runx_contracts::JsonValue::String(String::new())
+    );
+    let diagnostic = output.failure_message().unwrap_or_default();
+    assert!(diagnostic.contains("stdout/stderr omitted"));
+    assert!(!output.rendered_value().contains("ghs_secret_token"));
+    assert!(!diagnostic.contains("ghs_secret_token"));
     Ok(())
 }
 
@@ -343,6 +358,55 @@ fn credential_delivery_redacts_before_truncating() -> Result<(), Box<dyn std::er
 }
 
 #[test]
+fn credential_delivery_redacts_exact_encoded_values_without_destroying_endpoint_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::collections::BTreeSet;
+
+    use base64::Engine as _;
+
+    let secret = "token \u{ff}/with+reserved=value";
+    let delivery = CredentialDelivery::from_local_descriptor(
+        "fixture",
+        "api_key",
+        "FIXTURE_TOKEN",
+        "secret://fixture/encoded",
+        Vec::new(),
+        secret,
+    )?;
+    let percent_encoded =
+        url::form_urlencoded::byte_serialize(secret.as_bytes()).collect::<String>();
+    let form_encoded = url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("", secret)
+        .finish()
+        .strip_prefix('=')
+        .ok_or("missing form value")?
+        .to_owned();
+    let encoded = BTreeSet::from([
+        percent_encoded,
+        form_encoded,
+        base64::engine::general_purpose::STANDARD.encode(secret),
+        base64::engine::general_purpose::STANDARD_NO_PAD.encode(secret),
+        base64::engine::general_purpose::URL_SAFE.encode(secret),
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(secret),
+    ]);
+    let redacted = delivery.redact_text(format!(
+        "request https://api.example.test/v1/messages?{}",
+        encoded.iter().cloned().collect::<Vec<_>>().join("&")
+    ));
+
+    assert!(redacted.contains("https://api.example.test/v1/messages?"));
+    assert!(!redacted.contains(secret));
+    for value in &encoded {
+        assert!(!redacted.contains(value));
+    }
+    assert_eq!(
+        redacted.matches("[redacted-credential]").count(),
+        encoded.len()
+    );
+    Ok(())
+}
+
+#[test]
 fn mcp_adapter_delivers_secret_env_and_redacts_tool_result()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut inputs = runx_contracts::JsonObject::new();
@@ -352,46 +416,25 @@ fn mcp_adapter_delivers_secret_env_and_redacts_tool_result()
     );
     let output = McpAdapter::new(FixtureMcpTransport).invoke(SkillInvocation {
         skill_name: "credential.mcp".to_owned(),
+        step_id: None,
+        artifacts: None,
+        allowed_tools: None,
         source: mcp_source(),
         inputs,
         resolved_inputs: Default::default(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: std::env::current_dir()?,
         env: process_env(),
+        requirements: Default::default(),
         credential_delivery: allowed_delivery()?,
     })?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout.trim(), "[redacted-credential]");
-    assert!(!output.stdout.contains("ghs_secret_token"));
-    assert!(!serde_json::to_string(&output.metadata)?.contains("ghs_secret_token"));
-    Ok(())
-}
-
-#[test]
-fn mcp_process_transport_rejects_process_env_credential_delivery()
--> Result<(), Box<dyn std::error::Error>> {
-    let mut inputs = runx_contracts::JsonObject::new();
-    inputs.insert(
-        "name".to_owned(),
-        runx_contracts::JsonValue::String("GITHUB_TOKEN".to_owned()),
-    );
-    let output = McpAdapter::new(ProcessMcpTransport::default()).invoke(SkillInvocation {
-        skill_name: "credential.mcp.process".to_owned(),
-        source: mcp_process_source()?,
-        inputs,
-        resolved_inputs: Default::default(),
-        current_context: Vec::new(),
-        skill_directory: repo_root()?,
-        env: process_env(),
-        credential_delivery: allowed_delivery()?,
-    })?;
-
-    assert_eq!(output.status, InvocationStatus::Failure);
-    assert_eq!(output.stdout, "");
-    assert_eq!(output.stderr, "MCP adapter failed.");
-    assert!(!output.stdout.contains("ghs_secret_token"));
-    assert!(!output.stderr.contains("ghs_secret_token"));
+    // The MCP envelope is projected to its semantic value; the delivered
+    // secret must arrive redacted.
+    assert_eq!(output.value.as_str(), Some("[redacted-credential]"));
+    assert!(!output.rendered_value().contains("ghs_secret_token"));
     assert!(!serde_json::to_string(&output.metadata)?.contains("ghs_secret_token"));
     Ok(())
 }
@@ -470,6 +513,9 @@ fn cli_source() -> SkillSource {
         act: None,
         source_type: runx_parser::SourceKind::CliTool,
         command: Some("sh".to_owned()),
+        module: None,
+        javascript_export: None,
+        pages: None,
         args: vec![
             "-c".to_owned(),
             "printf '%s\\n' \"$GITHUB_TOKEN\"".to_owned(),
@@ -477,19 +523,18 @@ fn cli_source() -> SkillSource {
         cwd: None,
         timeout_seconds: Some(5),
         input_mode: None,
-        sandbox: Some(readonly_sandbox()),
         server: None,
-        catalog_ref: None,
         tool: None,
         arguments: None,
         agent_card_url: None,
         agent_identity: None,
         agent: None,
         task: None,
-        hook: None,
         outputs: None,
         graph: None,
-        http: None,
+        external_adapter: None,
+        thread_outbox_provider: None,
+        environment: Default::default(),
         raw: Default::default(),
     }
 }
@@ -499,7 +544,7 @@ fn large_output_cli_source() -> SkillSource {
     source.command = Some("node".to_owned());
     source.args = vec![
         "-e".to_owned(),
-        "process.stdout.write('x'.repeat(1024 * 1024 + 1));".to_owned(),
+        "process.stdout.write('x'.repeat(8 * 1024 * 1024 + 1));".to_owned(),
     ];
     source
 }
@@ -518,53 +563,14 @@ fn mcp_source() -> SkillSource {
     source
 }
 
-fn mcp_process_source() -> Result<SkillSource, RuntimeError> {
-    let root = repo_root()?;
-    let mut source = cli_source();
-    source.source_type = runx_parser::SourceKind::Mcp;
-    source.command = None;
-    source.args = Vec::new();
-    source.server = Some(runx_parser::SkillMcpServer {
-        command: "node".to_owned(),
-        args: vec![
-            root.join("fixtures/runtime/adapters/mcp/stdio-server.mjs")
-                .to_string_lossy()
-                .into_owned(),
-        ],
-        cwd: Some(root.to_string_lossy().into_owned()),
-    });
-    source.tool = Some("env".to_owned());
-    Ok(source)
-}
-
-fn readonly_sandbox() -> SkillSandbox {
-    SkillSandbox {
-        profile: runx_core::policy::SandboxProfile::Readonly,
-        cwd_policy: None,
-        env_allowlist: Some(vec!["PATH".to_owned()]),
-        network: None,
-        writable_paths: Vec::new(),
-        require_enforcement: None,
-        approved_escalation: None,
-        raw: Default::default(),
-    }
-}
-
 fn process_env() -> BTreeMap<String, String> {
     let mut env = std::env::vars().collect::<BTreeMap<_, _>>();
     env.insert(
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
-        "local".to_owned(),
+        "RUNX_CWD".to_owned(),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .to_string_lossy()
+            .into_owned(),
     );
     env
-}
-
-fn repo_root() -> Result<PathBuf, RuntimeError> {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()
-        .map_err(|error| RuntimeError::Io {
-            context: "repository root is available".to_owned(),
-            source: error,
-        })
 }

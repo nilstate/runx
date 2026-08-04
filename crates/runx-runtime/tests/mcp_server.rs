@@ -22,11 +22,6 @@ use runx_runtime::adapters::mcp::{
 use runx_runtime::receipts::store::LocalReceiptStore;
 
 const FIXTURE_CREATED_AT: &str = "2026-05-18T00:00:00Z";
-#[cfg(feature = "mcp")]
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
-#[cfg(feature = "mcp")]
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE: &str = "local";
-
 #[test]
 #[cfg(feature = "mcp")]
 fn mcp_server_initializes_lists_and_calls_tools() -> Result<(), Box<dyn std::error::Error>> {
@@ -191,19 +186,24 @@ fn mcp_server_concurrent_call_completes_while_slow_skill_runs()
         r#"---
 name: slow-cli
 description: Slow skill used to prove MCP dispatch concurrency.
-source:
-  type: cli-tool
-  command: sh
-  args:
-    - ./run.sh
-  timeout_seconds: 5
-  sandbox:
-    profile: readonly
-    cwd_policy: skill-directory
-inputs: {}
 ---
 
 Slow fixture.
+"#,
+    )?;
+    fs::write(
+        slow_skill.path().join("X.yaml"),
+        r#"skill: slow-cli
+version: "0.1.0"
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./run.sh
+    timeout_seconds: 5
+    inputs: {}
 "#,
     )?;
     fs::write(
@@ -655,7 +655,7 @@ fn mcp_server_mid_session_transport_error_keeps_recorded_diagnostic()
 fn mcp_server_host_result_conversion_covers_terminal_statuses() {
     let completed = mcp_tool_result_from_host_result(McpHostRunResult::Completed {
         skill_name: "echo".to_owned(),
-        output: String::new(),
+        output: JsonValue::Null,
         receipt_id: "receipt-1".to_owned(),
         runx: runx_status("completed"),
     });
@@ -797,10 +797,6 @@ fn mcp_server_execution_options(
     env.insert(
         "RUNX_CWD".to_owned(),
         repo_root()?.to_string_lossy().into_owned(),
-    );
-    env.insert(
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
     );
     env.extend(crate::support::test_signing_env());
     Ok(McpServerExecutionOptions {

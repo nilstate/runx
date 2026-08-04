@@ -1,6 +1,5 @@
-// rust-style-allow: large-file - doctor aggregates path, registry, and authority diagnostics until those surfaces split.
+// Module rationale: doctor aggregates path, registry, and authority diagnostics until those surfaces split.
 use std::collections::BTreeMap;
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -14,33 +13,24 @@ use runx_pay::effect_state::{
     hosted_effect_state_backend_is_supported, resolve_effect_state_path,
 };
 use runx_runtime::{
-    PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
-    RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV, RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
-    RUNX_RECEIPT_SIGN_KID_ENV, RuntimeError, default_doctor_options, load_runx_config_file,
-    resolve_runx_home_dir, run_doctor,
+    HostedApiEnvironment, PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
+    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
+    RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV, RUNX_RECEIPT_SIGN_KID_ENV, RuntimeError,
+    RuntimeReceiptSignatureConfig, RuntimeReceiptVerifierSource, WorkspaceEnv,
+    decode_provider_scopes_env, default_doctor_options, load_runx_config_file,
+    receipt_verifier_from_env, resolve_runx_home_dir, run_doctor,
 };
 
-use crate::history::{
-    RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV, RUNX_RECEIPT_VERIFY_KID_ENV,
-};
 use crate::registry::{self, RegistryAction, RegistryPlan};
 use crate::router::{DoctorMode, DoctorPlan};
+use runx_runtime::{
+    RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV, RUNX_RECEIPT_VERIFY_KID_ENV,
+};
 
 const OFFICIAL_SKILLS_DIR_ENV: &str = "RUNX_OFFICIAL_SKILLS_DIR";
 
-pub fn run_native_doctor(plan: DoctorPlan) -> ExitCode {
-    let env = crate::history::env_map();
-    let cwd = match env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = crate::cli_io::write_stderr_code(&format!(
-                "runx: failed to resolve cwd: {error}\n"
-            ));
-            return ExitCode::from(1);
-        }
-    };
-
-    match run_doctor_command(&plan, &env, &cwd) {
+pub fn run_native_doctor(plan: DoctorPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    match run_doctor_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => crate::cli_io::write_stdout_code(&output.stdout, output.exit_code),
         Err(error) => {
             let _ignored = crate::cli_io::write_stderr_code(&format!("runx: {error}\n"));
@@ -101,7 +91,7 @@ fn run_doctor_command(
     Ok(DoctorCliOutput { stdout, exit_code })
 }
 
-// rust-style-allow: long-function - this builds one structured diagnostic packet
+// Function rationale: this builds one structured diagnostic packet
 // from env, config, and credential state so the evidence and repair stay together.
 fn managed_agent_config_diagnostic(
     env: &BTreeMap<String, String>,
@@ -367,7 +357,7 @@ fn path_diagnostic(id: &str, title: &str, path: PathBuf, env_names: &[&str]) -> 
     }
 }
 
-// rust-style-allow: long-function - one diagnostic assembles the trust-key matrix and repair hints.
+// Function rationale: one diagnostic assembles the trust-key matrix and repair hints.
 fn registry_trust_key_diagnostic(env: &BTreeMap<String, String>) -> DoctorDiagnostic {
     let configured_key_id = env
         .get(runx_runtime::registry::RUNX_REGISTRY_MANIFEST_TRUST_KEY_ID_ENV)
@@ -569,38 +559,10 @@ fn registry_remote_install_diagnostic(
 
 fn run_authority_doctor(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorReport {
     let diagnostics = vec![
-        readiness_diagnostic(
-            "runx.authority.signer",
-            "Receipt signer",
-            &[
-                RUNX_RECEIPT_SIGN_KID_ENV,
-                RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
-                RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
-            ],
-            env,
-            Some(RUNX_RECEIPT_SIGN_KID_ENV),
-        ),
-        readiness_diagnostic(
-            "runx.authority.verify_key",
-            "Receipt verification key",
-            &[
-                RUNX_RECEIPT_VERIFY_KID_ENV,
-                RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
-            ],
-            env,
-            Some(RUNX_RECEIPT_VERIFY_KID_ENV),
-        ),
+        receipt_signer_diagnostic(env),
+        receipt_verification_diagnostic(env),
         effect_state_diagnostic(env, cwd),
-        readiness_diagnostic(
-            "runx.authority.provider_grant",
-            "Provider permission grant",
-            &[
-                PROVIDER_PERMISSION_GRANT_ID_ENV,
-                PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
-            ],
-            env,
-            None,
-        ),
+        provider_grant_diagnostic(env, cwd),
     ];
     DoctorReport {
         schema: DoctorReportSchema::V1,
@@ -610,7 +572,248 @@ fn run_authority_doctor(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorRep
     }
 }
 
-// rust-style-allow: long-function - one diagnostic keeps effect-state path, evidence, and repairs together.
+fn receipt_signer_diagnostic(env: &BTreeMap<String, String>) -> DoctorDiagnostic {
+    const ENV_NAMES: &[&str] = &[
+        RUNX_RECEIPT_SIGN_KID_ENV,
+        RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
+        RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
+    ];
+
+    let resolution = RuntimeReceiptSignatureConfig::from_env(env);
+    let configured = resolution.is_ok();
+    let message = match resolution {
+        Ok(_) => format!(
+            "Receipt signer configured; key id: {}.",
+            env.get(RUNX_RECEIPT_SIGN_KID_ENV)
+                .map_or("<missing>", String::as_str)
+        ),
+        Err(error) => format!("Receipt signer not ready: {error}."),
+    };
+
+    DoctorDiagnostic {
+        id: "runx.authority.signer".to_owned(),
+        instance_id: "runx:doctor-authority:runx.authority.signer".to_owned(),
+        severity: if configured {
+            DoctorDiagnosticSeverity::Info
+        } else {
+            DoctorDiagnosticSeverity::Warning
+        },
+        title: "Receipt signer".to_owned(),
+        message,
+        target: object([
+            ("kind", string_value("authority")),
+            ("ref", string_value("runx.authority.signer")),
+        ]),
+        location: DoctorLocation {
+            path: "environment".to_owned(),
+            json_pointer: None,
+        },
+        evidence: Some(authority_evidence(
+            ENV_NAMES,
+            configured,
+            configured.then_some(RUNX_RECEIPT_SIGN_KID_ENV),
+        )),
+        repairs: if configured {
+            Vec::new()
+        } else {
+            vec![manual_env_repair(
+                "runx.authority.signer.configure_env",
+                ENV_NAMES,
+                "Configure one complete valid receipt signing identity.",
+                DoctorRepairRisk::Sensitive,
+            )]
+        },
+    }
+}
+
+fn receipt_verification_diagnostic(env: &BTreeMap<String, String>) -> DoctorDiagnostic {
+    const VERIFY_ENV: &[&str] = &[
+        RUNX_RECEIPT_VERIFY_KID_ENV,
+        RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
+    ];
+    const ALL_ENV: &[&str] = &[
+        RUNX_RECEIPT_VERIFY_KID_ENV,
+        RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
+        RUNX_RECEIPT_SIGN_KID_ENV,
+        RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
+        RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
+    ];
+
+    let resolution = receipt_verifier_from_env(env);
+    let configured = matches!(&resolution, Ok(Some(_)));
+    let (source, source_label, key_id_env) = match resolution
+        .as_ref()
+        .ok()
+        .and_then(Option::as_ref)
+        .map(|resolved| resolved.source())
+    {
+        Some(RuntimeReceiptVerifierSource::ExplicitVerifier) => (
+            "explicit_verifier",
+            "explicit verifier",
+            Some(RUNX_RECEIPT_VERIFY_KID_ENV),
+        ),
+        Some(RuntimeReceiptVerifierSource::SigningIdentity) => (
+            "signing_identity",
+            "signing identity",
+            Some(RUNX_RECEIPT_SIGN_KID_ENV),
+        ),
+        None => ("unavailable", "unavailable source", None),
+    };
+    let message = match resolution {
+        Ok(Some(_)) => format!(
+            "Receipt verification configured from {source_label}; key id: {}.",
+            key_id_env
+                .and_then(|name| env.get(name))
+                .map_or("<missing>", String::as_str)
+        ),
+        Ok(None) => "Receipt verification not configured; set an explicit public verifier or a complete signing identity.".to_owned(),
+        Err(error) => format!("Receipt verification configuration is invalid: {error}."),
+    };
+    let mut evidence = authority_evidence(ALL_ENV, configured, key_id_env);
+    evidence.insert("source".to_owned(), string_value(source));
+
+    DoctorDiagnostic {
+        id: "runx.authority.verify_key".to_owned(),
+        instance_id: "runx:doctor-authority:runx.authority.verify_key".to_owned(),
+        severity: if configured {
+            DoctorDiagnosticSeverity::Info
+        } else {
+            DoctorDiagnosticSeverity::Warning
+        },
+        title: "Receipt verification key".to_owned(),
+        message,
+        target: object([
+            ("kind", string_value("authority")),
+            ("ref", string_value("runx.authority.verify_key")),
+        ]),
+        location: DoctorLocation {
+            path: "environment".to_owned(),
+            json_pointer: None,
+        },
+        evidence: Some(evidence),
+        repairs: if configured {
+            Vec::new()
+        } else {
+            vec![manual_env_repair(
+                "runx.authority.verify_key.configure_env",
+                VERIFY_ENV,
+                "Set an independent public verifier, or configure the complete receipt signing identity already used by this operator.",
+                DoctorRepairRisk::Sensitive,
+            )]
+        },
+    }
+}
+
+fn provider_grant_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorDiagnostic {
+    let explicit_grant = env_contains_non_empty(env, PROVIDER_PERMISSION_GRANT_ID_ENV);
+    let explicit_scope_value = env
+        .get(PROVIDER_PERMISSION_GRANTED_SCOPES_ENV)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty());
+    let malformed_scopes =
+        explicit_scope_value.is_some_and(|value| decode_provider_scopes_env(value).is_err());
+    let explicit_scopes = explicit_scope_value.is_some() && !malformed_scopes;
+    let explicit_principal = env_contains_non_empty(env, PROVIDER_PERMISSION_PRINCIPAL_REF_ENV);
+    let explicit_complete = explicit_grant && explicit_scopes && explicit_principal;
+    let connect_available = HostedApiEnvironment::resolve(None, None, env, cwd)
+        .and_then(|environment| environment.require_token().map(|_| ()))
+        .is_ok();
+    let configured = !malformed_scopes && (explicit_complete || connect_available);
+    let message = provider_grant_message(
+        explicit_grant,
+        explicit_scopes,
+        explicit_principal,
+        malformed_scopes,
+        connect_available,
+    );
+    let mut evidence = authority_evidence(
+        &[
+            PROVIDER_PERMISSION_GRANT_ID_ENV,
+            PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
+            PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
+        ],
+        configured,
+        None,
+    );
+    evidence.insert(
+        "connect_discovery".to_owned(),
+        JsonValue::Bool(connect_available),
+    );
+    evidence.insert("explicit_grant".to_owned(), JsonValue::Bool(explicit_grant));
+    evidence.insert(
+        "explicit_principal".to_owned(),
+        JsonValue::Bool(explicit_principal),
+    );
+    evidence.insert(
+        "malformed_scopes".to_owned(),
+        JsonValue::Bool(malformed_scopes),
+    );
+    DoctorDiagnostic {
+        id: "runx.authority.provider_grant".to_owned(),
+        instance_id: "runx:doctor-authority:runx.authority.provider_grant".to_owned(),
+        severity: if configured {
+            DoctorDiagnosticSeverity::Info
+        } else {
+            DoctorDiagnosticSeverity::Warning
+        },
+        title: "Provider permission grant".to_owned(),
+        message,
+        target: object([
+            ("kind", string_value("authority")),
+            ("ref", string_value("runx.authority.provider_grant")),
+        ]),
+        location: DoctorLocation {
+            path: "environment".to_owned(),
+            json_pointer: None,
+        },
+        evidence: Some(evidence),
+        repairs: if configured {
+            Vec::new()
+        } else {
+            vec![manual_env_repair(
+                "runx.authority.provider_grant.configure",
+                &[
+                    PROVIDER_PERMISSION_GRANT_ID_ENV,
+                    PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
+                    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
+                ],
+                "Configure Runx Connect for automatic grant discovery, or inject a complete provider grant, JSON scope array, and principal reference from the operator host.",
+                DoctorRepairRisk::Sensitive,
+            )]
+        },
+    }
+}
+
+fn provider_grant_message(
+    explicit_grant: bool,
+    explicit_scopes: bool,
+    explicit_principal: bool,
+    malformed_scopes: bool,
+    connect_available: bool,
+) -> String {
+    if malformed_scopes {
+        return format!(
+            "{PROVIDER_PERMISSION_GRANTED_SCOPES_ENV} is malformed; it must be a JSON array of exact capability strings."
+        );
+    }
+    match (
+        explicit_grant,
+        explicit_scopes,
+        explicit_principal,
+        connect_available,
+    ) {
+        (true, true, true, _) => {
+            "Provider permission grant supplied by the operator environment.".to_owned()
+        }
+        (true, _, _, true) => "Provider grant selected by the operator; Runx Connect will resolve its active scopes and principal at execution.".to_owned(),
+        (_, _, _, true) => "Runx Connect is configured; native provider tools will resolve the unique active provider/scope grant at execution.".to_owned(),
+        _ => format!(
+            "Provider permission grant is unavailable; configure Runx Connect, or set {PROVIDER_PERMISSION_GRANT_ID_ENV}, {PROVIDER_PERMISSION_GRANTED_SCOPES_ENV}, and {PROVIDER_PERMISSION_PRINCIPAL_REF_ENV} for a host-injected grant."
+        ),
+    }
+}
+
+// Function rationale: one diagnostic keeps effect-state path, evidence, and repairs together.
 fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorDiagnostic {
     if env_contains_non_empty(env, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV) {
         let hosted_status = hosted_effect_state_backend_is_supported(env);
@@ -758,62 +961,6 @@ fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> Doctor
 
 fn effect_state_unset_consequence() -> &'static str {
     "Cross-run spend caps, payment idempotency, and effect replay recovery are not durable without a configured state path."
-}
-
-fn readiness_diagnostic(
-    id: &str,
-    title: &str,
-    env_names: &[&str],
-    env: &BTreeMap<String, String>,
-    key_id_env: Option<&str>,
-) -> DoctorDiagnostic {
-    let missing = env_names
-        .iter()
-        .filter(|name| !env_contains_non_empty(env, name))
-        .copied()
-        .collect::<Vec<_>>();
-    let configured = missing.is_empty();
-    let message = if configured {
-        match key_id_env
-            .and_then(|name| env.get(name))
-            .map(String::as_str)
-        {
-            Some(key_id) => format!("{title} configured; key id: {key_id}."),
-            None => format!("{title} configured."),
-        }
-    } else {
-        format!("{title} not configured; set {}.", missing.join(", "))
-    };
-    DoctorDiagnostic {
-        id: id.to_owned(),
-        instance_id: format!("runx:doctor-authority:{id}"),
-        severity: if configured {
-            DoctorDiagnosticSeverity::Info
-        } else {
-            DoctorDiagnosticSeverity::Warning
-        },
-        title: title.to_owned(),
-        message,
-        target: object([
-            ("kind", string_value("authority")),
-            ("ref", string_value(id)),
-        ]),
-        location: DoctorLocation {
-            path: "environment".to_owned(),
-            json_pointer: None,
-        },
-        evidence: Some(authority_evidence(env_names, configured, key_id_env)),
-        repairs: if configured {
-            Vec::new()
-        } else {
-            vec![manual_env_repair(
-                &format!("{id}.configure_env"),
-                &missing,
-                &format!("Set {} in the operator environment.", missing.join(", ")),
-                DoctorRepairRisk::Sensitive,
-            )]
-        },
-    }
 }
 
 fn manual_env_repair(

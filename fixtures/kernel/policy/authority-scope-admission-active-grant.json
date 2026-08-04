@@ -24,8 +24,8 @@
         "repo:read",
         "repo:read"
       ],
-      "target_locator": "runxhq/aster#issue/4",
-      "target_repo": "runxhq/aster",
+      "target_locator": "runxhq/runx#issue/4",
+      "target_repo": "runxhq/runx",
       "type": "connected"
     },
     "grants": [
@@ -41,8 +41,8 @@
           "user:read"
         ],
         "status": "active",
-        "target_locator": "runxhq/aster#issue/4",
-        "target_repo": "runxhq/aster"
+        "target_locator": "runxhq/runx#issue/4",
+        "target_repo": "runxhq/runx"
       }
     ],
     "kind": "policy.buildLocalScopeAdmission",

@@ -40,9 +40,7 @@
   },
   "proof": {
     "contribution_pr": "https://github.com/nilstate/icey-cli/pull/2",
-    "upstream_ci": "https://github.com/nilstate/icey-cli/actions/runs/24486423144/job/71562291942",
-    "aster_contribution_run": "https://github.com/nilstate/aster/actions/runs/24486417144",
-    "aster_watch_lane": "skill-contribution-watch"
+    "upstream_ci": "https://github.com/nilstate/icey-cli/actions/runs/24486423144/job/71562291942"
   },
   "publication": {
     "status": "pending_remote_publish",

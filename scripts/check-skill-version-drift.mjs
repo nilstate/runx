@@ -3,9 +3,11 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
+
+import { evaluateParserRequestResults } from "./lib/native-parser.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const currentProfiles = new Map();
 
 if (process.argv.includes("--self-test")) {
   runSelfTests();
@@ -28,26 +30,35 @@ console.log(`skill catalog version and graph-input checks ok${comparison}`);
 function checkCurrentCatalog() {
   const findings = [];
   const skillsRoot = path.join(root, "skills");
+  const documents = [];
   for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const profilePath = path.join(skillsRoot, entry.name, "X.yaml");
     if (!existsSync(profilePath)) continue;
     const source = readFileSync(profilePath, "utf8");
-    let profile;
-    try {
-      profile = parseYaml(source);
-    } catch (error) {
-      findings.push(`skills/${entry.name}/X.yaml: invalid YAML: ${error.message}`);
+    documents.push({ skill: entry.name, source });
+  }
+  const results = evaluateParserRequestResults(documents.map(({ source }) => ({
+    kind: "parser.validateRunnerManifestYaml",
+    yaml: source,
+  })));
+  for (const [index, document] of documents.entries()) {
+    const result = results[index];
+    if (result?.status !== "success") {
+      findings.push(`skills/${document.skill}/X.yaml: ${result?.error?.message ?? "invalid runner manifest"}`);
       continue;
     }
+    const profile = result.value;
+    currentProfiles.set(document.skill, profile);
+    const source = document.source;
     if (!isSemver(profile?.version)) {
-      findings.push(`skills/${entry.name}/X.yaml: version must be quoted semantic version x.y.z`);
+      findings.push(`skills/${document.skill}/X.yaml: version must be quoted semantic version x.y.z`);
     } else if (!source.split("\n").some((line) => line === `version: "${profile.version}"`)) {
-      findings.push(`skills/${entry.name}/X.yaml: version must be quoted as "${profile.version}"`);
+      findings.push(`skills/${document.skill}/X.yaml: version must be quoted as "${profile.version}"`);
     }
     for (const match of source.matchAll(/\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/gu)) {
       findings.push(
-        `skills/${entry.name}/X.yaml: retired graph input binding ${match[0]}; use $input.${match[1]}`,
+        `skills/${document.skill}/X.yaml: retired graph input binding ${match[0]}; use $input.${match[1]}`,
       );
     }
   }
@@ -55,27 +66,35 @@ function checkCurrentCatalog() {
 }
 
 function checkVersionDrift(base) {
-  const changedBySkill = new Map();
+  const candidatePaths = new Map();
   for (const changedPath of changedSkillPaths(base)) {
     const parts = changedPath.split("/");
     if (parts.length < 3 || parts[0] !== "skills") continue;
     const skill = parts[1];
     const relative = parts.slice(2).join("/");
     if (!skill || !relative) continue;
-    const currentScripts = consumedScripts("current", base, skill);
-    const baseScripts = consumedScripts("base", base, skill);
-    if (!isPublishableRelative(relative, currentScripts) && !isPublishableRelative(relative, baseScripts)) {
-      continue;
-    }
-    const paths = changedBySkill.get(skill) ?? [];
+    const paths = candidatePaths.get(skill) ?? [];
     paths.push(changedPath);
-    changedBySkill.set(skill, paths);
+    candidatePaths.set(skill, paths);
+  }
+  const baseProfiles = loadBaseProfiles(base, [...candidatePaths.keys()]);
+  const changedBySkill = new Map();
+  for (const [skill, paths] of candidatePaths) {
+    for (const changedPath of paths) {
+      const relative = changedPath.split("/").slice(2).join("/");
+      if (!isPublishableRelative(relative)) {
+        continue;
+      }
+      const publishable = changedBySkill.get(skill) ?? [];
+      publishable.push(changedPath);
+      changedBySkill.set(skill, publishable);
+    }
   }
 
   const findings = [];
   for (const [skill, changedPaths] of changedBySkill) {
-    const baseVersion = skillVersion("base", base, skill);
-    const currentVersion = skillVersion("current", base, skill);
+    const baseVersion = skillVersion(baseProfiles.get(skill));
+    const currentVersion = skillVersion(currentProfiles.get(skill));
     const finding = versionFinding(skill, baseVersion, currentVersion, changedPaths);
     if (finding) findings.push(finding);
   }
@@ -102,68 +121,26 @@ function changedSkillPaths(base) {
   return [...paths].sort();
 }
 
-function isPublishableRelative(relative, consumedScripts) {
-  if (consumedScripts.has(relative)) return true;
+function isPublishableRelative(relative) {
   const parts = relative.split("/");
   if (parts.some((part) => !part || part.startsWith("."))) return false;
-  if (parts.some((part) => ["assets", "dist", "fixtures", "node_modules", "src", "target"].includes(part))) {
+  if (parts.some((part) => ["assets", "dist", "node_modules", "src", "target"].includes(part))) {
     return false;
   }
   const fileName = parts.at(-1) ?? "";
+  if (parts.includes("fixtures")) {
+    return fileName.endsWith(".mjs") || fileName.endsWith(".js");
+  }
   if (parts.includes("references")) return fileName.endsWith(".md");
+  if (fileName.endsWith(".mjs") || fileName.endsWith(".js")) return true;
+  if (fileName.endsWith(".manifest.json")) return true;
   return ["SKILL.md", "X.yaml", "manifest.json", "run.mjs", "run.js", "harness.mjs", "harness.js"]
     .includes(fileName);
 }
 
-function consumedScripts(side, base, skill) {
-  const source = readSide(side, base, `skills/${skill}/X.yaml`);
-  if (!source) return new Set();
-  let profile;
-  try {
-    profile = parseYaml(source);
-  } catch {
-    return new Set();
-  }
-  const scripts = new Set();
-  visitValues(profile, (value) => {
-    const normalized = normalizeScriptPath(value);
-    if (normalized) scripts.add(normalized);
-  });
-  return scripts;
-}
-
-function visitValues(value, visit) {
-  if (typeof value === "string") {
-    visit(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) visitValues(item, visit);
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const item of Object.values(value)) visitValues(item, visit);
-  }
-}
-
-function normalizeScriptPath(value) {
-  const normalized = value.trim().replace(/^\.\//u, "");
-  if (!(normalized.endsWith(".mjs") || normalized.endsWith(".js"))) return null;
-  if (normalized.startsWith("/") || normalized.includes("\\")) return null;
-  const parts = normalized.split("/");
-  if (parts.some((part) => !part || part === "." || part === "..")) return null;
-  return normalized;
-}
-
-function skillVersion(side, base, skill) {
-  const source = readSide(side, base, `skills/${skill}/X.yaml`);
-  if (!source) return null;
-  try {
-    const version = parseYaml(source)?.version;
-    return isSemver(version) ? version : null;
-  } catch {
-    return null;
-  }
+function skillVersion(profile) {
+  const version = profile?.version;
+  return isSemver(version) ? version : null;
 }
 
 function versionFinding(skill, baseVersion, currentVersion, changedPaths) {
@@ -190,16 +167,24 @@ function compareSemver(left, right) {
   return 0;
 }
 
-function readSide(side, base, relativePath) {
-  if (side === "current") {
-    const absolutePath = path.join(root, relativePath);
-    return existsSync(absolutePath) ? readFileSync(absolutePath, "utf8") : null;
-  }
-  try {
-    return git(["show", `${base}:${relativePath}`]);
-  } catch {
-    return null;
-  }
+function loadBaseProfiles(base, skills) {
+  const documents = skills.flatMap((skill) => {
+    try {
+      return [{ skill, source: git(["show", `${base}:skills/${skill}/X.yaml`]) }];
+    } catch {
+      return [];
+    }
+  });
+  const results = evaluateParserRequestResults(documents.map(({ source }) => ({
+    kind: "parser.validateRunnerManifestYaml",
+    yaml: source,
+  })));
+  return new Map(documents.flatMap((document, index) => {
+    const result = results[index];
+    return result?.status === "success"
+      ? [[document.skill, result.value]]
+      : [];
+  }));
 }
 
 function resolveBase() {
@@ -223,13 +208,12 @@ function git(args) {
 }
 
 function runSelfTests() {
-  const empty = new Set();
-  assert(isPublishableRelative("SKILL.md", empty), "SKILL.md is publishable");
-  assert(isPublishableRelative("references/operator.md", empty), "reference markdown is publishable");
-  assert(!isPublishableRelative("fixtures/evidence.json", empty), "ordinary fixtures are not package material");
+  assert(isPublishableRelative("SKILL.md"), "SKILL.md is publishable");
+  assert(isPublishableRelative("references/operator.md"), "reference markdown is publishable");
+  assert(!isPublishableRelative("fixtures/evidence.json"), "ordinary fixtures are not package material");
   assert(
-    isPublishableRelative("fixtures/helper.mjs", new Set(["fixtures/helper.mjs"])),
-    "an explicitly consumed harness helper is package material",
+    isPublishableRelative("fixtures/helper.mjs"),
+    "a harness helper is conservatively treated as package material",
   );
   assert(versionFinding("new-skill", null, "0.1.0", ["skills/new-skill/SKILL.md"]) === null, "new skill is allowed");
   assert(versionFinding("old-skill", "0.1.0", null, ["skills/old-skill/SKILL.md"]) === null, "deleted skill is allowed");

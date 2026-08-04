@@ -1,5 +1,5 @@
 skill: stripe-pay
-version: "0.1.4"
+version: "0.2.2"
 catalog:
   kind: graph
   audience: operator
@@ -18,13 +18,15 @@ runners:
     type: graph
     inputs:
       payment_signal:
-        type: object
+        type: json
+        packet: runx.payment.signal.v1
         required: true
         description: Payment-required signal or challenge.
       parent_payment_authority:
-        type: object
+        type: json
+        packet: runx.authority_term.v1
         required: true
-        description: Parent payment authority term or authority reference.
+        description: Full typed parent payment AuthorityTerm; a reference alone is refused.
       rail_profile_ref:
         type: string
         required: true
@@ -33,34 +35,73 @@ runners:
         type: object
         required: false
         description: Hosted payment admission token and settlement identity.
+        schema:
+          additionalProperties: true
       realm:
         type: string
         required: false
         description: Authority realm.
-      spend_policy:
-        type: object
-        required: false
-        description: Policy limits and approval thresholds.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
       idempotency_seed:
         type: string
-        required: false
-        description: Stable idempotency material.
+        required: true
+        description: Stable caller-owned idempotency material.
+    examples:
+      - payment_signal:
+          signal_type: effect_required
+          challenge_id: ch_stripe_spt_001
+          amount_minor: 125
+          currency: USD
+          rail: stripe-spt
+          counterparty: merchant:demo
+          operation: search.paid
+          realm: test
+        parent_payment_authority:
+          term_id: authority-term:payment:demo-001
+          principal_ref: { type: host, uri: principal:operator:test }
+          resource_ref: { type: surface, uri: merchant:demo }
+          resource_family: effect
+          verbs: [prepare, commit]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels: [stripe-spt]
+                realm: test
+                peer: merchant:demo
+                operation: search.paid
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+                authorization_form: single_use_capability
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          issued_by_ref: { type: host, uri: authority:payment:test }
+        rail_profile_ref: rail-profile:stripe-spt:test
+        payment_admission:
+          payment_admission_id: sha256:payment-admission-demo-001
+          money_movement_id: sha256:money-movement-demo-001
+          token:
+            rail: stripe-spt
+            amount_minor: 125
+            currency: USD
+            counterparty: merchant:demo
+        realm: test
+        idempotency_seed: demo-stripe-spt-001
     graph:
       name: stripe-pay
+      result_from: [spend]
       steps:
         - id: spend
           skill: ../spend
           runner: stripe-spt
           inputs:
-            payment_signal: "$input.payment_signal"
-            parent_payment_authority: "$input.parent_payment_authority"
-            rail_profile_ref: "$input.rail_profile_ref"
-            payment_admission: "$input.payment_admission"
-            realm: "$input.realm"
-            spend_policy: "$input.spend_policy"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
+            payment_signal: $input.payment_signal
+            parent_payment_authority: $input.parent_payment_authority
+            rail_profile_ref: $input.rail_profile_ref
+            payment_admission: $input.payment_admission
+            realm: $input.realm
+            idempotency_seed: $input.idempotency_seed

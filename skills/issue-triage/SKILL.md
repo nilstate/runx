@@ -1,52 +1,101 @@
 ---
 name: issue-triage
-description: Discover, analyze, and draft high-signal issue-thread responses and follow-up actions.
+description: Read, analyze, and draft high-signal GitHub issue responses from bounded provider evidence without silently mutating the repository.
 runx:
   category: ops
 ---
 
 # Issue Triage
 
-Turn noisy issue streams into bounded, evidence-backed action.
+Turn a noisy issue queue into one evidence-backed next action. The skill helps a
+maintainer decide which thread deserves attention and how to respond without
+silently mutating a repository or inventing state that is not present in the
+thread snapshot.
 
-This skill is for issue selection and response drafting, not for silently
-mutating repositories. Use it to identify which threads are worth attention,
-understand the maintainer or contributor situation, and draft the next helpful
-response or remediation path.
+Discovery and response are separate jobs. The default `provider-respond` runner
+reads one issue through a configured GitHub Connect grant, binds the returned
+snapshot and readback into the receipt, and turns it into a concise profile,
+recommended posture, draft reply, and follow-up plan. `discover` and `respond`
+remain explicit supplied-evidence lanes for offline queues and replay. Every
+lane stops at a draft; posting belongs to an approval-gated GitHub provider
+operation.
 
-Separate discovery from response. Discovery finds the thread worth engaging.
-Response drafting turns one chosen thread into a concrete answer, escalation,
-or change plan.
+## Composes
 
-Ground selection and response in the actual thread, repository facts, receipts,
-and maintainer context; do not infer intent beyond what is visible. Lead with
-the decision, answer, or next action in the project's own voice. Return
-`needs_more_evidence` or `needs_human` when the thread is ambiguous, hostile,
-underspecified, unsafe, or outside the maintainer's declared posture.
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
 
-## Output
+- `github-mcp-read-issue#default`
 
-Discovery runner:
+## When to use it
 
-- `issue_candidates`: candidate issues or discussions worth attention.
-- `selection_rationale`: why one candidate should be handled next.
-- `operator_notes`: constraints, caveats, or escalation triggers.
+Use the default runner when the operator has a repository and issue number and
+wants current provider-grounded evidence. Use `discover` for a supplied issue
+queue and `respond` when an exact snapshot is already available or a receipt is
+being replayed. Use `issue-intake` when the material must first become an
+engineering change request, and `issue-to-pr` only after explicit promotion to
+implementation.
 
-Response runner:
+Do not use this skill to close, label, assign, comment on, or promise work in a
+repository. It prepares the maintainer decision and draft only.
 
-- `issue_profile`: concise summary of the chosen thread.
-- `response_strategy`: recommended response posture and next action.
-- `response_draft`: post-ready draft or maintainer handoff.
-- `follow_up_actions`: concrete next steps after the response.
+## Evidence and provider boundary
 
-## Inputs
+Every candidate and response is bound through Runx's native data digest to the
+exact issue snapshot or bounded snapshot set. `provider-respond` obtains that
+snapshot through native `provider.read` with `repo.read`, and the provider
+operation remains in the sealed run alongside the draft. The `mcp-read` runner composes the
+bundled `examples/github-mcp-hero/read-issue` provider pattern for deterministic
+tests; it is not evidence that live GitHub was queried. Supplied snapshots are
+labelled as such rather than promoted to provider readback.
 
-- `repository` (optional): repository slug or workspace reference.
-- `query` (optional): search or queue objective for discovery.
-- `issue_url` (optional): canonical issue URL for response drafting.
-- `issue_snapshot` (optional): structured issue data when already fetched.
-- `maintainer_context` (optional): project norms, release posture, and
-  response constraints.
-- `operator_context` (optional): operator-supplied context used by higher-level
-  triage graphs.
-- `objective` (optional): what the operator wants from this pass.
+Ground the assessment in the thread, repository facts, receipts, and supplied
+maintainer context. Do not infer contributor intent, reproduce hostile language
+unnecessarily, or claim a fix, release, or investigation exists unless the
+snapshot proves it.
+
+## Inputs and result
+
+`discover` accepts a bounded `issue_snapshots` set, a selection `query`, and
+optional maintainer constraints. It returns a ranked triage queue whose ids and
+rationales bind to the admitted snapshot index.
+
+`provider-respond` accepts `owner/name`, an issue number, and optional objective
+and maintainer context. `respond` accepts the same analysis context with one
+already obtained `issue_snapshot`. Both return the issue profile, response
+strategy, unsent response draft, and concrete follow-up actions with
+`delivery_status: not_sent`; the provider status distinguishes live readback
+from supplied evidence.
+
+## Stop conditions
+
+- Return `needs_more_evidence` or `needs_human` when a thread is ambiguous,
+  hostile, unsafe, underspecified, or outside declared maintainer posture.
+- Reject issue ids, repository state, labels, commitments, or completed work not
+  present in the admitted snapshot.
+- Do not turn maintainer context into provider evidence.
+- Refuse a missing, ambiguous, wrong-provider, or under-scoped GitHub Connect
+  grant instead of falling back to a raw token or package HTTP client.
+- Keep mutation outside this skill. An accepted draft must move to a scoped
+  GitHub comment operation with approval and provider readback.
+
+## Example
+
+A queue contains a reproducible regression, a broad feature request, and a stale
+question. Discovery can prioritize the regression and explain why. Response can
+draft a concise request for the missing version detail or describe a verified
+workaround. It cannot say “fixed in the next release” unless the snapshot or
+other admitted evidence establishes that fact, and it cannot post the reply.
+
+## Agent task contracts
+
+### `issue-triage-discover`
+
+Rank only issues in the supplied index. Return bounded candidates and the
+selection rationale an operator needs to review the ranking. Never invent issue
+ids, provider state, promises, or completed work.
+
+### `issue-triage-respond`
+
+Draft one helpful maintainer response grounded only in the admitted issue
+evidence. Preserve repository, issue number, title, and state exactly. Do not
+claim work is complete unless the snapshot proves it. The draft is not sent.

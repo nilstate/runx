@@ -1,37 +1,44 @@
-// rust-style-allow: large-file - the thread-outbox provider supervisor keeps transport, manifest
+// Module rationale: the thread-outbox provider supervisor keeps transport, manifest
 // validation, secret rejection, and redaction in one module so the provider boundary is reviewed
 // as a single trust surface.
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use runx_contracts::{
-    JsonValue, ThreadOutboxProviderFetch, ThreadOutboxProviderManifest,
-    ThreadOutboxProviderObservation, ThreadOutboxProviderObservationStatus,
-    ThreadOutboxProviderOperation, ThreadOutboxProviderPush, ThreadOutboxProviderTransportKind,
+    ExecutionBoundaryKind, JsonObject, JsonValue, ThreadOutboxProviderFetch,
+    ThreadOutboxProviderManifest, ThreadOutboxProviderObservation,
+    ThreadOutboxProviderObservationStatus, ThreadOutboxProviderOperation, ThreadOutboxProviderPush,
+    ThreadOutboxProviderTransportKind,
 };
 use thiserror::Error;
 
+use crate::bytes::trim_ascii_whitespace;
 use crate::credentials::CredentialDelivery;
-use crate::process::{ProcessOutcome, ProcessSpec, ProcessStdin, run_process};
-use crate::redaction::trim_ascii_whitespace;
+use crate::process::{
+    ProcessOutcome, ProcessSpec, ProcessStdin, STANDARD_PROCESS_OUTPUT_BYTES, run_process,
+};
+use crate::receipts::paths::RUNX_CWD_ENV;
 
-const DEFAULT_TIMEOUT_MS: u64 = 5_000;
-const DEFAULT_OUTPUT_LIMIT_BYTES: usize = 1_048_576;
+const DEFAULT_OUTBOX_PROVIDER_TIMEOUT_MS: u64 = 5_000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ThreadOutboxProviderSupervisorOptions {
     pub timeout_ms: u64,
     pub output_limit_bytes: usize,
     pub cwd: Option<PathBuf>,
+    /// Exact non-secret process environment admitted by the owning runtime.
+    /// Credential material is added separately through `CredentialDelivery`.
+    pub environment: BTreeMap<String, String>,
 }
 
 impl Default for ThreadOutboxProviderSupervisorOptions {
     fn default() -> Self {
         Self {
-            timeout_ms: DEFAULT_TIMEOUT_MS,
-            output_limit_bytes: DEFAULT_OUTPUT_LIMIT_BYTES,
+            timeout_ms: DEFAULT_OUTBOX_PROVIDER_TIMEOUT_MS,
+            output_limit_bytes: STANDARD_PROCESS_OUTPUT_BYTES,
             cwd: None,
+            environment: BTreeMap::new(),
         }
     }
 }
@@ -43,6 +50,7 @@ pub struct ThreadOutboxProviderProcessOutcome {
     pub redacted_stderr: String,
     pub process_exit_code: Option<i32>,
     pub duration_ms: u64,
+    pub execution_boundary: Option<JsonObject>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -92,8 +100,15 @@ impl ThreadOutboxProviderProcessSupervisor {
         request: ThreadOutboxProviderRequest<'_>,
         credential_delivery: &CredentialDelivery,
     ) -> Result<ThreadOutboxProviderProcessOutcome, ThreadOutboxProviderSupervisorError> {
-        let output = self.run_provider_process(manifest, &request, credential_delivery)?;
-        self.interpret_provider_process_output(manifest, &request, credential_delivery, output)
+        let (output, execution_boundary) =
+            self.run_provider_process(manifest, &request, credential_delivery)?;
+        self.interpret_provider_process_output(
+            manifest,
+            &request,
+            credential_delivery,
+            output,
+            execution_boundary,
+        )
     }
 
     fn run_provider_process(
@@ -101,27 +116,52 @@ impl ThreadOutboxProviderProcessSupervisor {
         manifest: &ThreadOutboxProviderManifest,
         request: &ThreadOutboxProviderRequest<'_>,
         credential_delivery: &CredentialDelivery,
-    ) -> Result<ProcessOutcome, ThreadOutboxProviderSupervisorError> {
-        let command = process_command(manifest)?;
-        run_process(
+    ) -> Result<(ProcessOutcome, JsonObject), ThreadOutboxProviderSupervisorError> {
+        let cwd = provider_process_cwd(&self.options)?;
+        let command = process_command(manifest, &self.options.environment)?;
+        let mut process = crate::process_invocation::prepare_exact_process_invocation(
+            command.to_string_lossy().into_owned(),
+            manifest.transport.args.clone().unwrap_or_default(),
+            cwd,
+            self.options.environment.clone(),
+            Vec::new(),
+            ExecutionBoundaryKind::TrustedHostProcess,
+        )
+        .map_err(|source| ThreadOutboxProviderSupervisorError::Process {
+            context: "preparing thread outbox provider process".to_owned(),
+            detail: source.to_string(),
+        })?
+        .into_execution_plan();
+        credential_delivery
+            .ensure_environment_disjoint(&process.env)
+            .map_err(|source| ThreadOutboxProviderSupervisorError::Process {
+                context: "preparing thread outbox provider credential delivery".to_owned(),
+                detail: source.to_string(),
+            })?;
+        for (name, value) in credential_delivery.secret_env().iter() {
+            process.env.insert(name.to_owned(), value.to_owned());
+        }
+        let execution_boundary = process.metadata.clone();
+        let output = run_process(
             ProcessSpec::new(
                 "thread-outbox-provider",
-                command.to_string_lossy().into_owned(),
+                process.command,
                 self.options.output_limit_bytes,
             )
-            .args(manifest.transport.args.clone().unwrap_or_default())
-            .env(provider_process_env(credential_delivery))
+            .args(process.args)
+            .env(process.env)
             .stdin(Some(ProcessStdin::new(
                 request_bytes(request)?,
                 "writing thread outbox provider request",
             )))
             .timeout(Some(Duration::from_millis(self.options.timeout_ms)))
-            .cwd(self.options.cwd.clone().unwrap_or_else(current_dir)),
+            .cwd(process.cwd),
         )
         .map_err(|source| ThreadOutboxProviderSupervisorError::Process {
             context: "running thread outbox provider process".to_owned(),
             detail: source.to_string(),
-        })
+        })?;
+        Ok((output, execution_boundary))
     }
 
     fn interpret_provider_process_output(
@@ -130,6 +170,7 @@ impl ThreadOutboxProviderProcessSupervisor {
         request: &ThreadOutboxProviderRequest<'_>,
         credential_delivery: &CredentialDelivery,
         output: ProcessOutcome,
+        execution_boundary: JsonObject,
     ) -> Result<ThreadOutboxProviderProcessOutcome, ThreadOutboxProviderSupervisorError> {
         if output.timed_out {
             return Err(ThreadOutboxProviderSupervisorError::TimedOut {
@@ -169,6 +210,7 @@ impl ThreadOutboxProviderProcessSupervisor {
             redacted_stderr,
             process_exit_code: output.status.code(),
             duration_ms: output.duration_ms,
+            execution_boundary: Some(execution_boundary),
         })
     }
 }
@@ -197,6 +239,10 @@ pub enum ThreadOutboxProviderSupervisorError {
     MissingProcessCommand,
     #[error("thread outbox provider process command is empty")]
     EmptyProcessCommand,
+    #[error("thread outbox provider process requires an explicit cwd or absolute RUNX_CWD")]
+    MissingWorkingDirectory,
+    #[error("thread outbox provider process working directory must be absolute, got '{path}'")]
+    RelativeWorkingDirectory { path: String },
     #[error("thread outbox provider process timed out after {timeout_ms}ms")]
     TimedOut { timeout_ms: u64 },
     #[error("thread outbox provider process failed with {exit_status}: {stderr}")]
@@ -209,8 +255,6 @@ pub enum ThreadOutboxProviderSupervisorError {
     EmptyResponse,
     #[error("thread outbox provider response envelope output must be an object when present")]
     InvalidResponseEnvelopeOutput,
-    #[error("thread outbox provider response contained private secret-like field '{field}'")]
-    SecretFieldRejected { field: String },
     #[error(
         "thread outbox provider observation adapter id mismatch: expected '{expected}', got '{actual}'"
     )]
@@ -282,7 +326,7 @@ fn validate_manifest(
     {
         return Err(ThreadOutboxProviderSupervisorError::UnsupportedTransport);
     }
-    let _command = process_command(manifest)?;
+    let _command = declared_process_command(manifest)?;
     Ok(())
 }
 
@@ -326,7 +370,17 @@ fn validate_request_identity(
 
 fn process_command(
     manifest: &ThreadOutboxProviderManifest,
+    environment: &BTreeMap<String, String>,
 ) -> Result<PathBuf, ThreadOutboxProviderSupervisorError> {
+    Ok(resolve_process_command(
+        declared_process_command(manifest)?,
+        environment,
+    ))
+}
+
+fn declared_process_command(
+    manifest: &ThreadOutboxProviderManifest,
+) -> Result<&str, ThreadOutboxProviderSupervisorError> {
     let Some(command) = manifest.transport.command.as_deref() else {
         return Err(ThreadOutboxProviderSupervisorError::MissingProcessCommand);
     };
@@ -334,16 +388,16 @@ fn process_command(
     if command.is_empty() {
         return Err(ThreadOutboxProviderSupervisorError::EmptyProcessCommand);
     }
-    Ok(resolve_process_command(command))
+    Ok(command)
 }
 
-fn resolve_process_command(command: &str) -> PathBuf {
+fn resolve_process_command(command: &str, environment: &BTreeMap<String, String>) -> PathBuf {
     let path = Path::new(command);
     if path.is_absolute() || path.components().count() > 1 {
         return path.to_path_buf();
     }
 
-    if let Some(paths) = std::env::var_os("PATH") {
+    if let Some(paths) = environment.get("PATH") {
         for dir in std::env::split_paths(&paths) {
             let candidate = dir.join(command);
             if candidate.is_file() {
@@ -354,7 +408,7 @@ fn resolve_process_command(command: &str) -> PathBuf {
                 if candidate.extension().is_some() {
                     continue;
                 }
-                if let Some(exts) = std::env::var_os("PATHEXT") {
+                if let Some(exts) = environment.get("PATHEXT") {
                     for ext in std::env::split_paths(&exts) {
                         let ext = ext.to_string_lossy();
                         let candidate = dir.join(format!("{command}{ext}"));
@@ -398,8 +452,7 @@ fn parse_provider_response(
     }
     let mut value: JsonValue = serde_json::from_slice(bytes)
         .map_err(|source| json_error("parsing thread outbox provider observation", source))?;
-    reject_secret_like_fields(&value, "$")?;
-    redact_json_value(&mut value, credential_delivery);
+    credential_delivery.redact_json_value(&mut value);
     let (observation_value, output) = provider_response_parts(value)?;
     let redacted = serde_json::to_vec(&observation_value).map_err(|source| {
         json_error(
@@ -409,10 +462,10 @@ fn parse_provider_response(
     })?;
     let mut observation: ThreadOutboxProviderObservation = serde_json::from_slice(&redacted)
         .map_err(|source| json_error("validating thread outbox provider observation", source))?;
-    if observation.delivery_observations.is_none() {
-        if let Some(delivery_observation) = credential_delivery.public_observation() {
-            observation.delivery_observations = Some(vec![delivery_observation.clone()]);
-        }
+    if observation.delivery_observations.is_none()
+        && let Some(delivery_observation) = credential_delivery.public_observation()
+    {
+        observation.delivery_observations = Some(vec![delivery_observation.clone()]);
     }
     Ok(ThreadOutboxProviderProviderResponse {
         observation,
@@ -490,101 +543,22 @@ fn validate_observation(
     Ok(())
 }
 
-fn reject_secret_like_fields(
-    value: &JsonValue,
-    path: &str,
-) -> Result<(), ThreadOutboxProviderSupervisorError> {
-    match value {
-        JsonValue::Object(object) => {
-            for (key, child) in object {
-                let child_path = format!("{path}.{key}");
-                if secret_like_key(key) {
-                    return Err(ThreadOutboxProviderSupervisorError::SecretFieldRejected {
-                        field: child_path,
-                    });
-                }
-                reject_secret_like_fields(child, &child_path)?;
-            }
-        }
-        JsonValue::Array(values) => {
-            for (index, child) in values.iter().enumerate() {
-                reject_secret_like_fields(child, &format!("{path}[{index}]"))?;
-            }
-        }
-        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) | JsonValue::String(_) => {}
+fn provider_process_cwd(
+    options: &ThreadOutboxProviderSupervisorOptions,
+) -> Result<PathBuf, ThreadOutboxProviderSupervisorError> {
+    let cwd = options
+        .cwd
+        .clone()
+        .or_else(|| options.environment.get(RUNX_CWD_ENV).map(PathBuf::from))
+        .ok_or(ThreadOutboxProviderSupervisorError::MissingWorkingDirectory)?;
+    if !cwd.is_absolute() {
+        return Err(
+            ThreadOutboxProviderSupervisorError::RelativeWorkingDirectory {
+                path: cwd.to_string_lossy().into_owned(),
+            },
+        );
     }
-    Ok(())
-}
-
-fn secret_like_key(key: &str) -> bool {
-    let normalized: String = key
-        .chars()
-        .filter(|ch| *ch != '_' && *ch != '-' && *ch != '.')
-        .flat_map(char::to_lowercase)
-        .collect();
-    const SECRET_KEYS: &[&str] = &[
-        "token",
-        "accesstoken",
-        "apikey",
-        "secret",
-        "password",
-        "authorization",
-    ];
-    SECRET_KEYS.contains(&normalized.as_str())
-}
-
-fn redact_json_value(value: &mut JsonValue, credential_delivery: &CredentialDelivery) {
-    match value {
-        JsonValue::String(text) => {
-            *text = credential_delivery.redact_text(std::mem::take(text));
-        }
-        JsonValue::Array(values) => {
-            for child in values {
-                redact_json_value(child, credential_delivery);
-            }
-        }
-        JsonValue::Object(object) => {
-            for child in object.values_mut() {
-                redact_json_value(child, credential_delivery);
-            }
-        }
-        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Number(_) => {}
-    }
-}
-
-fn current_dir() -> PathBuf {
-    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-}
-
-fn provider_process_env(
-    credential_delivery: &CredentialDelivery,
-) -> std::collections::BTreeMap<String, String> {
-    provider_process_env_from(credential_delivery, |key| std::env::var(key).ok())
-}
-
-fn provider_process_env_from(
-    credential_delivery: &CredentialDelivery,
-    mut value_for_key: impl FnMut(&str) -> Option<String>,
-) -> std::collections::BTreeMap<String, String> {
-    let mut env = [
-        "PATH",
-        "SystemRoot",
-        "PATHEXT",
-        "HOME",
-        "TMPDIR",
-        "TMP",
-        "TEMP",
-    ]
-    .into_iter()
-    .filter_map(|key| value_for_key(key).map(|value| (key.to_owned(), value)))
-    .collect::<std::collections::BTreeMap<_, _>>();
-    env.extend(
-        credential_delivery
-            .secret_env()
-            .iter()
-            .map(|(key, value)| (key.to_owned(), value.to_owned())),
-    );
-    env
+    Ok(cwd)
 }
 
 fn json_error(
@@ -597,32 +571,25 @@ fn json_error(
     }
 }
 
-#[must_use]
-pub fn thread_outbox_provider_forbidden_secret_fields() -> BTreeSet<&'static str> {
-    BTreeSet::from([
-        "token",
-        "access_token",
-        "api_key",
-        "secret",
-        "password",
-        "authorization",
-    ])
-}
-
 #[cfg(test)]
 mod tests {
-    use super::provider_process_env_from;
-    use crate::credentials::CredentialDelivery;
+    use std::collections::BTreeMap;
+    use std::fs;
+
+    use super::resolve_process_command;
 
     #[test]
     fn provider_process_env_preserves_host_paths_without_leaking_ambient_secrets() {
-        let env = provider_process_env_from(&CredentialDelivery::none(), |key| match key {
-            "PATH" => Some("/opt/runx/bin:/usr/bin".to_owned()),
-            "HOME" => Some("/private/operator-home".to_owned()),
-            "TMPDIR" => Some("/private/operator-tmp".to_owned()),
-            "AWS_SECRET_ACCESS_KEY" => Some("must-not-cross-boundary".to_owned()),
-            _ => None,
-        });
+        let ambient = BTreeMap::from([
+            ("PATH".to_owned(), "/opt/runx/bin:/usr/bin".to_owned()),
+            ("HOME".to_owned(), "/private/operator-home".to_owned()),
+            ("TMPDIR".to_owned(), "/private/operator-tmp".to_owned()),
+            (
+                "AWS_SECRET_ACCESS_KEY".to_owned(),
+                "must-not-cross-boundary".to_owned(),
+            ),
+        ]);
+        let env = crate::execution_environment::process_baseline_environment(&ambient);
 
         assert_eq!(
             env.get("PATH").map(String::as_str),
@@ -637,5 +604,27 @@ mod tests {
             Some("/private/operator-tmp")
         );
         assert!(!env.contains_key("AWS_SECRET_ACCESS_KEY"));
+    }
+
+    #[test]
+    fn provider_command_resolution_uses_only_the_admitted_path()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = tempfile::tempdir()?;
+        let executable = root.path().join("provider-adapter");
+        fs::write(&executable, "fixture")?;
+        let environment = BTreeMap::from([(
+            "PATH".to_owned(),
+            root.path().to_string_lossy().into_owned(),
+        )]);
+
+        assert_eq!(
+            resolve_process_command("provider-adapter", &environment),
+            executable
+        );
+        assert_eq!(
+            resolve_process_command("provider-adapter", &BTreeMap::new()),
+            std::path::PathBuf::from("provider-adapter")
+        );
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because native dev skill/graph replay keeps
+// Module rationale: native dev skill/graph replay keeps
 // fixture preparation, expectation projection, and harness invocation together
 // until the CLI watch cutover creates a stable module boundary.
 use std::collections::BTreeMap;
@@ -6,20 +6,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use runx_contracts::{
-    ClosureDisposition, JsonNumber, JsonObject, JsonValue, json_object_field as object_field,
-    json_string_field as string_field,
-};
+use runx_contracts::{ClosureDisposition, JsonNumber, JsonObject, JsonValue};
+use runx_parser::DevFixtureTargetKind;
 
 use super::r#loop::{
     assert_fixture_expectation, failed_fixture, prepare_fixture_workspace,
     resolve_fixture_execution_roots,
 };
+use super::materialize::materialize_fixture_value;
 use super::support::elapsed_ms;
-use super::tool::materialize_fixture_value;
 use super::types::{
     DevError, DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureResult, DevFixtureStatus,
-    ParsedDevFixture, PreparedDevFixtureWorkspace,
+    LoadedDevFixture, PreparedDevFixtureWorkspace,
 };
 #[cfg(feature = "cli-tool")]
 use crate::adapters::cli_tool::CliToolAdapter;
@@ -31,21 +29,26 @@ use crate::{RuntimeOptions, run_harness_fixture_with_adapter};
 
 pub(super) fn run_skill_or_graph_fixture(
     root: &Path,
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
+    env: &BTreeMap<String, String>,
 ) -> Result<DevFixtureResult, DevError> {
     let started = Instant::now();
-    let Some(kind) = string_field(&fixture.target, "kind") else {
-        return Ok(missing_target_kind(fixture, started));
-    };
-    let Some(reference) = string_field(&fixture.target, "ref") else {
-        return Ok(missing_target_ref(fixture, started, kind));
-    };
+    let kind = fixture.target().kind;
+    let reference = fixture.target().reference.as_str();
     let Some(target_path) = resolve_target_path(root, kind, reference) else {
         return Ok(unknown_target_ref(fixture, started, kind, reference));
     };
-    let workspace = prepare_fixture_workspace(root, &fixture.path, &fixture.document)?;
-    let result =
-        run_skill_or_graph_fixture_inner(root, fixture, kind, &target_path, &workspace, started);
+    let workspace =
+        prepare_fixture_workspace(root, &fixture.path, fixture.definition.workspace.as_ref())?;
+    let result = run_skill_or_graph_fixture_inner(
+        root,
+        fixture,
+        kind,
+        &target_path,
+        &workspace,
+        env,
+        started,
+    );
     if let Some(workspace_root) = &workspace.root {
         let _ = fs::remove_dir_all(workspace_root);
     }
@@ -54,20 +57,21 @@ pub(super) fn run_skill_or_graph_fixture(
 
 fn run_skill_or_graph_fixture_inner(
     root: &Path,
-    fixture: &ParsedDevFixture,
-    kind: &str,
+    fixture: &LoadedDevFixture,
+    kind: DevFixtureTargetKind,
     target_path: &Path,
     workspace: &PreparedDevFixtureWorkspace,
+    env: &BTreeMap<String, String>,
     started: Instant,
 ) -> Result<DevFixtureResult, DevError> {
     let Some(execution_roots) =
-        resolve_fixture_execution_roots(root, &fixture.lane, workspace.root.as_deref())
+        resolve_fixture_execution_roots(root, fixture.lane(), workspace.root.as_deref())
     else {
         return Ok(missing_execution_roots(fixture, started));
     };
     let harness_fixture_path =
         write_harness_replay_fixture(fixture, kind, target_path, workspace, &execution_roots)?;
-    let output = run_dev_harness_fixture(&harness_fixture_path);
+    let output = run_dev_harness_fixture(&harness_fixture_path, env);
     let _ = fs::remove_file(&harness_fixture_path);
     if let Some(parent) = harness_fixture_path.parent() {
         let _ = fs::remove_dir(parent);
@@ -88,27 +92,38 @@ fn run_skill_or_graph_fixture_inner(
     }
 }
 
-fn run_dev_harness_fixture(path: &Path) -> Result<HarnessReplayOutput, HarnessReplayError> {
+fn run_dev_harness_fixture(
+    path: &Path,
+    _env: &BTreeMap<String, String>,
+) -> Result<HarnessReplayOutput, HarnessReplayError> {
     #[cfg(feature = "cli-tool")]
     {
-        run_harness_fixture_with_adapter(path, CliToolAdapter, RuntimeOptions::local_development())
+        let options = RuntimeOptions::from_env_or_local_development(_env.clone())
+            .map_err(HarnessReplayError::Runtime)?;
+        run_harness_fixture_with_adapter(path, CliToolAdapter, options)
     }
     #[cfg(not(feature = "cli-tool"))]
     {
-        run_harness_fixture(path)
+        run_harness_fixture(path, _env.clone())
     }
 }
 
 fn write_harness_replay_fixture(
-    fixture: &ParsedDevFixture,
-    kind: &str,
+    fixture: &LoadedDevFixture,
+    kind: DevFixtureTargetKind,
     target_path: &Path,
     workspace: &PreparedDevFixtureWorkspace,
     roots: &super::types::DevFixtureExecutionRoots,
 ) -> Result<PathBuf, DevError> {
     let mut harness = JsonObject::new();
-    harness.insert("name".to_owned(), JsonValue::String(fixture.name.clone()));
-    harness.insert("kind".to_owned(), JsonValue::String(kind.to_owned()));
+    harness.insert(
+        "name".to_owned(),
+        JsonValue::String(fixture.name().to_owned()),
+    );
+    harness.insert(
+        "kind".to_owned(),
+        JsonValue::String(kind.as_str().to_owned()),
+    );
     harness.insert(
         "target".to_owned(),
         JsonValue::String(target_path.to_string_lossy().into_owned()),
@@ -116,9 +131,7 @@ fn write_harness_replay_fixture(
     harness.insert(
         "inputs".to_owned(),
         materialize_fixture_value(
-            object_field(&fixture.document, "inputs")
-                .map(|inputs| JsonValue::Object(inputs.clone()))
-                .unwrap_or_else(|| JsonValue::Object(JsonObject::new())),
+            JsonValue::Object(fixture.definition.inputs.clone()),
             &workspace.tokens,
         ),
     );
@@ -126,8 +139,11 @@ fn write_harness_replay_fixture(
     if !env.is_empty() {
         harness.insert("env".to_owned(), JsonValue::Object(env));
     }
-    if let Some(caller) = object_field(&fixture.document, "caller") {
-        harness.insert("caller".to_owned(), JsonValue::Object(caller.clone()));
+    if !fixture.definition.caller.is_empty() {
+        harness.insert(
+            "caller".to_owned(),
+            JsonValue::Object(fixture.definition.caller.clone()),
+        );
     }
     let path = unique_harness_fixture_path()?;
     let contents = serde_json::to_string_pretty(&JsonValue::Object(harness)).map_err(|source| {
@@ -144,12 +160,12 @@ fn write_harness_replay_fixture(
 }
 
 fn fixture_env(
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
     workspace: &PreparedDevFixtureWorkspace,
     roots: &super::types::DevFixtureExecutionRoots,
 ) -> JsonObject {
     let mut env = JsonObject::new();
-    for (key, value) in materialized_string_map(fixture.document.get("env"), &workspace.tokens) {
+    for (key, value) in materialized_string_map(&fixture.definition.env, &workspace.tokens) {
         env.insert(key, JsonValue::String(value));
     }
     env.insert(
@@ -170,12 +186,9 @@ fn fixture_env(
 }
 
 fn materialized_string_map(
-    value: Option<&JsonValue>,
+    object: &JsonObject,
     tokens: &BTreeMap<String, String>,
 ) -> BTreeMap<String, String> {
-    let Some(JsonValue::Object(object)) = value else {
-        return BTreeMap::new();
-    };
     object
         .iter()
         .filter_map(|(key, value)| materialized_string_entry(key, value, tokens))
@@ -198,7 +211,7 @@ fn materialized_string_entry(
 }
 
 fn result_from_harness_output(
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
     started: Instant,
     output: HarnessReplayOutput,
 ) -> DevFixtureResult {
@@ -208,15 +221,12 @@ fn result_from_harness_output(
     } else {
         1
     };
-    let assertions = assert_fixture_expectation(
-        fixture.document.get("expect"),
-        exit_code,
-        Some(&fixture_output),
-    );
+    let assertions =
+        assert_fixture_expectation(&fixture.definition.expect, exit_code, Some(&fixture_output));
     DevFixtureResult {
-        name: fixture.name.clone(),
-        lane: fixture.lane.clone(),
-        target: fixture.target.clone(),
+        name: fixture.name().to_owned(),
+        lane: fixture.lane().as_str().to_owned(),
+        target: fixture.target_json(),
         status: if assertions.is_empty() {
             DevFixtureStatus::Success
         } else {
@@ -232,7 +242,7 @@ fn result_from_harness_output(
 
 fn dev_output_from_harness(output: &HarnessReplayOutput) -> JsonValue {
     if let Some(skill_output) = &output.skill_output {
-        return parse_json_maybe(&skill_output.stdout);
+        return skill_output.value.clone();
     }
     let mut object = JsonObject::new();
     object.insert(
@@ -270,11 +280,15 @@ fn dev_output_from_harness(output: &HarnessReplayOutput) -> JsonValue {
     JsonValue::Object(object)
 }
 
-fn resolve_target_path(root: &Path, kind: &str, reference: &str) -> Option<PathBuf> {
+fn resolve_target_path(
+    root: &Path,
+    kind: DevFixtureTargetKind,
+    reference: &str,
+) -> Option<PathBuf> {
     match kind {
-        "skill" => resolve_skill_dir_from_ref(root, reference),
-        "graph" => resolve_graph_path_from_ref(root, reference),
-        _ => None,
+        DevFixtureTargetKind::Skill => resolve_skill_dir_from_ref(root, reference),
+        DevFixtureTargetKind::Graph => resolve_graph_path_from_ref(root, reference),
+        DevFixtureTargetKind::Tool => None,
     }
 }
 
@@ -299,42 +313,10 @@ fn resolve_graph_path_from_ref(root: &Path, reference: &str) -> Option<PathBuf> 
         .and_then(|candidate| fs::canonicalize(candidate).ok())
 }
 
-fn missing_target_kind(fixture: &ParsedDevFixture, started: Instant) -> DevFixtureResult {
-    failed_fixture(
-        fixture,
-        started,
-        vec![DevFixtureAssertion {
-            path: "target.kind".to_owned(),
-            expected: Some(JsonValue::String("skill | graph".to_owned())),
-            actual: fixture.target.get("kind").cloned(),
-            kind: DevFixtureAssertionKind::ExactMismatch,
-            message: "Native fixture target.kind must be skill or graph.".to_owned(),
-        }],
-    )
-}
-
-fn missing_target_ref(
-    fixture: &ParsedDevFixture,
-    started: Instant,
-    kind: &str,
-) -> DevFixtureResult {
-    failed_fixture(
-        fixture,
-        started,
-        vec![DevFixtureAssertion {
-            path: "target.ref".to_owned(),
-            expected: Some(JsonValue::String(format!("existing {kind}"))),
-            actual: fixture.target.get("ref").cloned(),
-            kind: DevFixtureAssertionKind::ExactMismatch,
-            message: format!("{kind} reference is required."),
-        }],
-    )
-}
-
 fn unknown_target_ref(
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
     started: Instant,
-    kind: &str,
+    kind: DevFixtureTargetKind,
     reference: &str,
 ) -> DevFixtureResult {
     failed_fixture(
@@ -342,15 +324,15 @@ fn unknown_target_ref(
         started,
         vec![DevFixtureAssertion {
             path: "target.ref".to_owned(),
-            expected: Some(JsonValue::String(format!("existing {kind}"))),
+            expected: Some(JsonValue::String(format!("existing {}", kind.as_str()))),
             actual: Some(JsonValue::String(reference.to_owned())),
             kind: DevFixtureAssertionKind::ExactMismatch,
-            message: format!("{kind} {reference} was not found."),
+            message: format!("{} {reference} was not found.", kind.as_str()),
         }],
     )
 }
 
-fn missing_execution_roots(fixture: &ParsedDevFixture, started: Instant) -> DevFixtureResult {
+fn missing_execution_roots(fixture: &LoadedDevFixture, started: Instant) -> DevFixtureResult {
     failed_fixture(
         fixture,
         started,
@@ -363,14 +345,6 @@ fn missing_execution_roots(fixture: &ParsedDevFixture, started: Instant) -> DevF
                 .to_owned(),
         }],
     )
-}
-
-fn parse_json_maybe(value: &str) -> JsonValue {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return JsonValue::String(String::new());
-    }
-    serde_json::from_str(trimmed).unwrap_or_else(|_| JsonValue::String(trimmed.to_owned()))
 }
 
 fn unique_harness_fixture_path() -> Result<PathBuf, DevError> {

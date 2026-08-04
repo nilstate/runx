@@ -8,7 +8,7 @@
     "server": {
       "command": "node",
       "args": [
-        "fixtures/runtime/adapters/mcp/stdio-server.mjs"
+        "fixtures/skills/mcp-echo/stdio-server.mjs"
       ],
       "cwd": "."
     },

@@ -1,148 +1,58 @@
 skill: charge-verify
-version: "0.1.0"
+version: 0.3.1
 catalog:
-  kind: skill
+  kind: graph
   audience: operator
   visibility: internal
   role: graph-stage
   part_of:
     - runx/charge
-harness:
-  cases:
-    - name: charge-verify-seals-proof
-      runner: verify
-      inputs:
-        charge_price_packet:
-          charge_price:
-            price_id: charge_price_demo_001
-            amount_minor: 125
-            currency: USD
-            settlement_families:
-              - mock
-          requested_payment_authority:
-            authority_ref: authority:payment:charge-price-demo-001
-        charge_challenge_packet:
-          charge_challenge:
-            challenge_id: charge_challenge_demo_001
-            receipt_before_forward_required: true
-          idempotency:
-            key: charge:paid-search-001
-        returned_credential:
-          family: mock
-          credential_ref: credential:mock:paid-search-001
-        priced_payment_authority:
-          term_id: authority-term:payment:charge-price-demo-001
-          principal_ref:
-            type: host
-            uri: principal:provider:test
-          resource_ref:
-            type: surface
-            uri: provider:demo
-          resource_family: effect
-          verbs:
-            - verify
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                channels:
-                  - mock
-                realm: test
-                peer: provider:demo
-                operation: search.paid
-                idempotency_required: true
-                receipt_before_success: true
-          conditions: []
-          approvals: []
-          capabilities: []
-          issued_by_ref:
-            type: host
-            uri: authority:payment:provider-test
-        verify_capability_ref: capability:charge-verify:paid-search-001
-        settlement_family: mock
-        idempotency:
-          key: charge:paid-search-001
-      caller:
-        answers:
-          agent_task.charge-verify.output:
-            verification_result:
-              status: verified
-              settlement_family: mock
-              amount_minor: 125
-              currency: USD
-            settlement_proof:
-              proof_ref: receipt-proof:mock-charge:paid-search-001
-              idempotency_key: charge:paid-search-001
-              family: mock
-            sealed_receipt_ref: receipt:charge:mock:paid-search-001
-            redactions:
-              - credential_material
-            recovery_hint:
-              status: sealed
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: charge_verify_closed
+  execution: plan
+  completion: plan
+  requires_adapter: true
+  approval: none
 runners:
   verify:
     default: true
-    type: agent-task
-    agent: operator
-    task: charge-verify
-    mutating: true
-    retry:
-      max_attempts: 1
-    idempotency:
-      key: charge-verify
-    outputs:
-      verification_result: object
-      settlement_proof: object
-      sealed_receipt_ref: string
-      redactions: array
-      recovery_hint: object
-    artifacts:
-      wrap_as: charge_verification_packet
-      packet: runx.payment.charge_verification.v1
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: verify
-        resource_family: effect
-        verbs:
-          - verify
-        receives_rail_secret_material: false
-        receipt_before_forward_required: true
-        checks_idempotency_before_retry: true
+    type: graph
     inputs:
       charge_price_packet:
-        type: object
+        type: json
+        packet: runx.payment.charge_price.v1
         required: true
-        description: Output from charge-price.
+        description: Native charge-price packet data.
       charge_challenge_packet:
-        type: object
+        type: json
+        packet: runx.payment.charge_challenge.v1
         required: true
-        description: Output from charge-challenge.
+        description: Native charge-challenge packet data.
       returned_credential:
-        type: object
+        type: json
+        packet: runx.payment.credential_reference.v1
         required: true
-        description: Caller-returned payment credential envelope or reference.
-      priced_payment_authority:
-        type: object
-        required: true
-        description: Already-priced provider-side payment authority term.
+        description: Opaque credential family and reference only.
       verify_capability_ref:
         type: string
         required: true
-        description: Single-use verification capability reference.
+        description: Single-use verifier capability reference.
       settlement_family:
         type: string
         required: true
-        description: Settlement family selected for verification.
+        description: Selected settlement family.
       idempotency:
         type: object
         required: true
-        description: Challenge idempotency key and replay policy.
+        description: Challenge idempotency binding.
+    graph:
+      name: charge-verify
+      result_from: [verify]
+      steps:
+        - id: verify
+          tool: payment.charge_verification_request
+          inputs:
+            charge_price_packet: $input.charge_price_packet
+            charge_challenge_packet: $input.charge_challenge_packet
+            returned_credential: $input.returned_credential
+            verify_capability_ref: $input.verify_capability_ref
+            settlement_family: $input.settlement_family
+            idempotency: $input.idempotency

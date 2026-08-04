@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import {
-  createLangChainToolCatalogAdapter,
   createRunxCliSkillRunner,
   createRunxLangChainTool,
   type RunxCliProcessRunner,
@@ -10,16 +9,6 @@ import {
 } from "./index.js";
 
 describe("@runxhq/langchain", () => {
-  it("sunsets in-process LangChain tool-catalog adapters explicitly", () => {
-    expect(() => createLangChainToolCatalogAdapter({
-      source: "langchain-demo",
-      label: "LangChain Demo",
-      namespace: "langchain",
-      baseDirectory: process.cwd(),
-      tools: [],
-    })).toThrow("was sunset with the Rust runtime takeover");
-  });
-
   it("invokes governed runx skills through the CLI JSON boundary", async () => {
     const calls: Array<{
       command: string;
@@ -33,7 +22,8 @@ describe("@runxhq/langchain", () => {
         signal: null,
         stdout: JSON.stringify({
           status: "sealed",
-          execution: { stdout: "from-cli", stderr: "", exit_code: 0 },
+          schema: "runx.skill_run.v1",
+          result: "from-cli",
         }),
         stderr: "",
       };
@@ -56,11 +46,8 @@ describe("@runxhq/langchain", () => {
 
     expect(result).toEqual({
       status: "sealed",
-      execution: {
-        stdout: "from-cli",
-        stderr: "",
-        exit_code: 0,
-      },
+      schema: "runx.skill_run.v1",
+      result: "from-cli",
     });
     expect(calls).toHaveLength(1);
     expect(calls[0]?.command).toBe("fake-runx");
@@ -128,10 +115,6 @@ function successResult(stdout: string): RunxSkillCliResult {
   return {
     status: "sealed",
     schema: "runx.skill_run.v1",
-    execution: {
-      stdout,
-      stderr: "",
-      exit_code: 0,
-    },
+    result: stdout,
   };
 }

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because this first dev-mode slice keeps fixture
+// Module rationale: this first dev-mode slice keeps fixture
 // discovery, workspace materialization, and result projection together until
 // native skill/graph dev execution creates the next durable module boundary.
 use std::collections::BTreeMap;
@@ -9,25 +9,32 @@ use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use runx_contracts::{
-    DoctorStatus, JsonObject, JsonValue, json_object_field as object_field,
-    json_string_field as string_field,
+use runx_contracts::{DoctorStatus, JsonObject, JsonValue, json_string_field as string_field};
+use runx_parser::{
+    DevFixtureExpectation, DevFixtureGit, DevFixtureGitConfig, DevFixtureLane,
+    DevFixtureTargetKind, DevFixtureWorkspace, DevOutputExpectation,
 };
 
+use super::materialize::{materialize_fixture_string, materialize_fixture_value};
 use super::skill::run_skill_or_graph_fixture;
 use super::support::elapsed_ms;
-use super::tool::{materialize_fixture_string, materialize_fixture_value, run_tool_fixture};
+use super::tool::run_tool_fixture;
 use super::types::{
     DevError, DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureExecutionRoots,
     DevFixtureExecutor, DevFixtureResult, DevFixtureStatus, DevLoopOptions, DevReport,
-    DevReportSchema, DevReportStatus, LocalDevFixtureExecutor, ParsedDevFixture,
+    DevReportSchema, DevReportStatus, LoadedDevFixture, LocalDevFixtureExecutor,
     PreparedDevFixtureWorkspace,
 };
 use crate::doctor::{default_doctor_options, run_doctor};
 use crate::path_util::lexical_normalize;
 
 pub fn run_dev_once(options: &DevLoopOptions) -> Result<DevReport, DevError> {
-    run_dev_once_with_executor(options, &LocalDevFixtureExecutor)
+    run_dev_once_with_executor(
+        options,
+        &LocalDevFixtureExecutor {
+            env: options.env.clone(),
+        },
+    )
 }
 
 pub fn run_dev_once_with_executor(
@@ -52,13 +59,8 @@ pub fn run_dev_once_with_executor(
     )?;
     let mut fixtures = Vec::new();
     for fixture_path in fixture_paths {
-        let parsed = parse_dev_fixture_file(&fixture_path)?;
-        fixtures.push(run_or_skip_fixture(
-            &root,
-            &parsed,
-            options.lane.as_str(),
-            executor,
-        )?);
+        let parsed = load_dev_fixture_file(&fixture_path)?;
+        fixtures.push(run_or_skip_fixture(&root, &parsed, options.lane, executor)?);
     }
 
     Ok(DevReport {
@@ -105,60 +107,58 @@ impl DevFixtureExecutor for LocalDevFixtureExecutor {
     fn run_fixture(
         &self,
         root: &Path,
-        fixture: &ParsedDevFixture,
+        fixture: &LoadedDevFixture,
     ) -> Result<DevFixtureResult, DevError> {
-        match string_field(&fixture.target, "kind") {
-            Some("tool") => run_tool_fixture(root, fixture),
-            Some("skill") | Some("graph") => run_skill_or_graph_fixture(root, fixture),
-            Some(_) | None => Ok(failed_fixture(
-                fixture,
-                Instant::now(),
-                vec![DevFixtureAssertion {
-                    path: "target.kind".to_owned(),
-                    expected: Some(JsonValue::String("tool | skill | graph".to_owned())),
-                    actual: fixture.target.get("kind").cloned(),
-                    kind: DevFixtureAssertionKind::ExactMismatch,
-                    message: "Fixture target.kind must be tool, skill, or graph.".to_owned(),
-                }],
-            )),
+        match fixture.target().kind {
+            DevFixtureTargetKind::Tool => run_tool_fixture(root, fixture, &self.env),
+            DevFixtureTargetKind::Skill | DevFixtureTargetKind::Graph => {
+                run_skill_or_graph_fixture(root, fixture, &self.env)
+            }
         }
     }
 }
 
 fn run_or_skip_fixture(
     root: &Path,
-    fixture: &ParsedDevFixture,
-    selected_lane: &str,
+    fixture: &LoadedDevFixture,
+    selected_lane: Option<DevFixtureLane>,
     executor: &impl DevFixtureExecutor,
 ) -> Result<DevFixtureResult, DevError> {
     let started = Instant::now();
-    if selected_lane != "all" && fixture.lane != selected_lane {
+    let fixture_lane = fixture.lane().as_str();
+    if let Some(selected_lane) = selected_lane
+        && fixture.lane() != selected_lane
+    {
         return Ok(DevFixtureResult {
-            name: fixture.name.clone(),
-            lane: fixture.lane.clone(),
-            target: fixture.target.clone(),
+            name: fixture.name().to_owned(),
+            lane: fixture_lane.to_owned(),
+            target: fixture.target_json(),
             status: DevFixtureStatus::Skipped,
             duration_ms: elapsed_ms(started),
             assertions: Vec::new(),
             skip_reason: Some(format!(
                 "lane {} excluded by --lane {}",
-                fixture.lane, selected_lane
+                fixture_lane,
+                selected_lane.as_str()
             )),
             output: None,
             replay_path: None,
         });
     }
-    if fixture.lane != "deterministic" && fixture.lane != "repo-integration" {
+    if !matches!(
+        fixture.lane(),
+        DevFixtureLane::Deterministic | DevFixtureLane::RepoIntegration
+    ) {
         return Ok(DevFixtureResult {
-            name: fixture.name.clone(),
-            lane: fixture.lane.clone(),
-            target: fixture.target.clone(),
+            name: fixture.name().to_owned(),
+            lane: fixture_lane.to_owned(),
+            target: fixture.target_json(),
             status: DevFixtureStatus::Skipped,
             duration_ms: elapsed_ms(started),
             assertions: Vec::new(),
             skip_reason: Some(format!(
                 "{} fixtures are parsed but not executed in dev v1",
-                fixture.lane
+                fixture_lane
             )),
             output: None,
             replay_path: None,
@@ -167,47 +167,26 @@ fn run_or_skip_fixture(
     executor.run_fixture(root, fixture)
 }
 
-fn parse_dev_fixture_file(path: &Path) -> Result<ParsedDevFixture, DevError> {
+fn load_dev_fixture_file(path: &Path) -> Result<LoadedDevFixture, DevError> {
     let contents = fs::read_to_string(path).map_err(|source| DevError::ReadFixture {
         path: path.to_path_buf(),
         source,
     })?;
-    let document: JsonValue =
-        serde_norway::from_str(&contents).map_err(|source| DevError::ParseFixture {
+    let definition =
+        runx_parser::parse_dev_fixture(&contents).map_err(|source| DevError::ParseFixture {
             path: path.to_path_buf(),
             source,
         })?;
-    let JsonValue::Object(document) = document else {
-        return Ok(ParsedDevFixture {
-            path: path.to_path_buf(),
-            name: path_stem(path),
-            lane: "unknown".to_owned(),
-            target: JsonObject::new(),
-            document: JsonObject::new(),
-        });
-    };
-    let name = string_field(&document, "name")
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| path_stem(path));
-    let lane = string_field(&document, "lane")
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| "deterministic".to_owned());
-    let target = object_field(&document, "target")
-        .cloned()
-        .unwrap_or_default();
-    Ok(ParsedDevFixture {
+    Ok(LoadedDevFixture {
         path: path.to_path_buf(),
-        name,
-        lane,
-        target,
-        document,
+        definition,
     })
 }
 
 pub(super) fn prepare_fixture_workspace(
     root: &Path,
     fixture_path: &Path,
-    fixture: &JsonObject,
+    workspace: Option<&DevFixtureWorkspace>,
 ) -> Result<PreparedDevFixtureWorkspace, DevError> {
     let fixture_dir = fixture_path.parent().unwrap_or(root);
     let mut tokens = BTreeMap::from([
@@ -224,7 +203,6 @@ pub(super) fn prepare_fixture_workspace(
             fixture_dir.to_string_lossy().into_owned(),
         ),
     ]);
-    let workspace = object_field(fixture, "workspace").or_else(|| object_field(fixture, "repo"));
     let Some(workspace) = workspace else {
         return Ok(PreparedDevFixtureWorkspace { root: None, tokens });
     };
@@ -235,26 +213,26 @@ pub(super) fn prepare_fixture_workspace(
     );
     write_fixture_file_map(
         &fixture_root,
-        object_field(workspace, "files"),
+        Some(&workspace.files),
         &tokens,
         false,
         FixtureFileMode::Regular,
     )?;
     write_fixture_file_map(
         &fixture_root,
-        object_field(workspace, "json_files"),
+        Some(&workspace.json_files),
         &tokens,
         true,
         FixtureFileMode::Regular,
     )?;
     write_fixture_file_map(
         &fixture_root,
-        object_field(workspace, "executable_files"),
+        Some(&workspace.executable_files),
         &tokens,
         false,
         FixtureFileMode::Executable,
     )?;
-    initialize_fixture_git(&fixture_root, workspace.get("git"), &tokens)?;
+    initialize_fixture_git(&fixture_root, workspace.git.as_ref(), &tokens)?;
     Ok(PreparedDevFixtureWorkspace {
         root: Some(fixture_root),
         tokens,
@@ -352,20 +330,16 @@ fn apply_executable_fixture_file_mode(_path: &Path) -> Result<(), DevError> {
 
 fn initialize_fixture_git(
     root: &Path,
-    value: Option<&JsonValue>,
+    git: Option<&DevFixtureGit>,
     tokens: &BTreeMap<String, String>,
 ) -> Result<(), DevError> {
-    let git = match value {
-        Some(JsonValue::Bool(true)) => Some(None),
-        Some(JsonValue::Object(object)) => Some(Some(object)),
-        _ => None,
+    let config = match git {
+        Some(DevFixtureGit::Enabled(true)) => None,
+        Some(DevFixtureGit::Config(config)) => Some(config),
+        None | Some(DevFixtureGit::Enabled(false)) => return Ok(()),
     };
-    let Some(git) = git else {
-        return Ok(());
-    };
-
-    let branch = git
-        .and_then(|object| string_field(object, "initial_branch"))
+    let branch = config
+        .and_then(|config| config.initial_branch.as_deref())
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("main");
@@ -377,15 +351,15 @@ fn initialize_fixture_git(
     )?;
     run_required_process("git", &["config", "user.name", "Runx Fixture"], root)?;
 
-    if git.and_then(|object| object.get("commit")) != Some(&JsonValue::Bool(false)) {
+    if config.and_then(|config| config.commit) != Some(false) {
         run_required_process("git", &["add", "."], root)?;
         run_required_process("git", &["commit", "-m", "fixture baseline"], root)?;
     }
 
-    if let Some(git) = git {
+    if let Some(DevFixtureGitConfig { dirty_files, .. }) = config {
         write_fixture_file_map(
             root,
-            object_field(git, "dirty_files"),
+            Some(dirty_files),
             tokens,
             false,
             FixtureFileMode::Regular,
@@ -440,10 +414,10 @@ fn resolve_inside_fixture_root(root: &Path, relative_path: &str) -> Result<PathB
 
 pub(super) fn resolve_fixture_execution_roots(
     root: &Path,
-    lane: &str,
+    lane: DevFixtureLane,
     workspace_root: Option<&Path>,
 ) -> Option<DevFixtureExecutionRoots> {
-    if lane == "repo-integration" {
+    if lane == DevFixtureLane::RepoIntegration {
         let workspace_root = workspace_root?;
         return Some(DevFixtureExecutionRoots {
             cwd: workspace_root.to_path_buf(),
@@ -457,16 +431,12 @@ pub(super) fn resolve_fixture_execution_roots(
 }
 
 pub(super) fn assert_fixture_expectation(
-    expectation: Option<&JsonValue>,
+    expectation: &DevFixtureExpectation,
     exit_code: i32,
     output: Option<&JsonValue>,
 ) -> Vec<DevFixtureAssertion> {
     let mut assertions = Vec::new();
-    let expect = match expectation {
-        Some(JsonValue::Object(value)) => value,
-        _ => return assertions,
-    };
-    let expected_status = string_field(expect, "status").unwrap_or("success");
+    let expected_status = expectation.status.as_str();
     let actual_status = if exit_code == 0 { "success" } else { "failure" };
     if expected_status != actual_status {
         assertions.push(DevFixtureAssertion {
@@ -477,7 +447,7 @@ pub(super) fn assert_fixture_expectation(
             message: format!("Expected status {expected_status}, got {actual_status}."),
         });
     }
-    if let Some(output_expectation) = object_field(expect, "output") {
+    if let Some(output_expectation) = &expectation.output {
         assertions.extend(assert_output_expectation(
             output_expectation,
             output.unwrap_or(&JsonValue::String(String::new())),
@@ -488,23 +458,23 @@ pub(super) fn assert_fixture_expectation(
 }
 
 fn assert_output_expectation(
-    expectation: &JsonObject,
+    expectation: &DevOutputExpectation,
     output: &JsonValue,
     base_path: &str,
 ) -> Vec<DevFixtureAssertion> {
     let mut assertions = Vec::new();
-    if let Some(exact) = expectation.get("exact") {
-        if output != exact {
-            assertions.push(DevFixtureAssertion {
-                path: format!("{base_path}.exact"),
-                expected: Some(exact.clone()),
-                actual: Some(output.clone()),
-                kind: DevFixtureAssertionKind::ExactMismatch,
-                message: "Output did not exactly match.".to_owned(),
-            });
-        }
+    if let Some(exact) = &expectation.exact
+        && output != exact
+    {
+        assertions.push(DevFixtureAssertion {
+            path: format!("{base_path}.exact"),
+            expected: Some(exact.clone()),
+            actual: Some(output.clone()),
+            kind: DevFixtureAssertionKind::ExactMismatch,
+            message: "Output did not exactly match.".to_owned(),
+        });
     }
-    if let Some(subset) = expectation.get("subset") {
+    if let Some(subset) = &expectation.subset {
         let subset_output =
             subset_assertion_output(expectation, subset, output, base_path, &mut assertions);
         assertions.extend(assert_subset(subset, subset_output, ""));
@@ -513,7 +483,7 @@ fn assert_output_expectation(
 }
 
 fn subset_assertion_output<'a>(
-    expectation: &JsonObject,
+    expectation: &DevOutputExpectation,
     subset: &JsonValue,
     output: &'a JsonValue,
     base_path: &str,
@@ -523,7 +493,7 @@ fn subset_assertion_output<'a>(
         return output;
     };
 
-    if let Some(expected_packet) = string_field(expectation, "matches_packet") {
+    if let Some(expected_packet) = expectation.matches_packet.as_deref() {
         let actual_schema = string_field(output_object, "schema").unwrap_or_default();
         if actual_schema != expected_packet {
             assertions.push(DevFixtureAssertion {
@@ -595,14 +565,14 @@ fn object_value(value: &JsonValue) -> Option<&JsonObject> {
 }
 
 pub(super) fn failed_fixture(
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
     started: Instant,
     assertions: Vec<DevFixtureAssertion>,
 ) -> DevFixtureResult {
     DevFixtureResult {
-        name: fixture.name.clone(),
-        lane: fixture.lane.clone(),
-        target: fixture.target.clone(),
+        name: fixture.name().to_owned(),
+        lane: fixture.lane().as_str().to_owned(),
+        target: fixture.target_json(),
         status: DevFixtureStatus::Failure,
         duration_ms: elapsed_ms(started),
         assertions,
@@ -689,13 +659,6 @@ fn unique_temp_dir() -> Result<PathBuf, DevError> {
     Ok(path)
 }
 
-fn path_stem(path: &Path) -> String {
-    path.file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or("fixture")
-        .to_owned()
-}
-
 fn is_yaml_file(path: &Path) -> bool {
     path.extension()
         .and_then(|value| value.to_str())
@@ -711,16 +674,16 @@ mod tests {
     #[test]
     fn subset_expectations_unwrap_packet_data() {
         let assertions = assert_fixture_expectation(
-            Some(&object_value_from([
-                ("status", JsonValue::String("success".to_owned())),
-                (
-                    "output",
-                    object_value_from([(
-                        "subset",
-                        object_value_from([("message", JsonValue::String("hello".to_owned()))]),
-                    )]),
-                ),
-            ])),
+            &DevFixtureExpectation {
+                status: runx_parser::DevExpectedStatus::Success,
+                output: Some(DevOutputExpectation {
+                    subset: Some(object_value_from([(
+                        "message",
+                        JsonValue::String("hello".to_owned()),
+                    )])),
+                    ..DevOutputExpectation::default()
+                }),
+            },
             0,
             Some(&object_value_from([
                 ("schema", JsonValue::String("runx.echo.v1".to_owned())),
@@ -737,22 +700,17 @@ mod tests {
     #[test]
     fn matches_packet_checks_schema_and_unwraps_data() {
         let assertions = assert_fixture_expectation(
-            Some(&object_value_from([
-                ("status", JsonValue::String("success".to_owned())),
-                (
-                    "output",
-                    object_value_from([
-                        (
-                            "matches_packet",
-                            JsonValue::String("runx.echo.v1".to_owned()),
-                        ),
-                        (
-                            "subset",
-                            object_value_from([("message", JsonValue::String("hello".to_owned()))]),
-                        ),
-                    ]),
-                ),
-            ])),
+            &DevFixtureExpectation {
+                status: runx_parser::DevExpectedStatus::Success,
+                output: Some(DevOutputExpectation {
+                    matches_packet: Some("runx.echo.v1".to_owned()),
+                    subset: Some(object_value_from([(
+                        "message",
+                        JsonValue::String("hello".to_owned()),
+                    )])),
+                    ..DevOutputExpectation::default()
+                }),
+            },
             0,
             Some(&object_value_from([
                 ("schema", JsonValue::String("runx.echo.v1".to_owned())),
@@ -769,19 +727,16 @@ mod tests {
     #[test]
     fn subset_expectations_can_address_packet_wrapper() {
         let assertions = assert_fixture_expectation(
-            Some(&object_value_from([
-                ("status", JsonValue::String("success".to_owned())),
-                (
-                    "output",
-                    object_value_from([(
-                        "subset",
-                        object_value_from([(
-                            "data",
-                            object_value_from([("message", JsonValue::String("hello".to_owned()))]),
-                        )]),
-                    )]),
-                ),
-            ])),
+            &DevFixtureExpectation {
+                status: runx_parser::DevExpectedStatus::Success,
+                output: Some(DevOutputExpectation {
+                    subset: Some(object_value_from([(
+                        "data",
+                        object_value_from([("message", JsonValue::String("hello".to_owned()))]),
+                    )])),
+                    ..DevOutputExpectation::default()
+                }),
+            },
             0,
             Some(&object_value_from([
                 ("schema", JsonValue::String("runx.echo.v1".to_owned())),

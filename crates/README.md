@@ -15,20 +15,21 @@ cargo test --workspace
 cargo package --workspace --allow-dirty
 node ../scripts/check-rust-kernel-parity.mjs
 node ../scripts/check-rust-crate-graph.mjs
-node ../scripts/check-rust-core-style.mjs
 ```
 
-The workspace lints (see [`Cargo.toml`](Cargo.toml)) deny `unsafe_code`,
+The compiler and workspace Clippy lints (see [`Cargo.toml`](Cargo.toml)) deny `unsafe_code`,
 `unwrap_used`, `expect_used`, `panic`, `dbg_macro`, `print_stdout`,
 `print_stderr`, `todo`, `unimplemented`, and `wildcard_imports` across every
-crate. Adapter-tier dependencies (async runtimes, HTTP clients, MCP protocol
-crates) require an explicit spec before they may be added to `deny.toml`.
+crate. Contract fixtures are enumerated by their owning native generators and
+tests; no source-text parser defines Rust semantics. Adapter-tier dependencies
+(async runtimes, HTTP clients, MCP protocol crates) require an explicit spec
+before they may be added to `deny.toml`.
 
 ## Layout
 
 - `runx-cli`: native `runx` binary. Hand-rolled dispatcher across `harness`,
   `connect`, `config`, `policy`, `kernel`, `doctor`, `list`, `history`, `mcp`,
-  `tool`, `registry`, `skill`, plus scaffold/router plumbing. Activation
+  `tool`, `registry`, `skill`, plus project/router plumbing. Activation
   versus the npm CLI is recorded by the completed
   [`rust-cli-rust-cutover`](../.scafld/specs/archive/2026-05/rust-cli-rust-cutover.md)
   spec.
@@ -36,18 +37,19 @@ crates) require an explicit spec before they may be added to `deny.toml`.
   registry/tool records, act assignment, harness spine, generic authority and
   effect finality, target-repo runner planning, and the post-merge observer.
 - `runx-core`: pure decisions. State-machine parity and policy parity
-  (admission, sandbox, authority proof, public-work, retry, graph-step scope,
-  generic authority subset).
+  (admission, authority proof, public-work, retry, graph-step scope, generic
+  authority subset).
 - `runx-parser`: pure YAML → AST → IR parity for graphs, skills, runners, tool
   manifests, and skill installs. Raw object subtrees use
   `runx_contracts::JsonValue`.
 - `runx-receipts`: pure receipt model, canonical hashing, and tree
   verification with an adversarial unit matrix.
-- `runx-runtime`: impure runtime. Owns filesystem, subprocess, sandbox
-  enforcement, journals, registry clients, harness replay, doctor,
-  dev loop, scaffold, generic authority gating, and the adapter set. Adapter
-  families are opt-in features: `cli-tool`, `mcp`, `mcp-http-server`, `a2a`,
-  `agent`, `catalog`, `external-adapter`, and `http`; `a2a` is
+- `runx-runtime`: impure runtime. Owns filesystem, exact process invocation and
+  supervision, journals, registry clients, harness replay, doctor, dev loop,
+  project initialization, generic authority gating, and the adapter set. Adapter
+  families are opt-in features: `async-http`, `cli-tool`, `mcp`,
+  `mcp-http-server`, `a2a`, `agent`, `catalog`, `external-adapter`, and
+  `thread-outbox-provider`; `a2a` is
   contract-defined but not enabled in `runx-cli`.
   The `async-http` feature owns runtime HTTP with reqwest over rustls, disables
   redirect following, and uses bounded request/connect timeouts. `cli-tool`

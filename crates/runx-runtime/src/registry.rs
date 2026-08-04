@@ -1,21 +1,25 @@
 mod http;
+#[cfg(feature = "async-http")]
 mod index;
 mod install;
 mod local;
+pub(crate) mod package_bundle;
 mod package_files;
+mod package_metadata;
 mod payload;
+#[cfg(feature = "async-http")]
+mod publish;
+#[cfg(feature = "cli-tool")]
+mod publish_package;
 mod refs;
-pub(crate) mod scopes;
 mod source_authority;
 mod trust_anchor;
 mod types;
 
 use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 
-pub use http::{
-    AcquireOptions, DefaultRuntimeHttpTransport, HttpMethod, HttpRequest, HttpResponse,
-    RegistryClient, RegistryClientError, RuntimeHttpError, RuntimeHttpHeader, Transport,
-};
+pub use http::{AcquireOptions, RegistryClient, RegistryClientError};
+#[cfg(feature = "async-http")]
 pub use index::{
     GithubRepoRef, IndexError, IndexGithubRepoOptions, IndexResponse, IndexWarning, IndexedListing,
     IndexedRepo, index_github_repo, parse_github_repo_ref,
@@ -25,20 +29,29 @@ pub use install::{
     InstallStatus, install_local_skill,
 };
 pub use local::{
-    CreateRegistrySkillVersionResult, FileRegistryStore, IngestSkillOptions, LocalRegistryClient,
-    LocalRegistryError, PublishSkillMarkdownOptions, PutVersionOptions, RegistryResolveOptions,
-    RegistrySearchOptions, RegistrySkillVersionPayload, build_registry_skill_version,
-    build_skill_id, create_file_registry_store, create_local_registry_client,
-    create_registry_skill_version, ingest_skill_markdown, normalize_registry_skill_version,
-    publish_skill_markdown, read_registry_skill, resolve_registry_skill, resolve_runx_link,
-    runx_link_for_version, search_registry, search_registry_with_options, slugify, split_skill_id,
+    FileRegistryStore, IngestSkillOptions, LocalRegistryError, PublishSkillMarkdownOptions,
+    PutVersionOptions, RegistryResolveOptions, RegistrySearchOptions, build_skill_id,
+    ingest_skill_markdown, publish_skill_markdown, read_registry_skill, resolve_registry_skill,
+    resolve_runx_link, runx_link_for_version, search_registry_with_options, slugify,
+    split_skill_id,
+};
+pub use package_metadata::{RegistryHarnessCaseMetadata, RegistryPackageMetadata};
+#[cfg(feature = "async-http")]
+pub use publish::{
+    HostedAdminSkillPublishRequest, HostedSkillPublishRequest, HostedSkillPublishResult,
+    RegistryPublishError, publish_hosted_admin_skill, publish_hosted_skill,
+};
+#[cfg(feature = "cli-tool")]
+pub use publish_package::{
+    RegistryPublishPackage, RegistryPublishPackageError, RegistryPublishPackageParts,
+    RegistryPublishPackageRequest, prepare_registry_publish_package,
 };
 pub use refs::{
     ParsedRegistryRef, RegistryResolveError, materialization_cache_path,
     materialization_digest_marker, parse_registry_ref, safe_skill_package_parts,
 };
 pub use source_authority::{
-    RUNX_REGISTRY_SOURCE_AUTHORITY_ENV, RegistryManifestSourceAuthority,
+    RUNX_REGISTRY_SOURCE_AUTHORITY_ENV, RegistryManifestSourceAuthority, canonical_registry_url,
     is_official_runx_registry_url, registry_manifest_source_authority_from_env,
     registry_manifest_source_authority_from_registry_dir,
     registry_manifest_source_authority_from_registry_url, registry_manifest_source_key,

@@ -3,11 +3,10 @@ use runx_core::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest, SandboxAdmissionOptions, SandboxDeclaration, admit_graph_step_scopes,
-    admit_local_skill, admit_retry_policy, admit_sandbox, build_authority_proof_metadata,
-    build_local_scope_admission, evaluate_public_comment_opportunity,
-    evaluate_public_pull_request_candidate, normalize_public_work_policy,
-    normalize_sandbox_declaration, sandbox_requires_approval, validate_credential_binding,
+    RetryAdmissionRequest, admit_graph_step_scopes, admit_local_skill, admit_retry_policy,
+    build_authority_proof_metadata, build_local_scope_admission,
+    evaluate_public_comment_opportunity, evaluate_public_pull_request_candidate,
+    normalize_public_work_policy, validate_credential_binding,
 };
 use serde::Deserialize;
 
@@ -27,18 +26,6 @@ const FIXTURES: &[(&str, &str)] = &[
     (
         "authority-proof-metadata-full",
         include_str!("../../../fixtures/kernel/policy/authority-proof-metadata-full.json"),
-    ),
-    (
-        "authority-proof-prunes-empty-sandbox-objects",
-        include_str!(
-            "../../../fixtures/kernel/policy/authority-proof-prunes-empty-sandbox-objects.json"
-        ),
-    ),
-    (
-        "authority-proof-trims-sandbox-declaration",
-        include_str!(
-            "../../../fixtures/kernel/policy/authority-proof-trims-sandbox-declaration.json"
-        ),
     ),
     (
         "authority-scope-admission-active-grant",
@@ -186,22 +173,6 @@ const FIXTURES: &[(&str, &str)] = &[
             "../../../fixtures/kernel/policy/retry-admission-denies-mutating-without-key.json"
         ),
     ),
-    (
-        "sandbox-denies-readonly-network",
-        include_str!("../../../fixtures/kernel/policy/sandbox-denies-readonly-network.json"),
-    ),
-    (
-        "sandbox-normalize-defaults",
-        include_str!("../../../fixtures/kernel/policy/sandbox-normalize-defaults.json"),
-    ),
-    (
-        "sandbox-requires-approval-boolean",
-        include_str!("../../../fixtures/kernel/policy/sandbox-requires-approval-boolean.json"),
-    ),
-    (
-        "sandbox-requires-unrestricted-approval",
-        include_str!("../../../fixtures/kernel/policy/sandbox-requires-unrestricted-approval.json"),
-    ),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -228,16 +199,6 @@ enum PolicyInput {
     AdmitRetryPolicy { request: RetryAdmissionRequest },
     #[serde(rename = "policy.admitGraphStepScopes")]
     AdmitGraphStepScopes { request: GraphScopeAdmissionRequest },
-    #[serde(rename = "policy.normalizeSandboxDeclaration")]
-    NormalizeSandboxDeclaration { sandbox: Option<SandboxDeclaration> },
-    #[serde(rename = "policy.sandboxRequiresApproval")]
-    SandboxRequiresApproval { sandbox: Option<SandboxDeclaration> },
-    #[serde(rename = "policy.admitSandbox")]
-    AdmitSandbox {
-        sandbox: Option<SandboxDeclaration>,
-        #[serde(default)]
-        options: SandboxAdmissionOptions,
-    },
     #[serde(rename = "policy.buildLocalScopeAdmission")]
     BuildLocalScopeAdmission {
         auth: Option<JsonValue>,
@@ -293,15 +254,6 @@ fn evaluate_policy_input(input: PolicyInput) -> Result<serde_json::Value, serde_
         }
         PolicyInput::AdmitGraphStepScopes { request } => {
             serde_json::to_value(admit_graph_step_scopes(&request))
-        }
-        PolicyInput::NormalizeSandboxDeclaration { sandbox } => {
-            serde_json::to_value(normalize_sandbox_declaration(sandbox.as_ref()))
-        }
-        PolicyInput::SandboxRequiresApproval { sandbox } => {
-            serde_json::to_value(sandbox_requires_approval(sandbox.as_ref()))
-        }
-        PolicyInput::AdmitSandbox { sandbox, options } => {
-            serde_json::to_value(admit_sandbox(sandbox.as_ref(), &options))
         }
         PolicyInput::BuildLocalScopeAdmission {
             auth,

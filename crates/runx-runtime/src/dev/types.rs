@@ -6,13 +6,18 @@ pub use runx_contracts::{
     DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureResult, DevFixtureStatus, DevReport,
     DevReportSchema, DevReportStatus,
 };
+use runx_parser::{DevFixture, DevFixtureLane, DevFixtureTarget};
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DevLoopOptions {
     pub root: PathBuf,
     pub unit_path: Option<PathBuf>,
-    pub lane: DevLane,
+    /// A specific fixture lane, or `None` to run every lane.
+    pub lane: Option<DevFixtureLane>,
+    /// Immutable workspace environment admitted by the caller. Dev fixtures
+    /// may overlay their declared values, but must never re-read process state.
+    pub env: BTreeMap<String, String>,
 }
 
 impl DevLoopOptions {
@@ -21,52 +26,38 @@ impl DevLoopOptions {
         Self {
             root: root.into(),
             unit_path: None,
-            lane: DevLane::Deterministic,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DevLane {
-    Deterministic,
-    RepoIntegration,
-    Agent,
-    All,
-    Other(String),
-}
-
-impl DevLane {
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::Deterministic => "deterministic",
-            Self::RepoIntegration => "repo-integration",
-            Self::Agent => "agent",
-            Self::All => "all",
-            Self::Other(value) => value,
-        }
-    }
-}
-
-impl From<&str> for DevLane {
-    fn from(value: &str) -> Self {
-        match value {
-            "deterministic" => Self::Deterministic,
-            "repo-integration" => Self::RepoIntegration,
-            "agent" => Self::Agent,
-            "all" => Self::All,
-            other => Self::Other(other.to_owned()),
+            lane: Some(DevFixtureLane::Deterministic),
+            env: BTreeMap::new(),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ParsedDevFixture {
+pub struct LoadedDevFixture {
     pub path: PathBuf,
-    pub name: String,
-    pub lane: String,
-    pub target: JsonObject,
-    pub document: JsonObject,
+    pub definition: DevFixture,
+}
+
+impl LoadedDevFixture {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.definition.name
+    }
+
+    #[must_use]
+    pub const fn lane(&self) -> DevFixtureLane {
+        self.definition.lane
+    }
+
+    #[must_use]
+    pub fn target(&self) -> &DevFixtureTarget {
+        &self.definition.target
+    }
+
+    #[must_use]
+    pub fn target_json(&self) -> JsonObject {
+        self.definition.target.to_json_object()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -93,7 +84,7 @@ pub enum DevError {
     ParseFixture {
         path: PathBuf,
         #[source]
-        source: serde_norway::Error,
+        source: runx_parser::DevFixtureError,
     },
     #[error("failed to read {path}: {source}")]
     Io {
@@ -131,9 +122,11 @@ pub trait DevFixtureExecutor {
     fn run_fixture(
         &self,
         root: &std::path::Path,
-        fixture: &ParsedDevFixture,
+        fixture: &LoadedDevFixture,
     ) -> Result<DevFixtureResult, DevError>;
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct LocalDevFixtureExecutor;
+pub struct LocalDevFixtureExecutor {
+    pub(crate) env: BTreeMap<String, String>,
+}

@@ -1,31 +1,43 @@
-// rust-style-allow: large-file - skill CLI parsing keeps shared state and
+// Module rationale: skill CLI parsing keeps shared state and
 // option finalization in one module until the native parser surface stabilizes.
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use runx_contracts::JsonValue;
-use runx_runtime::{DEFAULT_MANAGED_AGENT_MAX_ROUNDS, ManagedAgentPolicy, WorkspaceEnv};
+use runx_runtime::WorkspaceEnv;
 
-use super::inputs::{parse_direct_input_arg, parse_input_arg, parse_json_input_arg};
+use super::inputs::{
+    parse_direct_input_arg, parse_input_arg, parse_input_document_arg, parse_json_input_arg,
+};
 use super::{SkillAction, SkillPlan};
+use crate::managed_agent::{managed_agent_policy, parse_boolean_flag, parse_managed_agent_rounds};
 
 pub fn parse_skill_plan(args: &[OsString]) -> Result<SkillPlan, String> {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let workspace = WorkspaceEnv::load_process(cwd).map_err(|error| error.to_string())?;
-    parse_skill_plan_with_workspace(args, &workspace)
+    parse_skill_plan_inner(args)
 }
 
 pub fn parse_skill_plan_with_workspace(
     args: &[OsString],
     _workspace: &WorkspaceEnv,
 ) -> Result<SkillPlan, String> {
+    parse_skill_plan_inner(args)
+}
+
+fn parse_skill_plan_inner(args: &[OsString]) -> Result<SkillPlan, String> {
     let mut state = SkillParseState::default();
     let mut index = 1;
 
     while index < args.len() {
         index = parse_skill_arg(args, index, &mut state)?;
         index += 1;
+    }
+
+    if state.input_document.is_some() && !state.inputs.is_empty() {
+        return Err(
+            "runx skill --inputs cannot be combined with -i, --input, --input-json, or direct --name inputs"
+                .to_owned(),
+        );
     }
 
     let Some(skill_path) = state.skill_path.as_ref() else {
@@ -38,7 +50,26 @@ pub fn parse_skill_plan_with_workspace(
     } else {
         SkillAction::Run
     };
-    let managed_agent = managed_agent_policy(state.managed_agent, state.managed_agent_rounds)?;
+    if action == SkillAction::Inspect
+        && (state.expected_package_digest.is_some()
+            || state.expected_execution_closure_digest.is_some())
+    {
+        return Err(
+            "runx skill --package-digest and --execution-closure-digest bind execution and are not accepted by inspect"
+                .to_owned(),
+        );
+    }
+    if action == SkillAction::Run
+        && (state.expected_package_digest.is_some()
+            != state.expected_execution_closure_digest.is_some())
+    {
+        return Err(
+            "runx skill bound execution requires both --package-digest and --execution-closure-digest"
+                .to_owned(),
+        );
+    }
+    let managed_agent =
+        managed_agent_policy("skill", state.managed_agent, state.managed_agent_rounds)?;
 
     Ok(SkillPlan {
         action,
@@ -49,12 +80,14 @@ pub fn parse_skill_plan_with_workspace(
         answers: state.answers,
         registry: state.registry,
         expected_digest: state.expected_digest,
+        expected_package_digest: state.expected_package_digest,
+        expected_execution_closure_digest: state.expected_execution_closure_digest,
         json: state.json,
         non_interactive: state.non_interactive,
-        skip_operator_context: state.skip_operator_context,
+        trusted_command_execution: false,
         full_operator_context: state.full_operator_context,
-        approve_operator_context: state.approve_operator_context,
         inputs: state.inputs,
+        input_document: state.input_document,
         credential_profile: state.credential_profile,
         managed_agent,
     })
@@ -69,14 +102,15 @@ struct SkillParseState {
     answers: Option<PathBuf>,
     registry: Option<String>,
     expected_digest: Option<String>,
+    expected_package_digest: Option<String>,
+    expected_execution_closure_digest: Option<String>,
     json: bool,
     non_interactive: bool,
-    skip_operator_context: bool,
     full_operator_context: bool,
-    approve_operator_context: Option<String>,
     inspect: bool,
     force_run: bool,
     inputs: BTreeMap<String, JsonValue>,
+    input_document: Option<crate::document_input::DocumentInputSource>,
     credential_profile: Option<String>,
     managed_agent: bool,
     managed_agent_rounds: Option<u32>,
@@ -86,13 +120,20 @@ fn reject_resolver_flags_for_skill_management_action(
     skill_path: &Path,
     state: &SkillParseState,
 ) -> Result<(), String> {
-    if state.registry.is_none() && state.expected_digest.is_none() {
+    if state.registry.is_none()
+        && state.expected_digest.is_none()
+        && state.expected_package_digest.is_none()
+        && state.expected_execution_closure_digest.is_none()
+    {
         return Ok(());
     }
     if !is_skill_management_action(skill_path) {
         return Ok(());
     }
-    Err("runx skill --registry and --digest are only supported when running a skill ref".to_owned())
+    Err(
+        "runx skill --registry, --digest, --package-digest, and --execution-closure-digest are only supported when running a skill ref"
+            .to_owned(),
+    )
 }
 
 fn is_skill_management_action(skill_path: &Path) -> bool {
@@ -105,7 +146,7 @@ fn is_skill_management_action(skill_path: &Path) -> bool {
     )
 }
 
-// rust-style-allow: long-function because this is the single skill-flag dispatch
+// Function rationale: this is the single skill-flag dispatch
 // match (--receipt-dir/--json/--profile and positionals); splitting the
 // arms would scatter the CLI parse contract.
 fn parse_skill_arg(
@@ -187,6 +228,32 @@ fn parse_skill_arg(
             state.expected_digest =
                 Some(non_empty_flag_value("--digest", &string_arg(args, index)?)?);
         }
+        value if value.starts_with("--package-digest=") => {
+            state.expected_package_digest = Some(non_empty_flag_value(
+                "--package-digest",
+                value.trim_start_matches("--package-digest="),
+            )?);
+        }
+        "--package-digest" => {
+            index += 1;
+            state.expected_package_digest = Some(non_empty_flag_value(
+                "--package-digest",
+                &string_arg(args, index)?,
+            )?);
+        }
+        value if value.starts_with("--execution-closure-digest=") => {
+            state.expected_execution_closure_digest = Some(non_empty_flag_value(
+                "--execution-closure-digest",
+                value.trim_start_matches("--execution-closure-digest="),
+            )?);
+        }
+        "--execution-closure-digest" => {
+            index += 1;
+            state.expected_execution_closure_digest = Some(non_empty_flag_value(
+                "--execution-closure-digest",
+                &string_arg(args, index)?,
+            )?);
+        }
         value if value.starts_with("--input=") => {
             index = parse_input_arg(
                 args,
@@ -203,6 +270,14 @@ fn parse_skill_arg(
                 &mut state.inputs,
             )?;
         }
+        value if value.starts_with("--inputs=") => {
+            index = parse_input_document_arg(
+                args,
+                index,
+                Some(value.trim_start_matches("--inputs=")),
+                &mut state.input_document,
+            )?;
+        }
         value if value.starts_with("-i=") => {
             index = parse_input_arg(
                 args,
@@ -213,6 +288,9 @@ fn parse_skill_arg(
         }
         "--input" => index = parse_input_arg(args, index, None, &mut state.inputs)?,
         "--input-json" => index = parse_json_input_arg(args, index, None, &mut state.inputs)?,
+        "--inputs" => {
+            index = parse_input_document_arg(args, index, None, &mut state.input_document)?;
+        }
         "-i" => index = parse_input_arg(args, index, None, &mut state.inputs)?,
         "--run" => state.force_run = true,
         value
@@ -255,36 +333,20 @@ fn parse_skill_arg(
             )?);
         }
         "--json" | "-j" => state.json = true,
-        value if value.starts_with("--approve-operator-context=") => {
-            state.approve_operator_context = Some(non_empty_flag_value(
-                "--approve-operator-context",
-                value.trim_start_matches("--approve-operator-context="),
-            )?);
-        }
-        "--approve-operator-context" => {
-            index += 1;
-            state.approve_operator_context = Some(non_empty_flag_value(
-                "--approve-operator-context",
-                &string_arg(args, index)?,
-            )?);
-        }
-        value if value.starts_with("--skip-operator-context=") => {
-            state.skip_operator_context = parse_boolean_flag(
-                "--skip-operator-context",
-                value.trim_start_matches("--skip-operator-context="),
-            )?;
-        }
-        value if value.starts_with("--no-operator-context=") => {
-            state.skip_operator_context = parse_boolean_flag(
-                "--no-operator-context",
-                value.trim_start_matches("--no-operator-context="),
-            )?;
-        }
-        "--skip-operator-context" | "--no-operator-context" => {
-            state.skip_operator_context = true;
+        value
+            if value == "--skip-operator-context"
+                || value.starts_with("--skip-operator-context=")
+                || value == "--no-operator-context"
+                || value.starts_with("--no-operator-context=") =>
+        {
+            return Err(
+                "runx skill operator context is always prepared and digest-bound; it cannot be bypassed"
+                    .to_owned(),
+            );
         }
         value if value.starts_with("--full-operator-context=") => {
             state.full_operator_context = parse_boolean_flag(
+                "skill",
                 "--full-operator-context",
                 value.trim_start_matches("--full-operator-context="),
             )?;
@@ -292,6 +354,7 @@ fn parse_skill_arg(
         "--full-operator-context" => state.full_operator_context = true,
         value if value.starts_with("--managed-agent=") => {
             state.managed_agent = parse_boolean_flag(
+                "skill",
                 "--managed-agent",
                 value.trim_start_matches("--managed-agent="),
             )?;
@@ -299,13 +362,16 @@ fn parse_skill_arg(
         "--managed-agent" => state.managed_agent = true,
         value if value.starts_with("--managed-agent-rounds=") => {
             state.managed_agent_rounds = Some(parse_managed_agent_rounds(
+                "skill",
                 value.trim_start_matches("--managed-agent-rounds="),
             )?);
         }
         "--managed-agent-rounds" => {
             index += 1;
-            state.managed_agent_rounds =
-                Some(parse_managed_agent_rounds(&string_arg(args, index)?)?);
+            state.managed_agent_rounds = Some(parse_managed_agent_rounds(
+                "skill",
+                &string_arg(args, index)?,
+            )?);
         }
         "--non-interactive" => state.non_interactive = true,
         value if value.starts_with("--") => {
@@ -332,35 +398,6 @@ fn non_empty_flag_value(flag: &str, value: &str) -> Result<String, String> {
         return Err(format!("runx skill {flag} requires a non-empty value"));
     }
     Ok(value.to_owned())
-}
-
-fn parse_boolean_flag(flag: &str, value: &str) -> Result<bool, String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "true" | "1" => Ok(true),
-        "false" | "0" => Ok(false),
-        _ => Err(format!("runx skill {flag} expects true or false")),
-    }
-}
-
-fn managed_agent_policy(
-    enabled: bool,
-    max_rounds: Option<u32>,
-) -> Result<ManagedAgentPolicy, String> {
-    if !enabled {
-        if max_rounds.is_some() {
-            return Err("runx skill --managed-agent-rounds requires --managed-agent".to_owned());
-        }
-        return Ok(ManagedAgentPolicy::HostDriven);
-    }
-    ManagedAgentPolicy::inline(max_rounds.unwrap_or(DEFAULT_MANAGED_AGENT_MAX_ROUNDS))
-        .map_err(|error| format!("runx skill {error}"))
-}
-
-fn parse_managed_agent_rounds(value: &str) -> Result<u32, String> {
-    value
-        .trim()
-        .parse::<u32>()
-        .map_err(|_| "runx skill --managed-agent-rounds expects a positive integer".to_owned())
 }
 
 fn skill_resume_flag_error() -> String {
@@ -571,7 +608,7 @@ mod tests {
     }
 
     #[test]
-    fn skip_operator_context_flag_is_not_a_skill_input() -> Result<(), String> {
+    fn unbound_operator_context_bypass_is_not_a_public_flag() -> Result<(), String> {
         let args = [
             "skill",
             "skills/messageboard",
@@ -582,40 +619,45 @@ mod tests {
         .into_iter()
         .map(std::ffi::OsString::from)
         .collect::<Vec<_>>();
-        let plan = super::parse_skill_plan(&args)?;
-
-        assert!(plan.skip_operator_context);
-        assert_eq!(plan.inputs.len(), 1);
-        assert_eq!(
-            plan.inputs.get("title"),
-            Some(&runx_contracts::JsonValue::String("hello".to_owned()))
-        );
+        let error = match super::parse_skill_plan(&args) {
+            Err(error) => error,
+            Ok(_) => return Err("public skill runs bypassed prepared context binding".to_owned()),
+        };
+        assert!(error.contains("operator context is always prepared and digest-bound"));
         Ok(())
     }
 
     #[test]
-    fn approve_operator_context_flag_is_not_a_skill_input() -> Result<(), String> {
-        let args = [
+    fn bound_execution_requires_package_and_closure_digests() -> Result<(), String> {
+        let package_only = [
             "skill",
             "skills/messageboard",
-            "--approve-operator-context",
-            "sha256:abc123",
-            "--non-interactive",
-            "--input",
-            "title=hello",
+            "--package-digest",
+            "sha256:package",
         ]
         .into_iter()
         .map(std::ffi::OsString::from)
         .collect::<Vec<_>>();
-        let plan = super::parse_skill_plan(&args)?;
+        let error = match super::parse_skill_plan(&package_only) {
+            Err(error) => error,
+            Ok(_) => return Err("a package digest formed a partial execution binding".to_owned()),
+        };
+        assert!(error.contains("requires both --package-digest"));
 
-        assert_eq!(
-            plan.approve_operator_context.as_deref(),
-            Some("sha256:abc123")
-        );
-        assert!(plan.non_interactive);
-        assert_eq!(plan.inputs.len(), 1);
-        assert!(plan.inputs.contains_key("title"));
+        let closure_only = [
+            "skill",
+            "skills/messageboard",
+            "--execution-closure-digest",
+            "sha256:closure",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let error = match super::parse_skill_plan(&closure_only) {
+            Err(error) => error,
+            Ok(_) => return Err("a closure digest formed a partial execution binding".to_owned()),
+        };
+        assert!(error.contains("requires both --package-digest"));
         Ok(())
     }
 
@@ -645,7 +687,6 @@ mod tests {
             "skill",
             "skills/messageboard",
             "--full-operator-context=true",
-            "--skip-operator-context=false",
             "--input",
             "title=hello",
         ]
@@ -655,7 +696,6 @@ mod tests {
         let plan = super::parse_skill_plan(&args)?;
 
         assert!(plan.full_operator_context);
-        assert!(!plan.skip_operator_context);
         assert_eq!(plan.inputs.len(), 1);
         assert!(plan.inputs.contains_key("title"));
         Ok(())
@@ -671,6 +711,34 @@ mod tests {
 
         assert_eq!(plan.action, SkillAction::Run);
         assert_eq!(plan.runner.as_deref(), Some("refresh"));
+        Ok(())
+    }
+
+    #[test]
+    fn execution_bindings_are_runtime_metadata_not_skill_inputs() -> Result<(), String> {
+        let args = [
+            "skill",
+            "skills/nitrosend",
+            "status",
+            "--package-digest",
+            "sha256:package",
+            "--execution-closure-digest",
+            "sha256:closure",
+        ]
+        .into_iter()
+        .map(std::ffi::OsString::from)
+        .collect::<Vec<_>>();
+        let plan = super::parse_skill_plan(&args)?;
+
+        assert_eq!(
+            plan.expected_package_digest.as_deref(),
+            Some("sha256:package"),
+        );
+        assert_eq!(
+            plan.expected_execution_closure_digest.as_deref(),
+            Some("sha256:closure"),
+        );
+        assert!(plan.inputs.is_empty());
         Ok(())
     }
 

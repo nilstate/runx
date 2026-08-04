@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 
+import { sourceCandidatesForCompiled } from "./lib/compiled-package-files.mjs";
+
 const require = createRequire(import.meta.url);
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packageRoot = path.join(workspaceRoot, "packages");
@@ -51,12 +53,15 @@ async function findPackageDirs(root) {
 }
 
 async function finalizePackage(directory) {
+  const packageJson = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
   const entry = path.join(directory, "src", "index.ts");
   if (!(await exists(entry))) {
+    if (packageJson.runx?.nativeSelector) {
+      await rm(path.join(directory, "dist"), { recursive: true, force: true });
+    }
     return;
   }
 
-  const packageJson = JSON.parse(await readFile(path.join(directory, "package.json"), "utf8"));
   const workspaceRelativePath = toPosix(path.relative(workspaceRoot, directory));
   const runtimeEntry = path.join(runtimeOutDir, workspaceRelativePath, "src", "index.js");
   const runtimePackageRoot = path.join(runtimeOutDir, workspaceRelativePath);
@@ -104,6 +109,7 @@ async function writeDevDist({ directory, dist, compiledPackageRoot, compiledEntr
     populate: async (staging) => {
       const stagingEntry = path.join(staging, path.relative(dist, compiledEntry));
       await copyIntoDist(compiledPackageRoot, staging);
+      await removeOrphanedCompiledSources(directory, staging);
       await stripSourceMaps(staging);
       await writeEntryWrapper({
         dist: staging,
@@ -125,6 +131,7 @@ async function writePackDist({ directory, dist, compiledPackageRoot, compiledEnt
     populate: async (staging) => {
       const stagingEntry = path.join(staging, path.relative(dist, compiledEntry));
       await copyIntoDist(compiledPackageRoot, staging);
+      await removeOrphanedCompiledSources(directory, staging);
       await stripSourceMaps(staging);
       await writeEntryWrapper({
         dist: staging,
@@ -194,6 +201,43 @@ async function copyIntoDist(source, target) {
   }
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target, { recursive: true });
+}
+
+// Incremental TypeScript builds retain outputs for deleted source files. Dist is
+// a shipping artifact, so reconstruct it from the current source tree instead
+// of leaking those stale compiler outputs into npm tarballs.
+async function removeOrphanedCompiledSources(packageDirectory, dist) {
+  const compiledSourceRoot = path.join(dist, "src");
+  if (!(await exists(compiledSourceRoot))) {
+    return;
+  }
+  for (const filePath of await filesUnder(compiledSourceRoot)) {
+    const sourceRelative = sourceCandidatesForCompiled(path.relative(dist, filePath));
+    if (!sourceRelative) {
+      continue;
+    }
+    const sourceExists = (
+      await Promise.all(
+        sourceRelative.map((candidate) => exists(path.join(packageDirectory, candidate))),
+      )
+    ).some(Boolean);
+    if (!sourceExists) {
+      await rm(filePath, { force: true });
+    }
+  }
+}
+
+async function filesUnder(directory) {
+  const files = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await filesUnder(entryPath));
+    } else if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+  return files;
 }
 
 /**

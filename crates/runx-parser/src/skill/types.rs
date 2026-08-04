@@ -1,10 +1,11 @@
-// rust-style-allow: large-file - skill schema vocabulary is intentionally
+// Module rationale: skill schema vocabulary is intentionally
 // centralized so parser fixtures, contract mirrors, and runtime front validation
 // share one typed source of truth.
 use std::collections::BTreeMap;
 
-use runx_contracts::{ExecutionSemantics, JsonObject, JsonValue};
-use runx_core::policy::{CwdPolicy, SandboxProfile};
+use runx_contracts::{
+    EnvironmentRequirements, ExecutionSemantics, ExternalAdapterManifest, JsonObject, JsonValue,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::graph::MintAuthorityDirective;
@@ -17,30 +18,10 @@ pub struct RawSkillIr {
     pub body: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillInput {
-    #[serde(rename = "type")]
-    pub input_type: String,
-    pub required: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default: Option<JsonValue>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillRetryPolicy {
-    pub max_attempts: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillIdempotencyPolicy {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>,
-}
+pub use runx_contracts::{
+    ArtifactContract as SkillArtifactContract, IdempotencyPolicy as SkillIdempotencyPolicy,
+    InputDefinition as SkillInput, RetryPolicy as SkillRetryPolicy,
+};
 
 /// Closed set of built-in skill source kinds. The extension lane is the
 /// `ExternalAdapter` variant; custom adapters are identified by the
@@ -51,15 +32,13 @@ pub struct SkillIdempotencyPolicy {
 #[serde(rename_all = "kebab-case")]
 pub enum SourceKind {
     CliTool,
+    JavaScript,
     Mcp,
-    Catalog,
     A2a,
     Agent,
     #[serde(rename = "agent-task")]
     AgentStep,
-    HarnessHook,
     Graph,
-    Http,
     ExternalAdapter,
     ThreadOutboxProvider,
 }
@@ -68,14 +47,12 @@ impl SourceKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             SourceKind::CliTool => "cli-tool",
+            SourceKind::JavaScript => "javascript",
             SourceKind::Mcp => "mcp",
-            SourceKind::Catalog => "catalog",
             SourceKind::A2a => "a2a",
             SourceKind::Agent => "agent",
             SourceKind::AgentStep => "agent-task",
-            SourceKind::HarnessHook => "harness-hook",
             SourceKind::Graph => "graph",
-            SourceKind::Http => "http",
             SourceKind::ExternalAdapter => "external-adapter",
             SourceKind::ThreadOutboxProvider => "thread-outbox-provider",
         }
@@ -96,6 +73,23 @@ pub enum InputMode {
     None,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ArtifactPageFraming {
+    JsonArray,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactPageSource {
+    pub path_from: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path_scope_from: Option<String>,
+    pub media_type: String,
+    pub framing: ArtifactPageFraming,
+    pub page_bytes: u64,
+}
+
 impl InputMode {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -113,6 +107,19 @@ pub struct SkillSource {
     pub source_type: SourceKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
+    /// Relative ECMAScript module path for a runtime-owned `javascript`
+    /// invocation. The selected export maps resolved inputs to a JSON-compatible
+    /// result; Runx owns the process protocol.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    /// Named function exported by a `javascript` module. Omitted means the
+    /// module's default export.
+    #[serde(rename = "export", skip_serializing_if = "Option::is_none")]
+    pub javascript_export: Option<String>,
+    /// Runtime-owned paging for a contained immutable file. The path fields are
+    /// consumed by the runtime and never enter the deterministic module.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pages: Option<ArtifactPageSource>,
     pub args: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
@@ -120,12 +127,12 @@ pub struct SkillSource {
     pub timeout_seconds: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_mode: Option<InputMode>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox: Option<SkillSandbox>,
+    /// Explicit configuration names consumed by this executable source.
+    /// Values are resolved by the runtime and never stored in the manifest IR.
+    #[serde(default, skip_serializing_if = "EnvironmentRequirements::is_empty")]
+    pub environment: EnvironmentRequirements,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub server: Option<SkillMcpServer>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub catalog_ref: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -139,13 +146,17 @@ pub struct SkillSource {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hook: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub outputs: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub graph: Option<crate::ExecutionGraph>,
+    /// Parser-owned external-adapter declaration. Downstream consumers must
+    /// use this typed value rather than reinterpret `raw`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub http: Option<SkillHttpSource>,
+    pub external_adapter: Option<SkillExternalAdapterManifest>,
+    /// Parser-owned thread-outbox-provider declaration. The runtime owns frame
+    /// loading and execution, but not source-shape parsing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_outbox_provider: Option<SkillThreadOutboxProviderSource>,
     /// The declared act this source performs, validated at load. `None` when no
     /// `act:` block is declared (the run then seals a generic observation act).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -229,21 +240,22 @@ pub struct ActDeclaration {
     pub effect_step: Option<String>,
 }
 
-/// Config for an `http` source: the endpoint, the method, static request headers
-/// (whose values may carry `${secret:NAME}` references resolved at invocation),
-/// and an explicit, default-off opt-in to reach private or loopback networks
-/// (the governed transport blocks them otherwise, mirroring the sandbox network
-/// opt-in).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SkillExternalAdapterManifest {
+    Inline(Box<ExternalAdapterManifest>),
+    Path(String),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SkillHttpSource {
-    pub url: String,
+pub struct SkillThreadOutboxProviderSource {
+    pub operation: runx_contracts::ThreadOutboxProviderOperation,
+    pub manifest_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<String>,
+    pub push_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub headers: Option<BTreeMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub allow_private_network: Option<bool>,
+    pub fetch_path: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -253,39 +265,6 @@ pub struct SkillMcpServer {
     pub args: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillSandbox {
-    pub profile: SandboxProfile,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cwd_policy: Option<CwdPolicy>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub env_allowlist: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<bool>,
-    pub writable_paths: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub require_enforcement: Option<bool>,
-    #[serde(skip)]
-    pub approved_escalation: Option<bool>,
-    pub raw: JsonObject,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SkillArtifactContract {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub emits: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub named_emits: Option<BTreeMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub packets: Option<BTreeMap<String, String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub wrap_as: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub packet: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -343,6 +322,8 @@ pub struct ValidatedSkill {
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runx_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registry_owner: Option<String>,
     pub body: String,
     pub source: SkillSource,
     pub inputs: BTreeMap<String, SkillInput>,
@@ -375,6 +356,12 @@ pub struct SkillRunnerDefinition {
     pub default: bool,
     pub source: SkillSource,
     pub inputs: BTreeMap<String, SkillInput>,
+    /// Complete, parser-validated calls for this runner. These are contract
+    /// examples, not fixtures: inspection and generated operator instructions
+    /// expose them without reparsing package files.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub examples: Vec<JsonObject>,
+    pub scopes: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -398,4 +385,20 @@ pub struct SkillRunnerDefinition {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runx: Option<JsonObject>,
     pub raw: JsonObject,
+}
+
+impl SkillRunnerDefinition {
+    /// Return the complete scope ceiling declared by this runner and its inline
+    /// graph steps. Consumers must use this typed projection rather than scan
+    /// the raw manifest tree independently.
+    #[must_use]
+    pub fn declared_scopes(&self) -> Vec<String> {
+        let mut scopes = self.scopes.clone();
+        if let Some(graph) = &self.source.graph {
+            for step in &graph.steps {
+                scopes.extend(step.scopes.clone());
+            }
+        }
+        scopes
+    }
 }

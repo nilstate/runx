@@ -1,7 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.runx.ai/runx/skill/native_test_evidence/v1.json",
-  "x-runx-packet-id": "runx.skill.native_test_evidence.v1",
-  "x-runx-generated-from": "skills/review-skill/X.yaml#root.runners.review.graph.steps.0",
-  "type": "object"
-}

@@ -1,0 +1,23 @@
+name: issue-to-pr-provider-boundary-refusal
+kind: graph
+target: ../harness/push-outbox-boundary.graph.yaml
+env:
+  RUNX_GITHUB_TOKEN: fixture-token
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - provider-push
+  step_outputs:
+    provider-push:
+      subset:
+        push:
+          data:
+            status: skipped
+            provider: github
+            reason: thread adapter is not github
+metadata:
+  public_skill: issue-to-pr
+  source_case: provider-boundary-refusal
+  source: skills-fixture

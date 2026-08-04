@@ -1,6 +1,3 @@
-// rust-style-allow: large-file - publish keeps CLI parsing, HTTP request
-// construction, and user-facing output together until the public receipt API
-// stabilizes.
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt;
@@ -9,10 +6,9 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use runx_contracts::JsonValue;
-use runx_runtime::registry::{
-    HttpMethod, HttpRequest, RuntimeHttpError, RuntimeHttpHeader, Transport,
+use runx_runtime::{
+    HostedApiOperationError, ReceiptPublishResponse, RuntimeHttpError, WorkspaceEnv,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::cli_args::{flag_value, os_arg, split_flag};
 
@@ -34,7 +30,7 @@ pub enum PublishCliError {
     InvalidReceiptJson { path: String, message: String },
     TransportInit(RuntimeHttpError),
     Environment(String),
-    Publish(PublishError),
+    Publish(HostedApiOperationError),
     Serialize(String),
 }
 
@@ -57,7 +53,19 @@ impl fmt::Display for PublishCliError {
                 write!(formatter, "failed to initialize HTTP transport: {error}")
             }
             Self::Environment(error) => write!(formatter, "{error}"),
-            Self::Publish(error) => write!(formatter, "{error}"),
+            Self::Publish(error) => {
+                if let HostedApiOperationError::Api {
+                    code, detail, hint, ..
+                } = error
+                {
+                    return formatter.write_str(&publish_error_message(
+                        code,
+                        detail,
+                        hint.as_deref(),
+                    ));
+                }
+                write!(formatter, "{error}")
+            }
             Self::Serialize(message) => {
                 write!(formatter, "failed to serialize publish result: {message}")
             }
@@ -67,65 +75,15 @@ impl fmt::Display for PublishCliError {
 
 impl std::error::Error for PublishCliError {}
 
-impl From<PublishError> for PublishCliError {
-    fn from(error: PublishError) -> Self {
+impl From<HostedApiOperationError> for PublishCliError {
+    fn from(error: HostedApiOperationError) -> Self {
         Self::Publish(error)
     }
 }
 
-impl From<crate::public_api::ApiEnvironmentError> for PublishCliError {
-    fn from(error: crate::public_api::ApiEnvironmentError) -> Self {
+impl From<runx_runtime::HostedApiError> for PublishCliError {
+    fn from(error: runx_runtime::HostedApiError) -> Self {
         Self::Environment(error.to_string())
-    }
-}
-
-#[derive(Debug)]
-pub enum PublishError {
-    RuntimeHttp(RuntimeHttpError),
-    HttpStatus {
-        status: u16,
-        body: String,
-    },
-    InvalidJson(String),
-    RunxApi {
-        code: String,
-        detail: String,
-        hint: Option<String>,
-        retry_after_seconds: Option<u32>,
-    },
-}
-
-impl fmt::Display for PublishError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::RuntimeHttp(error) => write!(formatter, "{error}"),
-            Self::HttpStatus { status, body } => {
-                write!(formatter, "runx-api publish returned HTTP {status}: {body}")
-            }
-            Self::InvalidJson(message) => {
-                write!(
-                    formatter,
-                    "runx-api publish returned invalid JSON: {message}"
-                )
-            }
-            Self::RunxApi {
-                code, detail, hint, ..
-            } => {
-                write!(
-                    formatter,
-                    "{}",
-                    publish_error_message(code, detail, hint.as_deref())
-                )
-            }
-        }
-    }
-}
-
-impl std::error::Error for PublishError {}
-
-impl From<RuntimeHttpError> for PublishError {
-    fn from(error: RuntimeHttpError) -> Self {
-        Self::RuntimeHttp(error)
     }
 }
 
@@ -144,30 +102,6 @@ fn publish_error_message(code: &str, detail: &str, hint: Option<&str>) -> String
         message.push_str(&format!(" Hint: {hint}"));
     }
     message
-}
-
-#[derive(Clone, Debug)]
-struct PublishOptions<'a> {
-    base_url: &'a str,
-    token: &'a str,
-    receipt: &'a JsonValue,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct ReceiptPublishResponse {
-    pub status: String,
-    #[serde(default)]
-    pub replay_status: Option<String>,
-    pub digest: String,
-    pub public_hash: String,
-    pub mode: String,
-    pub published: bool,
-    #[serde(default)]
-    pub public_url: Option<String>,
-    #[serde(default)]
-    pub receipt_id: Option<String>,
-    #[serde(default)]
-    pub verdict: Option<JsonValue>,
 }
 
 pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
@@ -225,17 +159,8 @@ pub fn parse_publish_plan(args: &[OsString]) -> Result<PublishPlan, String> {
     })
 }
 
-pub fn run_native_publish(plan: PublishPlan) -> ExitCode {
-    let cwd = match std::env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = crate::cli_io::write_stderr(&format!(
-                "runx publish: failed to resolve cwd: {error}\n"
-            ));
-            return ExitCode::from(1);
-        }
-    };
-    match run_publish_command(&plan, &crate::history::env_map(), &cwd) {
+pub fn run_native_publish(plan: PublishPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    match run_publish_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => crate::cli_io::write_stdout_code(&output, 0),
         Err(error) => {
             if plan.json {
@@ -262,28 +187,26 @@ fn run_publish_command(
     cwd: &Path,
 ) -> Result<String, PublishCliError> {
     let receipt = read_receipt_json(&plan.receipt_path)?;
-    let environment = crate::public_api::ApiEnvironment::resolve(
+    let environment = runx_runtime::HostedApiEnvironment::resolve(
         plan.api_base_url.as_deref(),
         plan.token.as_deref(),
         env,
         cwd,
     )?;
-    let transport = crate::public_api::transport(allow_local_api(plan, env))
+    let transport = runx_runtime::hosted_api_transport(allow_local_api(plan, env))
         .map_err(PublishCliError::TransportInit)?;
     let authenticated = environment.authenticate(&transport)?;
-    let response = publish_receipt(
+    let response = runx_runtime::publish_hosted_receipt(
         &transport,
-        &PublishOptions {
-            base_url: authenticated.base_url(),
-            token: authenticated.token(),
-            receipt: &receipt,
-        },
+        authenticated.base_url(),
+        authenticated.token(),
+        &receipt,
     )?;
     render_publish_result(plan.json, &response)
 }
 
 fn allow_local_api(plan: &PublishPlan, env: &BTreeMap<String, String>) -> bool {
-    crate::public_api::private_network_allowed(plan.allow_local_api, env)
+    runx_runtime::hosted_private_network_allowed(plan.allow_local_api, env)
 }
 
 fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
@@ -295,45 +218,6 @@ fn read_receipt_json(path: &PathBuf) -> Result<JsonValue, PublishCliError> {
         path: path.display().to_string(),
         message: error.to_string(),
     })
-}
-
-fn publish_receipt<T: Transport>(
-    transport: &T,
-    options: &PublishOptions<'_>,
-) -> Result<ReceiptPublishResponse, PublishError> {
-    let body = serde_json::json!({
-        "publish": true,
-        "receipt": options.receipt,
-    })
-    .to_string();
-    let response = transport.send(HttpRequest {
-        method: HttpMethod::Post,
-        url: format!(
-            "{}/v1/receipts/notarize",
-            options.base_url.trim_end_matches('/')
-        ),
-        headers: vec![
-            RuntimeHttpHeader::new("authorization", format!("Bearer {}", options.token)),
-            RuntimeHttpHeader::new("content-type", "application/json"),
-        ],
-        body: Some(body),
-    })?;
-    if !(200..=299).contains(&response.status) {
-        if let Some(error) = crate::public_api::parse_error(&response.body) {
-            return Err(PublishError::RunxApi {
-                code: error.code,
-                detail: error.detail,
-                hint: error.hint,
-                retry_after_seconds: error.retry_after_seconds,
-            });
-        }
-        return Err(PublishError::HttpStatus {
-            status: response.status,
-            body: response.body,
-        });
-    }
-    serde_json::from_str(&response.body)
-        .map_err(|error| PublishError::InvalidJson(error.to_string()))
 }
 
 fn render_publish_result(

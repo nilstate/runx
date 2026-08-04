@@ -2,7 +2,7 @@
 //
 // Type definitions live here; the validation, admission, and readback projection
 // logic lives in the private `evaluate` submodule.
-// rust-style-allow: large-file because the operational policy schema, rules,
+// Module rationale: the operational policy schema, rules,
 // and decision shapes form one cross-language wire surface.
 use std::collections::BTreeMap;
 use std::fmt;
@@ -79,8 +79,6 @@ pub mod operational_policy_runner_kind {
     pub const LOCAL: &str = "local";
     /// GitHub Actions hosted runner.
     pub const GITHUB_ACTIONS: &str = "github-actions";
-    /// Aster operator runner.
-    pub const ASTER: &str = "aster";
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, RunxSchema)]

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/nitrosend/provider_evidence/v1.json",
+  "x-runx-packet-id": "nitrosend.provider_evidence.v1",
+  "x-runx-generated-from": "skills/nitrosend/graph/provider-operation/X.yaml#root.runners.read.graph.steps.2",
+  "additionalProperties": false,
+  "properties": {
+    "blockers": {
+      "items": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "decision": {
+      "enum": [
+        "ok",
+        "needs_input",
+        "provider_error",
+        "refused"
+      ],
+      "type": "string"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "body_digest": {
+          "type": "string"
+        },
+        "credential_material": {
+          "const": "redacted"
+        },
+        "http_status": {
+          "type": "number"
+        },
+        "request_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "http_status",
+        "body_digest",
+        "credential_material"
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "read",
+        "act"
+      ],
+      "type": "string"
+    },
+    "operation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider": {
+      "const": "nitrosend"
+    },
+    "provider_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "result": {
+      "additionalProperties": true,
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "tool": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "decision",
+    "provider",
+    "mode",
+    "operation",
+    "tool",
+    "provider_ref",
+    "result",
+    "evidence",
+    "blockers"
+  ],
+  "type": "object"
+}

@@ -70,7 +70,6 @@ Skills that enforce policy, audit receipts, or review skill quality.
 | `vuln-triage/` | Assess vulnerability risk and produce remediation guidance and an advisory draft. |
 | `vuln-disclosure/` | Publish a governed, human-approved security advisory from triaged risk. |
 | `pr-review-note/` | Govern a GitHub PR review-note lane over MCP. |
-| `sandbox-harden/` | Produce a least-privilege runtime hardening profile (seccomp, capabilities). |
 | `redact-pii/` | Scrub personal data out of content before it crosses a trust boundary. |
 | `vault-unseal/` | Plan a scoped, time-bounded unseal of a secret under explicit policy. |
 | `governed-outbound/` | Gather an external source, scrub personal data, and publish governed output. |
@@ -137,7 +136,6 @@ Skills that model, charge, pay, or refund through payment providers. The `mock-*
 |---|---|
 | `skill-lab/` | Design, build, improve, and add validated harness coverage to Runx skills. |
 | `overlay/` | Wrap a borrowed Anthropic SKILL.md under a governed runx overlay. |
-| `evolve/` | Governed repo evolution with fixed phase semantics and bounded changes. |
 | `moltbook/` | Scan for posting opportunities and prepare governed Moltbook entries. |
 
 ## SQL & Structured Data

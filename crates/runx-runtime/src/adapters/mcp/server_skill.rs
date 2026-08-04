@@ -1,8 +1,7 @@
-// rust-style-allow: large-file because skill execution, graph fallback,
+// Module rationale: skill execution, graph fallback,
 // runx envelope construction, and host plumbing for `runx mcp serve` stay
 // adjacent to the server execution boundary.
 use std::collections::BTreeMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use runx_contracts::{
@@ -11,15 +10,18 @@ use runx_contracts::{
 use runx_core::state_machine::GraphStatus;
 use runx_parser::{SkillInput, SkillRunnerDefinition, ValidatedSkill};
 
-use crate::adapter::{SkillAdapter, SkillInvocation, SkillOutput};
+use crate::adapter::{InvocationOutput, SkillAdapter, SkillInvocation};
 use crate::agent_invocation::{AgentActInvocationSourceType, agent_act_resolution_request};
+use crate::execution::output_projection::project_step_claim;
 use crate::host::Host;
-use crate::receipts::step_receipt_with_signature_policy;
-use crate::registry::scopes::required_scopes_from_skill;
+use crate::output_contract::{
+    attach_verified_metadata, project_declared_output_claim,
+    verified_runner_metadata_with_artifacts,
+};
+use crate::receipts::{StepReceiptWithDisposition, step_receipt_with_declared_claim_and_policy};
 use crate::services::ReceiptServices;
 use crate::{GraphRun, Runtime, RuntimeError, RuntimeOptions};
 
-use super::adapter::McpAdapter;
 use super::server::mcp_tool_result_from_host_result;
 use super::types::{
     McpHostRunResult, McpServerExecutionOptions, McpServerOptions, McpServerSkillExecution,
@@ -27,19 +29,6 @@ use super::types::{
 };
 
 impl McpServerOptions {
-    pub fn from_skill_paths(
-        skill_paths: &[PathBuf],
-        package_name: impl Into<String>,
-        package_version: impl Into<String>,
-    ) -> Result<Self, RuntimeError> {
-        Self::from_skill_paths_with_execution(
-            skill_paths,
-            package_name,
-            package_version,
-            McpServerExecutionOptions::default(),
-        )
-    }
-
     pub fn from_skill_paths_with_execution(
         skill_paths: &[PathBuf],
         package_name: impl Into<String>,
@@ -62,29 +51,32 @@ pub(super) fn load_mcp_server_tool(
     skill_path: &Path,
     execution: &McpServerExecutionOptions,
 ) -> Result<McpServerTool, RuntimeError> {
-    let skill_path = canonical_skill_path(skill_path)?;
-    let skill = load_skill_for_mcp(&skill_path, execution.runner.as_deref())?;
+    let loaded = crate::load_validated_skill_package(skill_path)?;
+    let skill_path = loaded
+        .directory
+        .canonicalize()
+        .map_err(|source| RuntimeError::io("canonicalizing skill path", source))?;
+    let (skill, runner, requirements) =
+        selected_mcp_runner(loaded.package, execution.runner.as_deref())?;
+    let required_scopes = runner.declared_scopes();
     let credential_delivery = execution
         .credential_deliveries
         .get(&skill_path)
         .cloned()
         .unwrap_or_default();
-    let required_scopes =
-        required_scopes_from_skill(&skill).map_err(|error| RuntimeError::SkillFailed {
-            skill_name: skill.name.clone(),
-            message: format!("invalid required scopes: {error}"),
-        })?;
     Ok(McpServerTool {
         name: skill.name.clone(),
         description: skill
             .description
             .clone()
             .unwrap_or_else(|| format!("runx skill {}", skill.name)),
-        input_schema: skill_inputs_to_json_schema(&skill.inputs),
+        input_schema: skill_inputs_to_json_schema(&runner.inputs),
         required_scopes,
         result: McpServerToolBehavior::Skill(Box::new(McpServerSkillExecution {
             skill_path,
-            skill,
+            skill_name: skill.name,
+            runner,
+            requirements,
             receipt_dir: execution.receipt_dir.clone(),
             env: execution.env.clone(),
             credential_delivery,
@@ -92,100 +84,35 @@ pub(super) fn load_mcp_server_tool(
     })
 }
 
-fn canonical_skill_path(skill_path: &Path) -> Result<PathBuf, RuntimeError> {
-    let manifest_path = if skill_path.is_dir() {
-        skill_path.join("SKILL.md")
-    } else {
-        skill_path.to_path_buf()
-    };
-    if !manifest_path.exists() {
-        return Err(RuntimeError::SkillFileMissing {
-            path: manifest_path,
-        });
-    }
-    skill_path
-        .canonicalize()
-        .map_err(|source| RuntimeError::io("canonicalizing skill path", source))
-}
-
-fn load_skill_for_mcp(
-    skill_path: &Path,
-    requested_runner: Option<&str>,
-) -> Result<ValidatedSkill, RuntimeError> {
-    let manifest_path = if skill_path.is_dir() {
-        skill_path.join("SKILL.md")
-    } else {
-        skill_path.to_path_buf()
-    };
-    if !manifest_path.exists() {
-        return Err(RuntimeError::SkillFileMissing {
-            path: manifest_path,
-        });
-    }
-    let source = fs::read_to_string(&manifest_path)
-        .map_err(|source| RuntimeError::io("reading skill markdown", source))?;
-    let raw = runx_parser::parse_skill_markdown(&source)?;
-    let skill = runx_parser::validate_skill(raw).map_err(RuntimeError::from)?;
-    selected_mcp_runner(skill_path, skill, requested_runner)
-}
-
 fn selected_mcp_runner(
-    skill_path: &Path,
-    skill: ValidatedSkill,
+    package: runx_parser::ValidatedSkillPackage,
     requested_runner: Option<&str>,
-) -> Result<ValidatedSkill, RuntimeError> {
-    let skill_dir = crate::execution::skill_front::runner_manifest::resolve_skill_dir(skill_path)
-        .map_err(|error| mcp_runner_error(&skill.name, error))?;
-    if !skill_dir.join("X.yaml").exists() {
-        return match requested_runner {
-            Some(runner) => Err(RuntimeError::UnsupportedRunnerSelection {
-                runner: runner.to_owned(),
-            }),
-            None => Ok(skill),
-        };
-    }
-    let manifest = crate::execution::skill_front::runner_manifest::load_runner_manifest(&skill_dir)
-        .map_err(|error| mcp_runner_error(&skill.name, error))?;
+) -> Result<
+    (
+        ValidatedSkill,
+        SkillRunnerDefinition,
+        runx_contracts::ExecutionRequirements,
+    ),
+    RuntimeError,
+> {
+    let manifest = package
+        .root_manifest()
+        .cloned()
+        .ok_or_else(|| RuntimeError::SkillFailed {
+            skill_name: package.skill.name.clone(),
+            message: "skill package does not declare X.yaml runners".to_owned(),
+        })?;
+    let skill = package.skill;
     let runner = crate::execution::skill_front::runner_manifest::selected_runner(
         &manifest,
         requested_runner,
     )
     .map_err(|error| mcp_runner_error(&skill.name, error))?;
-    Ok(apply_mcp_runner(skill, runner))
-}
-
-fn apply_mcp_runner(mut skill: ValidatedSkill, runner: &SkillRunnerDefinition) -> ValidatedSkill {
-    let SkillRunnerDefinition {
-        name: _,
-        default: _,
-        source,
-        inputs,
-        credential: _,
-        auth,
-        risk,
-        runtime,
-        retry,
-        idempotency,
-        mutating,
-        artifacts,
-        allowed_tools,
-        execution,
-        runx,
-        raw: _,
-    } = runner.clone();
-    skill.source = source;
-    skill.inputs = inputs;
-    skill.auth = auth;
-    skill.risk = risk;
-    skill.runtime = runtime;
-    skill.retry = retry;
-    skill.idempotency = idempotency;
-    skill.mutating = mutating;
-    skill.artifacts = artifacts;
-    skill.allowed_tools = allowed_tools;
-    skill.execution = execution;
-    skill.runx = runx;
-    skill
+    Ok((
+        skill,
+        runner.clone(),
+        manifest.execution_requirements(runner),
+    ))
 }
 
 fn mcp_runner_error(skill_name: &str, error: impl std::fmt::Display) -> RuntimeError {
@@ -196,56 +123,21 @@ fn mcp_runner_error(skill_name: &str, error: impl std::fmt::Display) -> RuntimeE
 }
 
 fn skill_inputs_to_json_schema(inputs: &BTreeMap<String, SkillInput>) -> JsonObject {
-    let properties = inputs
-        .iter()
-        .map(|(name, input)| (name.clone(), JsonValue::Object(skill_input_schema(input))))
-        .collect::<JsonObject>();
-    let required = inputs
-        .iter()
-        .filter(|(_name, input)| input.required)
-        .map(|(name, _input)| JsonValue::String(name.clone()))
-        .collect::<Vec<_>>();
-    [
-        ("type".to_owned(), JsonValue::String("object".to_owned())),
-        ("properties".to_owned(), JsonValue::Object(properties)),
-        ("required".to_owned(), JsonValue::Array(required)),
-        ("additionalProperties".to_owned(), JsonValue::Bool(false)),
-    ]
-    .into()
-}
-
-fn skill_input_schema(input: &SkillInput) -> JsonObject {
-    let mut schema = JsonObject::new();
-    if let Some(input_type) = normalize_input_type(&input.input_type) {
-        schema.insert("type".to_owned(), JsonValue::String(input_type.to_owned()));
-    }
-    if let Some(description) = &input.description {
-        schema.insert(
-            "description".to_owned(),
-            JsonValue::String(description.clone()),
-        );
-    }
-    if let Some(default) = &input.default {
-        schema.insert("default".to_owned(), default.clone());
-    }
-    schema
-}
-
-fn normalize_input_type(input_type: &str) -> Option<&str> {
-    match input_type {
-        "string" | "number" | "integer" | "boolean" | "object" | "array" => Some(input_type),
-        _ => None,
-    }
+    runx_contracts::input_contract_schema(inputs)
 }
 
 pub(super) fn execute_mcp_server_skill(
     run_id: &str,
     execution: McpServerSkillExecution,
     inputs: JsonObject,
+    javascript: crate::adapters::javascript::JavaScriptAdapter,
 ) -> Result<McpToolResult, RuntimeError> {
-    let inputs = apply_input_defaults(&execution.skill, inputs);
-    if let Some(request) = input_resolution_request(&execution.skill, &inputs) {
-        let skill_name = execution.skill.name.clone();
+    let mut inputs = inputs;
+    crate::input_contract::apply_defaults(&execution.runner.inputs, &mut inputs);
+    if let Some(request) =
+        input_resolution_request(&execution.skill_name, &execution.runner.inputs, &inputs)
+    {
+        let skill_name = execution.skill_name.clone();
         return Ok(mcp_tool_result_from_host_result(
             McpHostRunResult::NeedsAgent {
                 skill_name: skill_name.clone(),
@@ -256,28 +148,33 @@ pub(super) fn execute_mcp_server_skill(
         ));
     }
 
-    if execution.skill.source.source_type == runx_parser::SourceKind::Graph {
-        return execute_mcp_server_graph(run_id, execution, inputs);
+    if execution.runner.source.source_type == runx_parser::SourceKind::Graph {
+        return execute_mcp_server_graph(run_id, execution, inputs, javascript);
     }
     if let Some(source_type) = AgentActInvocationSourceType::from_contract_value(
-        execution.skill.source.source_type.as_str(),
+        execution.runner.source.source_type.as_str(),
     ) {
-        let skill_name = execution.skill.name.clone();
-        let request =
-            agent_act_resolution_request(&mcp_skill_invocation(&execution, inputs), source_type)?;
+        let skill_name = execution.skill_name.clone();
+        let mut invocation = mcp_skill_invocation(&execution, inputs);
+        invocation.env.insert(
+            crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
+            run_id.to_owned(),
+        );
+        let request = agent_act_resolution_request(&invocation, source_type)?;
         return pending_mcp_resolution_result(run_id, &skill_name, &request);
     }
-    complete_mcp_server_skill(run_id, execution, inputs)
+    complete_mcp_server_skill(run_id, execution, inputs, &javascript)
 }
 
 fn execute_mcp_server_graph(
     run_id: &str,
     execution: McpServerSkillExecution,
     _inputs: JsonObject,
+    javascript: crate::adapters::javascript::JavaScriptAdapter,
 ) -> Result<McpToolResult, RuntimeError> {
     let graph =
         execution
-            .skill
+            .runner
             .source
             .graph
             .clone()
@@ -291,8 +188,8 @@ fn execute_mcp_server_graph(
         ReceiptServices::from_env(&env).map_err(|error| RuntimeError::ReceiptInvalid {
             message: error.to_string(),
         })?;
-    let runtime = Runtime::new(
-        McpServerGraphAdapter,
+    let runtime = Runtime::with_native_services(
+        crate::execution::skill_front::SkillSourceAdapter::with_javascript(javascript.clone()),
         RuntimeOptions {
             created_at: crate::time::now_iso8601(),
             env,
@@ -300,21 +197,23 @@ fn execute_mcp_server_graph(
             effects: Default::default(),
             credential_delivery: execution.credential_delivery.clone(),
         },
+        javascript,
+        crate::services::LocalArtifactService::default(),
     );
     let mut host = McpServerHost::default();
     let checkpoint = match runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)
     {
         Ok(checkpoint) => checkpoint,
         Err(RuntimeError::GraphBlocked { .. }) if !host.requests.is_empty() => {
-            return pending_mcp_resolution_result(run_id, &execution.skill.name, &host.requests[0]);
+            return pending_mcp_resolution_result(run_id, &execution.skill_name, &host.requests[0]);
         }
         Err(error) => return Err(error),
     };
     if let Some(request) = host.requests.first() {
-        return pending_mcp_resolution_result(run_id, &execution.skill.name, request);
+        return pending_mcp_resolution_result(run_id, &execution.skill_name, request);
     }
     let run = runtime.resume_graph_with_host(&graph_dir, graph, checkpoint, &mut host)?;
-    graph_run_mcp_result(&execution.skill.name, run_id, run)
+    graph_run_mcp_result(&execution.skill_name, run_id, run)
 }
 
 fn pending_mcp_resolution_result(
@@ -343,11 +242,14 @@ fn graph_run_mcp_result(
         "failed"
     };
     let result = if status == "completed" {
+        let output = crate::runner::graph_run_result(&run)?;
+        let mut runx = terminal_runx("completed", skill_name, run_id, &run.receipt.id);
+        runx.insert("output".to_owned(), output.clone());
         McpHostRunResult::Completed {
             skill_name: skill_name.to_owned(),
-            output: String::new(),
+            output,
             receipt_id: run.receipt.id.to_string(),
-            runx: terminal_runx("completed", skill_name, run_id, &run.receipt.id),
+            runx,
         }
     } else {
         McpHostRunResult::Failed {
@@ -364,19 +266,36 @@ fn complete_mcp_server_skill(
     run_id: &str,
     execution: McpServerSkillExecution,
     inputs: JsonObject,
+    javascript: &crate::adapters::javascript::JavaScriptAdapter,
 ) -> Result<McpToolResult, RuntimeError> {
     let receipts = ReceiptServices::from_env(&execution.env).map_err(|error| {
         RuntimeError::ReceiptInvalid {
             message: error.to_string(),
         }
     })?;
-    let output = invoke_mcp_server_skill(&execution, inputs)?;
-    let receipt = step_receipt_with_signature_policy(
-        run_id,
-        &execution.skill.name,
-        1,
-        &output,
-        &crate::time::now_iso8601(),
+    let output = invoke_mcp_server_skill(&execution, inputs, javascript)?;
+    let claim = if output.succeeded() {
+        project_declared_output_claim(
+            &execution.skill_name,
+            &output.value,
+            execution.runner.source.outputs.as_ref(),
+            execution.runner.artifacts.as_ref(),
+        )?
+    } else {
+        JsonObject::new()
+    };
+    let projection = project_step_claim(claim);
+    let created_at = crate::time::now_iso8601();
+    let receipt = step_receipt_with_declared_claim_and_policy(
+        StepReceiptWithDisposition::with_default_closure(
+            run_id,
+            &execution.skill_name,
+            1,
+            &output,
+            &created_at,
+        ),
+        &projection.outputs,
+        projection.refs,
         receipts.signature_config().signature_policy(),
     )?;
     if let Some(receipt_dir) = &execution.receipt_dir {
@@ -388,21 +307,19 @@ fn complete_mcp_server_skill(
     }
     let result = if output.succeeded() {
         McpHostRunResult::Completed {
-            skill_name: execution.skill.name.clone(),
-            output: output.stdout.clone(),
+            skill_name: execution.skill_name.clone(),
+            output: output.value.clone(),
             receipt_id: receipt.id.to_string(),
-            runx: completed_runx(&execution.skill.name, run_id, &receipt.id, &output),
+            runx: completed_runx(&execution.skill_name, run_id, &receipt.id, &output),
         }
     } else {
         McpHostRunResult::Failed {
-            skill_name: execution.skill.name.clone(),
+            skill_name: execution.skill_name.clone(),
             receipt_id: Some(receipt.id.to_string()),
-            error: if output.stderr.is_empty() {
-                "skill execution failed".to_owned()
-            } else {
-                output.stderr.clone()
-            },
-            runx: terminal_runx("failed", &execution.skill.name, run_id, &receipt.id),
+            error: output
+                .failure_message()
+                .unwrap_or_else(|| "skill execution failed".to_owned()),
+            runx: terminal_runx("failed", &execution.skill_name, run_id, &receipt.id),
         }
     };
     Ok(mcp_tool_result_from_host_result(result))
@@ -411,18 +328,24 @@ fn complete_mcp_server_skill(
 fn invoke_mcp_server_skill(
     execution: &McpServerSkillExecution,
     inputs: JsonObject,
-) -> Result<SkillOutput, RuntimeError> {
+    javascript: &crate::adapters::javascript::JavaScriptAdapter,
+) -> Result<InvocationOutput, RuntimeError> {
     let invocation = mcp_skill_invocation(execution, inputs);
-    match execution.skill.source.source_type.as_str() {
-        "mcp" => McpAdapter::default().invoke(invocation),
-        "cli-tool" => invoke_cli_tool_server_skill(invocation),
-        "graph" => Err(RuntimeError::UnsupportedAdapter {
-            adapter_type: "graph".to_owned(),
-        }),
-        other => Err(RuntimeError::UnsupportedAdapter {
-            adapter_type: other.to_owned(),
-        }),
+    let mut output =
+        crate::execution::skill_front::SkillSourceAdapter::with_javascript(javascript.clone())
+            .invoke(invocation)?;
+    if output.succeeded() {
+        let metadata = verified_runner_metadata_with_artifacts(
+            &execution.skill_name,
+            &output.value,
+            execution.runner.source.outputs.as_ref(),
+            execution.runner.artifacts.as_ref(),
+            &skill_directory_for_execution(&execution.skill_path),
+            &execution.env,
+        )?;
+        attach_verified_metadata(&mut output, metadata)?;
     }
+    Ok(output)
 }
 
 fn mcp_skill_invocation(
@@ -430,45 +353,19 @@ fn mcp_skill_invocation(
     inputs: JsonObject,
 ) -> SkillInvocation {
     SkillInvocation {
-        skill_name: execution.skill.name.clone(),
-        source: execution.skill.source.clone(),
+        skill_name: execution.skill_name.clone(),
+        step_id: None,
+        source: execution.runner.source.clone(),
+        requirements: execution.requirements.clone(),
+        artifacts: execution.runner.artifacts.clone(),
+        allowed_tools: execution.runner.allowed_tools.clone(),
         inputs,
         resolved_inputs: JsonObject::new(),
         current_context: Vec::new(),
+        provenance: Vec::new(),
         skill_directory: skill_directory_for_execution(&execution.skill_path),
         env: execution.env.clone(),
         credential_delivery: execution.credential_delivery.clone(),
-    }
-}
-
-#[cfg(feature = "cli-tool")]
-fn invoke_cli_tool_server_skill(invocation: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    crate::adapters::cli_tool::CliToolAdapter.invoke(invocation)
-}
-
-#[cfg(not(feature = "cli-tool"))]
-fn invoke_cli_tool_server_skill(invocation: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    Err(RuntimeError::UnsupportedAdapter {
-        adapter_type: invocation.source.source_type.as_str().to_owned(),
-    })
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-struct McpServerGraphAdapter;
-
-impl SkillAdapter for McpServerGraphAdapter {
-    fn adapter_type(&self) -> &'static str {
-        "mcp-server-graph"
-    }
-
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-        match request.source.source_type.as_str() {
-            "mcp" => McpAdapter::default().invoke(request),
-            "cli-tool" => invoke_cli_tool_server_skill(request),
-            other => Err(RuntimeError::UnsupportedAdapter {
-                adapter_type: other.to_owned(),
-            }),
-        }
     }
 }
 
@@ -489,27 +386,22 @@ impl Host for McpServerHost {
         self.requests.push(request);
         Ok(None)
     }
-}
 
-fn apply_input_defaults(skill: &ValidatedSkill, mut inputs: JsonObject) -> JsonObject {
-    for (name, input) in &skill.inputs {
-        if !inputs.contains_key(name)
-            && let Some(default) = &input.default
-        {
-            inputs.insert(name.clone(), default.clone());
-        }
+    fn log(&mut self, _message: String) -> Result<(), RuntimeError> {
+        Ok(())
     }
-    inputs
 }
 
 fn input_resolution_request(
-    skill: &ValidatedSkill,
+    skill_name: &str,
+    declared_inputs: &BTreeMap<String, SkillInput>,
     inputs: &JsonObject,
 ) -> Option<ResolutionRequest> {
-    let questions = skill
-        .inputs
+    let questions = declared_inputs
         .iter()
-        .filter(|(name, input)| input.required && missing_input(inputs.get(*name)))
+        .filter(|(name, input)| {
+            input.required && crate::input_contract::is_missing(inputs.get(*name))
+        })
         .map(|(name, input)| Question {
             id: name.clone().into(),
             prompt: input
@@ -525,7 +417,7 @@ fn input_resolution_request(
     (!questions.is_empty()).then(|| ResolutionRequest::Input {
         id: format!(
             "input.{}.{}",
-            identifier_segment(&skill.name),
+            identifier_segment(skill_name),
             questions
                 .iter()
                 .map(|question| identifier_segment(question.id.as_str()))
@@ -537,25 +429,14 @@ fn input_resolution_request(
     })
 }
 
-fn missing_input(value: Option<&JsonValue>) -> bool {
-    match value {
-        None | Some(JsonValue::Null) => true,
-        Some(JsonValue::String(value)) => value.is_empty(),
-        Some(_) => false,
-    }
-}
-
 fn completed_runx(
     skill_name: &str,
     run_id: &str,
     receipt_id: &str,
-    output: &SkillOutput,
+    output: &InvocationOutput,
 ) -> JsonObject {
     let mut runx = terminal_runx("completed", skill_name, run_id, receipt_id);
-    runx.insert(
-        "output".to_owned(),
-        JsonValue::String(output.stdout.clone()),
-    );
+    runx.insert("output".to_owned(), output.value.clone());
     runx
 }
 

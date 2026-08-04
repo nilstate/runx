@@ -94,7 +94,7 @@ evidence, not copied into the repo by default.
 
 | Category | Maintained packages |
 | --- | --- |
-| `authoring` | `evolve`, `overlay`, `policy-author`, `prior-art`, `review-receipt`, `review-skill`, `skill-lab`, `work-plan` |
+| `authoring` | `overlay`, `policy-author`, `prior-art`, `review-receipt`, `review-skill`, `skill-lab`, `work-plan` |
 | `code` | `release` |
 | `content` | `brand-voice`, `content-pipeline`, `ghostwrite`, `moltbook` |
 | `data` | `data-store`, `run-history`, `sql-analyst` |
@@ -102,7 +102,7 @@ evidence, not copied into the repo by default.
 | `ops` | `github-sync`, `governed-outbound`, `chief-of-staff`, `issue-intake`, `issue-triage`, `messageboard`, `n8n-handoff`, `ops-desk`, `send-as`, `zapier-handoff` |
 | `payments` | `charge`, `dispute-respond`, `mock-pay`, `mock-refund`, `mpp-pay`, `mpp-refund`, `refund`, `settle-invoice`, `spend`, `stripe-pay`, `stripe-refund`, `x402-pay` |
 | `research` | `ecosystem-brief`, `research` |
-| `security` | `cve-audit`, `vuln-triage`, `vuln-disclosure`, `least-privilege`, `audit-receipt`, `redact-pii`, `sandbox-harden`, `sign-receipt`, `vault-unseal` |
+| `security` | `cve-audit`, `vuln-triage`, `vuln-disclosure`, `least-privilege`, `audit-receipt`, `redact-pii`, `sign-receipt`, `vault-unseal` |
 
 Graph stages, harness fixtures, context-only packages, and provider bindings are
 not listed here unless they are meant to be run as catalog packages. Their
@@ -148,7 +148,7 @@ package, harness, and evidence without separating it from repo history.
 Most new skills should start outside the first-party repo:
 
 ```bash
-runx new <skill-name>
+runx new <skill-name> --objective "Describe the bounded operator outcome"
 runx harness ./<skill-name> --json
 runx login --for publish
 runx registry publish ./<skill-name>/SKILL.md --registry https://api.runx.ai

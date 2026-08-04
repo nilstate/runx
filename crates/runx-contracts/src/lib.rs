@@ -8,38 +8,43 @@ pub mod act;
 pub mod agent_context;
 pub mod artifact;
 pub mod authority;
-pub mod cli;
 pub mod credential_delivery;
 pub mod decision;
 pub mod dev;
 pub mod doctor;
 pub mod execution;
+pub mod execution_boundary;
+pub mod execution_requirements;
 pub mod external_adapter;
 pub mod fingerprint;
 pub mod fixture;
 pub mod handoff;
 pub mod host_protocol;
+pub mod javascript_worker;
 pub mod json;
 pub mod ledger;
+pub mod limits;
 pub mod links;
 pub mod list;
 pub mod maturity;
+pub mod native_packets;
 pub mod operational_policy;
 pub mod operational_proposal;
+pub mod orchestrator_handoff;
 pub mod output;
 pub mod packet_index;
 pub mod policy_proof;
 pub mod receipt;
-pub mod receipts;
 pub mod redaction;
 pub mod reference;
-pub mod registry;
 pub mod registry_binding;
 pub mod review;
 pub mod run_summary;
 pub mod schema;
 pub mod schema_artifacts;
+mod schema_reconcile;
 pub mod signal;
+pub mod skill_authoring;
 pub mod source_packet;
 pub mod suppression;
 pub mod thread_outbox_provider;
@@ -92,8 +97,16 @@ pub use doctor::{
     DoctorStatus, DoctorSummary,
 };
 pub use execution::{
-    ExecutionSemantics, GovernedDisposition, InputContextCapture, OutcomeState, ReceiptOutcome,
-    ReceiptSurfaceRef,
+    ArtifactContract, ExecutionSemantics, GovernedDisposition, IdempotencyPolicy,
+    InputContextCapture, InputDefinition, OutcomeState, ReceiptOutcome, ReceiptSurfaceRef,
+    RetryPolicy, input_contract_schema, input_contract_schema_with_examples,
+};
+pub use execution_boundary::{
+    EXECUTION_BOUNDARY_METADATA, ExecutionBoundaryKind, ExecutionBoundaryObservation,
+};
+pub use execution_requirements::{
+    AgentExecutionRequirements, EnvironmentRequirementStatus, EnvironmentRequirements,
+    ExecutionCredentialRequirement, ExecutionRequirements,
 };
 pub use external_adapter::{
     EXTERNAL_ADAPTER_PROTOCOL_VERSION, ExternalAdapterArtifactObservation,
@@ -104,9 +117,8 @@ pub use external_adapter::{
     ExternalAdapterHostResolutionFrame, ExternalAdapterHostResolutionSchema,
     ExternalAdapterInvocation, ExternalAdapterInvocationSchema, ExternalAdapterManifest,
     ExternalAdapterManifestSchema, ExternalAdapterProtocolVersion, ExternalAdapterResponse,
-    ExternalAdapterSandboxIntent, ExternalAdapterStatus, ExternalAdapterTelemetryObservation,
-    ExternalAdapterTelemetryValue, ExternalAdapterTimeouts, ExternalAdapterTransport,
-    ExternalAdapterTransportKind,
+    ExternalAdapterStatus, ExternalAdapterTelemetryObservation, ExternalAdapterTelemetryValue,
+    ExternalAdapterTimeouts, ExternalAdapterTransport, ExternalAdapterTransportKind,
 };
 pub use fingerprint::{Fingerprint, FingerprintAlgorithm, hex_lower, sha256_hex, sha256_prefixed};
 pub use fixture::{Fixture, FixtureLane};
@@ -123,18 +135,26 @@ pub use host_protocol::{
     ResolutionResponseActor,
 };
 pub use json::{
-    JsonNumber, JsonObject, JsonValue, json_bool_field, json_object, json_object_field,
-    json_string_field,
+    JsonNumber, JsonObject, JsonValue, MAX_PORTABLE_INTEGER, json_bool_field, json_object,
+    json_object_field, json_string_field,
 };
 pub use ledger::{
     LedgerCanonicalization, LedgerChain, LedgerChainVersion, LedgerEntry, LedgerEntryMeta,
     LedgerEntrySchemaVersion, LedgerHashAlgorithm, LedgerPayload, LedgerPayloadVersion,
     LedgerProducer, LedgerSha256Hex,
 };
+pub use limits::{
+    EXECUTION_LIMITS_METADATA, ExecutionLimit, ExecutionLimitHit, ExecutionLimitUnit,
+    ExecutionLimits,
+};
 pub use links::{DuplicateCandidate, Links};
 pub use list::{
     RunxListEmit, RunxListItem, RunxListItemKind, RunxListReport, RunxListRequestedKind,
     RunxListSchema, RunxListSource, RunxListStatus,
+};
+pub use native_packets::{
+    ApprovalDecisionActor, ApprovalDecisionPacket, ApprovalDecisionStatus, DataOperationResult,
+    DataOperationStatus, DataStopCondition, GitBlobDigest, LocalArtifact, LocalArtifactPage,
 };
 pub use operational_policy::{
     OperationalPolicy, OperationalPolicyAction, OperationalPolicyAdmission,
@@ -158,9 +178,15 @@ pub use operational_proposal::{
     OperationalProposalRecommendedAction, OperationalProposalRedactionStatus,
     OperationalProposalSchema,
 };
+pub use orchestrator_handoff::{
+    OrchestratorExecutionContext, OrchestratorHandoffBinding, OrchestratorHandoffContext,
+    OrchestratorHandoffDelivery, OrchestratorHandoffIdempotency, OrchestratorHandoffRequest,
+    OrchestratorReceiptExpectations, OrchestratorReceiverValidation,
+};
 pub use output::{
-    Output, OutputField, OutputFieldSpec, OutputType, OutputValidationError,
-    output_contract_digest, output_value_schema, validate_output_value,
+    Output, OutputContractParseError, OutputField, OutputFieldSpec, OutputType,
+    OutputValidationError, output_contract_digest, output_value_schema, parse_output_contract,
+    validate_output_value,
 };
 pub use packet_index::{PacketIndex, PacketIndexEntry, PacketIndexSchema};
 pub use policy_proof::{
@@ -168,10 +194,9 @@ pub use policy_proof::{
     AuthorityProofApprovalDecisionValue, AuthorityProofCredentialMaterial,
     AuthorityProofCredentialMaterialStatus, AuthorityProofRedaction,
     AuthorityProofRedactionSecretMaterial, AuthorityProofRedactionStatus,
-    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSandbox,
-    AuthorityProofSandboxFilesystem, AuthorityProofSandboxNetwork, AuthorityProofSandboxRuntime,
-    AuthorityProofSchemaVersion, CredentialEnvelope, CredentialEnvelopeKind,
-    CredentialGrantReference, ScopeAdmission, ScopeAdmissionStatus,
+    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSchemaVersion,
+    CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference, ScopeAdmission,
+    ScopeAdmissionStatus,
 };
 pub use receipt::{
     EFFECT_FINALITY_RECEIPT_SCHEMA, EffectFinalityPhase, EffectFinalityReceipt,
@@ -190,9 +215,25 @@ pub use registry_binding::{
 };
 pub use review::{ReviewReceiptImprovementProposal, ReviewReceiptOutput, ReviewReceiptVerdict};
 pub use run_summary::{RunSummary, RunSummarySchema, RunSummaryStatus};
-pub use schema_artifacts::{SchemaArtifact, generated_schema_artifacts};
+pub use schema_artifacts::{
+    SchemaArtifact, generated_schema_artifacts, public_packet_artifact, schema_artifact,
+};
+pub use schema_reconcile::{SchemaDrift, reconcile_schema_artifacts};
 pub use signal::{
     SIGNAL_SCHEMA, Signal, SignalAuthenticity, SignalSchema, SignalTrustLevel, signal_type,
+};
+pub use skill_authoring::{
+    SKILL_APPLY_RESULT_SCHEMA, SKILL_ARCHITECTURE_DECISION_SCHEMA, SKILL_ARCHITECTURE_PLAN_SCHEMA,
+    SKILL_CHANGE_BUNDLE_SCHEMA, SKILL_CHANGE_DRAFT_SCHEMA, SKILL_VALIDATION_RESULT_SCHEMA,
+    SkillApplyResult, SkillApplyResultSchema, SkillApplyVerdict, SkillApprovalRequirement,
+    SkillArchitectureDecision, SkillArchitectureDecisionSchema, SkillArchitectureDisposition,
+    SkillArchitecturePlan, SkillArchitecturePlanSchema, SkillBehaviorDecision, SkillChainPlan,
+    SkillChangeBundle, SkillChangeBundleSchema, SkillChangeDecision, SkillChangeDraft,
+    SkillChangeDraftSchema, SkillEffectClass, SkillEffectRequirement, SkillExecutionLane,
+    SkillExpectedOutput, SkillFileWrite, SkillKnowledgeContract, SkillNativeReuseEvidence,
+    SkillPackageDelta, SkillPackageMetrics, SkillProofKind, SkillProofRequirement,
+    SkillResourceBudget, SkillValidationCheck, SkillValidationCheckStatus, SkillValidationResult,
+    SkillValidationResultSchema,
 };
 pub use source_packet::{SOURCE_PACKET_SCHEMA, SourcePacket, SourcePacketSchema};
 pub use suppression::{SuppressionRecord, SuppressionRecordSchema, SuppressionScope};
@@ -215,8 +256,7 @@ pub use thread_outbox_provider::{
 };
 pub use tools::{
     RuntimeCommand, ToolCommandInputMode, ToolIdempotencyPolicy, ToolInput, ToolManifest,
-    ToolManifestSchema, ToolMcpServer, ToolOutput, ToolOutputBinding, ToolRetryPolicy, ToolSandbox,
-    ToolSandboxCwdPolicy, ToolSandboxProfile, ToolSource, ToolSourceType,
+    ToolManifestSchema, ToolMcpServer, ToolRetryPolicy, ToolSource, ToolSourceType,
 };
 pub use verification::{
     ReceiptVerificationSummary, VERIFICATION_SCHEMA, Verification, VerificationCheck,

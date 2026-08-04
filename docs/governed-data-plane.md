@@ -11,12 +11,11 @@ are selected by bindings.
 
 - A **domain skill** owns product meaning: messageboard transitions, review
   states, CRM records, approval inboxes, support tickets, ledgers, and so on.
-- A **data source** declares resources and operations: named reads, append
-  events, read events, read projections, compare-and-set, or provider-specific
-  bounded commands.
-- A **data adapter** executes those operations against one provider: Postgres,
-  SQLite, D1, Redis, DynamoDB, S3, Supabase, Turso, product HTTP APIs, or local
-  JSON fixtures.
+- A **data source** declares resources addressed by exact typed operations:
+  append event, read events, read projection, and list stream heads.
+- A **data implementation** executes those operations against storage. Runx
+  ships native SQLite and a conforming external Redis adapter; other providers
+  may implement the same boundary.
 - A **data operation result** is provider-neutral receipt evidence:
   `runx.data.operation_result.v1`.
 
@@ -60,18 +59,14 @@ runx skill data-store append_event \
   --json
 ```
 
-For local dogfood, the bundled `data-store` proof uses the checked-in
-`data.source` resolver. Unbound `local://...` refs default to the durable
-`data.sqlite` adapter under `.runx/data/local-sources/`, with the file name
-derived from the logical source ref, so stateful skills work without a separate
-database setup and independent sources do not collide. Pass `store_id` only
-when a fixture intentionally wants the checked-in `data.local` JSON store. For
-production, install or configure a provider adapter such as `data.postgres`,
-`data.d1`, `data.redis`, or `data.object`, then bind the same logical
-`data_source_ref` to that adapter. Domain skills should not branch on provider
-type. If a graph needs a different storage backend, change the binding or pass
-a different `data_source_ref`; do not edit messageboard, CRM, or operator
-semantics into runx core.
+For local dogfood, unbound `local://...` refs use native durable SQLite under
+`.runx/data/local-sources/`. The file name is derived from the logical source
+ref, so independent sources do not collide and stateful skills need no separate
+database setup. A configured source can instead route to a conforming external
+provider such as `data.redis`. Domain skills never branch on provider type: if
+a graph needs another supported backend, change the binding or pass a different
+`data_source_ref`; do not put messageboard, CRM, or operator semantics into the
+storage implementation.
 
 Adapter binding is authority-bearing configuration. It may name a credential
 profile or hosted grant, but it must not contain raw secrets. Provider secrets
@@ -84,9 +79,10 @@ unless the operator binds that source to Redis.
 
 ## Provider Adapter Contract
 
-A provider adapter is a normal runx tool manifest. It should declare inputs for
-the generic operation envelope and may optionally declare `data_source_binding`
-if it needs non-secret profile/resource metadata from the resolver:
+A provider adapter is a normal Runx tool manifest. It accepts the internal
+operation envelope plus the non-secret `data_source_binding` injected by the
+runtime. Operators and agents call the four exact data operations; they do not
+call this adapter envelope directly:
 
 ```json
 {
@@ -117,7 +113,7 @@ if it needs non-secret profile/resource metadata from the resolver:
 }
 ```
 
-Adapter implementations are responsible for translating the declared operation
+External adapter implementations are responsible for translating the operation
 into provider-specific calls. A Postgres adapter may execute SQL internally; a
 Redis adapter may call Redis commands internally; a D1 adapter may use
 Cloudflare APIs internally. The model and domain skill still see only the
@@ -128,9 +124,9 @@ They should return `provider_unavailable` only when no commit can be proven, and
 must include enough provider evidence to diagnose the failure without exposing
 credentials or private payloads.
 
-## Operation Envelope
+## External Adapter Envelope
 
-Every provider adapter should accept the same conceptual envelope:
+Every external provider adapter accepts the same internal envelope:
 
 ```json
 {
@@ -186,6 +182,35 @@ declare the same resources and operation names even if they are backed by HTTP.
 All writes need an idempotency key. Versioned resources should require
 `expected_version`; append-only streams still return the before and after
 versions so replay can prove order.
+
+## Continuation and offline migration
+
+`data.read_events` has two intentional modes. Omit `after_version` to read the
+latest bounded tail. Supply it—including `0` for the first forward page—to read
+events in ascending order whose version is strictly greater than that cursor.
+Continue with `next_after_version` while `has_more` is true. Every page is
+bounded to 500 events, the cursor must advance monotonically, and an operation
+failure is a failure packet rather than an empty event array. Stream-head lists
+use their returned opaque keyset cursor; callers do not synthesize offsets.
+
+Native SQLite opens only the current schema. Legacy stores are migrated out of
+band under exclusive access:
+
+```bash
+runx data migrate \
+  --database .runx/data/events.sqlite \
+  --source tenant://example/events \
+  --json
+```
+
+The database and optional `--backup` path are workspace-relative. Runx creates
+a SQLite-consistent backup, fingerprints a recognized legacy schema, assigns
+the supplied source only to formerly unscoped rows, installs the current schema
+and indexes, rebuilds stream heads and projection digests from ordered events,
+then independently verifies event/stream counts, content digest, and readback.
+The typed proof records source, backup, and result digests. A current database
+returns an idempotent `current` proof; an unknown or partial schema remains
+byte-identical and no backup is created.
 
 ## Messageboard Example
 
@@ -404,27 +429,24 @@ edit, provider branch, or messageboard-specific storage code is required.
 
 ## Current OSS Proof
 
-`skills/data-store` ships three adapters:
+The OSS data plane has two storage implementations:
 
-- `data.sqlite`: a durable local adapter that uses SQLite transactions,
-  optimistic concurrency, idempotency keys, and readback projections. It is the
-  first real provider-shaped proof and the default for unbound `local://...`
-  refs. Streams are keyed by `data_source_ref`, resource, and aggregate id.
-- `data.local`: a local JSON fixture adapter for deterministic harnesses and
-  contract tests. It is selected by passing `store_id`, not by normal local
-  dogfood.
+- Native SQLite uses in-process transactions, optimistic concurrency,
+  idempotency keys, bounded indexed reads, and a constant-size rolling
+  projection. It is the default for unbound `local://...` refs. `data.sqlite`
+  is its runtime binding identifier, not a parallel executable tool.
 - `data.redis`: a Redis adapter that uses a Redis list for the event stream, a
   Redis hash for idempotency keys, and one Lua script for atomic append,
   optimistic-concurrency, and idempotency checks. It is selected by binding a
   logical source to `adapter: "data.redis"` with a non-secret endpoint and key
   prefix.
 
-Postgres, D1, object-store, hosted, and product API providers should implement
-the same operation result shape behind their own adapters.
+Future providers must implement the same operation result shape behind their
+own adapters; naming a future provider does not imply it ships today.
 
-The public catalog entry is still `data-store`. Bundled provider tools such as
-`data.sqlite` and `data.redis` are surfaced as adapters behind that canonical
-skill, not as duplicate domain skills.
+The public catalog entry is `data-store`; its graphs use the four exact native
+operation capabilities. `data.redis` is an external provider implementation,
+not a duplicate domain skill.
 
 ## Durable Composition Examples
 
@@ -439,6 +461,5 @@ storage semantics:
 - `business-ops.route_and_append` classifies one business signal and persists
   the routed packet for replay.
 
-These examples all run against `data.sqlite` fixtures today. The same graph
-shape can run against Redis, Postgres, D1, or a product API once the logical
-source ref is rebound to that adapter.
+These examples run against native SQLite fixtures today. The same graph shape
+can run against Redis once the logical source ref is rebound to that adapter.

@@ -16,8 +16,8 @@
             "authority_kind": "read_only",
             "grant_id": "grant_expected",
             "scope_family": "github_repo",
-            "target_locator": "runxhq/aster#issue/4",
-            "target_repo": "runxhq/aster"
+            "target_locator": "runxhq/runx#issue/4",
+            "target_repo": "runxhq/runx"
           },
           "material_ref_hash": "6ea8bcec5251bd7ca445945696574d89d2c8845277d7e4d21798f6aa184fdeaa",
           "provider": "github",
@@ -26,6 +26,9 @@
             "repo:read"
           ],
           "status": "resolved"
+        },
+        "execution_boundary": {
+          "kind": "remote_provider"
         },
         "redaction": {
           "metadata_secret_keys": [
@@ -44,36 +47,15 @@
           "authority_kind": "read_only",
           "connected_auth": true,
           "mutating": true,
-          "sandbox_profile": "workspace-write",
           "scope_family": "github_repo",
           "scopes": [
+            "opaque capability with spaces",
             "repo:read"
           ],
-          "target_locator": "runxhq/aster#issue/4",
-          "target_repo": "runxhq/aster"
+          "target_locator": "runxhq/runx#issue/4",
+          "target_repo": "runxhq/runx"
         },
         "run_id": "run_policy_fixture",
-        "sandbox": {
-          "approval_approved": true,
-          "approval_required": false,
-          "cwd_policy": "workspace",
-          "filesystem": {
-            "enforcement": "bubblewrap-mount-namespace",
-            "private_tmp": true,
-            "readonly_paths": false,
-            "writable_paths_enforced": true
-          },
-          "network": {
-            "declared": false,
-            "enforcement": "isolated-namespace"
-          },
-          "profile": "workspace-write",
-          "require_enforcement": true,
-          "runtime": {
-            "enforcer": "bubblewrap",
-            "reason": "fixture"
-          }
-        },
         "schema_version": "runx.authority-proof.v1",
         "scope_admission": {
           "decision_summary": "matching active grant admitted",
@@ -111,8 +93,8 @@
           "repo:read",
           "repo:read"
         ],
-        "target_locator": "runxhq/aster#issue/4",
-        "target_repo": "runxhq/aster",
+        "target_locator": "runxhq/runx#issue/4",
+        "target_repo": "runxhq/runx",
         "type": "connected"
       },
       "connectedAuthCheckedAt": "2026-05-22T00:00:00Z",
@@ -123,8 +105,8 @@
           "authority_kind": "read_only",
           "grant_id": "grant_expected",
           "scope_family": "github_repo",
-          "target_locator": "runxhq/aster#issue/4",
-          "target_repo": "runxhq/aster"
+          "target_locator": "runxhq/runx#issue/4",
+          "target_repo": "runxhq/runx"
         },
         "kind": "runx.credential-envelope.v1",
         "material_kind": "api_key",
@@ -134,6 +116,9 @@
         "scopes": [
           "repo:read"
         ]
+      },
+      "executionBoundary": {
+        "kind": "remote_provider"
       },
       "grants": [
         {
@@ -148,37 +133,15 @@
             "user:read"
           ],
           "status": "active",
-          "target_locator": "runxhq/aster#issue/4",
-          "target_repo": "runxhq/aster"
+          "target_locator": "runxhq/runx#issue/4",
+          "target_repo": "runxhq/runx"
         }
       ],
       "mutating": true,
       "runId": "run_policy_fixture",
-      "sandboxDeclaration": {
-        "cwdPolicy": "workspace",
-        "network": false,
-        "profile": "workspace-write",
-        "requireEnforcement": true
-      },
-      "sandboxMetadata": {
-        "cwd_policy": "workspace",
-        "filesystem": {
-          "enforcement": "bubblewrap-mount-namespace",
-          "private_tmp": true,
-          "readonly_paths": false,
-          "writable_paths_enforced": true
-        },
-        "network": {
-          "declared": false,
-          "enforcement": "isolated-namespace"
-        },
-        "profile": "workspace-write",
-        "require_enforcement": true,
-        "runtime": {
-          "enforcer": "bubblewrap",
-          "reason": "fixture"
-        }
-      },
+      "scopes": [
+        "opaque capability with spaces"
+      ],
       "skillName": "issue-intake",
       "sourceType": "agent-task"
     }

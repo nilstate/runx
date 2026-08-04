@@ -1,0 +1,32 @@
+{
+  "$id": "https://schemas.runx.ai/runx/local-artifact/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_ref": {
+      "type": "string"
+    },
+    "bytes": {
+      "type": "integer"
+    },
+    "media_type": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.local_artifact.v1",
+      "type": "string"
+    },
+    "whole_digest": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_ref",
+    "media_type",
+    "bytes",
+    "whole_digest"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.local_artifact.v1"
+}

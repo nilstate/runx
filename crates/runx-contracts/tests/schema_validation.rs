@@ -7,24 +7,10 @@ use serde_json::{Value, json};
 const AUTHORITY_PROOF_SCHEMA: &str = include_str!("../../../schemas/authority-proof.schema.json");
 const RESOLUTION_REQUEST_SCHEMA: &str =
     include_str!("../../../schemas/resolution-request.schema.json");
-const AUTHORITY_PROOF_FIXTURES: &[(&str, &str)] = &[
-    (
-        "authority-proof-metadata-full",
-        include_str!("../../../fixtures/kernel/policy/authority-proof-metadata-full.json"),
-    ),
-    (
-        "authority-proof-prunes-empty-sandbox-objects",
-        include_str!(
-            "../../../fixtures/kernel/policy/authority-proof-prunes-empty-sandbox-objects.json"
-        ),
-    ),
-    (
-        "authority-proof-trims-sandbox-declaration",
-        include_str!(
-            "../../../fixtures/kernel/policy/authority-proof-trims-sandbox-declaration.json"
-        ),
-    ),
-];
+const AUTHORITY_PROOF_FIXTURES: &[(&str, &str)] = &[(
+    "authority-proof-metadata-full",
+    include_str!("../../../fixtures/kernel/policy/authority-proof-metadata-full.json"),
+)];
 
 const CONTRACT_FIXTURE_SCHEMA_MAPPINGS: &[FixtureSchemaMapping] = &[
     FixtureSchemaMapping::new(
@@ -262,7 +248,7 @@ fn host_approval_gate_is_rejected_inside_authority_proof() -> Result<(), Box<dyn
     authority_proof["approval_gate"] = json!({
         "id": "workspace-write",
         "reason": "Allow workspace write",
-        "type": "sandbox",
+        "type": "filesystem_write",
         "summary": { "path": "docs/guide.md" }
     });
 
@@ -270,6 +256,26 @@ fn host_approval_gate_is_rejected_inside_authority_proof() -> Result<(), Box<dyn
         &validator,
         authority_proof,
         "host gate must not masquerade as authority proof gate",
+    );
+    Ok(())
+}
+
+#[test]
+fn retired_authority_proof_sandbox_field_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
+    let validator = schema_validator(AUTHORITY_PROOF_SCHEMA)?;
+    let mut fixture: Value = serde_json::from_str(AUTHORITY_PROOF_FIXTURES[0].1)?;
+    let authority_proof = fixture
+        .pointer_mut("/expected/value/authority_proof")
+        .ok_or("authority-proof fixture missing expected.value.authority_proof")?;
+    authority_proof["sandbox"] = json!({
+        "profile": "readonly",
+        "network": false
+    });
+
+    assert_invalid(
+        &validator,
+        authority_proof,
+        "retired sandbox field must not re-enter the current authority proof",
     );
     Ok(())
 }

@@ -2,18 +2,18 @@ name: release
 
 # Tag-driven, multi-channel release for the runx CLI.
 #
-# The git tag (cli-vX.Y.Z) is the single source of truth for the CLI
-# distribution. Every job stamps that version into the npm CLI packages and the
-# `runx-cli` crate before building or publishing, so the source tree never
-# carries per-release version edits and `runx --version` is truthful on every
-# channel. Internal Rust crates keep their own semver and are not published by
-# this CLI release workflow.
+# A reviewed CLI version is committed to the candidate manifests before the
+# cli-vX.Y.Z tag is created. Every job re-stamps and verifies the tag version in
+# its ephemeral checkout so `runx --version` stays truthful on every channel.
+# Internal Rust crates keep their own semver and are not published by this CLI
+# release workflow.
 #
 # The GitHub Release is the hub: it serves the raw per-target archives that
-# Homebrew, Scoop, winget, AUR, Docker and direct downloads all consume by URL +
-# sha256. npm and the `runx-cli` crate publish the same version. Per-registry
-# publish jobs are gated on their credentials and skipped (with a warning) when
-# unset.
+# Homebrew, Scoop, winget, optional AUR handoff, Docker, and direct downloads
+# all consume by URL + sha256. npm packages and native archives carry the same
+# stamped version. GitHub Release, npm, GHCR, Homebrew, and Scoop are the
+# independently verified release set. Winget remains an asynchronous submission;
+# AUR is not published unless Runx controls the package.
 #
 # Pushing a cli-v* tag runs a real release. workflow_dispatch runs a dry-run
 # (build + render, no publish).
@@ -37,6 +37,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  runtime-quality:
+    uses: ./.github/workflows/runtime-quality.yml
+
   prepare:
     runs-on: ubuntu-24.04
     permissions:
@@ -44,8 +47,11 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       publish: ${{ steps.resolve.outputs.publish }}
+      platform_matrix: ${{ steps.platforms.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6
         with:
           version: 10.18.2
@@ -66,8 +72,14 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "resolved version=$version publish from tag=${{ github.event_name == 'push' }}"
+      - name: Verify complete release notes
+        run: node scripts/check-runx-cli-release-notes.mjs --version "${{ steps.resolve.outputs.version }}"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve release platform matrix
+        id: platforms
+        shell: bash
+        run: echo "matrix=$(node scripts/release-platform-matrix.mjs)" >> "$GITHUB_OUTPUT"
       - name: Stamp + verify manifests match the tag
         run: |
           pnpm exec tsx scripts/set-release-version.ts "${{ steps.resolve.outputs.version }}"
@@ -76,31 +88,10 @@ jobs:
         run: pnpm verify:fast
 
   build:
-    needs: prepare
+    needs: [prepare, runtime-quality]
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - platform: darwin-arm64
-            runner: macos-14
-            target: aarch64-apple-darwin
-            binary: runx
-          - platform: darwin-x64
-            runner: macos-15
-            target: x86_64-apple-darwin
-            binary: runx
-          - platform: linux-x64
-            runner: ubuntu-24.04
-            target: x86_64-unknown-linux-musl
-            binary: runx
-          - platform: linux-arm64
-            runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-musl
-            binary: runx
-          - platform: win32-x64
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            binary: runx.exe
+      matrix: ${{ fromJSON(needs.prepare.outputs.platform_matrix) }}
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -124,18 +115,40 @@ jobs:
           rustup target add ${{ matrix.target }}
       - name: Install musl toolchain
         if: contains(matrix.target, 'musl')
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        run: sudo apt-get install -y musl-tools
+      - name: Prove deterministic module boundary on the native runner
+        working-directory: crates
+        run: |
+          cargo test --locked -p runx-js-worker
+          cargo test --locked -p runx-runtime --test integration 'javascript_worker::' -- --nocapture
+          cargo test --locked -p runx-runtime --test integration 'javascript_worker_hostile::' -- --nocapture
       - name: Stamp version from tag
         shell: bash
         run: pnpm exec tsx scripts/set-release-version.ts "${{ needs.prepare.outputs.version }}"
       - name: Build release binary
         working-directory: crates
-        run: cargo build --release --locked --target ${{ matrix.target }} -p runx-cli
+        run: cargo build --release --locked --target ${{ matrix.target }} -p runx-cli -p runx-js-worker
+      - name: Prove the optimized worker starts on the release runner
+        working-directory: crates
+        env:
+          RUNX_JS_WORKER_PATH: ${{ github.workspace }}/crates/target/${{ matrix.target }}/release/${{ matrix.worker }}
+        run: cargo test --locked -p runx-runtime --test integration 'javascript_worker::javascript_worker_reuses_a_process_without_reusing_javascript_state' -- --exact
+      - name: Record deterministic module platform evidence
+        shell: bash
+        run: |
+          node scripts/record-deterministic-module-platform-evidence.mjs \
+            --decision "docs/architecture/deterministic-module-engine.json" \
+            --platform "${{ matrix.platform }}" \
+            --target "${{ matrix.target }}" \
+            --runner "${{ matrix.runner }}" \
+            --worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}" \
+            --out "dist/archives/deterministic-module-${{ matrix.platform }}.json"
       - name: Stage signature manifest (npm)
         shell: bash
         run: |
           pnpm exec tsx scripts/make-signature-manifest.ts \
             --binary "crates/target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+            --worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}" \
             --platform "${{ matrix.platform }}" \
             --out "signatures-${{ matrix.platform }}.json" \
             --identity "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -144,6 +157,7 @@ jobs:
         run: |
           pnpm exec tsx scripts/package-rust-cli.ts \
             --binary "crates/target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+            --worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}" \
             --platform "${{ matrix.platform }}" \
             --out-dir ".runx/rust-cli-artifacts" \
             --signature-manifest "signatures-${{ matrix.platform }}.json"
@@ -152,6 +166,7 @@ jobs:
         run: |
           pnpm exec tsx scripts/build-release-archives.ts \
             --binary "crates/target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+            --worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}" \
             --target "${{ matrix.target }}" \
             --version "${{ needs.prepare.outputs.version }}" \
             --out-dir "dist/archives"
@@ -182,15 +197,10 @@ jobs:
     needs: [prepare, build]
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - { platform: darwin-arm64, runner: macos-14, target: aarch64-apple-darwin, ext: tar.gz, bin: runx }
-          - { platform: darwin-x64, runner: macos-15, target: x86_64-apple-darwin, ext: tar.gz, bin: runx }
-          - { platform: linux-x64, runner: ubuntu-24.04, target: x86_64-unknown-linux-musl, ext: tar.gz, bin: runx }
-          - { platform: linux-arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, ext: tar.gz, bin: runx }
-          - { platform: win32-x64, runner: windows-latest, target: x86_64-pc-windows-msvc, ext: zip, bin: runx.exe }
+      matrix: ${{ fromJSON(needs.prepare.outputs.platform_matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
+      - uses: actions/checkout@v7
       - name: Download built archive
         uses: actions/download-artifact@v8
         with:
@@ -208,12 +218,16 @@ jobs:
           else
             tar -xzf "dist/${stem}.tar.gz" -C dist
           fi
-          out=$("dist/${stem}/${{ matrix.bin }}" --version)
+          test -f "dist/${stem}/${{ matrix.worker }}"
+          out=$("dist/${stem}/${{ matrix.binary }}" --version)
           echo "got: $out"
           case "$out" in
             *"${{ needs.prepare.outputs.version }}"*) echo "smoke ok" ;;
             *) echo "::error::version mismatch: $out"; exit 1 ;;
           esac
+          node scripts/smoke-release-candidate.mjs \
+            --runx-bin "dist/${stem}/${{ matrix.binary }}" \
+            --expected-version "${{ needs.prepare.outputs.version }}"
 
   github-release:
     needs: [prepare, build, smoke]
@@ -253,7 +267,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release/notes/${{ needs.prepare.outputs.version }}.md
           files: |
             dist/archives/*
 
@@ -291,6 +305,10 @@ jobs:
             | xargs -0 -r chmod +x
           find .runx/rust-cli-artifacts -path '*/bin/runx.exe' -type f -print0 \
             | xargs -0 -r chmod +x
+          find .runx/rust-cli-artifacts -path '*/bin/runx-js-worker' -type f -print0 \
+            | xargs -0 -r chmod +x
+          find .runx/rust-cli-artifacts -path '*/bin/runx-js-worker.exe' -type f -print0 \
+            | xargs -0 -r chmod +x
       - name: Verify release artifacts
         run: |
           pnpm exec tsx scripts/check-rust-cli-release-artifacts.ts \
@@ -310,105 +328,6 @@ jobs:
             fi
             ( cd "$dir" && npm publish --access public --tag latest )
           done
-
-  publish-crates:
-    needs: [prepare, github-release]
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - name: Check crates.io credentials
-        id: gate
-        run: |
-          if [ -n "${{ secrets.CARGO_REGISTRY_TOKEN }}" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Skipping crates.io publish because CARGO_REGISTRY_TOKEN is not configured."
-          fi
-      - uses: actions/checkout@v7
-        if: steps.gate.outputs.publish == 'true'
-      - uses: pnpm/action-setup@v6
-        if: steps.gate.outputs.publish == 'true'
-        with:
-          version: 10.18.2
-      - uses: actions/setup-node@v6
-        if: steps.gate.outputs.publish == 'true'
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - uses: dtolnay/rust-toolchain@stable
-        if: steps.gate.outputs.publish == 'true'
-      - name: Install dependencies
-        if: steps.gate.outputs.publish == 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Stamp version from tag
-        if: steps.gate.outputs.publish == 'true'
-        run: pnpm exec tsx scripts/set-release-version.ts "${{ needs.prepare.outputs.version }}"
-      - name: Publish runx-cli crate only
-        if: steps.gate.outputs.publish == 'true'
-        working-directory: crates
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          RUNX_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          crate_version_exists() {
-            local crate="$1"
-            local response_path
-            response_path="$(mktemp)"
-            if ! curl -fsSL \
-              -H "User-Agent: runxhq-release-bot" \
-              -o "$response_path" \
-              "https://crates.io/api/v1/crates/$crate"; then
-              rm -f "$response_path"
-              return 1
-            fi
-            local status
-            if CRATES_RESPONSE_PATH="$response_path" node <<'NODE'
-          const fs = require("node:fs");
-
-          const responsePath = process.env.CRATES_RESPONSE_PATH;
-          const releaseVersion = process.env.RUNX_RELEASE_VERSION;
-          const response = JSON.parse(fs.readFileSync(responsePath, "utf8"));
-          const exists = response.versions.some((version) => version.num === releaseVersion);
-          process.exit(exists ? 0 : 1);
-          NODE
-            then
-              status=0
-            else
-              status=$?
-            fi
-            rm -f "$response_path"
-            return "$status"
-          }
-
-          wait_for_crate_version() {
-            local crate="$1"
-            for attempt in $(seq 1 30); do
-              if crate_version_exists "$crate"; then
-                return 0
-              fi
-              echo "waiting for $crate@$RUNX_RELEASE_VERSION to appear on crates.io ($attempt/30)"
-              sleep 10
-            done
-            echo "::error::$crate@$RUNX_RELEASE_VERSION did not appear on crates.io after publish"
-            return 1
-          }
-
-          crate="runx-cli"
-          echo "::group::publish $crate"
-          if crate_version_exists "$crate"; then
-            echo "$crate@$RUNX_RELEASE_VERSION already published; skipping"
-            echo "::endgroup::"
-            exit 0
-          fi
-          cargo publish -p "$crate" --allow-dirty
-          wait_for_crate_version "$crate"
-          echo "::endgroup::"
 
   package-managers:
     needs: [prepare, github-release]
@@ -463,30 +382,18 @@ jobs:
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check Homebrew tap credentials
-        id: gate
-        run: |
-          if [ -n "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Skipping Homebrew publish because HOMEBREW_TAP_TOKEN is not configured."
-          fi
       - name: Download rendered manifests
-        if: steps.gate.outputs.publish == 'true'
         uses: actions/download-artifact@v8
         with:
           name: channel-manifests
           path: channels
       - name: Check out tap
-        if: steps.gate.outputs.publish == 'true'
         uses: actions/checkout@v7
         with:
           repository: runxhq/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
       - name: Commit formula
-        if: steps.gate.outputs.publish == 'true'
         run: |
           mkdir -p tap/Formula
           cp channels/homebrew/runx.rb tap/Formula/runx.rb
@@ -500,30 +407,18 @@ jobs:
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check Scoop bucket credentials
-        id: gate
-        run: |
-          if [ -n "${{ secrets.SCOOP_BUCKET_TOKEN }}" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Skipping Scoop publish because SCOOP_BUCKET_TOKEN is not configured."
-          fi
       - name: Download rendered manifests
-        if: steps.gate.outputs.publish == 'true'
         uses: actions/download-artifact@v8
         with:
           name: channel-manifests
           path: channels
       - name: Check out bucket
-        if: steps.gate.outputs.publish == 'true'
         uses: actions/checkout@v7
         with:
           repository: runxhq/scoop-bucket
           token: ${{ secrets.SCOOP_BUCKET_TOKEN }}
           path: bucket
       - name: Commit manifest
-        if: steps.gate.outputs.publish == 'true'
         run: |
           mkdir -p bucket/bucket
           cp channels/scoop/runx.json bucket/bucket/runx.json
@@ -564,37 +459,6 @@ jobs:
             --version "${{ needs.prepare.outputs.version }}" \
             --identifier runxhq.runx
 
-  publish-aur:
-    needs: [prepare, package-managers]
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check AUR credentials
-        id: gate
-        run: |
-          if [ -n "${{ secrets.AUR_SSH_PRIVATE_KEY }}" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Skipping AUR publish because AUR_SSH_PRIVATE_KEY is not configured."
-          fi
-      - name: Download rendered manifests
-        if: steps.gate.outputs.publish == 'true'
-        uses: actions/download-artifact@v8
-        with:
-          name: channel-manifests
-          path: channels
-      - name: Publish to AUR
-        if: steps.gate.outputs.publish == 'true'
-        uses: KSXGitHub/github-actions-deploy-aur@v3
-        with:
-          pkgname: runx-bin
-          pkgbuild: channels/aur/PKGBUILD
-          commit_username: github-actions[bot]
-          commit_email: 41898282+github-actions[bot]@users.noreply.github.com
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "runx ${{ needs.prepare.outputs.version }}"
-
   publish-docker:
     needs: [prepare, github-release]
     if: needs.prepare.outputs.publish == 'true'
@@ -623,3 +487,7 @@ jobs:
           tags: |
             ghcr.io/runxhq/runx:${{ needs.prepare.outputs.version }}
             ghcr.io/runxhq/runx:latest
+      - name: Verify anonymous pull access
+        env:
+          RUNX_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: node scripts/check-ghcr-anonymous-access.mjs

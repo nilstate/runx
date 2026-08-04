@@ -4,10 +4,40 @@
   "x-runx-packet-id": "runx.moltbook.scan.v1",
   "type": "object",
   "properties": {
-    "opportunity_report": { "type": "object" },
-    "post_outline": { "type": "object" },
-    "moderation_notes": { "type": "object" },
-    "follow_up_plan": { "type": "object" },
+    "opportunity_report": {
+      "type": "object",
+      "properties": {
+        "topic": { "type": "string" },
+        "rationale": { "type": "string" },
+        "source_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "post_outline": {
+      "type": "object",
+      "properties": {
+        "headline": { "type": "string" },
+        "beats": { "type": "array", "items": { "type": "string" } },
+        "source_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "moderation_notes": {
+      "type": "object",
+      "properties": {
+        "sensitivity": { "type": "string" },
+        "tone": { "type": "string" },
+        "final_check": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "follow_up_plan": {
+      "type": "object",
+      "properties": {
+        "monitor_for": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
     "findings": { "type": "array" },
     "recommendations": { "type": "array" }
   },

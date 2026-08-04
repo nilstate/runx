@@ -1,4 +1,5 @@
 {
+  "schema": "runx.tool.manifest.v1",
   "name": "demo.echo",
   "description": "Echo fixture.",
   "source": {

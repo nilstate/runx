@@ -1,29 +1,20 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::RuntimeError;
+use crate::filesystem::{read_dir_sorted, read_to_string};
+use crate::path_util::{count_yaml_files, lexical_normalize, project_path};
 use runx_contracts::{
     DoctorDiagnostic, DoctorDiagnosticSeverity, DoctorLocation, DoctorRepair,
     DoctorRepairConfidence, DoctorRepairKind, DoctorRepairRisk, DoctorReport, DoctorReportSchema,
     DoctorStatus, DoctorSummary, JsonNumber, JsonObject, JsonValue, sha256_prefixed,
 };
-use runx_parser::{parse_runner_manifest_yaml, validate_runner_manifest};
 use runx_receipts::canonical_stable_json;
-use serde::Deserialize;
 
-use crate::RuntimeError;
-use crate::filesystem::{find_files_named, read_dir_sorted, read_to_string};
-use crate::path_util::{count_yaml_files, lexical_normalize, project_path};
-use crate::tool_catalogs::build::hash_tool_source;
-
-// rust-style-allow: large-file - this first doctor slice keeps parity checks and builders together until follow-up diagnostics add natural module boundaries.
+// Module rationale: this first doctor slice keeps parity checks and builders together until follow-up diagnostics add natural module boundaries.
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DoctorOptions;
-
-#[derive(Deserialize)]
-struct ToolManifestProbe {
-    source_hash: Option<String>,
-}
 
 #[must_use]
 pub fn default_doctor_options() -> DoctorOptions {
@@ -59,7 +50,7 @@ pub fn run_doctor(root: &Path, options: &DoctorOptions) -> Result<DoctorReport, 
     })
 }
 
-// rust-style-allow: long-function - cross-package reach-in parity mirrors the TypeScript scanner in one read-only pass.
+// Function rationale: cross-package reach-in parity mirrors the TypeScript scanner in one read-only pass.
 fn discover_cross_package_reach_in_diagnostics(
     root: &Path,
 ) -> Result<Vec<DoctorDiagnostic>, RuntimeError> {
@@ -134,7 +125,7 @@ fn discover_cross_package_reach_in_diagnostics(
     Ok(diagnostics)
 }
 
-// rust-style-allow: long-function - tool diagnostics keep manifest, fixture, and
+// Function rationale: tool diagnostics keep manifest, fixture, and
 // generated repair evidence in one read-only pass.
 fn discover_tool_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, RuntimeError> {
     let tools_root = root.join("tools");
@@ -162,33 +153,9 @@ fn discover_tool_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, Runti
             if !manifest_path.exists() {
                 continue;
             }
-            let manifest_contents = read_to_string(&manifest_path)?;
-            let manifest = serde_json::from_str::<ToolManifestProbe>(&manifest_contents).map_err(
-                |source| {
-                    RuntimeError::json(
-                        format!(
-                            "reading tool manifest {}",
-                            project_path(root, &manifest_path)
-                        ),
-                        source,
-                    )
-                },
-            )?;
-            if let Some(source_hash) = &manifest.source_hash {
-                let actual_source_hash = hash_tool_source(&tool_dir).map_err(|source| {
-                    RuntimeError::effect_state("checking tool manifest source hash", source)
-                })?;
-                if source_hash != &actual_source_hash {
-                    diagnostics.push(tool_manifest_stale_diagnostic(
-                        root,
-                        &tool_ref,
-                        &manifest_path,
-                        &tool_dir,
-                        &actual_source_hash,
-                        source_hash,
-                    )?);
-                }
-            }
+            crate::tool_catalogs::manifest::read(&manifest_path).map_err(|source| {
+                RuntimeError::effect_state("reading validated tool manifest", source)
+            })?;
             let fixture_count = count_yaml_files(&tool_dir.join("fixtures"))?;
             if fixture_count == 0 {
                 diagnostics.push(tool_fixture_missing_diagnostic(
@@ -276,111 +243,71 @@ fn tool_fixture_missing_diagnostic(
     })
 }
 
-fn tool_manifest_stale_diagnostic(
-    root: &Path,
-    tool_ref: &str,
-    manifest_path: &Path,
-    tool_dir: &Path,
-    expected_hash: &str,
-    actual_hash: &str,
-) -> Result<DoctorDiagnostic, RuntimeError> {
-    let location_path = project_path(root, manifest_path);
-    let tool_path = project_path(root, tool_dir);
-    let target = object([
-        ("kind", string_value("tool")),
-        ("ref", string_value(tool_ref)),
-    ]);
-    let location = DoctorLocation {
-        path: location_path.clone(),
-        json_pointer: Some("/source_hash".to_owned()),
-    };
-    let evidence = object([
-        ("expected", string_value(expected_hash)),
-        ("actual", string_value(actual_hash)),
-    ]);
-    create_diagnostic(DiagnosticParts {
-        id: "runx.tool.manifest.stale",
-        severity: DoctorDiagnosticSeverity::Error,
-        title: "Tool manifest is stale",
-        message: format!("Tool {tool_ref} source_hash does not match current source files."),
-        target,
-        location,
-        evidence: Some(evidence),
-        repairs: vec![run_command_repair(
-            "rebuild_tool_manifest",
-            format!("runx tool build {tool_path}"),
-            DoctorRepairConfidence::High,
-            DoctorRepairRisk::Low,
-            false,
-        )],
-    })
-}
-
 fn discover_skill_diagnostics(root: &Path) -> Result<Vec<DoctorDiagnostic>, RuntimeError> {
     let mut diagnostics = Vec::new();
-    for profile_path in discover_skill_profile_paths(root)? {
-        let contents = read_to_string(&profile_path)?;
-        if !contents.contains("runners:") {
-            continue;
-        }
-        let skill_dir = profile_path.parent().map_or(root, |parent| parent);
+    for skill_dir in crate::skill_package::discover_workspace_skill_package_dirs(root)? {
         let skill_name = skill_dir.file_name().map_or_else(
             || ".".to_owned(),
             |name| name.to_string_lossy().into_owned(),
         );
-        if let Err(message) = validate_skill_profile(&contents) {
-            diagnostics.push(skill_profile_invalid_diagnostic(
-                root,
-                &profile_path,
-                &skill_name,
-                &message,
-            )?);
-            continue;
-        }
-        let coverage_root = skill_coverage_root(root, &profile_path);
-        let fixture_count = count_yaml_files(&coverage_root.join("fixtures"))?;
-        let mut harness_case_count = inline_harness_case_count(&contents);
-        let package_profile = coverage_root.join("X.yaml");
-        if package_profile != profile_path && package_profile.is_file() {
-            harness_case_count += inline_harness_case_count(&read_to_string(&package_profile)?);
-        }
-        if fixture_count == 0 && harness_case_count == 0 {
-            diagnostics.push(skill_fixture_missing_diagnostic(
-                root,
-                &profile_path,
-                &skill_name,
-                fixture_count,
-                harness_case_count,
-            )?);
+        let loaded = match crate::load_validated_skill_package(&skill_dir) {
+            Ok(loaded) => loaded,
+            Err(error) => {
+                diagnostics.push(skill_profile_invalid_diagnostic(
+                    root,
+                    &skill_dir.join("SKILL.md"),
+                    &skill_name,
+                    &error.to_string(),
+                )?);
+                continue;
+            }
+        };
+        let fixture_count = loaded.package.harness_fixtures.len() as u64;
+        let harness_case_count = loaded
+            .package
+            .profiles
+            .values()
+            .map(|manifest| {
+                manifest
+                    .harness
+                    .as_ref()
+                    .map_or(0, |harness| harness.cases.len() as u64)
+            })
+            .sum::<u64>();
+        for (profile_relative, manifest) in &loaded.package.profiles {
+            let profile_path = loaded.package_root.join(profile_relative);
+            if fixture_count == 0 && harness_case_count == 0 {
+                let covered_by_parent = manifest.catalog.as_ref().is_some_and(|catalog| {
+                    catalog.visibility == runx_parser::CatalogVisibility::Internal
+                        && !catalog.part_of.is_empty()
+                });
+                if covered_by_parent {
+                    continue;
+                }
+                diagnostics.push(skill_fixture_missing_diagnostic(
+                    root,
+                    &profile_path,
+                    &skill_name,
+                    fixture_count,
+                    harness_case_count,
+                )?);
+            }
         }
     }
     Ok(diagnostics)
 }
 
-fn skill_coverage_root(root: &Path, profile_path: &Path) -> PathBuf {
-    let skills_root = root.join("skills");
-    let Ok(relative) = profile_path.strip_prefix(&skills_root) else {
-        return profile_path.parent().unwrap_or(root).to_path_buf();
-    };
-    let components = relative.components().collect::<Vec<_>>();
-    let Some(graph_index) = components
-        .iter()
-        .position(|component| component.as_os_str() == "graph")
-    else {
-        return profile_path.parent().unwrap_or(root).to_path_buf();
-    };
-    components[..graph_index]
-        .iter()
-        .fold(skills_root, |path, component| path.join(component))
-}
-
 /// Parse and validate a skill execution profile (X.yaml) the same way the
 /// publish path does, so doctor catches an invalid harness status, an unknown
 /// runner shape, or malformed YAML before publish rather than at publish time.
+#[cfg(test)]
 fn validate_skill_profile(contents: &str) -> Result<(), String> {
-    let raw = parse_runner_manifest_yaml(contents).map_err(|error| error.to_string())?;
-    validate_runner_manifest(raw).map_err(|error| error.to_string())?;
-    Ok(())
+    runx_parser::validate_skill_package(runx_parser::SkillPackageSource::from_documents(
+        "---\nname: doctor-profile\ndescription: doctor validation fixture\n---\n\n# Doctor profile\n",
+        Some(contents.to_owned()),
+    ))
+    .map(|_| ())
+    .map_err(|error| error.to_string())
 }
 
 fn skill_fixture_missing_diagnostic(
@@ -551,27 +478,6 @@ fn manual_repair(
     }
 }
 
-fn run_command_repair(
-    id: &str,
-    command: String,
-    confidence: DoctorRepairConfidence,
-    risk: DoctorRepairRisk,
-    requires_human_review: bool,
-) -> DoctorRepair {
-    DoctorRepair {
-        id: id.to_owned(),
-        kind: DoctorRepairKind::RunCommand,
-        confidence,
-        risk,
-        path: None,
-        json_pointer: None,
-        contents: None,
-        patch: None,
-        command: Some(command),
-        requires_human_review,
-    }
-}
-
 fn summary(diagnostics: &[DoctorDiagnostic]) -> DoctorSummary {
     let mut errors = 0;
     let mut warnings = 0;
@@ -587,25 +493,6 @@ fn summary(diagnostics: &[DoctorDiagnostic]) -> DoctorSummary {
         errors,
         warnings,
         infos,
-    }
-}
-
-fn discover_skill_profile_paths(root: &Path) -> Result<Vec<PathBuf>, RuntimeError> {
-    let mut paths = Vec::new();
-    let root_profile = root.join("X.yaml");
-    if root_profile.exists() {
-        paths.push(root_profile);
-    }
-    paths.extend(find_files_named(&root.join("skills"), "X.yaml")?);
-    paths.sort();
-    Ok(paths)
-}
-
-fn inline_harness_case_count(contents: &str) -> u64 {
-    if contents.contains("harness:") && contents.contains("cases:") {
-        1
-    } else {
-        0
     }
 }
 
@@ -776,7 +663,7 @@ harness:
         );
         if let Err(message) = result {
             assert!(
-                message.contains("must be sealed"),
+                message.contains("unknown variant `success`") && message.contains("`sealed`"),
                 "unexpected error message: {message}"
             );
         }

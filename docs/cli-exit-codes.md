@@ -3,10 +3,25 @@
 Runx uses a small exit-code surface so scripts can branch without parsing
 human output.
 
+For `runx skill` and `runx resume`, the signed closure remains available on
+stdout regardless of process status. The complete closure matrix is:
+
+| Closure disposition | Exit code |
+| --- | ---: |
+| `closed` | 0 |
+| `deferred` | 2 |
+| `superseded` | 1 |
+| `declined` | 1 |
+| `blocked` | 1 |
+| `failed` | 1 |
+| `killed` | 1 |
+| `timed_out` | 1 |
+
 ## Exit Code 0: Sealed
 
-The command sealed successfully. For `runx skill`, `runx harness`, and native
-history reads, the requested work or read operation succeeded.
+The command completed successfully. A sealed skill result exits 0 only when its
+closure disposition is `closed`; Runx preserves every other terminal result as
+a signed receipt while returning the process status shown above.
 
 Common follow-up:
 
@@ -16,8 +31,13 @@ runx history <receipt-id> --json
 
 ## Exit Code 1: Failure
 
-The command ran but failed, was denied by policy, hit an invalid operation, or
-found invalid requested output.
+The command ran but failed, was denied by policy, hit an invalid operation,
+found invalid requested output, or sealed a terminal `superseded`, `declined`,
+`blocked`, `failed`, `killed`, or `timed_out` closure.
+
+After package and runner resolution, blocked skill preparation writes a refusal
+receipt before returning exit code 1. With `--json`, the error includes its
+`receipt_id` and prepared-context digest; inspect it with `runx history`.
 
 Common fixes:
 
@@ -39,6 +59,13 @@ Common fixes:
 ```bash
 runx resume <run-id> answers.json
 ```
+
+Use the pending run's `answers_template`. Put agent or task responses under
+`answers`, and explicit human decisions under `approvals`. Only the latter
+carries host-attested human approval provenance and can resolve an approval
+gate. An agent response under `answers` is rejected at that boundary. The host
+must authenticate the human decision; an agent must never author an
+`approvals` entry.
 
 For required input, pass the missing `--input` value or the corresponding
 kebab-case CLI flag.
@@ -67,3 +94,20 @@ runx --help
 runx skill <skill-ref>
 runx harness <fixture.yaml>
 ```
+
+## Exit Code 70: Runtime Setup Failed
+
+Runx could not establish a required process-wide runtime control before
+dispatch. Today this means the terminal interrupt handler could not be
+installed, so Runx refused to execute without a reliable cancellation path.
+
+Retry from a fresh process. If the failure persists, report the platform and
+the complete stderr message.
+
+## Exit Code 130: Interrupted
+
+The operator interrupted the active Runx context with Ctrl-C (or the terminal's
+configured interrupt shortcut). Runx terminates supervised tool, JavaScript,
+adapter, and MCP child process groups, allows at most two seconds for receipt
+and output cleanup, and then exits 130. A second interrupt exits immediately.
+On macOS, Cmd-C is normally copy; Ctrl-C is the interrupt.

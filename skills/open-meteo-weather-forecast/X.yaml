@@ -1,5 +1,5 @@
 skill: open-meteo-weather-forecast
-version: "0.1.1"
+version: "0.1.3"
 
 catalog:
   kind: graph
@@ -11,32 +11,8 @@ catalog:
   runtime_path: http
   execution: read
   completion: provider_readback
-  requires_adapter: true
+  requires_adapter: false
   approval: none
-
-harness:
-  cases:
-    - name: open-meteo-shanghai
-      runner: main
-      inputs:
-        name: Shanghai
-        latitude: "31.2222"
-        longitude: "121.4581"
-        forecast_days: "3"
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-    - name: open-meteo-air-quality-shanghai
-      runner: air_quality
-      inputs:
-        name: Shanghai
-        latitude: "31.2222"
-        longitude: "121.4581"
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
 
 runners:
   main:
@@ -62,22 +38,44 @@ runners:
         description: Number of forecast days to request.
     graph:
       name: open-meteo-weather-forecast
+      result_from: [locate, forecast]
       steps:
         - id: locate
-          skill: graph/locate
-          scopes:
-            - runx:http:read
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            name: $input.name
-            count: "5"
+            requests:
+              - id: locate
+                method: GET
+                url: https://geocoding-api.open-meteo.com/v1/search
+                query:
+                  name: $input.name
+                  count: "5"
+                  language: en
+                  format: json
+                headers:
+                  accept: application/json
+            allowed_hosts: [geocoding-api.open-meteo.com]
+            stop_on_error: true
         - id: forecast
-          skill: graph/forecast
-          scopes:
-            - runx:http:read
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            latitude: $input.latitude
-            longitude: $input.longitude
-            forecast_days: $input.forecast_days
+            requests:
+              - id: forecast
+                method: GET
+                url: https://api.open-meteo.com/v1/forecast
+                query:
+                  latitude: $input.latitude
+                  longitude: $input.longitude
+                  current: temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m
+                  daily: weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max
+                  timezone: auto
+                  forecast_days: $input.forecast_days
+                headers:
+                  accept: application/json
+            allowed_hosts: [api.open-meteo.com]
+            stop_on_error: true
   air_quality:
     type: graph
     inputs:
@@ -95,18 +93,39 @@ runners:
         description: Decimal longitude selected from the location evidence.
     graph:
       name: open-meteo-air-quality
+      result_from: [locate, air_quality]
       steps:
         - id: locate
-          skill: graph/locate
-          scopes:
-            - runx:http:read
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            name: $input.name
-            count: "5"
+            requests:
+              - id: locate
+                method: GET
+                url: https://geocoding-api.open-meteo.com/v1/search
+                query:
+                  name: $input.name
+                  count: "5"
+                  language: en
+                  format: json
+                headers:
+                  accept: application/json
+            allowed_hosts: [geocoding-api.open-meteo.com]
+            stop_on_error: true
         - id: air_quality
-          skill: graph/air_quality
-          scopes:
-            - runx:http:read
+          tool: http.read
+          scopes: [net:http]
           inputs:
-            latitude: $input.latitude
-            longitude: $input.longitude
+            requests:
+              - id: air_quality
+                method: GET
+                url: https://air-quality-api.open-meteo.com/v1/air-quality
+                query:
+                  latitude: $input.latitude
+                  longitude: $input.longitude
+                  current: pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi
+                  timezone: auto
+                headers:
+                  accept: application/json
+            allowed_hosts: [air-quality-api.open-meteo.com]
+            stop_on_error: true

@@ -304,9 +304,7 @@ fn sequential_graph_event() -> impl Strategy<Value = SequentialGraphEvent> {
                     &step_id,
                     &receipt_id,
                 )),
-                step_id,
                 at,
-                receipt_id,
                 outputs: None,
             }
         }),

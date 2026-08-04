@@ -24,12 +24,15 @@ interface Manifest {
   readonly artifacts: Record<string, Artifact>; // keyed by rust target triple
 }
 
+const releaseTopology = JSON.parse(
+  readFileSync(path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json"), "utf8"),
+) as { readonly nativePackages?: Record<string, { readonly rustTarget?: string }> };
 const TARGETS = {
-  darwinArm64: "aarch64-apple-darwin",
-  darwinX64: "x86_64-apple-darwin",
-  linuxArm64: "aarch64-unknown-linux-musl",
-  linuxX64: "x86_64-unknown-linux-musl",
-  winX64: "x86_64-pc-windows-msvc",
+  darwinArm64: rustTarget("darwin-arm64"),
+  darwinX64: rustTarget("darwin-x64"),
+  linuxArm64: rustTarget("linux-arm64"),
+  linuxX64: rustTarget("linux-x64"),
+  winX64: rustTarget("win32-x64"),
 } as const;
 
 const options = parseArgs(process.argv.slice(2));
@@ -50,12 +53,20 @@ function archiveUrl(m: Manifest, target: string): string {
   return `https://github.com/${m.repo}/releases/download/${m.tag}/${artifact(m, target).file}`;
 }
 
+function rustTarget(platform: string): string {
+  const target = releaseTopology.nativePackages?.[platform]?.rustTarget;
+  if (!target) {
+    throw new Error(`release platform topology is missing rustTarget for ${platform}`);
+  }
+  return target;
+}
+
 function archiveStem(m: Manifest, target: string): string {
   return `runx-${m.version}-${target}`;
 }
 
-function windowsBinaryPath(m: Manifest, target: string): string {
-  return `${archiveStem(m, target)}\\runx.exe`;
+function windowsArchivePath(m: Manifest, target: string, file: string): string {
+  return `${archiveStem(m, target)}\\${file}`;
 }
 
 function artifact(m: Manifest, target: string): Artifact {
@@ -101,6 +112,7 @@ class Runx < Formula
 
   def install
     bin.install Dir["*/runx"].first => "runx"
+    bin.install Dir["*/runx-js-worker"].first => "runx-js-worker"
   end
 
   test do
@@ -176,8 +188,9 @@ PackageVersion: ${m.version}
 InstallerType: zip
 NestedInstallerType: portable
 NestedInstallerFiles:
-  - RelativeFilePath: ${windowsBinaryPath(m, TARGETS.winX64)}
+  - RelativeFilePath: ${windowsArchivePath(m, TARGETS.winX64, "runx.exe")}
     PortableCommandAlias: runx
+  - RelativeFilePath: ${windowsArchivePath(m, TARGETS.winX64, "runx-js-worker.exe")}
 Installers:
   - Architecture: x64
     InstallerUrl: ${archiveUrl(m, TARGETS.winX64)}
@@ -213,6 +226,7 @@ package() {
     *) echo "unsupported architecture: $CARCH" >&2; return 1 ;;
   esac
   install -Dm755 "runx-\${pkgver}-\${target}/runx" "$pkgdir/usr/bin/runx"
+  install -Dm755 "runx-\${pkgver}-\${target}/runx-js-worker" "$pkgdir/usr/bin/runx-js-worker"
 }
 `;
 }

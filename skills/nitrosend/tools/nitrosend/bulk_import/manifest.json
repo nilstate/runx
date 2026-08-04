@@ -1,0 +1,59 @@
+{
+  "schema": "runx.tool.manifest.v1",
+  "name": "nitrosend.bulk_import",
+  "version": "0.1.0",
+  "description": "Reserve, stream, and finalize one consented Nitrosend CSV import without exposing transient signed upload material.",
+  "source": {
+    "type": "cli-tool",
+    "command": "node",
+    "args": ["./run.mjs"]
+  },
+  "inputs": {
+    "csv_path": {
+      "type": "string",
+      "required": true,
+      "description": "Absolute local path to a readable CSV file."
+    },
+    "source_id": {
+      "type": "string",
+      "required": true,
+      "description": "Stable first-party source identifier."
+    },
+    "consent_basis": {
+      "type": "string",
+      "required": true,
+      "description": "Auditable consent basis; purchased or scraped sources are refused."
+    },
+    "columns": {
+      "type": "json",
+      "required": false,
+      "description": "Optional CSV column mapping."
+    },
+    "options": {
+      "type": "json",
+      "required": false,
+      "description": "Optional import settings."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "required": false,
+      "description": "Validate metadata without uploading when true."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "required": true,
+      "description": "Stable retry key for reservation and finalization."
+    },
+    "brand_sid": {
+      "type": "string",
+      "required": false,
+      "description": "Optional public Nitrosend brand SID."
+    }
+  },
+  "scopes": ["nitrosend:write", "net:http", "fs:read"],
+  "mutating": true,
+  "retry": { "max_attempts": 1 },
+  "artifacts": {
+    "wrap_as": "provider_evidence"
+  }
+}

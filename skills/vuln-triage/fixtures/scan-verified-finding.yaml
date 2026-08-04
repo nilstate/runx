@@ -1,0 +1,72 @@
+name: scan-verified-finding
+kind: skill
+target: ..
+runner: scan
+inputs:
+  target: example/service
+  objective: choose today's remediation priority
+  cve_evidence:
+    receipt_ref: runx:receipt:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    audit_result:
+      schema: runx.security.exact_cve_audit.v1
+      target:
+        name: example/service
+        commit: 1111111111111111111111111111111111111111
+      dependency_scope: direct-production
+      inventory:
+        - name: example-lib
+          version: 1.2.3
+      findings:
+        - dependency: example-lib
+          exact_version: 1.2.3
+          advisory_id: GHSA-example-1234
+          advisory_url: https://osv.dev/vulnerability/GHSA-example-1234
+          direct: true
+          development: false
+          summary: Exact-version fixture advisory.
+    verification:
+      verified: true
+  scan_context:
+    internet_facing: true
+caller:
+  answers:
+    agent_task.vuln-triage-assess.output:
+      risk_assessment_draft:
+        decision: remediate
+        advisory_assessments:
+          - dependency: example-lib
+            exact_version: 1.2.3
+            advisory_id: GHSA-example-1234
+            priority: high
+            exposure: confirmed
+            confidence: high
+            rationale: The verified direct dependency is present in the declared internet-facing service.
+        remediation_plan:
+          immediate:
+            - upgrade example-lib after compatibility testing
+        operator_summary:
+          verdict: remediate
+          summary: Prioritize the verified direct dependency finding.
+expect:
+  status: sealed
+  step_outputs:
+    finalize:
+      subset:
+        vulnerability_scan_packet:
+          data:
+            decision: remediate
+            advisories:
+              - advisory_id: GHSA-example-1234
+                assessment:
+                  confidence: high
+                  evidence_status: verified_exact_cve
+            escalation_criteria:
+              - advisory_id: GHSA-example-1234
+                trigger: priority_high_or_urgent
+                action: human_remediation_review
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: vuln-triage
+  source_case: scan-verified-finding
+  source: skills-fixture

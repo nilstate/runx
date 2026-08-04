@@ -10,7 +10,7 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@runxhq/authoring": ["packages/authoring/src/index.ts"],
+      "@runxhq/extension-sdk": ["packages/extension-sdk/src/index.ts"],
       "@runxhq/contracts": ["packages/contracts/src/index.ts"],
       "@runxhq/host-adapters": ["packages/host-adapters/src/index.ts"]
     }

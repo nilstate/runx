@@ -1,45 +1,52 @@
 skill: sign-receipt
-version: "0.1.1"
+version: "0.3.0"
+
 catalog:
   kind: skill
   audience: public
   visibility: public
   role: canonical
-  execution: plan
+  execution: execute
   completion: runtime_receipt
   requires_adapter: false
   approval: none
+
 runners:
   sign-receipt:
     default: true
-    type: agent-task
-    agent: reviewer
-    task: sign-receipt
-    outputs:
-      attestation: object
-    artifacts:
-      wrap_as: attestation_packet
-      packet: runx.attestation.v1
-    runx:
-      category: security
+    type: graph
     inputs:
       action:
         type: string
         required: true
-        description: "What was done, off-runtime."
+        description: What happened outside Runx.
       evidence:
         type: json
         required: true
-        description: "References and digests proving the action, each with what it proves. References only; no raw content or secret values."
+        description: Opaque references, sha256 digests, and what each reference proves.
       principal:
         type: string
         required: true
-        description: "The actor the attestation names."
+        description: Actor named by the attestation.
       claim:
         type: string
         required: true
-        description: "The exact assertion to be signed."
+        description: Exact assertion to bind into the receipt.
       scope:
-        type: json
+        type: object
         required: false
-        description: "Bound on what the attestation may be relied on for downstream."
+        description: Bound on downstream reliance.
+        schema:
+          additionalProperties: true
+    graph:
+      name: sign-receipt
+      result_from: [attest]
+      steps:
+        - id: attest
+          tool: receipt.attest
+          inputs:
+            action: $input.action
+            evidence: $input.evidence
+            principal: $input.principal
+            claim: $input.claim
+            scope: $input.scope

@@ -54,7 +54,7 @@ impl PaymentFinalitySupervisorEvidence {
 pub struct DeterministicPaymentFinalitySupervisor;
 
 impl PaymentFinalitySupervisor for DeterministicPaymentFinalitySupervisor {
-    // rust-style-allow: long-function because deterministic finality validates
+    // Function rationale: deterministic finality validates
     // one complete rail settlement packet before evidence is admitted.
     fn supervise(
         &self,

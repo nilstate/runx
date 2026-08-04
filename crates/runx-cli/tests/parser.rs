@@ -91,6 +91,48 @@ fn parser_eval_unknown_kind_returns_structured_error() -> Result<(), Box<dyn std
     Ok(())
 }
 
+#[test]
+fn parser_eval_batches_documents_and_returns_independent_errors()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut child = runx_command()
+        .args(["parser", "eval", "--input", "-", "--json"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(
+            br#"{
+              "inputs": [
+                {
+                  "kind": "parser.validateHarnessFixtureYaml",
+                  "yaml": "name: ready\nkind: skill\ntarget: ..\nexpect:\n  status: sealed\n"
+                },
+                {
+                  "kind": "parser.validateHarnessFixtureYaml",
+                  "yaml": "not: a-fixture\n"
+                }
+              ],
+              "returnErrors": true
+            }"#,
+        )?;
+    }
+
+    let output = child.wait_with_output()?;
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stderr)?, "");
+    let value = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    assert_eq!(value["result"]["value"][0]["status"], "success");
+    assert_eq!(value["result"]["value"][0]["value"]["name"], "ready");
+    assert_eq!(value["result"]["value"][1]["status"], "failure");
+    assert_eq!(
+        value["result"]["value"][1]["error"]["code"],
+        "validation_error"
+    );
+    Ok(())
+}
+
 fn runx_command() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_runx"));
     command.env("NO_COLOR", "1");

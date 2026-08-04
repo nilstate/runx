@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the native config slice keeps parse,
+// Module rationale: the native config slice keeps parse,
 // execute, render, and parity tests together for one audited CLI surface.
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -80,7 +80,7 @@ impl From<serde_json::Error> for ConfigCliError {
     }
 }
 
-// rust-style-allow: long-function because config set/get/list share one small
+// Function rationale: config set/get/list share one small
 // flag grammar and keeping it adjacent avoids divergent command parsing.
 pub fn parse_config_plan(args: &[OsString]) -> Result<ConfigPlan, String> {
     let command = os_arg(args, 0, "config")?;
@@ -396,7 +396,7 @@ mod tests {
     }
 
     #[test]
-    // rust-style-allow: long-function because one temp config lifecycle proves
+    // Function rationale: one temp config lifecycle proves
     // set/get/list masking against the same encrypted local state.
     fn config_set_get_list_masks_api_key() -> Result<(), ConfigTestError> {
         let temp = tempfile_dir()?;

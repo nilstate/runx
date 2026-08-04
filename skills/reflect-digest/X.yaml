@@ -1,5 +1,5 @@
 skill: reflect-digest
-version: "0.2.0"
+version: "0.2.3"
 
 catalog:
   kind: graph
@@ -98,6 +98,30 @@ harness:
                   - Do not change Sourcey publication behavior.
       expect:
         status: sealed
+        steps:
+          - read-reflect-projections
+          - load-reflect-projections
+          - group-reflect-projections
+          - draft-digest
+          - build-handoffs
+        step_outputs:
+          build-handoffs:
+            subset:
+              reflect_digest_packet:
+                data:
+                  proposals:
+                    - skill_ref: sourcey
+                      target_dir: skills/sourcey
+                      supporting_receipt_ids:
+                        - rx_sourcey_1
+                        - rx_sourcey_2
+                  skill_lab_handoffs:
+                    - skill: skill-lab
+                      runner: improve
+                      target_skill_ref: sourcey
+                      supporting_receipt_ids:
+                        - rx_sourcey_1
+                        - rx_sourcey_2
         receipt:
           schema: runx.receipt.v1
 
@@ -143,6 +167,7 @@ runners:
         description: Minimum per-projection confidence admitted into grouping.
     graph:
       name: reflect-digest
+      result_from: [build-handoffs]
       steps:
         - id: read-reflect-projections
           label: read durable reflect state
@@ -163,10 +188,9 @@ runners:
           context:
             stored_reflect_projections: read-reflect-projections.data_operation_result.data
           run:
-            type: cli-tool
-            command: node
-            args:
-              - ./load_reflect_projections.mjs
+            type: javascript
+            module: reflect-digest.mjs
+            export: loadProjections
           artifacts:
             named_emits:
               reflect_projections_packet: reflect_projections_packet
@@ -180,10 +204,9 @@ runners:
           context:
             reflect_projections_packet: load-reflect-projections.reflect_projections_packet.data
           run:
-            type: cli-tool
-            command: node
-            args:
-              - ./group_reflect_projections.mjs
+            type: javascript
+            module: reflect-digest.mjs
+            export: groupProjections
           artifacts:
             named_emits:
               grouped_reflections_packet: grouped_reflections_packet
@@ -197,14 +220,6 @@ runners:
             task: reflect-digest
             outputs:
               proposals: array
-          instructions: >
-            Review each grouped reflection independently. Return at most one
-            proposal per skill_ref, and return an empty proposals array when no
-            group supports a bounded fix. Every proposal must contain skill_ref,
-            repo-relative target_dir, objective, evidence_summary,
-            supporting_receipt_ids, and boundaries. Receipt ids must come from
-            that group. Do not diagnose a single run again, author code, draft a
-            pull request, publish, or mutate the target package.
           allowed_tools:
             - fs.read
           context:
@@ -220,10 +235,9 @@ runners:
             grouped_reflections: group-reflect-projections.grouped_reflections_packet.data.items
             proposals: draft-digest.proposals.data
           run:
-            type: cli-tool
-            command: node
-            args:
-              - ./build_handoffs.mjs
+            type: javascript
+            module: reflect-digest.mjs
+            export: buildHandoffs
           outputs:
             proposals: array
             skill_lab_handoffs: array

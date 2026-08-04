@@ -4,7 +4,6 @@ target: ..
 runner: append_and_readback
 inputs:
   data_source_ref: local://runx-data-store/fixture
-  store_id: data-store-append-read-local-event-v1
   resource: board_events
   aggregate_id: posting-123
   expected_version: 0

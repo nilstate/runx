@@ -1,5 +1,5 @@
 skill: knowledge-router
-version: "0.2.0"
+version: "0.2.2"
 
 catalog:
   kind: graph
@@ -64,8 +64,27 @@ harness:
         receipt:
           schema: runx.receipt.v1
         steps:
+          - digest
           - propose
           - validate
+        step_outputs:
+          validate:
+            subset:
+              knowledge_route:
+                data:
+                  verdict: routed
+                  route:
+                    domain: authentication
+                    source_refs:
+                      - auth-docs
+                      - campaigns-docs
+                  owner_recommendation:
+                    owner_ref: security-team
+                  next_skill:
+                    skill_ref: research
+                  validation:
+                    valid: true
+                    invalid_refs: []
 
     - name: knowledge-router-rejects-invented-reference
       inputs:
@@ -98,6 +117,7 @@ harness:
         receipt:
           schema: runx.receipt.v1
         steps:
+          - digest
           - propose
           - validate
 
@@ -126,7 +146,13 @@ runners:
         description: Allowed sources, sensitivity, excluded systems, and preferred owners.
     graph:
       name: knowledge-router
+      result_from: [validate]
       steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: $input.available_sources
+
         - id: propose
           label: propose bounded knowledge route
           run:
@@ -135,21 +161,9 @@ runners:
             task: knowledge-router-propose
             outputs:
               route_proposal: object
-          instructions: >
-            Route the question through only the supplied knowledge catalog.
-            Return route_proposal with verdict, route, source_matches,
-            owner_recommendation, and next_skill. Every selected source_ref,
-            owner_ref, and skill_ref must exactly match a supplied id. Choose the
-            smallest useful source set. Use needs_more_context with no selected
-            refs when the catalog cannot support a route. Use manual_review for
-            consequential legal, billing, security, privacy, or destructive
-            decisions, not merely because the topic belongs to those domains.
-            Do not answer the question or perform the follow-up skill.
           artifacts:
             named_emits:
               route_proposal: route_proposal
-            packets:
-              route_proposal: runx.ops.knowledge_route_proposal.v1
         - id: validate
           label: validate all catalog references
           inputs:
@@ -157,13 +171,71 @@ runners:
             constraints: $input.constraints
           context:
             route_proposal: propose.route_proposal.data
+            catalog_digest: digest.digest_result.data.digest
           run:
-            type: cli-tool
-            command: node
-            args:
-              - ./validate_route.mjs
+            type: javascript
+            module: knowledge-router.mjs
             outputs:
-              knowledge_route: object
+              knowledge_route:
+                type: object
+                schema:
+                  required: [schema, verdict, route, source_matches, owner_recommendation, next_skill, validation]
+                  additionalProperties: false
+                  properties:
+                    schema: { const: runx.ops.knowledge_route.v1 }
+                    verdict: { type: string, enum: [routed, needs_more_context, manual_review, refused] }
+                    route:
+                      type: object
+                      required: [domain, rationale, source_refs]
+                      additionalProperties: false
+                      properties:
+                        domain: { type: [string, 'null'], maxLength: 500 }
+                        rationale: { type: string, minLength: 1, maxLength: 4000 }
+                        source_refs: { type: array, maxItems: 500, uniqueItems: true, items: { type: string, minLength: 1, maxLength: 1000 } }
+                    source_matches:
+                      type: array
+                      maxItems: 500
+                      items:
+                        type: object
+                        required: [source_ref, matching_signal, reason]
+                        additionalProperties: false
+                        properties:
+                          source_ref: { type: string, minLength: 1, maxLength: 1000 }
+                          matching_signal: { type: string, maxLength: 4000 }
+                          reason: { type: string, maxLength: 4000 }
+                    owner_recommendation:
+                      type: [object, 'null']
+                      required: [owner_ref, rationale, escalation_required]
+                      additionalProperties: false
+                      properties:
+                        owner_ref: { type: string, minLength: 1, maxLength: 1000 }
+                        rationale: { type: string, maxLength: 4000 }
+                        escalation_required: { type: boolean }
+                    next_skill:
+                      type: [object, 'null']
+                      required: [skill_ref, rationale]
+                      additionalProperties: false
+                      properties:
+                        skill_ref: { type: string, minLength: 1, maxLength: 1000 }
+                        rationale: { type: string, maxLength: 4000 }
+                    validation:
+                      type: object
+                      required: [valid, catalog_digest, invalid_refs, constraints_applied]
+                      additionalProperties: false
+                      properties:
+                        valid: { type: boolean }
+                        catalog_digest: { type: [string, 'null'], pattern: '^sha256:[0-9a-f]{64}$' }
+                        invalid_refs:
+                          type: array
+                          maxItems: 1000
+                          items:
+                            type: object
+                            required: [kind, ref]
+                            additionalProperties: false
+                            properties:
+                              kind: { type: string, enum: [source, owner, skill] }
+                              ref: { type: string, minLength: 1, maxLength: 1000 }
+                        constraints_applied: {}
           artifacts:
             named_emits:
               knowledge_route: knowledge_route

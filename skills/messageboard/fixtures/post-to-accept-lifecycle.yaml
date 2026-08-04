@@ -1,0 +1,170 @@
+name: post-to-accept-persists-one-lifecycle
+kind: graph
+target: ../harness/post-to-accept.yaml
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://messageboard/post-to-accept":{"adapter":"data.sqlite","database_path":".runx/data/messageboard-post-to-accept.sqlite","resources":{"board_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+caller:
+  answers:
+    agent_task.messageboard-post.output:
+      effect_family: messageboard
+      operation: post
+      actor_kid: vendor
+      posting:
+        id: post_journey_1
+        title: Verify receipt link
+        deliverable: Run the published verifier from a clean checkout and report the result.
+        amount_minor: 5000
+        currency: USD
+        status: screening
+      funding:
+        funded_badge: true
+        evidence_ref: mock:hold:post-journey-1
+      clocks:
+        claim_fuse_ms: 1800000
+        delivery_deadline_ms: 86400000
+        acceptance_window_ms: 43200000
+      screening_notes:
+        - Verify funding hold before approval.
+      stop_conditions: []
+    agent_task.messageboard-moderate.output:
+      effect_family: messageboard
+      operation: moderate
+      moderator_kid: moderator
+      posting_id: post_journey_1
+      decision: approve
+      reasons:
+        - Funding and deliverable evidence are bounded.
+      visibility_effect: visible
+      stop_conditions: []
+    agent_task.messageboard-claim.output:
+      effect_family: messageboard
+      operation: claim
+      actor_kid: worker
+      posting_id: post_journey_1
+      claim:
+        status: active
+        idempotency_key: messageboard-claim:worker-post-journey-1
+        claim_fuse_at: 2026-06-12T00:30:00Z
+        delivery_due_at: 2026-06-13T00:00:00Z
+      stop_conditions: []
+    agent_task.messageboard-deliver.output:
+      effect_family: messageboard
+      operation: deliver
+      actor_kid: worker
+      posting_id: post_journey_1
+      delivery:
+        delivery_ref: delivery:post_journey_1
+        artifact_ref: git:commit:abc123
+        verifier_command: ./verify.sh
+      acceptance_window:
+        acceptance_due_at: 2026-06-13T12:00:00Z
+      stop_conditions: []
+    agent_task.messageboard-accept.output:
+      effect_family: messageboard
+      operation: accept
+      actor_kid: vendor
+      posting_id: post_journey_1
+      acceptance:
+        accepted: true
+        acceptance_ref: acceptance:post_journey_1
+      payout_authorization:
+        debit: board:escrow
+        credit: kid:worker
+        amount_minor: 5000
+        currency: USD
+      stop_conditions: []
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: graph_closed
+    child_receipt_count: 11
+  steps:
+    - post
+    - persist-post
+    - moderate
+    - persist-moderation
+    - claim
+    - persist-claim
+    - deliver
+    - persist-delivery
+    - accept
+    - persist-acceptance
+    - readback
+  step_outputs:
+    post:
+      subset:
+        messageboard_post_packet:
+          data:
+            operation: post
+            posting:
+              id: post_journey_1
+              status: screening
+    moderate:
+      subset:
+        messageboard_moderation_packet:
+          data:
+            operation: moderate
+            decision: approve
+            visibility_effect: visible
+    claim:
+      subset:
+        messageboard_claim_packet:
+          data:
+            operation: claim
+            posting_id: post_journey_1
+            claim:
+              status: active
+    deliver:
+      subset:
+        messageboard_delivery_packet:
+          data:
+            operation: deliver
+            posting_id: post_journey_1
+            delivery:
+              artifact_ref: git:commit:abc123
+    accept:
+      subset:
+        messageboard_acceptance_packet:
+          data:
+            operation: accept
+            acceptance:
+              accepted: true
+            payout_authorization:
+              credit: kid:worker
+              amount_minor: 5000
+              currency: USD
+    persist-acceptance:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            status: committed
+            before_version: 4
+            after_version: 5
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    readback:
+      subset:
+        data_operation_result:
+          data:
+            operation: read_projection
+            status: read
+            projection:
+              aggregate_id: post_journey_1
+              event_count: 5
+              version: 5
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+metadata:
+  public_skill: messageboard
+  source_case: post-to-accept-persists-one-lifecycle
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: durable_post_to_accept_lifecycle

@@ -1,20 +1,18 @@
 {
+  "schema": "runx.tool.manifest.v1",
   "name": "acme.echo",
   "source": {
     "type": "cli-tool",
     "command": "sh",
     "args": [
       "-c",
-      "printf '{\"message\":\"%s\",\"cwd\":\"%s\"}\\n' \"$GREETING\" \"$RUNX_CWD\""
+      "printf '{\"message\":\"%s\",\"cwd\":\"%s\"}\\n' \"$RUNX_INPUT_MESSAGE\" \"$RUNX_CWD\""
     ]
   },
-  "runtime": {
-    "command": "sh",
-    "args": [
-      "-c",
-      "printf '{\"message\":\"%s\",\"cwd\":\"%s\"}\\n' \"$GREETING\" \"$RUNX_CWD\""
-    ]
-  },
-  "inputs": {},
-  "output": {}
+  "inputs": {
+    "message": {
+      "type": "string",
+      "required": true
+    }
+  }
 }

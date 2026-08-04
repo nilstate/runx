@@ -1,0 +1,21 @@
+name: issue-to-pr-push-outbox-boundary
+steps:
+  - id: provider-push
+    skill: ../push-outbox
+    runner: push
+    mutation: true
+    scopes:
+      - thread:push
+    inputs:
+      thread:
+        thread_locator: local://fixtures/issue-to-pr/outbox-proof
+        adapter:
+          type: fixture
+          provider: fixture
+      outbox_entry:
+        entry_id: outbox-proof-1
+        kind: message
+        thread_locator: local://fixtures/issue-to-pr/outbox-proof
+        status: approved
+        body: Prove the provider boundary refuses an unrelated adapter.
+      next_status: published

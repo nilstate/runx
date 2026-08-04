@@ -24,6 +24,8 @@ pub struct RefundableCharge {
     pub rail: String,
     pub phase: EffectFinalityPhase,
     pub amount_minor: u64,
+    #[serde(default)]
+    pub refunded_minor: u64,
     pub currency: String,
     pub payer_ref: String,
     pub proof_ref: String,
@@ -65,6 +67,7 @@ pub struct RefundReversal {
 pub enum RefundRefusalCode {
     ChargeNotSealed,
     ChargeReversed,
+    RefundHistoryInvalid,
     EmptyRefund,
     RefundExceedsCharge,
     CounterpartyMismatch,
@@ -99,10 +102,16 @@ pub fn admit_refund(input: &RefundAdmissionInput) -> RefundAdmissionDecision {
             "refund amount must be positive",
         );
     }
-    if input.refund.amount_minor > input.charge.amount_minor {
+    if input.charge.refunded_minor > input.charge.amount_minor {
+        return refused(
+            RefundRefusalCode::RefundHistoryInvalid,
+            "recorded refunds exceed the linked charge",
+        );
+    }
+    if input.refund.amount_minor > input.charge.amount_minor - input.charge.refunded_minor {
         return refused(
             RefundRefusalCode::RefundExceedsCharge,
-            "refund amount exceeds the linked charge",
+            "refund amount exceeds the unrefunded linked charge balance",
         );
     }
     if let Some(counterparty) = input.refund.requested_counterparty.as_deref()

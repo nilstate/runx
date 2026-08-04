@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const DEMO_SEED_B64 = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=";
 const VERIFY = path.resolve("tools/verify/verify.mjs");
-const EXAMPLE_VERIFY = path.resolve("examples/governed-spend/verify.mjs");
 
 let tempDir: string;
 
@@ -101,17 +100,6 @@ describe("governed-spend receipt verifier", () => {
     expect(output).toContain("lineage child 0 locator matches child digest");
   });
 
-  it("keeps the governed-spend verifier path as a wrapper", () => {
-    const root = seal(receipt("root"));
-    writeReceipt(root);
-
-    const output = execFileSync("node", [EXAMPLE_VERIFY, receiptPath(root.id)], {
-      cwd: path.resolve("."),
-      encoding: "utf8",
-    });
-
-    expect(output).toContain("VERIFIED: runx signed exactly this receipt content");
-  });
 });
 
 function receipt(label: string, overrides: Record<string, unknown> = {}) {

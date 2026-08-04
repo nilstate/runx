@@ -10,6 +10,7 @@ fn selected_local_credential_wins_over_ambient_hosted_handles()
     let local = LocalCredentialDescriptor {
         profile: Some("local-profile".to_owned()),
         provider: "example".to_owned(),
+        audience: None,
         auth_mode: "api_key".to_owned(),
         env_var: "EXAMPLE_TOKEN".to_owned(),
         material_ref: "local:example:local-profile".to_owned(),

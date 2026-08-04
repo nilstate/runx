@@ -9,28 +9,26 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const selectorRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
-const supportedPlatforms = {
-  "darwin-arm64": { packageName: "@runxhq/cli-darwin-arm64", binary: "bin/runx" },
-  "darwin-x64": { packageName: "@runxhq/cli-darwin-x64", binary: "bin/runx" },
-  "linux-arm64": { packageName: "@runxhq/cli-linux-arm64", binary: "bin/runx" },
-  "linux-x64": { packageName: "@runxhq/cli-linux-x64", binary: "bin/runx" },
-  "win32-x64": { packageName: "@runxhq/cli-win32-x64", binary: "bin/runx.exe" },
-};
-
-const platformKey = `${process.platform}-${process.arch}`;
-const target = supportedPlatforms[platformKey];
-if (!target) {
+const topology = readJson(path.join(selectorRoot, "native", "supported-platforms.json"));
+if (topology.schema !== "runx.rust_cli_selector_topology.v1") {
+  fail(`runx selector topology has an unsupported schema: ${topology.schema ?? "<missing>"}`);
+}
+const resolvedPlatform = Object.entries(topology.nativePackages ?? {})
+  .find(([, entry]) => entry.os === process.platform && entry.cpu === process.arch);
+if (!resolvedPlatform) {
   fail(`runx does not provide a native binary for ${process.platform}/${process.arch}`);
 }
+const [platformKey, target] = resolvedPlatform;
 
-const packageJsonPath = resolvePackageJson(target.packageName);
+const packageJsonPath = resolvePackageJson(target.package);
 const packageRoot = path.dirname(packageJsonPath);
 const binaryPath = path.join(packageRoot, target.binary);
-verifyNativePackage(target.packageName, packageJsonPath, platformKey, target.binary, binaryPath);
+const workerPath = path.join(packageRoot, target.worker);
+verifyNativePackage(target.package, packageJsonPath, platformKey, target, binaryPath, workerPath);
 
 const result = spawnSync(binaryPath, process.argv.slice(2), { stdio: "inherit" });
 if (result.error) {
-  fail(`failed to start ${target.packageName}: ${result.error.message}`);
+  fail(`failed to start ${target.package}: ${result.error.message}`);
 }
 if (result.signal) {
   process.kill(process.pid, result.signal);
@@ -45,13 +43,20 @@ function resolvePackageJson(packageName) {
   }
 }
 
-function verifyNativePackage(packageName, packageJsonPath, expectedPlatform, expectedBinary, binaryPath) {
+function verifyNativePackage(packageName, packageJsonPath, expectedPlatform, target, binaryPath, workerPath) {
   const manifest = readJson(packageJsonPath);
   if (manifest.name !== packageName) {
     fail(`runx native package mismatch: expected ${packageName}, found ${manifest.name ?? "<missing>"}`);
   }
   if (!existsSync(binaryPath)) {
     fail(`runx native binary is missing: ${binaryPath}`);
+  }
+  if (!existsSync(workerPath)) {
+    fail(`runx JavaScript worker is missing: ${workerPath}`);
+  }
+  const worker = statSync(workerPath);
+  if (!worker.isFile() || (process.platform !== "win32" && (worker.mode & 0o111) === 0)) {
+    fail(`runx JavaScript worker is not executable: ${workerPath}`);
   }
   const binary = statSync(binaryPath);
   if (!binary.isFile() || (process.platform !== "win32" && (binary.mode & 0o111) === 0)) {
@@ -63,13 +68,23 @@ function verifyNativePackage(packageName, packageJsonPath, expectedPlatform, exp
   if (checksum.platform !== expectedPlatform) {
     fail(`runx checksum platform mismatch: expected ${expectedPlatform}, found ${checksum.platform ?? "<missing>"}`);
   }
-  if (checksum.binary !== expectedBinary) {
-    fail(`runx checksum binary mismatch: expected ${expectedBinary}, found ${checksum.binary ?? "<missing>"}`);
+  if (checksum.schema !== "runx.rust_cli_artifact_checksums.v1") {
+    fail(`runx checksum schema mismatch: expected v1, found ${checksum.schema ?? "<missing>"}`);
+  }
+  if (checksum.binary !== target.binary) {
+    fail(`runx checksum binary mismatch: expected ${target.binary}, found ${checksum.binary ?? "<missing>"}`);
+  }
+  if (checksum.worker !== target.worker) {
+    fail(`runx checksum worker mismatch: expected ${target.worker}, found ${checksum.worker ?? "<missing>"}`);
   }
 
   const digest = createHash("sha256").update(readFileSync(binaryPath)).digest("hex");
   if (checksum.sha256 !== digest) {
     fail("runx native binary checksum verification failed");
+  }
+  const workerDigest = createHash("sha256").update(readFileSync(workerPath)).digest("hex");
+  if (checksum.worker_sha256 !== workerDigest) {
+    fail("runx JavaScript worker checksum verification failed");
   }
 }
 

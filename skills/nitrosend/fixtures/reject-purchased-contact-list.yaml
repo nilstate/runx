@@ -15,7 +15,7 @@ caller:
         record_count: 0
         channels: []
         compliance_checks:
-          - No consent basis: a purchased broker list has no opt-in from the contacts.
+          - "No consent basis: a purchased broker list has no opt-in from the contacts."
         ordered_tool_calls: []
         human_actions: []
         blockers: []

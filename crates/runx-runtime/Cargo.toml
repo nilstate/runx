@@ -3,12 +3,12 @@ name = "runx-runtime"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
-description = "Native Rust runtime for local runx execution, adapters, harness replay, receipts, and sandboxing."
+description = "Native Rust runtime for local runx execution, adapters, process supervision, harness replay, and receipts."
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 readme = "README.md"
-keywords = ["runx", "runtime", "agents", "sandbox", "mcp"]
+keywords = ["runx", "runtime", "agents", "governance", "mcp"]
 categories = ["development-tools"]
 include = ["Cargo.toml", "README.md", "assets/VOICE.md", "src/**/*.rs"]
 # Integration tests are compiled as a single binary (tests/integration.rs) so the
@@ -40,13 +40,13 @@ a2a = []
 agent = ["async-http", "catalog"]
 catalog = ["cli-tool"]
 external-adapter = []
-http = ["async-http"]
 thread-outbox-provider = []
 
 [dependencies]
 aes-gcm = "0.11.0"
 base64 = "0.22.1"
 dotenvy.workspace = true
+fs2.workspace = true
 bytes = { version = "1.11.1", optional = true }
 http = { version = "1.4.0", optional = true }
 http-body-util = { version = "0.1.3", optional = true }
@@ -61,6 +61,8 @@ runx-receipts.workspace = true
 # read_limited_response_body), so a decompression bomb stays bounded.
 reqwest = { version = "=0.13.4", default-features = false, features = ["rustls-no-provider", "json", "gzip", "brotli", "deflate", "zstd", "http2"], optional = true }
 ring = "0.17.14"
+regex.workspace = true
+rusqlite = { version = "0.40.1", default-features = false, features = ["backup", "bundled"] }
 jsonschema = { version = "0.46.5", default-features = false }
 # Drive rustls with the ring provider (already linked via `ring`) instead of
 # reqwest's default aws-lc-rs, so the vendored aws-lc-sys C crypto blob is not
@@ -76,13 +78,23 @@ hyper = { version = "=1.10.1", default-features = false, features = ["server", "
 hyper-util = { version = "=0.1.20", default-features = false, features = ["service", "tokio"], optional = true }
 serde.workspace = true
 serde_json.workspace = true
-serde_norway.workspace = true
+serde_path_to_error.workspace = true
 sha2.workspace = true
+subtle.workspace = true
 thiserror.workspace = true
+tempfile = "3.23.0"
 tokio = { version = "=1.52.3", default-features = false, features = ["rt", "net", "time"], optional = true }
 tower-service = { version = "0.3.3", optional = true }
-url = "2.5.7"
+url.workspace = true
 wait-timeout = "0.2.1"
+zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# std::process does not expose race-free Job Object assignment. process-wrap
+# creates children suspended, assigns them to a per-execution job, then resumes
+# them; win32job owns the outer kill-on-close job that covers abrupt Runx exit.
+process-wrap = { version = "=9.1.0", default-features = false, features = ["std", "tokio1", "job-object"] }
+win32job = "2.0.3"
 
 [dev-dependencies]
 criterion = "0.7.0"
@@ -90,7 +102,6 @@ proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 # Same crate/features as the runtime dependency above; integration tests use it
 # to poll descendant-process death instead of fixed sleeps.
 rustix = { version = "1.1.4", features = ["process"] }
-tempfile = "3.23.0"
 
 [lib]
 name = "runx_runtime"
@@ -115,3 +126,4 @@ path = "tests/integration.rs"
 [[bench]]
 name = "graph_throughput"
 harness = false
+required-features = ["agent"]

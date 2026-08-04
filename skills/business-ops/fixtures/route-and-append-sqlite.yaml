@@ -1,4 +1,4 @@
-name: business-ops-route-and-append-sqlite
+name: route-persists-with-provider-evidence
 kind: skill
 target: ..
 runner: route_and_append
@@ -16,13 +16,45 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: graph_closed
+    child_receipt_count: 3
   steps:
     - classify
     - persist-route
     - readback
+  step_outputs:
+    persist-route:
+      subset:
+        data_operation_result:
+          data:
+            schema: runx.data.operation_result.v1
+            operation: append_event
+            aggregate_id: launch-readiness
+            after_version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    readback:
+      subset:
+        data_operation_result:
+          data:
+            schema: runx.data.operation_result.v1
+            operation: read_projection
+            status: read
+            projection:
+              aggregate_id: launch-readiness
+              event_count: 1
+              version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
 metadata:
   public_skill: business-ops
-  source_case: route-and-append-sqlite
+  source_case: route-persists-with-provider-evidence
   source: skills-fixture
   runner_kind: graph
   graph_shape: route_and_append

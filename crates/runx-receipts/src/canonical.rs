@@ -1,4 +1,4 @@
-// rust-style-allow: large-file the cross-language oracle tests (receipt
+// Module rationale: the cross-language oracle tests (receipt
 // oracle plus stable-json case oracle) belong next to the writer they pin.
 use std::io::{self, Write};
 
@@ -8,7 +8,7 @@ use serde::Serialize;
 
 pub fn canonical_receipt_json(receipt: &Receipt) -> Result<String, ReceiptError> {
     let value = receipt_value(receipt)?;
-    canonical_json_value(&value)
+    canonical_receipt_value(&value)
 }
 
 pub fn canonical_receipt_digest(receipt: &Receipt) -> Result<String, ReceiptError> {
@@ -18,7 +18,7 @@ pub fn canonical_receipt_digest(receipt: &Receipt) -> Result<String, ReceiptErro
 pub fn canonical_receipt_body_json(receipt: &Receipt) -> Result<String, ReceiptError> {
     let mut value = receipt_value(receipt)?;
     strip_body_proof_fields(&mut value);
-    canonical_json_value(&value)
+    canonical_receipt_value(&value)
 }
 
 pub fn canonical_receipt_body_digest(receipt: &Receipt) -> Result<String, ReceiptError> {
@@ -34,11 +34,11 @@ pub fn canonical_receipt_body_digest(receipt: &Receipt) -> Result<String, Receip
 pub fn canonical_receipt_identity_json(receipt: &Receipt) -> Result<String, ReceiptError> {
     let mut value = receipt_value(receipt)?;
     strip_body_proof_fields(&mut value);
-    if let JsonValue::Object(map) = &mut value {
+    if let serde_json::Value::Object(map) = &mut value {
         map.remove("id");
         map.remove("lineage");
     }
-    canonical_json_value(&value)
+    canonical_receipt_value(&value)
 }
 
 /// `id = hash(canonical_body)` under `runx.receipt.c14n.v1`: the content address
@@ -47,11 +47,8 @@ pub fn content_addressed_receipt_id(receipt: &Receipt) -> Result<String, Receipt
     canonical_receipt_identity_json(receipt).map(|json| sha256_prefixed(json.as_bytes()))
 }
 
-fn receipt_value(receipt: &Receipt) -> Result<JsonValue, ReceiptError> {
-    let json = serde_json::to_string(receipt).map_err(|source| ReceiptError::Serialization {
-        message: source.to_string(),
-    })?;
-    serde_json::from_str(&json).map_err(|source| ReceiptError::Serialization {
+fn receipt_value(receipt: &Receipt) -> Result<serde_json::Value, ReceiptError> {
+    serde_json::to_value(receipt).map_err(|source| ReceiptError::Serialization {
         message: source.to_string(),
     })
 }
@@ -59,12 +56,57 @@ fn receipt_value(receipt: &Receipt) -> Result<JsonValue, ReceiptError> {
 /// The signed body commits every flat field except the envelope's own
 /// `signature` and `digest`. `metadata` is a runtime-local read aid and is not
 /// part of the signed body.
-fn strip_body_proof_fields(value: &mut JsonValue) {
-    if let JsonValue::Object(map) = value {
+fn strip_body_proof_fields(value: &mut serde_json::Value) {
+    if let serde_json::Value::Object(map) = value {
         map.remove("signature");
         map.remove("digest");
         map.remove("metadata");
     }
+}
+
+fn canonical_receipt_value(value: &serde_json::Value) -> Result<String, ReceiptError> {
+    let mut output = String::new();
+    write_canonical_receipt_value(value, &mut output)?;
+    Ok(output)
+}
+
+/// Receipt structs already serialize into a key-sorted `serde_json::Value`.
+/// Writing that tree directly avoids the former serialize-to-text/reparse or
+/// second value-tree conversion while preserving the byte-pinned canonical
+/// JSON oracle.
+fn write_canonical_receipt_value(
+    value: &serde_json::Value,
+    output: &mut String,
+) -> Result<(), ReceiptError> {
+    match value {
+        serde_json::Value::Null => output.push_str("null"),
+        serde_json::Value::Bool(value) => output.push_str(if *value { "true" } else { "false" }),
+        serde_json::Value::Number(value) => write_json_fragment(value, output)?,
+        serde_json::Value::String(value) => write_json_string(value, output)?,
+        serde_json::Value::Array(items) => {
+            output.push('[');
+            for (index, item) in items.iter().enumerate() {
+                if index > 0 {
+                    output.push(',');
+                }
+                write_canonical_receipt_value(item, output)?;
+            }
+            output.push(']');
+        }
+        serde_json::Value::Object(map) => {
+            output.push('{');
+            for (index, (key, value)) in map.iter().enumerate() {
+                if index > 0 {
+                    output.push(',');
+                }
+                write_json_string(key, output)?;
+                output.push(':');
+                write_canonical_receipt_value(value, output)?;
+            }
+            output.push('}');
+        }
+    }
+    Ok(())
 }
 
 /// Render any `JsonValue` under the `runx.stable-json.v1` canonicalization:
@@ -120,14 +162,17 @@ fn write_canonical_json_value(value: &JsonValue, output: &mut String) -> Result<
 }
 
 fn write_canonical_number(value: &JsonNumber, output: &mut String) -> Result<(), ReceiptError> {
-    let encoded = serde_json::to_string(value).map_err(|source| ReceiptError::Serialization {
-        message: source.to_string(),
-    })?;
-    output.push_str(&encoded);
-    Ok(())
+    write_json_fragment(value, output)
 }
 
 fn write_json_string(value: &str, output: &mut String) -> Result<(), ReceiptError> {
+    write_json_fragment(value, output)
+}
+
+fn write_json_fragment<T: Serialize + ?Sized>(
+    value: &T,
+    output: &mut String,
+) -> Result<(), ReceiptError> {
     let mut serializer = serde_json::Serializer::new(JsonStringWriter { output });
     value
         .serialize(&mut serializer)

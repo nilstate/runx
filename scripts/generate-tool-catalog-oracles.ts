@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "tool-catalogs");
 const oracleRoot = path.join(fixtureRoot, "oracles");
 const check = process.argv.includes("--check");
-const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+const runx = process.env.RUNX_RUST_CLI_BIN
   ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
 
 process.chdir(workspaceRoot);
@@ -132,8 +132,7 @@ async function runOracleCase(oracleCase: OracleCase): Promise<void> {
     throw new Error(`${oracleCase.name}: expected status ${oracleCase.expectedStatus}, got ${result.status}`);
   }
 
-  const rawStdout = result.stdout;
-  const normalizedStdout = normalizeOutput(rawStdout);
+  const normalizedStdout = normalizeOutput(result.stdout);
   const normalizedStderr = normalizeOutput(result.stderr);
   await writeOrCheck(oraclePath(oracleCase.name, "stdout"), normalizedStdout);
   await writeOrCheck(oraclePath(oracleCase.name, "stderr"), normalizedStderr);
@@ -144,7 +143,6 @@ async function runOracleCase(oracleCase: OracleCase): Promise<void> {
     await writeOrCheck(oraclePath(oracleCase.name, "json"), `${JSON.stringify(parsed, null, 2)}\n`);
   }
 
-  await writeGeneratedBuildManifests(oracleCase, rawStdout);
 }
 
 function deterministicEnv(
@@ -177,31 +175,6 @@ function normalizeOutput(value: string): string {
     .split(workspaceRoot).join("<repo>")
     .split(tempRoot).join("<temp>")
     .replaceAll("\\", "/");
-}
-
-async function writeGeneratedBuildManifests(oracleCase: OracleCase, rawStdout: string): Promise<void> {
-  const report = parseJson(rawStdout);
-  if (!isBuildReport(report)) {
-    return;
-  }
-  for (const built of report.built) {
-    const manifestPath = path.join(oracleCase.cwd, built.manifest);
-    await writeOrCheck(oraclePath(oracleCase.name, "manifest.json"), await readFile(manifestPath, "utf8"));
-  }
-}
-
-function isBuildReport(value: unknown): value is {
-  readonly schema: "runx.tool.build.v1";
-  readonly built: readonly { readonly manifest: string }[];
-} {
-  return isRecord(value)
-    && value.schema === "runx.tool.build.v1"
-    && Array.isArray(value.built)
-    && value.built.every((entry) => isRecord(entry) && typeof entry.manifest === "string");
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function oraclePath(name: string, extension: string): string {

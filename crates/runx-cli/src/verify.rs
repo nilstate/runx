@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - verify owns legacy receipt-tree checks plus the new single-receipt machine verdict.
+// Module rationale: verify owns legacy receipt-tree checks plus the new single-receipt machine verdict.
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt;
@@ -15,14 +15,12 @@ use runx_receipts::{
     SignatureVerificationFailure, SignatureVerifier, verify_receipt_document_verdict,
 };
 use runx_runtime::{
-    Ed25519ReceiptVerifier, ReceiptPathInputs, ReceiptTreeConfig, RuntimeReceiptConfig,
-    RuntimeReceiptSignaturePolicy, resolve_receipt_path, verify_runtime_receipt_tree_with_policy,
+    Ed25519ReceiptVerifier, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
+    RUNX_RECEIPT_VERIFY_KID_ENV, ReceiptPathInputs, ReceiptTreeConfig, RuntimeReceiptConfig,
+    RuntimeReceiptSignaturePolicy, receipt_verifier_from_env, resolve_receipt_path,
+    verify_runtime_receipt_tree_with_policy,
 };
 use serde::Serialize;
-
-use crate::history::{
-    RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV, RUNX_RECEIPT_VERIFY_KID_ENV,
-};
 
 const RECEIPT_REFERENCE_PREFIX: &str = "runx:receipt:";
 const SINGLE_RECEIPT_MAX_BYTES: usize = 10 * 1024 * 1024;
@@ -127,7 +125,7 @@ pub fn run_verify_command(
     run_verify_command_with_stdin(args, env, cwd, io::empty())
 }
 
-// rust-style-allow: long-function - argument dispatch keeps tree and single-receipt modes mutually exclusive in one parser.
+// Function rationale: argument dispatch keeps tree and single-receipt modes mutually exclusive in one parser.
 pub fn run_verify_command_with_stdin<R: Read>(
     args: &[OsString],
     env: &BTreeMap<String, String>,
@@ -167,16 +165,17 @@ pub fn run_verify_command_with_stdin<R: Read>(
 
     let selected: Vec<&ReceiptTree> = match parsed.receipt_id.as_deref() {
         Some(receipt_id) => {
-            let tree = trees
+            let selected = trees
                 .iter()
-                .find(|tree| tree.member_ids.contains(receipt_id))
-                .ok_or_else(|| {
-                    VerifyCliError::InvalidArgs(format!(
-                        "receipt {receipt_id} was not found in {}",
-                        resolved.path.display()
-                    ))
-                })?;
-            vec![tree]
+                .filter(|tree| tree.member_ids.contains(receipt_id))
+                .collect::<Vec<_>>();
+            if selected.is_empty() {
+                return Err(VerifyCliError::InvalidArgs(format!(
+                    "receipt {receipt_id} was not found in {}",
+                    resolved.path.display()
+                )));
+            }
+            selected
         }
         None => trees.iter().collect(),
     };
@@ -243,7 +242,7 @@ pub fn run_verify_command_with_stdin<R: Read>(
     })
 }
 
-// rust-style-allow: long-function - verify accepts legacy receipt-tree flags and
+// Function rationale: verify accepts legacy receipt-tree flags and
 // the single-receipt machine surface in one mutually-exclusive parser.
 fn parse_verify_args(args: &[OsString]) -> Result<ParsedVerifyArgs, VerifyCliError> {
     let mut parsed = ParsedVerifyArgs::default();
@@ -421,10 +420,10 @@ fn read_single_receipt_input<R: Read>(
     match input {
         ReceiptInput::Path(path) => {
             let path = resolve_under_cwd(path, cwd);
-            if let Ok(metadata) = fs::metadata(&path) {
-                if metadata.len() > SINGLE_RECEIPT_MAX_BYTES as u64 {
-                    return Err(single_receipt_too_large());
-                }
+            if let Ok(metadata) = fs::metadata(&path)
+                && metadata.len() > SINGLE_RECEIPT_MAX_BYTES as u64
+            {
+                return Err(single_receipt_too_large());
             }
             let document = fs::read(&path).map_err(|error| {
                 VerifyCliError::Store(format!(
@@ -477,7 +476,7 @@ fn run_notary_verify<R: Read>(
     })
 }
 
-// rust-style-allow: long-function - hosted notary verification traverses one
+// Function rationale: hosted notary verification traverses one
 // public projection and accumulates all findings for operator diagnostics.
 fn verify_notary_document(document: &[u8], trusted_keys: &[Vec<u8>]) -> NotaryVerifyVerdict {
     let mut findings = Vec::new();
@@ -584,7 +583,7 @@ fn locate_notary_verification(
         .and_then(serde_json::Value::as_object)
 }
 
-// rust-style-allow: long-function - counter-seal validation intentionally binds
+// Function rationale: counter-seal validation intentionally binds
 // digest, public key, signature, and trust-key diagnostics in one check.
 fn verify_counter_seal_signature(
     notary: &serde_json::Map<String, serde_json::Value>,
@@ -892,36 +891,16 @@ fn render_notary_verdict(verdict: &NotaryVerifyVerdict) -> String {
     output
 }
 
-fn production_verifier(
-    env: &BTreeMap<String, String>,
-) -> Result<Option<Ed25519ReceiptVerifier>, VerifyCliError> {
-    let kid = non_empty_env(env, RUNX_RECEIPT_VERIFY_KID_ENV);
-    let public_key = non_empty_env(env, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV);
-    match (kid, public_key) {
-        (None, None) => Ok(None),
-        (Some(kid), Some(public_key)) => {
-            Ed25519ReceiptVerifier::from_public_key_base64(kid.to_owned(), public_key)
-                .map(Some)
-                .map_err(|_| {
-                    VerifyCliError::InvalidReceiptVerifier(format!(
-                        "{RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV} is not valid Ed25519 public key material"
-                    ))
-                })
-        }
-        _ => Err(VerifyCliError::InvalidReceiptVerifier(format!(
-            "set both {RUNX_RECEIPT_VERIFY_KID_ENV} and {RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV} for production verification"
-        ))),
-    }
-}
-
 fn receipt_verifier(
     env: &BTreeMap<String, String>,
     allow_local_development_signatures: bool,
 ) -> Result<Option<Ed25519ReceiptVerifier>, VerifyCliError> {
-    let verifier = production_verifier(env)?;
+    let verifier = receipt_verifier_from_env(env)
+        .map(|resolved| resolved.map(|verifier| verifier.into_verifier()))
+        .map_err(|error| VerifyCliError::InvalidReceiptVerifier(error.to_string()))?;
     if verifier.is_none() && !allow_local_development_signatures {
         return Err(VerifyCliError::InvalidReceiptVerifier(format!(
-            "runx verify requires trusted receipt verification keys. Set both {RUNX_RECEIPT_VERIFY_KID_ENV} and {RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV}, or pass --allow-local-development-signatures for local fixture receipts only."
+            "runx verify requires a trusted receipt verifier. Set both {RUNX_RECEIPT_VERIFY_KID_ENV} and {RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV}, configure a complete RUNX_RECEIPT_SIGN_* identity, or pass --allow-local-development-signatures for local fixture receipts only."
         )));
     }
     Ok(verifier)
@@ -947,9 +926,7 @@ fn load_receipts(root: &Path) -> Result<(Vec<Receipt>, Vec<FileIssue>), VerifyCl
             ))
         })?;
         let path = entry.path();
-        if path.extension().and_then(|value| value.to_str()) != Some("json")
-            || path.file_name().and_then(|value| value.to_str()) == Some("index.json")
-        {
+        if !is_content_addressed_receipt_path(&path) {
             continue;
         }
         match fs::read_to_string(&path) {
@@ -970,6 +947,17 @@ fn load_receipts(root: &Path) -> Result<(Vec<Receipt>, Vec<FileIssue>), VerifyCl
     Ok((receipts, issues))
 }
 
+fn is_content_addressed_receipt_path(path: &Path) -> bool {
+    path.extension().and_then(|value| value.to_str()) == Some("json")
+        && path
+            .file_stem()
+            .and_then(|value| value.to_str())
+            .and_then(|stem| stem.strip_prefix("sha256-"))
+            .is_some_and(|digest| {
+                digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+            })
+}
+
 #[derive(Clone, Debug)]
 struct ReceiptTree {
     root: Receipt,
@@ -985,52 +973,134 @@ fn group_trees(receipts: &[Receipt]) -> Vec<ReceiptTree> {
         .iter()
         .map(|receipt| (receipt.id.as_str(), receipt))
         .collect();
-
-    let mut trees: BTreeMap<String, ReceiptTree> = BTreeMap::new();
-    for receipt in receipts {
-        let (root_id, parent_missing) = resolve_root(receipt, &by_id);
-        let root = by_id
-            .get(root_id.as_str())
-            .copied()
-            .unwrap_or(receipt)
-            .clone();
-        let tree = trees.entry(root_id).or_insert_with(|| ReceiptTree {
-            root,
-            member_ids: BTreeSet::new(),
-            parent_missing: None,
-        });
-        tree.member_ids.insert(receipt.id.to_string());
-        if let Some(missing) = parent_missing {
-            tree.parent_missing.get_or_insert(missing);
-        }
-    }
-    trees.into_values().collect()
+    // Runtime receipts form an immutable parent -> child DAG. Keep accepting
+    // legacy child -> parent links, but never require them to discover a tree.
+    // A child may be shared by more than one root, so each root owns its own
+    // reachable member set instead of forcing every receipt into one group.
+    let (children_by_parent, parents_by_child) = receipt_tree_edges(receipts);
+    let root_ids = root_receipt_ids(receipts, &by_id, &parents_by_child);
+    let mut trees = root_ids
+        .iter()
+        .filter_map(|root_id| receipt_tree_from_root(root_id, &by_id, &children_by_parent))
+        .collect::<Vec<_>>();
+    append_uncovered_cycle_trees(receipts, &by_id, &children_by_parent, &mut trees);
+    trees.sort_by(|left, right| left.root.id.cmp(&right.root.id));
+    trees
 }
 
-/// Follow lineage parents to the highest receipt available in the store.
-/// Returns the root id plus the first missing parent id, if the chain breaks.
-fn resolve_root(receipt: &Receipt, by_id: &BTreeMap<&str, &Receipt>) -> (String, Option<String>) {
-    let mut current = receipt;
-    let mut seen = BTreeSet::new();
-    loop {
-        if !seen.insert(current.id.to_string()) {
-            // Cycles are reported by tree verification; anchor on the starting
-            // receipt so the walk terminates.
-            return (receipt.id.to_string(), None);
-        }
-        let Some(parent_id) = current
-            .lineage
-            .as_ref()
-            .and_then(|lineage| lineage.parent.as_ref())
-            .and_then(referenced_receipt_id)
-        else {
-            return (current.id.to_string(), None);
-        };
-        match by_id.get(parent_id) {
-            Some(parent) => current = parent,
-            None => return (current.id.to_string(), Some(parent_id.to_owned())),
+fn receipt_tree_edges(
+    receipts: &[Receipt],
+) -> (
+    BTreeMap<String, BTreeSet<String>>,
+    BTreeMap<String, BTreeSet<String>>,
+) {
+    let mut children_by_parent: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut parents_by_child: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for receipt in receipts {
+        if let Some(lineage) = &receipt.lineage {
+            for child in &lineage.children {
+                if let Some(child_id) = referenced_receipt_id(child) {
+                    children_by_parent
+                        .entry(receipt.id.to_string())
+                        .or_default()
+                        .insert(child_id.to_owned());
+                    parents_by_child
+                        .entry(child_id.to_owned())
+                        .or_default()
+                        .insert(receipt.id.to_string());
+                }
+            }
+            if let Some(parent_id) = lineage.parent.as_ref().and_then(referenced_receipt_id) {
+                children_by_parent
+                    .entry(parent_id.to_owned())
+                    .or_default()
+                    .insert(receipt.id.to_string());
+                parents_by_child
+                    .entry(receipt.id.to_string())
+                    .or_default()
+                    .insert(parent_id.to_owned());
+            }
         }
     }
+    (children_by_parent, parents_by_child)
+}
+
+fn root_receipt_ids(
+    receipts: &[Receipt],
+    by_id: &BTreeMap<&str, &Receipt>,
+    parents_by_child: &BTreeMap<String, BTreeSet<String>>,
+) -> BTreeSet<String> {
+    receipts
+        .iter()
+        .filter(|receipt| {
+            parents_by_child
+                .get(receipt.id.as_str())
+                .is_none_or(|parents| {
+                    parents
+                        .iter()
+                        .all(|parent| !by_id.contains_key(parent.as_str()))
+                })
+        })
+        .map(|receipt| receipt.id.to_string())
+        .collect()
+}
+
+fn append_uncovered_cycle_trees(
+    receipts: &[Receipt],
+    by_id: &BTreeMap<&str, &Receipt>,
+    children_by_parent: &BTreeMap<String, BTreeSet<String>>,
+    trees: &mut Vec<ReceiptTree>,
+) {
+    // Malformed cycles have no natural root. Anchor each still-uncovered
+    // component once so structural verification can report the cycle.
+    let mut covered = trees
+        .iter()
+        .flat_map(|tree| tree.member_ids.iter().cloned())
+        .collect::<BTreeSet<_>>();
+    for receipt in receipts {
+        if covered.contains(receipt.id.as_str()) {
+            continue;
+        }
+        if let Some(tree) = receipt_tree_from_root(receipt.id.as_str(), by_id, children_by_parent) {
+            covered.extend(tree.member_ids.iter().cloned());
+            trees.push(tree);
+        }
+    }
+}
+
+fn receipt_tree_from_root(
+    root_id: &str,
+    by_id: &BTreeMap<&str, &Receipt>,
+    children_by_parent: &BTreeMap<String, BTreeSet<String>>,
+) -> Option<ReceiptTree> {
+    let root = (*by_id.get(root_id)?).clone();
+    let mut member_ids = BTreeSet::new();
+    let mut pending = vec![root_id.to_owned()];
+    while let Some(receipt_id) = pending.pop() {
+        if !member_ids.insert(receipt_id.clone()) {
+            continue;
+        }
+        if let Some(children) = children_by_parent.get(&receipt_id) {
+            pending.extend(
+                children
+                    .iter()
+                    .filter(|child| by_id.contains_key(child.as_str()))
+                    .cloned(),
+            );
+        }
+    }
+    let parent_missing = root
+        .lineage
+        .as_ref()
+        .and_then(|lineage| lineage.parent.as_ref())
+        .and_then(referenced_receipt_id)
+        .filter(|parent| !by_id.contains_key(*parent))
+        .map(str::to_owned);
+    Some(ReceiptTree {
+        root,
+        member_ids,
+        parent_missing,
+    })
 }
 
 fn referenced_receipt_id(reference: &Reference) -> Option<&str> {
@@ -1149,12 +1219,6 @@ impl SignatureVerifier for LocalDevelopmentReceiptVerifier {
     }
 }
 
-fn non_empty_env<'a>(env: &'a BTreeMap<String, String>, key: &str) -> Option<&'a str> {
-    env.get(key)
-        .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-}
-
 fn single_receipt_too_large() -> VerifyCliError {
     invalid_args(format!(
         "--receipt input exceeds {SINGLE_RECEIPT_MAX_BYTES} bytes"
@@ -1175,7 +1239,9 @@ mod tests {
     use runx_contracts::ReceiptIssuerType;
     use runx_runtime::receipts::step_receipt_with_signature_policy;
     use runx_runtime::{
-        Ed25519ReceiptSigner, InvocationStatus, LocalReceiptStore, RuntimeError, SkillOutput,
+        Ed25519ReceiptSigner, InvocationOutput, LocalReceiptStore,
+        RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV, RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
+        RUNX_RECEIPT_SIGN_KID_ENV, RuntimeError,
     };
     use serde::Deserialize;
     use serde_json as test_json;
@@ -1201,7 +1267,8 @@ mod tests {
     }
 
     #[test]
-    fn verifies_production_signed_receipt_store() -> Result<(), io::Error> {
+    fn verifies_production_signed_receipt_store_from_verifier_or_signer_environment()
+    -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
         let receipt_dir = temp.join("receipts");
         let signer = fixture_signer().map_err(io::Error::other)?;
@@ -1215,27 +1282,101 @@ mod tests {
             )
             .map_err(|error| io::Error::other(error.to_string()))?;
 
-        let env = verifier_env(&signer);
+        for env in [verifier_env(&signer), signer_env()] {
+            let result = run_verify_command(
+                &[
+                    "verify".into(),
+                    "--receipt-dir".into(),
+                    receipt_dir.clone().into_os_string(),
+                    "--json".into(),
+                ],
+                &env,
+                &temp,
+            )
+            .map_err(|error| io::Error::other(error.to_string()))?;
+
+            assert!(
+                !result.failed,
+                "expected clean verification: {}",
+                result.output
+            );
+            let report: JsonValue =
+                serde_json::from_str(&result.output).map_err(io::Error::other)?;
+            assert_eq!(report["valid"], JsonValue::Bool(true));
+            assert_eq!(report["signature_mode"], "production");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_store_verification_ignores_non_receipt_state_json() -> Result<(), io::Error> {
+        let temp = tempfile_dir()?;
+        let receipt_dir = temp.join("receipts");
+        let signer = fixture_signer().map_err(io::Error::other)?;
+        let verifier = Ed25519ReceiptVerifier::new([signer.production_key()]);
+        let receipt = production_signed_receipt(&signer)
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        LocalReceiptStore::new(&receipt_dir)
+            .write_receipt_with_policy(
+                &receipt,
+                RuntimeReceiptSignaturePolicy::production(&verifier),
+            )
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        fs::write(
+            receipt_dir.join("effect-state.json"),
+            r#"{"schema_version":1,"entries":{}}"#,
+        )?;
+
         let result = run_verify_command(
             &[
                 "verify".into(),
                 "--receipt-dir".into(),
-                receipt_dir.clone().into_os_string(),
+                receipt_dir.into_os_string(),
                 "--json".into(),
             ],
-            &env,
+            &verifier_env(&signer),
             &temp,
         )
         .map_err(|error| io::Error::other(error.to_string()))?;
 
         assert!(
             !result.failed,
-            "expected clean verification: {}",
+            "non-receipt state must not poison verification: {}",
             result.output
         );
         let report: JsonValue = serde_json::from_str(&result.output).map_err(io::Error::other)?;
         assert_eq!(report["valid"], JsonValue::Bool(true));
-        assert_eq!(report["signature_mode"], "production");
+        assert_eq!(report["unreadable_files"].as_array().map(Vec::len), Some(0));
+        Ok(())
+    }
+
+    #[test]
+    fn groups_runtime_tree_from_parent_child_refs_without_child_back_links() -> Result<(), io::Error>
+    {
+        let signer = fixture_signer().map_err(io::Error::other)?;
+        let mut root = production_signed_receipt(&signer)
+            .map_err(|error| io::Error::other(error.to_string()))?;
+        let mut child = root.clone();
+        child.id = "sha256:immutable-child".into();
+        child.digest = "sha256:immutable-child-body".into();
+        child.lineage.get_or_insert_default().parent = None;
+        let mut child_ref =
+            Reference::with_uri(ReferenceType::Receipt, format!("runx:receipt:{}", child.id));
+        child_ref.locator = Some(child.digest.clone());
+        root.lineage
+            .get_or_insert_default()
+            .children
+            .push(child_ref);
+
+        let trees = group_trees(&[root.clone(), child.clone()]);
+
+        assert_eq!(trees.len(), 1);
+        assert_eq!(trees[0].root.id, root.id);
+        assert_eq!(
+            trees[0].member_ids,
+            BTreeSet::from([root.id.to_string(), child.id.to_string()])
+        );
+        assert!(trees[0].parent_missing.is_none());
         Ok(())
     }
 
@@ -1418,7 +1559,7 @@ mod tests {
             Err(error) => error,
         };
         assert!(
-            matches!(error, VerifyCliError::InvalidReceiptVerifier(message) if message.contains("requires trusted receipt verification keys"))
+            matches!(error, VerifyCliError::InvalidReceiptVerifier(message) if message.contains("requires a trusted receipt verifier"))
         );
         Ok(())
     }
@@ -1535,7 +1676,7 @@ mod tests {
     }
 
     #[test]
-    // rust-style-allow: long-function - this notary negative fixture builds the
+    // Function rationale: this notary negative fixture builds the
     // untrusted projection and verifies each emitted finding together.
     fn hosted_notary_rejects_embedded_key_without_external_trust() -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
@@ -1605,7 +1746,7 @@ mod tests {
     }
 
     #[test]
-    // rust-style-allow: long-function - this notary fixture keeps the signed
+    // Function rationale: this notary fixture keeps the signed
     // payload, projection, and verification readback in one regression.
     fn hosted_notary_binds_signed_payload_to_public_projection() -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
@@ -1676,7 +1817,7 @@ mod tests {
         Ok(())
     }
 
-    // rust-style-allow: long-function - malformed receipt regression covers capped stdin, invalid JSON, and machine verdict fields together.
+    // Function rationale: malformed receipt regression covers capped stdin, invalid JSON, and machine verdict fields together.
     #[test]
     fn malformed_single_receipt_returns_invalid_verdict() -> Result<(), io::Error> {
         let temp = tempfile_dir()?;
@@ -1835,27 +1976,57 @@ mod tests {
         ])
     }
 
+    fn signer_env() -> BTreeMap<String, String> {
+        BTreeMap::from([
+            (RUNX_RECEIPT_SIGN_KID_ENV.to_owned(), FIXTURE_KID.to_owned()),
+            (
+                RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV.to_owned(),
+                "hosted".to_owned(),
+            ),
+            (
+                RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV.to_owned(),
+                base64_standard(&FIXTURE_SEED),
+            ),
+        ])
+    }
+
     fn fixture_signer() -> Result<Ed25519ReceiptSigner, runx_runtime::RuntimeReceiptSigningError> {
         Ed25519ReceiptSigner::from_seed(FIXTURE_KID, ReceiptIssuerType::Hosted, &FIXTURE_SEED)
     }
 
     fn production_signed_receipt(signer: &Ed25519ReceiptSigner) -> Result<Receipt, RuntimeError> {
         let verifier = Ed25519ReceiptVerifier::new([signer.production_key()]);
-        let output = SkillOutput {
-            status: InvocationStatus::Success,
-            stdout:
-                r#"{"artifact":{"artifact_id":"artifact_cli_verify","artifact_type":"artifact"}}"#
-                    .to_owned(),
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 10,
-            metadata: BTreeMap::new(),
-        };
+        let output = InvocationOutput::runtime_success(
+            runx_contracts::JsonValue::Object(BTreeMap::from([(
+                "artifact".to_owned(),
+                runx_contracts::JsonValue::Object(BTreeMap::from([
+                    (
+                        "artifact_id".to_owned(),
+                        runx_contracts::JsonValue::String("artifact_cli_verify".to_owned()),
+                    ),
+                    (
+                        "artifact_type".to_owned(),
+                        runx_contracts::JsonValue::String("artifact".to_owned()),
+                    ),
+                ])),
+            )])),
+            10,
+            BTreeMap::new(),
+        );
+        let claim =
+            output
+                .value
+                .as_object()
+                .cloned()
+                .ok_or_else(|| RuntimeError::ReceiptInvalid {
+                    message: "verify fixture output must be an object".to_owned(),
+                })?;
         step_receipt_with_signature_policy(
             "cli-verify",
             "production-verified",
             1,
             &output,
+            &claim,
             "2026-06-10T00:00:00Z",
             RuntimeReceiptSignaturePolicy::production_signing(signer, &verifier),
         )

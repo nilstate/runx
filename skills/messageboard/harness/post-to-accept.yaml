@@ -1,0 +1,130 @@
+name: messageboard-post-to-accept
+owner: runx
+steps:
+  - id: post
+    skill: ..
+    runner: post
+    inputs:
+      actor_kid: vendor
+      title: Verify receipt link
+      deliverable: Run the published verifier from a clean checkout and report the result.
+      amount_minor: 5000
+      currency: USD
+      funding_evidence:
+        hold_ref: mock:hold:post-journey-1
+      clock_policy:
+        claim_fuse_ms: 1800000
+        delivery_deadline_ms: 86400000
+        acceptance_window_ms: 43200000
+  - id: persist-post
+    skill: ../../data-store
+    runner: append_event
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1
+      expected_version: 0
+      idempotency_key: post_journey_1:post:v1
+    context:
+      event: post.messageboard_post_packet.data
+  - id: moderate
+    skill: ..
+    runner: moderate
+    inputs:
+      moderator_kid: moderator
+      posting:
+        id: post_journey_1
+        status: screening
+        funded_badge: true
+        deliverable: Run the published verifier from a clean checkout and report the result.
+      decision: approve
+      reasons:
+        - Funding and deliverable evidence are bounded.
+  - id: persist-moderation
+    skill: ../../data-store
+    runner: append_event
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1
+      expected_version: 1
+      idempotency_key: post_journey_1:moderate:v1
+    context:
+      event: moderate.messageboard_moderation_packet.data
+  - id: claim
+    skill: ..
+    runner: claim
+    inputs:
+      actor_kid: worker
+      posting:
+        id: post_journey_1
+        status: approved
+        title: Verify receipt link
+        amount_minor: 5000
+        currency: USD
+      idempotency_seed: worker-post-journey-1
+  - id: persist-claim
+    skill: ../../data-store
+    runner: append_event
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1
+      expected_version: 2
+      idempotency_key: post_journey_1:claim:worker:v1
+    context:
+      event: claim.messageboard_claim_packet.data
+  - id: deliver
+    skill: ..
+    runner: deliver
+    inputs:
+      actor_kid: worker
+      claim:
+        posting_id: post_journey_1
+        claimant_kid: worker
+        status: active
+        delivery_due_at: 2026-06-13T00:00:00Z
+      delivery_evidence:
+        artifact_ref: git:commit:abc123
+        verifier_command: ./verify.sh
+  - id: persist-delivery
+    skill: ../../data-store
+    runner: append_event
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1
+      expected_version: 3
+      idempotency_key: post_journey_1:deliver:worker:v1
+    context:
+      event: deliver.messageboard_delivery_packet.data
+  - id: accept
+    skill: ..
+    runner: accept
+    inputs:
+      actor_kid: vendor
+      delivery:
+        posting_id: post_journey_1
+        claimant_kid: worker
+        delivery_ref: delivery:post_journey_1
+        artifact_ref: git:commit:abc123
+      acceptance_evidence:
+        verifier_result: passed
+  - id: persist-acceptance
+    skill: ../../data-store
+    runner: append_event
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1
+      expected_version: 4
+      idempotency_key: post_journey_1:accept:vendor:v1
+    context:
+      event: accept.messageboard_acceptance_packet.data
+  - id: readback
+    skill: ../../data-store
+    runner: read_projection
+    inputs:
+      data_source_ref: tenant://messageboard/post-to-accept
+      resource: board_events
+      aggregate_id: post_journey_1

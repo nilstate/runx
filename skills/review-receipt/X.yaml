@@ -1,5 +1,5 @@
 skill: review-receipt
-version: "0.2.0"
+version: "0.3.3"
 
 catalog:
   kind: graph
@@ -22,7 +22,41 @@ harness:
             status: failed
             created_at: "2026-07-16T00:00:00Z"
             verification_status: verified
-        receipt_summary: Downstream step received JSON text instead of a structured object.
+        receipt_details:
+          - id: rcpt_context_flattening
+            receipt_ref: runx:receipt:rcpt_context_flattening
+            subject_kind: skill
+            subject_ref: skills/skill-lab
+            created_at: "2026-07-16T00:00:00Z"
+            status: failed
+            verification:
+              status: verified
+            authority:
+              exercised_scopes:
+                - scope: fs:read
+                  source: term
+            decisions: []
+            acts:
+              - id: author
+                form: execution
+                purpose: Produce the bounded skill proposal.
+                legitimacy: Held fs.read.
+                summary: Downstream authoring context was flattened to JSON text.
+                disposition: failed
+                reason_code: schema_mismatch
+                source_refs: []
+                target_refs: []
+                artifact_refs: []
+                criterion_statuses:
+                  - criterion_id: runx:criterion:structured_context
+                    status: failed
+                    evidence_refs: []
+                    verification_refs: []
+                context_ref_present: true
+            artifact_refs: []
+            lineage_refs: []
+            seal_reason_code: schema_mismatch
+            seal_summary: Structured context was not preserved.
         harness_output: Context edge pointed at stdout and flattened the payload.
         skill_path: skills/skill-lab
       caller:
@@ -39,6 +73,24 @@ harness:
               - skill-lab passes structured authoring context into the bounded author step
       expect:
         status: sealed
+        steps:
+          - evidence
+          - diagnose
+        step_outputs:
+          evidence:
+            subset:
+              ledger_answer_packet:
+                data:
+                  ledger_answer:
+                    decision: answered
+                  matched_receipts:
+                    - receipt_id: rcpt_context_flattening
+                      status: failed
+                      verification_status: verified
+                  receipt_details:
+                    - id: rcpt_context_flattening
+                      subject_ref: skills/skill-lab
+                      seal_reason_code: schema_mismatch
         receipt:
           schema: runx.receipt.v1
 
@@ -48,10 +100,26 @@ harness:
         receipt_rows:
           - receipt_id: rcpt_paused
             skill_ref: skills/research
-            status: paused
+            status: deferred
             created_at: "2026-07-16T00:00:00Z"
             verification_status: verified
-        receipt_summary: Graph paused at step 1 awaiting caller cognitive work.
+        receipt_details:
+          - id: rcpt_paused
+            receipt_ref: runx:receipt:rcpt_paused
+            subject_kind: skill
+            subject_ref: skills/research
+            created_at: "2026-07-16T00:00:00Z"
+            status: deferred
+            verification:
+              status: verified
+            authority:
+              exercised_scopes: []
+            decisions: []
+            acts: []
+            artifact_refs: []
+            lineage_refs: []
+            seal_reason_code: needs_agent
+            seal_summary: Waiting for bounded caller cognitive work.
         harness_output: needs_agent
         skill_path: skills/research
       caller:
@@ -80,6 +148,10 @@ runners:
         type: string
         required: false
         description: Sanitized failure summary when detailed execution evidence is already available.
+      receipt_details:
+        type: json
+        required: false
+        description: Explicit native redacted receipt-detail projections for deterministic replay only.
       harness_output:
         type: string
         required: false
@@ -94,6 +166,7 @@ runners:
         description: Explicit native-projection rows for deterministic replay only.
     graph:
       name: review-receipt
+      result_from: [diagnose]
       steps:
         - id: evidence
           label: resolve and verify receipt evidence
@@ -106,6 +179,7 @@ runners:
             proof:
               verify_chain: true
             receipts: $input.receipt_rows
+            receipt_details: $input.receipt_details
         - id: diagnose
           label: diagnose one bounded failure
           run:
@@ -117,17 +191,6 @@ runners:
               failure_summary: string
               improvement_proposals: array
               next_harness_checks: array
-          instructions: >
-            Diagnose one failure from native receipt evidence plus the supplied
-            summary or harness output. Treat needs_agent or a paused receipt as
-            a healthy suspension unless another concrete failure signal exists.
-            Distinguish input, scope, tool, schema, timeout, policy, review, and
-            harness failures. If receipt_id was supplied but native evidence did
-            not match it, return blocked unless the supplied harness output alone
-            proves the defect. Return verdict, a concise failure_summary, at most
-            three bounded improvement_proposals, and replayable
-            next_harness_checks. Each proposal must name target, change,
-            rationale, and risk. Do not write files or weaken a refusal.
           allowed_tools:
             - fs.read
           context:

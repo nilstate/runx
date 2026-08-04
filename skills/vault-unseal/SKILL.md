@@ -1,137 +1,65 @@
 ---
 name: vault-unseal
-description: Prepare a scoped, time-bounded vault-unseal request for approval and adapter execution; never returns a secret or claims a handle was issued.
+description: Plan or execute a scoped, time-bounded vault-unseal request through Runx Connect, returning only opaque handle metadata and provider readback.
 runx:
   category: security
 ---
 
 # Vault Unseal
 
-Turn a request for a secret into a reviewable, time-bounded access plan that
-hands an approval-ready request to a vault adapter instead of exposing the secret.
+Prepare one least-privilege request to make an opaque secret reference available
+to one principal for one purpose, scope, and short access window. The default
+runner stops at a plan. `execute` sends that exact request through a configured
+vault Connect grant after approval and independently reads the resulting handle
+metadata. Neither runner retrieves or reveals secret material.
 
-## What this skill does
+Use it when a later workload needs a bounded secret handle and the request must
+pass a human approval and real vault adapter. Do not use it as a secret store,
+credential loader, environment-file parser, or way to put secret values into an
+agent context.
 
-An agent rarely needs a secret. It needs the thing the secret unlocks: one API
-call, one signed request, one decrypt for a stated window. This skill plans that
-access. It binds the secret reference, the purpose, a TTL, the scope the secret
-covers, and the principal asking, then marks the request for a human approval
-gate. The output is an unseal plan; it does not contain a handle or an
-audit receipt because this agent runner cannot issue either. A configured vault
-adapter performs the live unseal after approval and owns its handle and audit
-evidence. The secret value is never read into the plan, the receipt, or the
-agent's context.
+## How it works
 
-It governs explicit secret access with a TTL and approval; least-privilege
-only analyzes scopes, it never touches secrets.
+1. Bind the opaque secret reference to the requesting principal, declared
+   purpose, allowed scope, and requested time window.
+2. Validate that the reference is opaque and the TTL is between one minute and
+   one hour.
+3. Reject raw secret-shaped input, ambiguous principals, broad purpose, or
+   unbounded scope.
+4. Emit an approval-ready request and exact provider handoff.
+5. With `execute`, request approval for that exact plan, invoke
+   `secret.unseal` under one idempotency key, then call `handle.read` for the
+   returned opaque reference. Completion requires both provider operations.
 
-## When to use this skill
+The local plan needs no approval because it exposes no secret and changes no
+provider state. The unseal operation is consequential and remains a separate
+gate. Credentials stay in Runx Connect; the package receives no token and owns
+no request client.
 
-- An agent or workflow needs a credential, key, or token to complete one bounded
-  task and the access must be approved and audited.
-- A break-glass or just-in-time access request needs a plan a reviewer can read
-  and a window that expires on its own.
-- A downstream action skill needs an approval-ready request that a vault adapter
-  can exchange for a handle without putting the secret in agent context.
-- An operator wants the planning decision (`ready_for_approval`, `needs_agent`,
-  `denied`) separated from adapter-owned execution evidence.
+## Result and stop conditions
 
-## When not to use this skill
+A ready plan contains the bounded request, expiry, approval requirement, and
+provider handoff with `provider_status: not_called` and no secret value. A
+successful execution additionally carries native mutation and handle-readback
+packets. The provider result is required to expose only an opaque `handle_ref`,
+expiry, and status metadata; a raw secret is a provider contract violation.
+Missing or unsafe inputs return a useful stop packet rather than a guessed
+request.
 
-- To read, print, copy, or return a secret value or handle. This skill prepares
-  the request; the vault adapter owns live access.
-- To grant standing or unbounded access. Every unseal is scoped to one secret
-  for one TTL.
-- To review or narrow scopes that a subject already holds. Use
-  least-privilege for scope analysis against receipts.
-- To rotate, store, or mint new secrets. That is a separate vault operation with
-  its own gate.
-- To bypass the approval gate, widen the scope past the stated purpose, or
-  extend a TTL that has already lapsed.
+- Never accept or emit raw credentials, key material, tokens, or secret values.
+- Refuse TTL below one minute or above one hour.
+- Refuse wildcard principals, purposes, scopes, or an opaque ref that cannot be
+  distinguished from secret material.
+- Refuse a missing, ambiguous, wrong-provider, or under-scoped Connect grant;
+  never fall back to local environment parsing or a raw vault token.
+- Do not claim a handle was issued, mounted, used, or revoked without adapter
+  evidence and independent handle readback.
 
-## Procedure
+## Example
 
-1. Resolve the request. Confirm `secret_ref`, `purpose`, `ttl`, `scope`, and
-   `principal` are present. If any required input is missing, stop with
-   `needs_agent` and name what is missing. Do not guess a default TTL or scope.
-2. Check purpose and scope against policy. Confirm the stated purpose is a
-   permitted reason to access this secret, and that the scope does not exceed
-   what the purpose needs. If the purpose or scope is not permitted, set
-   `decision: denied` and name the policy that refused, not the secret.
-3. Set the TTL window. Parse `ttl` into a duration; the window starts at
-   approval, not at request. If the TTL is unparseable, absent, or unbounded,
-   return `needs_agent`. There is no open-ended unseal.
-4. Set the approval gate. A live unseal always requires human approval; set
-   `gates.human_approval_required: true`. A complete, permitted request is
-   `ready_for_approval`, never evidence that approval or execution occurred.
-5. Bind the request. Bind the plan to exactly one `secret_ref` for one TTL
-   window under the requested scope. Set `decision: ready_for_approval` only
-   when the request is complete and policy-compatible.
-6. Hand off execution. After separate approval evidence is attached, a vault
-   adapter may consume the plan, issue an opaque handle, and return adapter-owned
-   audit evidence. This skill never fabricates either outcome.
-
-## Edge cases and stop conditions
-
-- **Missing required input:** `secret_ref`, `purpose`, `ttl`, or `scope` absent
-  returns `needs_agent`. The principal is also required to attribute the access.
-- **Purpose not permitted:** set `decision: denied`; name the refusing policy,
-  never the secret.
-- **Scope exceeds purpose:** narrow to what the purpose needs, or set
-  `decision: denied` if it cannot be narrowed safely.
-- **Unbounded or lapsed TTL:** refuse. There is no standing unseal and no revival
-  of an expired window.
-- **Approval absent or denied:** the request remains `ready_for_approval` or
-  moves to `denied`; this skill never issues a handle.
-- **Caller asks for the raw value:** refuse that part. If the workflow genuinely
-  cannot use an adapter-owned handle, return `needs_agent` with the constraint
-  named, never the value.
-- **Vault adapter unavailable:** return an execution blocker; a plan is not an
-  unseal.
-
-## Output schema
-
-The artifact is the `unseal_plan` object, wrapped as `runx.unseal.v1`. The
-secret value never appears in any field.
-
-```yaml
-unseal_plan:
-  decision: ready_for_approval | needs_agent | denied
-  secret_ref: string        # reference to the secret, never its value
-  purpose: string           # bounded reason the secret is needed
-  ttl: string               # bound duration; the window starts at approval
-  scope:                    # what the secret unlocks, as stated and as bound
-    resource: string
-    action: string
-    path: string
-  principal: string         # who the access is attributed to
-  gates:
-    human_approval_required: boolean  # always true for a live unseal
-  blockers: array           # named reasons the plan is not ready
-  execution:
-    requires_adapter: true
-    requires_approval: true
-```
-
-## Worked example
-
-Input: principal `svc/report-exporter` requests `vault://drive/service-account`
-for the purpose "sign one Drive export request", `ttl: 10m`, scope
-`{ resource: drive.files, action: export, path: /reports/* }`.
-
-Output: `decision: ready_for_approval`; policy permits the purpose and the scope
-matches it; `gates.human_approval_required: true`; and
-`execution.requires_adapter: true`. After explicit approval, the vault adapter
-may issue an opaque handle and records its own audit evidence. The service
-account key never enters the plan or the receipt.
-
-## Inputs
-
-- `secret_ref` (required): reference to the secret to unseal, never its value.
-- `purpose` (required): the bounded reason the secret is needed.
-- `ttl` (required): the access window duration; the window starts at approval.
-- `scope` (required): structured statement of what the secret unlocks.
-- `principal` (required): who the access is attributed to.
-- `policy_notes` (optional): reserved purposes, break-glass conditions, or
-  constraints that affect the decision.
-- `operator_context` (optional): approval posture or extra guardrails.
+A deployment runner needs database credentials for fifteen minutes. The skill
+can prepare a request binding `vault://prod/db/deployer` to that runner, the
+single deployment purpose, and the exact environment scope. `execute` may then
+issue an opaque handle after approval and confirm its metadata. It cannot reveal
+the password or treat a provider acknowledgement without `handle.read` as
+complete.

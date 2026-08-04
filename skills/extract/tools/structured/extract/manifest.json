@@ -43,23 +43,8 @@
     "runx:fixture:read",
     "runx:schema:read"
   ],
-  "runx": {
-    "artifacts": {
-      "named_emits": {
-        "structured_extraction_result": "runx.structured_extraction.result.v1"
-      },
-      "wrap_as": "structured_extraction_result"
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
-  "output": {
+  "artifacts": {
     "packet": "runx.structured_extraction.result.v1",
     "wrap_as": "structured_extraction_result"
-  },
-  "toolkit_version": "0.1.4"
+  }
 }

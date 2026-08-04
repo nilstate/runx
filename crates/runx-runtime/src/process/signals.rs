@@ -1,7 +1,6 @@
-use std::process::Command;
-
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+use std::process::Command;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum ProcessSignal {
@@ -52,7 +51,16 @@ pub(crate) fn signal_process_group_id(process_id: u32, signal: ProcessSignal) ->
     kill_process_group(pid, signal.rustix_signal()).is_ok()
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+pub(crate) fn signal_process_group_id(_process_id: u32, _signal: ProcessSignal) -> bool {
+    // Windows process trees are owned by Job Objects in OwnedProcess. PID-only
+    // signalling cannot safely recover that ownership; synchronous supervisors
+    // observe the interrupt flag, while the CLI watchdog closes the outer host
+    // job if an asynchronous adapter does not unwind in time.
+    false
+}
+
+#[cfg(all(not(unix), not(windows)))]
 pub(crate) fn signal_process_group_id(_process_id: u32, _signal: ProcessSignal) -> bool {
     false
 }

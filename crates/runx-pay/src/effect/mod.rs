@@ -16,6 +16,7 @@ pub use finality::{
 
 pub const PAYMENT_EFFECT_FAMILY: &str = "payment";
 pub const INFERENCE_EFFECT_FAMILY: &str = "inference";
+const PAYMENT_FULFILL_SKILL: &str = "pay-fulfill-rail";
 
 #[derive(Clone)]
 pub struct PaymentRuntimeEffect {

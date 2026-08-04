@@ -11,13 +11,19 @@ Audit a sealed run for authority over-reach, binding the review to its native
 receipt identity and verification posture.
 
 Runx seals a receipt for every run. This skill resolves the exact receipt id
-through `ledger read`, then uses a bounded authority and act summary for details
-that native history deliberately does not hydrate. It answers one governance
+through `ledger read`, which returns the Rust-owned redacted detail projection
+for signed authority, acts, decisions, artifacts, lineage, and verification. It answers one governance
 question: did the run stay inside the authority it was granted? It flags scopes
 exercised that were never granted, mutating acts that ran without an approval
 gate, refusals that were not recorded, and any raw secret material that leaked
 into the receipt. It pairs with `least-privilege`: that one narrows a
 grant from usage, this one verifies a run honored its grant.
+
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `ledger#read`
 
 ## What this skill does
 
@@ -73,9 +79,9 @@ grant from usage, this one verifies a run honored its grant.
 
 ## Procedure
 
-1. Resolve `receipt_id` through the native ledger and verify the matched tree
-   when keys are available. Use the provided sanitized `receipt_summary` for
-   detailed authority and act evidence.
+1. Resolve `receipt_id` through the native ledger, load its native redacted
+   detail, and verify the matched tree when keys are available. Treat a provided
+   `receipt_summary` as supplemental context, never the primary live evidence.
 2. Extract the authority proof, granted scopes, acts, approvals, refusals,
    material references, and receipt signature metadata.
 3. Normalize exercised scopes from the acts and compare them with the granted
@@ -125,11 +131,11 @@ A `clean` verdict requires zero `error` findings.
 
 ## Worked example
 
-A sealed run was granted `repo.read`. The receipt shows the acts exercised only
-`repo.read`, every act is an observation (no mutation), and material is
+A sealed run was granted `repo:read`. The receipt shows the acts exercised only
+`repo:read`, every act is an observation (no mutation), and material is
 referenced by hash. Exercised is a subset of granted, no mutation to gate, no
-exposure: `verdict: clean`. Had an act exercised `repo.write` while the proof
-granted only `repo.read`, that would raise `receipt.authority.over_reach` and a
+exposure: `verdict: clean`. Had an act exercised `repo:write` while the proof
+granted only `repo:read`, that would raise `receipt.authority.over_reach` and a
 `verdict: anomaly` with a recommendation to revoke the run's grant and
 investigate.
 
@@ -143,6 +149,19 @@ investigate.
 - `objective` (optional): operator intent that focuses the audit.
 - `receipt_rows` (optional): native-projection rows for deterministic replay;
   live runs resolve `receipt_id` from the configured receipt store.
+- `receipt_details` (optional): native redacted detail projections for
+  deterministic replay only.
 
 At least one of `receipt_id` or `receipt_summary` is required; with neither, the
 skill returns `needs_more_evidence`.
+
+## Agent task contracts
+
+### `audit-receipt`
+
+Audit one run for authority over-reach, ungated mutation, unrecorded refusal, or exposed
+material. Native ledger evidence proves receipt identity, verification posture, signed
+authority, decisions, acts, artifacts, and lineage through its redacted detail projection. Treat
+receipt_summary and granted_scopes as supplemental operator context only. If a receipt id is not
+resolved, or native detail is insufficient, return needs_more_evidence rather than clean. Do not
+repair the skill or mutate the ledger.

@@ -4,7 +4,6 @@ target: ..
 runner: read_events
 inputs:
   data_source_ref: local://runx-data-store/read-events-fixture
-  store_id: data-store-read-local-events-v1
   resource: generic_events
   aggregate_id: item-1
   limit: 10

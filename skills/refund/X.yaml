@@ -1,5 +1,5 @@
 skill: refund
-version: "0.1.3"
+version: "0.3.1"
 catalog:
   kind: graph
   audience: operator
@@ -8,407 +8,168 @@ catalog:
   execution: plan
   completion: plan
   requires_adapter: false
-  approval: required
+  approval: none
+input_definitions:
+  original_receipt_ref:
+    type: string
+    required: true
+    description: Opaque sealed charge receipt reference.
+    schema: { minLength: 1, maxLength: 512, pattern: '^\S+$' }
+  refund_request:
+    type: json
+    packet: runx.payment.refund_request.v1
+    required: true
+    description: Positive minor-unit amount, bounded reason, and optional recorded payer check.
+  parent_payment_authority:
+    type: json
+    packet: runx.authority_term.v1
+    required: true
+    description: Full typed parent refund AuthorityTerm; a reference alone is refused.
 runners:
   mock:
     default: true
     type: graph
     inputs:
       original_receipt_ref:
-        type: string
-        required: true
-        description: Linked sealed charge receipt reference.
-      original_receipt:
-        type: object
-        required: true
-        description: Redacted original charge receipt summary.
+        definition: original_receipt_ref
       refund_request:
-        type: object
-        required: true
-        description: Requested amount and reason.
+        definition: refund_request
       parent_payment_authority:
-        type: object
-        required: true
-        description: Parent payment authority term or ref.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable refund idempotency seed.
+        definition: parent_payment_authority
+    examples:
+      - original_receipt_ref: receipt:charge:demo-001
+        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
+        parent_payment_authority:
+          term_id: refund-demo
+          principal_ref: { type: principal, uri: runx:principal:operator }
+          resource_ref: { type: target, uri: payer:demo }
+          resource_family: effect
+          verbs: [reverse]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels: [mock, mpp, stripe]
+                realm: test
+                peer: payer:demo
+                operation: refund
+                authorization_form: single_use_capability
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          issued_by_ref: { type: grant, uri: runx:grant:payment }
     graph:
-      name: refund
+      name: refund-mock-plan
+      result_from: [prepare]
       steps:
-        - id: quote
-          skill: graph/refund-quote
-          runner: quote
-          scopes:
-            - payment:quote
-            - payment:refund
+        - id: prepare
+          tool: payment.refund_plan
           inputs:
-            original_receipt_ref: "$input.original_receipt_ref"
-            original_receipt: "$input.original_receipt"
-            refund_request: "$input.refund_request"
-        - id: reserve
-          skill: graph/refund-reserve
-          runner: reserve
-          scopes:
-            - payment:refund
-          mutation: true
-          idempotency_key: refund-reserve
-          inputs:
-            parent_payment_authority: "$input.parent_payment_authority"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
-          context:
-            refund_quote_packet: quote.refund_quote_packet.data
-        - id: approve-refund
-          run:
-            type: approval
-          inputs:
-            gate_id: refund.mock.approval
-            reason: Approve the linked refund reservation before settlement.
-          context:
-            refund_decision: reserve.refund_reservation_packet.data.payment_decision
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-          artifacts:
-            wrap_as: refund_approval
-        - id: settlement
-          run:
-            type: agent-task
-            agent: operator
-            task: settlement
-            outputs:
-              refund_closure: object
-              refund_proof: object
-              refund_receipt_ref: string
-          inputs:
+            original_receipt_ref: $input.original_receipt_ref
+            refund_request: $input.refund_request
             settlement_family: mock
-          context:
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-            reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
-          artifacts:
-            wrap_as: refund_rail_packet
-            packet: runx.refund.evidence.v1
-      policy:
-        guards:
-          - step: settlement
-            field: approve-refund.refund_approval.data.approved
-            equals: true
-    runx:
-      payment_authority:
-        direction: provider_refund
-        phase: graph
-        resource_family: effect
-        settlement_family: mock
-        requires_original_receipt_ref: true
-        same_family_required: true
-        runtime_refund_enabled: false
-  accept:
-    default: false
-    type: graph
-    act:
-      purpose: Settle a governed refund within the requested authority ceiling.
-      mint_authority:
-        source: requested_scope
-      requested_scope_from: requested_scope
-    inputs:
-      requested_scope:
-        type: object
-        required: true
-        description: Requested authority ceiling (AttenuationRequest) the refund must stay within. It is both the reservation ceiling quote/reserve narrow from and the subject the runtime mints the child grant from against the charter.
-      charter:
-        type: object
-        required: true
-        description: Parent charter authority term the requested ceiling attenuates from.
-      original_receipt_ref:
-        type: string
-        required: true
-        description: Linked sealed charge receipt reference.
-      original_receipt:
-        type: object
-        required: true
-        description: Redacted original charge receipt summary.
-      refund_request:
-        type: object
-        required: true
-        description: Requested amount and reason.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable refund idempotency seed.
-    graph:
-      name: refund
-      charter_from: charter
-      steps:
-        - id: quote
-          skill: graph/refund-quote
-          runner: quote
-          scopes:
-            - payment:quote
-            - payment:refund
-          inputs:
-            original_receipt_ref: "$input.original_receipt_ref"
-            original_receipt: "$input.original_receipt"
-            refund_request: "$input.refund_request"
-        - id: reserve
-          skill: graph/refund-reserve
-          runner: reserve
-          scopes:
-            - payment:refund
-          mutation: true
-          idempotency_key: refund-reserve
-          inputs:
-            parent_payment_authority: "$input.requested_scope"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
-          context:
-            refund_quote_packet: quote.refund_quote_packet.data
-        - id: approve-refund
-          run:
-            type: approval
-          inputs:
-            gate_id: refund.accept.approval
-            reason: Approve the linked refund reservation before settlement.
-          context:
-            refund_decision: reserve.refund_reservation_packet.data.payment_decision
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-          artifacts:
-            wrap_as: refund_approval
-        - id: settlement
-          run:
-            type: agent-task
-            agent: operator
-            task: settlement
-            outputs:
-              refund_closure: object
-              refund_proof: object
-              refund_receipt_ref: string
-          inputs:
-            settlement_family: mock
-          context:
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-            reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
-          artifacts:
-            wrap_as: refund_rail_packet
-            packet: runx.refund.evidence.v1
-      policy:
-        guards:
-          - step: settlement
-            field: approve-refund.refund_approval.data.approved
-            equals: true
-    runx:
-      payment_authority:
-        direction: provider_refund
-        phase: graph
-        resource_family: effect
-        settlement_family: mock
-        requires_original_receipt_ref: true
-        same_family_required: true
-        runtime_refund_enabled: false
+            parent_payment_authority: $input.parent_payment_authority
   mpp:
     default: false
     type: graph
     inputs:
       original_receipt_ref:
-        type: string
-        required: true
-        description: Linked sealed charge receipt reference.
-      original_receipt:
-        type: object
-        required: true
-        description: Redacted original charge receipt summary.
+        definition: original_receipt_ref
       refund_request:
-        type: object
-        required: true
-        description: Requested amount and reason.
+        definition: refund_request
       parent_payment_authority:
-        type: object
-        required: true
-        description: Parent payment authority term or ref.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable refund idempotency seed.
+        definition: parent_payment_authority
+    examples:
+      - original_receipt_ref: receipt:charge:demo-001
+        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
+        parent_payment_authority:
+          term_id: refund-demo
+          principal_ref: { type: principal, uri: runx:principal:operator }
+          resource_ref: { type: target, uri: payer:demo }
+          resource_family: effect
+          verbs: [reverse]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels: [mock, mpp, stripe]
+                realm: test
+                peer: payer:demo
+                operation: refund
+                authorization_form: single_use_capability
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          issued_by_ref: { type: grant, uri: runx:grant:payment }
     graph:
-      name: refund
+      name: refund-mpp-plan
+      result_from: [prepare]
       steps:
-        - id: quote
-          skill: graph/refund-quote
-          runner: quote
-          scopes:
-            - payment:quote
-            - payment:refund
+        - id: prepare
+          tool: payment.refund_plan
           inputs:
-            original_receipt_ref: "$input.original_receipt_ref"
-            original_receipt: "$input.original_receipt"
-            refund_request: "$input.refund_request"
-        - id: reserve
-          skill: graph/refund-reserve
-          runner: reserve
-          scopes:
-            - payment:refund
-          mutation: true
-          idempotency_key: refund-reserve
-          inputs:
-            parent_payment_authority: "$input.parent_payment_authority"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
-          context:
-            refund_quote_packet: quote.refund_quote_packet.data
-        - id: approve-refund
-          run:
-            type: approval
-          inputs:
-            gate_id: refund.mpp.approval
-            reason: Approve the linked refund reservation before settlement.
-          context:
-            refund_decision: reserve.refund_reservation_packet.data.payment_decision
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-          artifacts:
-            wrap_as: refund_approval
-        - id: settlement
-          run:
-            type: agent-task
-            agent: operator
-            task: settlement
-            outputs:
-              refund_closure: object
-              refund_proof: object
-              refund_receipt_ref: string
-          inputs:
+            original_receipt_ref: $input.original_receipt_ref
+            refund_request: $input.refund_request
             settlement_family: mpp
-          context:
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-            reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
-          artifacts:
-            wrap_as: refund_rail_packet
-            packet: runx.refund.evidence.v1
-      policy:
-        guards:
-          - step: settlement
-            field: approve-refund.refund_approval.data.approved
-            equals: true
-    runx:
-      payment_authority:
-        direction: provider_refund
-        phase: graph
-        resource_family: effect
-        settlement_family: mpp
-        requires_original_receipt_ref: true
-        same_family_required: true
-        runtime_refund_enabled: false
+            parent_payment_authority: $input.parent_payment_authority
   stripe:
     default: false
     type: graph
     inputs:
       original_receipt_ref:
-        type: string
-        required: true
-        description: Linked sealed charge receipt reference.
-      original_receipt:
-        type: object
-        required: true
-        description: Redacted original charge receipt summary.
+        definition: original_receipt_ref
       refund_request:
-        type: object
-        required: true
-        description: Requested amount and reason.
+        definition: refund_request
       parent_payment_authority:
-        type: object
-        required: true
-        description: Parent payment authority term or ref.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable refund idempotency seed.
+        definition: parent_payment_authority
+    examples:
+      - original_receipt_ref: receipt:charge:demo-001
+        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
+        parent_payment_authority:
+          term_id: refund-demo
+          principal_ref: { type: principal, uri: runx:principal:operator }
+          resource_ref: { type: target, uri: payer:demo }
+          resource_family: effect
+          verbs: [reverse]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 125
+                max_per_run_units: 125
+                channels: [mock, mpp, stripe]
+                realm: test
+                peer: payer:demo
+                operation: refund
+                authorization_form: single_use_capability
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          issued_by_ref: { type: grant, uri: runx:grant:payment }
     graph:
-      name: refund
+      name: refund-stripe-plan
+      result_from: [prepare]
       steps:
-        - id: quote
-          skill: graph/refund-quote
-          runner: quote
-          scopes:
-            - payment:quote
-            - payment:refund
+        - id: prepare
+          tool: payment.refund_plan
           inputs:
-            original_receipt_ref: "$input.original_receipt_ref"
-            original_receipt: "$input.original_receipt"
-            refund_request: "$input.refund_request"
-        - id: reserve
-          skill: graph/refund-reserve
-          runner: reserve
-          scopes:
-            - payment:refund
-          mutation: true
-          idempotency_key: refund-reserve
-          inputs:
-            parent_payment_authority: "$input.parent_payment_authority"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
-          context:
-            refund_quote_packet: quote.refund_quote_packet.data
-        - id: approve-refund
-          run:
-            type: approval
-          inputs:
-            gate_id: refund.stripe.approval
-            reason: Approve the linked refund reservation before settlement.
-          context:
-            refund_decision: reserve.refund_reservation_packet.data.payment_decision
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-          artifacts:
-            wrap_as: refund_approval
-        - id: settlement
-          run:
-            type: agent-task
-            agent: operator
-            task: settlement
-            outputs:
-              refund_closure: object
-              refund_proof: object
-              refund_receipt_ref: string
-          inputs:
+            original_receipt_ref: $input.original_receipt_ref
+            refund_request: $input.refund_request
             settlement_family: stripe
-          context:
-            refund_reservation: reserve.refund_reservation_packet.data.reservation
-            refund_idempotency: reserve.refund_reservation_packet.data.idempotency
-            reserved_refund_authority: reserve.refund_reservation_packet.data.reserved_payment_authority
-          artifacts:
-            wrap_as: refund_rail_packet
-            packet: runx.refund.evidence.v1
-      policy:
-        guards:
-          - step: settlement
-            field: approve-refund.refund_approval.data.approved
-            equals: true
-    runx:
-      payment_authority:
-        direction: provider_refund
-        phase: graph
-        resource_family: effect
-        settlement_family: stripe
-        requires_original_receipt_ref: true
-        same_family_required: true
-        runtime_refund_enabled: false
+            parent_payment_authority: $input.parent_payment_authority

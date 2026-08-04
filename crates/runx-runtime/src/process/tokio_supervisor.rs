@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
+use std::io;
 use std::path::PathBuf;
-use std::process::Stdio;
+use std::process::{ExitStatus, Stdio};
 
 use thiserror::Error;
+use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TokioProcessSpec {
@@ -53,7 +55,13 @@ pub(crate) enum TokioProcessSupervisorError {
 
 pub(crate) fn spawn_tokio_process(
     spec: TokioProcessSpec,
-) -> Result<tokio::process::Child, TokioProcessSupervisorError> {
+) -> Result<OwnedTokioProcess, TokioProcessSupervisorError> {
+    super::ensure_windows_host_job().map_err(|source| TokioProcessSupervisorError::Spawn {
+        label: spec.label,
+        command: spec.command.clone(),
+        cwd: spec.cwd.display().to_string(),
+        source,
+    })?;
     let mut command = tokio::process::Command::new(&spec.command);
     command
         .args(&spec.args)
@@ -64,14 +72,12 @@ pub(crate) fn spawn_tokio_process(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     configure_process_group(&mut command);
-    command
-        .spawn()
-        .map_err(|source| TokioProcessSupervisorError::Spawn {
-            label: spec.label,
-            command: spec.command,
-            cwd: spec.cwd.display().to_string(),
-            source,
-        })
+    OwnedTokioProcess::spawn(command).map_err(|source| TokioProcessSupervisorError::Spawn {
+        label: spec.label,
+        command: spec.command,
+        cwd: spec.cwd.display().to_string(),
+        source,
+    })
 }
 
 #[cfg(unix)]
@@ -81,3 +87,80 @@ fn configure_process_group(command: &mut tokio::process::Command) {
 
 #[cfg(not(unix))]
 fn configure_process_group(_command: &mut tokio::process::Command) {}
+
+/// Owns one asynchronously supervised subprocess tree.
+///
+/// Unix gives every child a dedicated process group. Windows creates the child
+/// suspended, assigns it to a per-execution Job Object, and only then resumes
+/// it. The wrapper remains intact for the complete MCP session so timeout,
+/// reset, close, and drop retain tree ownership.
+pub(crate) struct OwnedTokioProcess {
+    #[cfg(not(windows))]
+    child: tokio::process::Child,
+    #[cfg(windows)]
+    child: Box<dyn process_wrap::tokio::ChildWrapper>,
+}
+
+impl OwnedTokioProcess {
+    fn spawn(command: tokio::process::Command) -> io::Result<Self> {
+        #[cfg(not(windows))]
+        {
+            let mut command = command;
+            command.spawn().map(|child| Self { child })
+        }
+
+        #[cfg(windows)]
+        {
+            use process_wrap::tokio::{CommandWrap, JobObject};
+
+            let mut wrapped = CommandWrap::from(command);
+            wrapped.wrap(JobObject);
+            wrapped.spawn().map(|child| Self { child })
+        }
+    }
+
+    pub(crate) fn id(&self) -> Option<u32> {
+        self.child.id()
+    }
+
+    pub(crate) fn take_stdin(&mut self) -> Option<ChildStdin> {
+        #[cfg(not(windows))]
+        {
+            self.child.stdin.take()
+        }
+        #[cfg(windows)]
+        {
+            self.child.stdin().take()
+        }
+    }
+
+    pub(crate) fn take_stdout(&mut self) -> Option<ChildStdout> {
+        #[cfg(not(windows))]
+        {
+            self.child.stdout.take()
+        }
+        #[cfg(windows)]
+        {
+            self.child.stdout().take()
+        }
+    }
+
+    pub(crate) fn take_stderr(&mut self) -> Option<ChildStderr> {
+        #[cfg(not(windows))]
+        {
+            self.child.stderr.take()
+        }
+        #[cfg(windows)]
+        {
+            self.child.stderr().take()
+        }
+    }
+
+    pub(crate) fn start_kill(&mut self) -> io::Result<()> {
+        self.child.start_kill()
+    }
+
+    pub(crate) async fn wait(&mut self) -> io::Result<ExitStatus> {
+        self.child.wait().await
+    }
+}

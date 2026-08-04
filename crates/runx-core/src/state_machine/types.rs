@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - state-machine parity wire types stay colocated so single-step and
+// Module rationale: state-machine parity wire types stay colocated so single-step and
 // sequential-graph serde surfaces are reviewed against the TS oracle together.
 use std::collections::BTreeMap;
 
@@ -133,14 +133,6 @@ impl StepAdmissionWitness {
             receipt_id: receipt_id.into(),
             authority: Some(authority),
         }
-    }
-
-    #[must_use]
-    pub fn matches_step_receipt(&self, step_id: &str, receipt_id: &str) -> bool {
-        !self.step_id.is_empty()
-            && !self.receipt_id.is_empty()
-            && self.step_id == step_id
-            && self.receipt_id == receipt_id
     }
 }
 
@@ -302,9 +294,7 @@ pub enum SequentialGraphEvent {
         at: String,
     },
     StepSucceeded {
-        step_id: String,
         at: String,
-        receipt_id: String,
         admission_witness: Box<StepAdmissionWitness>,
         #[serde(skip_serializing_if = "Option::is_none")]
         outputs: Option<JsonObject>,
@@ -331,6 +321,14 @@ pub enum SequentialGraphEvent {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FanoutBranchPlan {
+    pub step_id: String,
+    pub attempt: u32,
+    pub context_from: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
     rename_all = "snake_case",
@@ -344,9 +342,7 @@ pub enum SequentialGraphPlan {
     },
     RunFanout {
         group_id: String,
-        step_ids: Vec<String>,
-        attempts: BTreeMap<String, u32>,
-        context_from: BTreeMap<String, Vec<String>>,
+        branches: Vec<FanoutBranchPlan>,
     },
     Complete,
     Failed {

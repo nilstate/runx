@@ -1,101 +1,213 @@
-// rust-style-allow: large-file because deterministic dev tool execution keeps
-// manifest parsing, process environment construction, and expectation mapping
-// in one fixture-runner boundary.
+// Module rationale: deterministic dev tool fixtures prepare fixture-owned
+// inputs and expectations, then enter the same catalog dispatcher as live
+// graph and managed-agent calls.
+#[cfg(feature = "catalog")]
+use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::env;
-use std::ffi::OsString;
+#[cfg(feature = "catalog")]
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::Path;
+#[cfg(feature = "catalog")]
 use std::time::Instant;
 
-use runx_contracts::{
-    JsonObject, JsonValue, json_object_field as object_field, json_string_field as string_field,
-};
-use serde::Deserialize;
+#[cfg(feature = "catalog")]
+use runx_contracts::{JsonObject, JsonValue};
 
+#[cfg(feature = "catalog")]
 use super::r#loop::{
     assert_fixture_expectation, failed_fixture, prepare_fixture_workspace,
     resolve_fixture_execution_roots,
 };
+#[cfg(feature = "catalog")]
+use super::materialize::{materialize_fixture_string, materialize_fixture_value};
+#[cfg(feature = "catalog")]
 use super::support::elapsed_ms;
+use super::types::{DevError, DevFixtureResult, LoadedDevFixture};
+#[cfg(feature = "catalog")]
 use super::types::{
-    DevError, DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureExecutionRoots,
-    DevFixtureResult, DevFixtureStatus, ParsedDevFixture, PreparedDevFixtureWorkspace,
+    DevFixtureAssertion, DevFixtureAssertionKind, DevFixtureExecutionRoots, DevFixtureStatus,
+    PreparedDevFixtureWorkspace,
 };
+#[cfg(feature = "catalog")]
+use crate::tool_catalogs::{ToolCatalogError, ToolInspectOptions, resolve_local_tool};
 
 pub(super) fn run_tool_fixture(
     root: &Path,
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
+    base_env: &BTreeMap<String, String>,
+) -> Result<DevFixtureResult, DevError> {
+    #[cfg(not(feature = "catalog"))]
+    {
+        let _ = (root, fixture, base_env);
+        return Err(crate::RuntimeError::SkillFailed {
+            skill_name: "runx-dev".to_owned(),
+            message: "tool fixtures require the runx-runtime catalog feature".to_owned(),
+        }
+        .into());
+    }
+
+    #[cfg(feature = "catalog")]
+    {
+        run_tool_fixture_with_catalog(root, fixture, base_env)
+    }
+}
+
+#[cfg(feature = "catalog")]
+fn run_tool_fixture_with_catalog(
+    root: &Path,
+    fixture: &LoadedDevFixture,
+    base_env: &BTreeMap<String, String>,
 ) -> Result<DevFixtureResult, DevError> {
     let started = Instant::now();
-    let Some(reference) = string_field(&fixture.target, "ref") else {
-        return Ok(missing_tool_ref(fixture, started));
+    let reference = fixture.target().reference.as_str();
+    let resolution = match resolve_local_tool(&ToolInspectOptions {
+        root: root.to_path_buf(),
+        tool_ref: reference.to_owned(),
+        source: None,
+        search_from_directory: root.to_path_buf(),
+        tool_roots: vec![root.join("tools")],
+        fixture_catalog_enabled: false,
+        allow_explicit_manifest_path: false,
+    }) {
+        Ok(resolution) => resolution,
+        Err(ToolCatalogError::NotFound(_)) => {
+            return Ok(unknown_tool_ref(fixture, started, reference));
+        }
+        Err(error) => {
+            return Err(crate::RuntimeError::SkillFailed {
+                skill_name: "runx-dev".to_owned(),
+                message: error.to_string(),
+            }
+            .into());
+        }
     };
-    let Some(tool_dir) = resolve_tool_dir_from_ref(root, reference) else {
-        return Ok(unknown_tool_ref(fixture, started, reference));
-    };
-    let manifest = read_tool_manifest(&tool_dir.join("manifest.json"))?;
-    let workspace = prepare_fixture_workspace(root, &fixture.path, &fixture.document)?;
-    let result = run_tool_fixture_inner(root, fixture, &tool_dir, &manifest, &workspace, started);
+    let workspace =
+        prepare_fixture_workspace(root, &fixture.path, fixture.definition.workspace.as_ref())?;
+    let result = run_tool_fixture_inner(root, fixture, &resolution, &workspace, base_env, started);
     if let Some(workspace_root) = &workspace.root {
         let _ = fs::remove_dir_all(workspace_root);
     }
     result
 }
 
+#[cfg(feature = "catalog")]
 fn run_tool_fixture_inner(
     root: &Path,
-    fixture: &ParsedDevFixture,
-    tool_dir: &Path,
-    manifest: &RawToolManifest,
+    fixture: &LoadedDevFixture,
+    resolution: &crate::tool_catalogs::LocalToolResolution,
     workspace: &PreparedDevFixtureWorkspace,
+    base_env: &BTreeMap<String, String>,
     started: Instant,
 ) -> Result<DevFixtureResult, DevError> {
+    let tool_dir = resolution
+        .manifest_path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| root.to_path_buf());
     let Some(execution_roots) =
-        resolve_fixture_execution_roots(root, &fixture.lane, workspace.root.as_deref())
+        resolve_fixture_execution_roots(root, fixture.lane(), workspace.root.as_deref())
     else {
         return Ok(missing_execution_roots(fixture, started));
     };
-    let execution = run_process(
-        &manifest.command(),
-        &manifest.args(),
-        tool_dir,
-        tool_process_env(fixture, workspace, &execution_roots)?,
-    )?;
-    Ok(tool_result_from_execution(fixture, started, execution))
-}
-
-fn tool_process_env(
-    fixture: &ParsedDevFixture,
-    workspace: &PreparedDevFixtureWorkspace,
-    roots: &DevFixtureExecutionRoots,
-) -> Result<BTreeMap<OsString, OsString>, DevError> {
-    let fixture_env = materialize_fixture_env(fixture.document.get("env"), &workspace.tokens);
+    let env = tool_fixture_env(root, fixture, workspace, &execution_roots, base_env);
     let inputs = materialize_fixture_value(
-        object_field(&fixture.document, "inputs")
-            .map(|inputs| JsonValue::Object(inputs.clone()))
-            .unwrap_or_else(|| JsonValue::Object(JsonObject::new())),
+        JsonValue::Object(fixture.definition.inputs.clone()),
         &workspace.tokens,
     );
-    process_env(&fixture_env, &inputs, roots, workspace.root.as_deref())
+    let JsonValue::Object(inputs) = inputs else {
+        unreachable!("fixture inputs are always an object")
+    };
+    let credential_delivery = crate::credentials::CredentialDelivery::none();
+    let javascript = crate::adapters::javascript::JavaScriptAdapter::default();
+    let local_artifacts = crate::services::LocalArtifactService::default();
+    let mut output = crate::tool_catalogs::dispatch::dispatch_tool(
+        crate::tool_catalogs::dispatch::ToolDispatchRequest {
+            tool_ref: Cow::Borrowed(fixture.target().reference.as_str()),
+            inputs: Cow::Owned(inputs),
+            resolved_inputs: Cow::Owned(JsonObject::new()),
+            scopes: &resolution.tool.scopes,
+            env: &env,
+            skill_directory: &tool_dir,
+            credential_delivery: &credential_delivery,
+            local_artifacts: &local_artifacts,
+            javascript: &javascript,
+            skill_name: "runx-dev",
+            allow_explicit_manifest_path: false,
+            effect_admission: None,
+        },
+        &crate::effects::RuntimeEffectRegistry::empty(),
+        crate::time::DEFAULT_CREATED_AT,
+        started,
+    )?;
+    if output.succeeded() {
+        let verification = crate::output_contract::verified_output_metadata_with_artifacts(
+            "runx-dev",
+            &output.value,
+            None,
+            resolution.tool.artifacts.as_ref(),
+            &tool_dir,
+            &env,
+        )
+        .and_then(|metadata| {
+            crate::output_contract::attach_verified_metadata(&mut output, metadata)
+        });
+        if let Err(error) = verification {
+            output.reject(error.to_string());
+        }
+    }
+    Ok(tool_result_from_execution(fixture, started, output))
 }
 
-fn tool_result_from_execution(
-    fixture: &ParsedDevFixture,
-    started: Instant,
-    execution: ProcessResult,
-) -> DevFixtureResult {
-    let output = parse_json_maybe(&execution.stdout);
-    let assertions = assert_fixture_expectation(
-        fixture.document.get("expect"),
-        execution.exit_code,
-        output.as_ref(),
+#[cfg(feature = "catalog")]
+fn tool_fixture_env(
+    root: &Path,
+    fixture: &LoadedDevFixture,
+    workspace: &PreparedDevFixtureWorkspace,
+    roots: &DevFixtureExecutionRoots,
+    base_env: &BTreeMap<String, String>,
+) -> BTreeMap<String, String> {
+    let mut env = base_env.clone();
+    env.extend(materialize_fixture_env(
+        &fixture.definition.env,
+        &workspace.tokens,
+    ));
+    env.insert(
+        "RUNX_CWD".to_owned(),
+        roots.cwd.to_string_lossy().into_owned(),
     );
+    env.insert(
+        "RUNX_REPO_ROOT".to_owned(),
+        roots.repo_root.to_string_lossy().into_owned(),
+    );
+    env.insert(
+        "RUNX_TOOL_ROOTS".to_owned(),
+        root.join("tools").to_string_lossy().into_owned(),
+    );
+    if let Some(workspace_root) = &workspace.root {
+        env.insert(
+            "RUNX_FIXTURE_ROOT".to_owned(),
+            workspace_root.to_string_lossy().into_owned(),
+        );
+    }
+    env
+}
+
+#[cfg(feature = "catalog")]
+fn tool_result_from_execution(
+    fixture: &LoadedDevFixture,
+    started: Instant,
+    execution: crate::adapter::InvocationOutput,
+) -> DevFixtureResult {
+    let exit_code = execution
+        .exit_code()
+        .unwrap_or(if execution.succeeded() { 0 } else { 1 });
+    let output = Some(execution.value);
+    let assertions =
+        assert_fixture_expectation(&fixture.definition.expect, exit_code, output.as_ref());
     DevFixtureResult {
-        name: fixture.name.clone(),
-        lane: fixture.lane.clone(),
-        target: fixture.target.clone(),
+        name: fixture.name().to_owned(),
+        lane: fixture.lane().as_str().to_owned(),
+        target: fixture.target_json(),
         status: if assertions.is_empty() {
             DevFixtureStatus::Success
         } else {
@@ -109,22 +221,9 @@ fn tool_result_from_execution(
     }
 }
 
-fn missing_tool_ref(fixture: &ParsedDevFixture, started: Instant) -> DevFixtureResult {
-    failed_fixture(
-        fixture,
-        started,
-        vec![DevFixtureAssertion {
-            path: "target.ref".to_owned(),
-            expected: Some(JsonValue::String("existing tool".to_owned())),
-            actual: fixture.target.get("ref").cloned(),
-            kind: DevFixtureAssertionKind::ExactMismatch,
-            message: "Tool reference is required.".to_owned(),
-        }],
-    )
-}
-
+#[cfg(feature = "catalog")]
 fn unknown_tool_ref(
-    fixture: &ParsedDevFixture,
+    fixture: &LoadedDevFixture,
     started: Instant,
     reference: &str,
 ) -> DevFixtureResult {
@@ -141,7 +240,8 @@ fn unknown_tool_ref(
     )
 }
 
-fn missing_execution_roots(fixture: &ParsedDevFixture, started: Instant) -> DevFixtureResult {
+#[cfg(feature = "catalog")]
+fn missing_execution_roots(fixture: &LoadedDevFixture, started: Instant) -> DevFixtureResult {
     failed_fixture(
         fixture,
         started,
@@ -156,99 +256,18 @@ fn missing_execution_roots(fixture: &ParsedDevFixture, started: Instant) -> DevF
     )
 }
 
-fn resolve_tool_dir_from_ref(root: &Path, reference: &str) -> Option<PathBuf> {
-    let parts = reference.split('.').filter(|part| !part.is_empty());
-    let mut candidate = root.join("tools");
-    let mut count = 0;
-    for part in parts {
-        candidate.push(part);
-        count += 1;
-    }
-    (count >= 2 && candidate.join("manifest.json").exists()).then_some(candidate)
-}
-
-fn read_tool_manifest(path: &Path) -> Result<RawToolManifest, DevError> {
-    let contents = fs::read_to_string(path).map_err(|source| DevError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    serde_json::from_str(&contents).map_err(|source| DevError::Json {
-        path: path.to_path_buf(),
-        source,
-    })
-}
-
-fn run_process(
-    command: &str,
-    args: &[String],
-    cwd: &Path,
-    envs: BTreeMap<OsString, OsString>,
-) -> Result<ProcessResult, DevError> {
-    let output = Command::new(command)
-        .args(args)
-        .current_dir(cwd)
-        .env_clear()
-        .envs(envs)
-        .output()
-        .map_err(|source| DevError::Spawn {
-            command: command.to_owned(),
-            source,
-        })?;
-    Ok(ProcessResult {
-        exit_code: output.status.code().unwrap_or(1),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-    })
-}
-
-fn process_env(
-    fixture_env: &BTreeMap<String, String>,
-    inputs: &JsonValue,
-    roots: &DevFixtureExecutionRoots,
-    workspace_root: Option<&Path>,
-) -> Result<BTreeMap<OsString, OsString>, DevError> {
-    let mut envs: BTreeMap<OsString, OsString> = env::vars_os().collect();
-    for (key, value) in fixture_env {
-        envs.insert(OsString::from(key), OsString::from(value));
-    }
-    envs.insert(
-        OsString::from("RUNX_INPUTS_JSON"),
-        OsString::from(
-            serde_json::to_string(inputs).map_err(|source| DevError::Json {
-                path: PathBuf::from("RUNX_INPUTS_JSON"),
-                source,
-            })?,
-        ),
-    );
-    envs.insert(
-        OsString::from("RUNX_CWD"),
-        roots.cwd.as_os_str().to_os_string(),
-    );
-    envs.insert(
-        OsString::from("RUNX_REPO_ROOT"),
-        roots.repo_root.as_os_str().to_os_string(),
-    );
-    if let Some(workspace_root) = workspace_root {
-        envs.insert(
-            OsString::from("RUNX_FIXTURE_ROOT"),
-            workspace_root.as_os_str().to_os_string(),
-        );
-    }
-    Ok(envs)
-}
-
+#[cfg(feature = "catalog")]
 fn materialize_fixture_env(
-    value: Option<&JsonValue>,
+    object: &JsonObject,
     tokens: &BTreeMap<String, String>,
 ) -> BTreeMap<String, String> {
-    let Some(JsonValue::Object(object)) = value else {
-        return BTreeMap::new();
-    };
     object
         .iter()
         .filter_map(|(key, value)| materialize_env_entry(key, value, tokens))
         .collect()
 }
 
+#[cfg(feature = "catalog")]
 fn materialize_env_entry(
     key: &str,
     value: &JsonValue,
@@ -266,93 +285,7 @@ fn materialize_env_entry(
     }
 }
 
-pub(super) fn materialize_fixture_value(
-    value: JsonValue,
-    tokens: &BTreeMap<String, String>,
-) -> JsonValue {
-    match value {
-        JsonValue::String(value) => JsonValue::String(materialize_fixture_string(&value, tokens)),
-        JsonValue::Array(values) => JsonValue::Array(
-            values
-                .into_iter()
-                .map(|value| materialize_fixture_value(value, tokens))
-                .collect(),
-        ),
-        JsonValue::Object(object) => JsonValue::Object(
-            object
-                .into_iter()
-                .map(|(key, value)| (key, materialize_fixture_value(value, tokens)))
-                .collect(),
-        ),
-        other => other,
-    }
-}
-
-pub(super) fn materialize_fixture_string(value: &str, tokens: &BTreeMap<String, String>) -> String {
-    let mut resolved = value.to_owned();
-    for (key, replacement) in tokens {
-        resolved = resolved.replace(&format!("${key}"), replacement);
-        resolved = resolved.replace(&format!("${{{key}}}"), replacement);
-    }
-    resolved
-}
-
-fn parse_json_maybe(value: &str) -> Option<JsonValue> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Some(JsonValue::String(String::new()));
-    }
-    serde_json::from_str(trimmed)
-        .ok()
-        .or_else(|| Some(JsonValue::String(trimmed.to_owned())))
-}
-
+#[cfg(feature = "catalog")]
 fn json_display(value: &JsonValue) -> String {
     serde_json::to_string(value).unwrap_or_else(|_| "null".to_owned())
-}
-
-#[derive(Debug, Deserialize)]
-struct RawToolManifest {
-    #[serde(default)]
-    source: Option<RawToolCommand>,
-    #[serde(default)]
-    runtime: Option<RawToolCommand>,
-}
-
-impl RawToolManifest {
-    fn command(&self) -> String {
-        self.source
-            .as_ref()
-            .and_then(|source| source.command.clone())
-            .or_else(|| {
-                self.runtime
-                    .as_ref()
-                    .and_then(|runtime| runtime.command.clone())
-            })
-            .unwrap_or_else(|| "node".to_owned())
-    }
-
-    fn args(&self) -> Vec<String> {
-        self.source
-            .as_ref()
-            .and_then(|source| (!source.args.is_empty()).then(|| source.args.clone()))
-            .or_else(|| {
-                self.runtime
-                    .as_ref()
-                    .and_then(|runtime| (!runtime.args.is_empty()).then(|| runtime.args.clone()))
-            })
-            .unwrap_or_else(|| vec!["./run.mjs".to_owned()])
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct RawToolCommand {
-    command: Option<String>,
-    #[serde(default)]
-    args: Vec<String>,
-}
-
-struct ProcessResult {
-    exit_code: i32,
-    stdout: String,
 }

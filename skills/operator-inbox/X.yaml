@@ -1,5 +1,5 @@
 skill: operator-inbox
-version: "0.2.1"
+version: "0.2.4"
 
 catalog:
   kind: graph
@@ -45,6 +45,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-record-scan-page
+      result_from: [append]
       steps:
         - id: plan
           skill: ./graph/plan
@@ -74,9 +75,6 @@ runners:
       data_source_ref:
         type: string
         required: true
-      action_id:
-        type: string
-        required: true
       expected_version:
         type: number
         required: true
@@ -94,6 +92,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-record-action-observation
+      result_from: [append]
       steps:
         - id: plan
           skill: ./graph/plan
@@ -110,10 +109,10 @@ runners:
           inputs:
             data_source_ref: "$input.data_source_ref"
             resource: operator_inbox_actions
-            aggregate_id: "$input.action_id"
             expected_version: "$input.expected_version"
             observed_at: "$input.message.occurred_at"
           context:
+            aggregate_id: plan.transition.data.event.payload.action.action_id
             idempotency_key: plan.transition.data.idempotency_key
             event: plan.transition.data.event
 
@@ -121,9 +120,6 @@ runners:
     type: graph
     inputs:
       data_source_ref:
-        type: string
-        required: true
-      action_id:
         type: string
         required: true
       expected_version:
@@ -140,6 +136,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-record-disposition
+      result_from: [append]
       steps:
         - id: plan
           skill: ./graph/plan
@@ -155,10 +152,10 @@ runners:
           inputs:
             data_source_ref: "$input.data_source_ref"
             resource: operator_inbox_actions
-            aggregate_id: "$input.action_id"
             expected_version: "$input.expected_version"
             observed_at: "$input.observed_at"
           context:
+            aggregate_id: plan.transition.data.event.payload.action.action_id
             idempotency_key: plan.transition.data.idempotency_key
             event: plan.transition.data.event
 
@@ -166,9 +163,6 @@ runners:
     type: graph
     inputs:
       data_source_ref:
-        type: string
-        required: true
-      action_id:
         type: string
         required: true
       expected_version:
@@ -182,6 +176,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-import-action
+      result_from: [append]
       steps:
         - id: plan
           skill: ./graph/plan
@@ -196,10 +191,10 @@ runners:
           inputs:
             data_source_ref: "$input.data_source_ref"
             resource: operator_inbox_actions
-            aggregate_id: "$input.action_id"
             expected_version: "$input.expected_version"
             observed_at: "$input.action.latest_message.occurred_at"
           context:
+            aggregate_id: plan.transition.data.event.payload.action.action_id
             idempotency_key: plan.transition.data.idempotency_key
             event: plan.transition.data.event
 
@@ -214,6 +209,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-read-action
+      result_from: [read]
       steps:
         - id: read
           skill: ../data-store
@@ -235,6 +231,7 @@ runners:
         required: true
     graph:
       name: operator-inbox-read-scan
+      result_from: [read]
       steps:
         - id: read
           skill: ../data-store
@@ -263,6 +260,7 @@ runners:
         required: false
     graph:
       name: operator-inbox-list-actions
+      result_from: [read]
       steps:
         - id: read
           skill: ../data-store
@@ -286,6 +284,7 @@ runners:
         default: 1
     graph:
       name: operator-inbox-list-scans
+      result_from: [read]
       steps:
         - id: read
           skill: ../data-store

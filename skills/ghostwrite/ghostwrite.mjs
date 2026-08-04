@@ -1,0 +1,176 @@
+export function prepareEvidence(inputs) {
+  const objective = text(inputs.objective);
+  const audience = text(inputs.audience);
+  const channel = text(inputs.channel);
+  const evidence = unwrap(inputs.evidence_pack);
+  const blockers = [];
+
+  if (!objective) blockers.push("objective is missing");
+  if (!audience) blockers.push("audience is missing");
+  if (!channel) blockers.push("channel is missing");
+  if (evidence.decision !== "ready") blockers.push("evidence decision is not ready");
+  if (object(evidence.validation).status !== "pass") blockers.push("evidence validation did not pass");
+
+  const sourceEvidence = Array.isArray(evidence.source_evidence) ? evidence.source_evidence : [];
+  const sourceDigests = [...new Set(sourceEvidence.map((source) => text(source?.evidence_digest)).filter(isDigest))];
+  if (sourceDigests.length === 0) blockers.push("evidence has no source digests");
+  const evidenceLog = Array.isArray(evidence.evidence_log) ? evidence.evidence_log : [];
+  if (evidenceLog.length === 0) blockers.push("evidence log is empty");
+  for (const entry of evidenceLog) {
+    if (!sourceDigests.includes(text(entry?.source_digest))) {
+      blockers.push("evidence log cites an unknown source digest");
+    }
+  }
+
+  const writingContexts = [
+    admitWritingContext(inputs.brand_context, "brand_voice", inputs.brand_context_digest, blockers),
+    admitWritingContext(inputs.taste_context, "taste_profile", inputs.taste_context_digest, blockers),
+  ].filter(Boolean);
+
+  const evidencePacketDigest = text(inputs.evidence_packet_digest);
+  if (!isDigest(evidencePacketDigest)) blockers.push("native evidence packet digest is missing");
+
+  return {
+    evidence_context: {
+      decision: blockers.length === 0 ? "ready" : "needs_more_evidence",
+      objective,
+      audience,
+      channel,
+      evidence_packet_digest: evidencePacketDigest,
+      research_brief: object(evidence.research_brief),
+      evidence_log: evidenceLog,
+      decision_support: Array.isArray(evidence.decision_support) ? evidence.decision_support : [],
+      source_digests: sourceDigests,
+      writing_contexts: writingContexts,
+      blockers: [...new Set(blockers)],
+    },
+  };
+}
+
+export function prepareContent(inputs) {
+  const channel = text(inputs.channel);
+  const packet = unwrap(inputs.draft);
+  const draft = object(packet.draft);
+  const ready = Boolean(
+    channel
+      && packet.decision === "ready"
+      && object(packet.validation).status === "pass"
+      && text(draft.title)
+      && text(draft.body),
+  );
+  const payload = ready
+    ? { title: text(draft.title), body: text(draft.body) }
+    : { title: "", body: "" };
+  return {
+    publish_draft: {
+      decision: ready ? "ready_for_handoff" : "needs_input",
+      channel,
+      headline: payload.title,
+      body: payload.body,
+      evidence_binding: object(packet.evidence_binding),
+      delivery_status: "not_sent",
+      blockers: ready ? [] : ["validated ready draft and channel are required"],
+    },
+    digest_input: ready ? JSON.stringify({ channel, payload }) : "",
+    qa_checklist: ready
+      ? ["payload digest recorded", "evidence binding preserved", "provider delivery still pending"]
+      : [],
+    handoff_notes: {
+      next_action: ready ? "route through a governed provider delivery lane" : "repair draft inputs",
+      provider_delivery_required: true,
+    },
+  };
+}
+
+export function bindContent(inputs) {
+  const draft = object(inputs.publish_draft);
+  const digestResult = object(inputs.digest_result);
+  const ready = draft.decision === "ready_for_handoff";
+  const payloadDigest = text(digestResult.digest);
+  if (ready && !isDigest(payloadDigest)) throw new Error("native payload digest is missing");
+  return {
+    content_publish_packet: {
+      ...draft,
+      payload_digest: ready ? payloadDigest : "",
+    },
+    qa_checklist: Array.isArray(inputs.qa_checklist) ? inputs.qa_checklist : [],
+    handoff_notes: object(inputs.handoff_notes),
+  };
+}
+
+export function prepareHandoff(inputs) {
+  const channel = text(inputs.channel);
+  const boundaryKind = text(inputs.boundary_kind);
+  const packet = unwrap(inputs.packet);
+  const target = object(inputs.target);
+  const approval = object(inputs.approval);
+  const external = boundaryKind.startsWith("external") || !boundaryKind.startsWith("internal");
+  const ready = packet.decision === "ready_for_handoff"
+    && packet.delivery_status === "not_sent"
+    && channel
+    && Object.keys(target).length > 0;
+
+  return {
+    handoff_packet: {
+      decision: ready ? "handoff_ready" : "needs_input",
+      channel,
+      payload_digest: text(packet.payload_digest),
+      packet,
+      target,
+      delivery_status: "not_sent",
+      blockers: ready ? [] : ["ready publication packet, channel, and target are required"],
+    },
+    boundary_state: {
+      boundary_kind: boundaryKind,
+      completion_state: ready ? "handoff_ready" : "needs_input",
+      next_actor: ready ? "governed_provider_adapter" : "operator",
+      approval_required_for_delivery: external,
+      approval_present: approval.approved === true,
+      ack_expected: external,
+    },
+    follow_up_contract: {
+      retrigger_on: ["provider receipt", "provider refusal", "operator amendment"],
+      closure_rule: "close only after provider delivery readback or explicit retirement",
+    },
+  };
+}
+
+function admitWritingContext(raw, type, packetDigest, blockers) {
+  if (raw === undefined || raw === null) return null;
+  const packet = unwrap(raw);
+  if (packet.decision !== "ready" || object(packet.validation).status !== "pass") {
+    blockers.push(`${type} context is not ready and validated`);
+  }
+  const bindings = Array.isArray(object(packet.evidence).bindings) ? object(packet.evidence).bindings : [];
+  const rules = [...new Set(bindings.map((binding) => text(binding?.rule)).filter(Boolean))];
+  if (rules.length === 0) blockers.push(`${type} context has no bounded rules`);
+  const admittedDigest = text(packetDigest);
+  if (!isDigest(admittedDigest)) blockers.push(`${type} native context digest is missing`);
+  return {
+    type,
+    packet_digest: admittedDigest,
+    rules,
+    stop_conditions: strings(packet.stop_conditions),
+  };
+}
+
+function unwrap(value) {
+  const item = object(value);
+  return item.data && typeof item.data === "object" ? item.data : item;
+}
+
+function object(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function strings(value) {
+  return Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+}
+
+function isDigest(value) {
+  return /^sha256:[0-9a-f]{64}$/u.test(value);
+}

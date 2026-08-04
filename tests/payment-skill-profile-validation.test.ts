@@ -7,11 +7,42 @@ import { authorityTermSchema, contractSchemaMatches, validateContractSchemaForDi
 import { describe, expect, it } from "vitest";
 
 import {
-  type RunnerDefinition,
-  type ValidatedRunnerManifest as SkillRunnerManifest,
+  parsePacketSchemaDocumentsBatch,
   validateRunnerManifestYaml,
   validateSkillMarkdown,
-} from "./parser-eval.js";
+} from "../scripts/lib/native-parser.mjs";
+
+type SkillArtifactContract = {
+  readonly wrap_as?: string;
+  readonly packet?: string;
+  readonly packets?: Readonly<Record<string, string>>;
+};
+
+type GraphStep = {
+  readonly id: string;
+  readonly skill?: string;
+  readonly runner?: string;
+  readonly tool?: string;
+  readonly artifacts?: SkillArtifactContract;
+};
+
+type RunnerDefinition = {
+  readonly name: string;
+  readonly default: boolean;
+  readonly artifacts?: SkillArtifactContract;
+  readonly source: {
+    readonly graph?: {
+      readonly steps: readonly GraphStep[];
+      readonly policy?: { readonly guards?: readonly { readonly field: string }[] };
+    };
+  };
+};
+
+type SkillRunnerManifest = {
+  readonly skill?: string;
+  readonly runners: Readonly<Record<string, RunnerDefinition>>;
+  readonly raw: { readonly document: Record<string, unknown> };
+};
 
 const paymentSecretKeyPattern = /(?:^|_)(?:pan|cvv|cvc|card_number|cardnumber|account_number|routing_number|private_key|seed_phrase|mnemonic|secret_key|api_key|access_token|refresh_token|client_secret|merchant_secret|provider_secret|raw_secret|raw_token|bearer_token|password|credential_material|secret_material|key_material)(?:$|_)/i;
 const paymentSecretMetadataFields = new Set(["receives_rail_secret_material"]);
@@ -31,9 +62,6 @@ const paymentGraphStageNames = new Set([
   "pay-quote",
   "pay-recover",
   "pay-reserve",
-  "refund-quote",
-  "refund-recover",
-  "refund-reserve",
 ]);
 const retiredConsumerPaymentSkillNames = new Set([
   "payment-authorize-reserve",
@@ -61,23 +89,21 @@ const explicitGovernedPaymentSkillNames = new Set([
   "mpp-charge",
   "mpp-refund",
   "refund",
-  "refund-quote",
-  "refund-recover",
-  "refund-reserve",
   "stripe-charge",
   "stripe-refund",
   ...canonicalConsumerPaymentSkillNames,
 ]);
-const expectedChargePacketMetadata = new Map([
-  ["charge-price", { runner: "price", output: "charge_price_packet", packet: "runx.payment.charge_price.v1" }],
-  ["charge-challenge", { runner: "challenge", output: "charge_challenge_packet", packet: "runx.payment.charge_challenge.v1" }],
-  ["charge-verify", { runner: "verify", output: "charge_verification_packet", packet: "runx.payment.charge_verification.v1" }],
+const expectedChargeNativeTools = new Map([
+  ["charge-price", { runner: "price", tool: "payment.charge_price" }],
+  ["charge-challenge", { runner: "challenge", tool: "payment.charge_challenge" }],
+  ["charge-verify", { runner: "verify", tool: "payment.charge_verification_request" }],
 ]);
-const chargeGraphSkillNames = new Set(["charge"]);
 const canonicalPaymentStageRefs: Readonly<Record<string, readonly string[]>> = {
   charge: ["charge-price", "charge-challenge", "charge-verify"],
-  refund: ["refund-quote", "refund-reserve"],
   spend: ["pay-quote", "pay-reserve", "pay-fulfill-rail"],
+};
+const canonicalPaymentNativeTools: Readonly<Record<string, string>> = {
+  refund: "payment.refund_plan",
 };
 const canonicalPaymentDelegateRefs: Readonly<Record<string, string>> = {
   "mock-charge": "../charge",
@@ -118,13 +144,27 @@ describe("payment skill execution profiles", () => {
       for (const runner of graphRunners) {
         const steps = runner.source.graph?.steps ?? [];
         const graphRefs = steps.flatMap((step) => (step.skill?.startsWith("graph/") ? [step.skill] : []));
-        const expectedRefs = expectedStages.map((stage) => `graph/${stage}`);
+        const runnerStages = skillName === "spend" && runner.name === "plan"
+          ? ["pay-quote"]
+          : expectedStages;
+        const expectedRefs = runnerStages.map((stage) => `graph/${stage}`);
 
         expect(graphRefs, `${skillName}.${runner.name} canonical graph skill refs`).toEqual(expectedRefs);
-        for (const stage of expectedStages) {
-          expect(existsSync(path.resolve("skills", skillName, "graph", stage, "X.yaml")), `${skillName}/${stage}`).toBe(true);
-          expect(existsSync(path.resolve("skills", stage)), stage).toBe(false);
-        }
+      }
+      for (const stage of expectedStages) {
+        expect(existsSync(path.resolve("skills", skillName, "graph", stage, "X.yaml")), `${skillName}/${stage}`).toBe(true);
+        expect(existsSync(path.resolve("skills", stage)), stage).toBe(false);
+      }
+    }
+  });
+
+  it("keeps single-stage canonical payment roots on their native tool", async () => {
+    for (const [skillName, expectedTool] of Object.entries(canonicalPaymentNativeTools)) {
+      const manifest = parseRunnerManifest(await readFile(path.resolve("skills", skillName, "X.yaml"), "utf8"));
+      for (const runner of Object.values(manifest.runners)) {
+        const steps = runner.source.graph?.steps ?? [];
+        expect(steps, `${skillName}.${runner.name} native plan`).toHaveLength(1);
+        expect(steps[0]?.tool, `${skillName}.${runner.name} native tool`).toBe(expectedTool);
       }
     }
   });
@@ -155,7 +195,7 @@ describe("payment skill execution profiles", () => {
 
       const markdown = await readOptionalFile(path.join(skillDir, "SKILL.md"));
       if (markdown) {
-        const skill = validateSkillMarkdown(markdown, { mode: "strict" });
+        const skill = validateSkillMarkdown(markdown);
         expect(manifest.skill ?? skill.name, `${skill.name} profile skill binding`).toBe(skill.name);
 
         const version = buildPaymentRegistryFixtureVersion(markdown, {
@@ -181,16 +221,17 @@ describe("payment skill execution profiles", () => {
 
       expect(findRetiredReceiptFields(manifest.raw.document), `${skillName} retired receipt fields`).toEqual([]);
       expect(findInvalidPaymentAuthorityTerms(manifest.raw.document), `${skillName} payment authority term examples`).toEqual([]);
-      const expectedPacket = expectedChargePacketMetadata.get(skillName);
-      if (expectedPacket) {
-        const runner = manifest.runners[expectedPacket.runner];
-        expect(runner, `${skillName}.${expectedPacket.runner} runner`).toBeDefined();
-        const outputs = runner ? outputDeclarationsFromArtifacts(runner.raw) : {};
-        expect(outputs[expectedPacket.output]?.packet, `${skillName}.${expectedPacket.output} packet`).toBe(expectedPacket.packet);
+      const expectedNativeTool = expectedChargeNativeTools.get(skillName);
+      if (expectedNativeTool) {
+        const runner = manifest.runners[expectedNativeTool.runner];
+        expect(runner, `${skillName}.${expectedNativeTool.runner} runner`).toBeDefined();
+        const steps = runner?.source.graph?.steps ?? [];
+        expect(steps, `${skillName}.${expectedNativeTool.runner} native stage`).toHaveLength(1);
+        expect(steps[0]?.tool, `${skillName}.${expectedNativeTool.runner} native tool`).toBe(expectedNativeTool.tool);
       }
 
       for (const [runnerName, runner] of Object.entries(manifest.runners)) {
-        expect(findUnknownPacketRefs(runner.raw, packetIds), `${skillName}.${runnerName} payment packet refs`).toEqual([]);
+        expect(findUnknownPacketRefs(runner.artifacts, packetIds), `${skillName}.${runnerName} payment packet refs`).toEqual([]);
         const graph = runner.source.graph;
         if (!graph) {
           continue;
@@ -203,11 +244,6 @@ describe("payment skill execution profiles", () => {
           }
           outputDeclarations.set(step.id, await loadStepOutputDeclarations(skillDir, step));
         }
-        if (chargeGraphSkillNames.has(skillName)) {
-          expect(outputDeclarations.get("seal")?.charge_seal?.packet, `${skillName}.${runnerName}.seal packet`)
-            .toBe("runx.payment.charge_seal.v1");
-        }
-
         for (const guard of graph.policy?.guards ?? []) {
           const result = validateGraphFieldReference(guard.field, outputDeclarations, packetIds);
           expect(result, `${skillName}.${runnerName} guard ${guard.field}`).toBeUndefined();
@@ -247,7 +283,6 @@ describe("payment skill execution profiles", () => {
 
 interface OutputDeclaration {
   readonly packet?: string;
-  readonly packetDataShape: "payload" | "packet";
 }
 
 async function discoverPaymentSkillDirs(): Promise<readonly string[]> {
@@ -375,15 +410,16 @@ function findUnknownPacketRefs(value: unknown, packetIds: ReadonlySet<string>, p
 async function loadDeclaredPacketIds(): Promise<ReadonlySet<string>> {
   const packetDir = path.resolve("dist", "packets");
   const entries = await readdir(packetDir, { withFileTypes: true });
-  const ids = await Promise.all(
-    entries
-      .filter((entry) => entry.isFile() && entry.name.startsWith("payment.") && entry.name.endsWith(".schema.json"))
-      .map(async (entry) => {
-        const schema = JSON.parse(await readFile(path.join(packetDir, entry.name), "utf8")) as unknown;
-        return isRecord(schema) && typeof schema["x-runx-packet-id"] === "string" ? schema["x-runx-packet-id"] : undefined;
-      }),
+  const documents = await Promise.all(entries
+    .filter((entry) => entry.isFile() && entry.name.startsWith("payment.") && entry.name.endsWith(".schema.json"))
+    .map(async (entry) => ({
+      path: path.join("dist", "packets", entry.name),
+      source: await readFile(path.join(packetDir, entry.name), "utf8"),
+    })));
+  return new Set(
+    (parsePacketSchemaDocumentsBatch(documents) as Array<{ readonly packetId: string } | undefined>)
+      .flatMap((schema) => schema ? [schema.packetId] : []),
   );
-  return new Set(ids.filter((id): id is string => id !== undefined));
 }
 
 async function loadNestedRunner(
@@ -402,27 +438,29 @@ async function loadNestedRunner(
 
 async function loadStepOutputDeclarations(
   skillDir: string,
-  step: { readonly skill?: string; readonly run?: Readonly<Record<string, unknown>>; readonly runner?: string; readonly artifacts?: Readonly<Record<string, unknown>> },
+  step: GraphStep,
 ): Promise<Readonly<Record<string, OutputDeclaration>>> {
   if (step.skill) {
     const nested = await loadNestedRunner(skillDir, step.skill, step.runner);
-    return nested.runner ? outputDeclarationsFromArtifacts(nested.runner.raw) : {};
+    return nested.runner
+      ? outputDeclarationsFromArtifacts(nested.runner.artifacts)
+      : {};
   }
-  return outputDeclarationsFromArtifacts({ ...(step.run ?? {}), artifacts: step.artifacts });
+  return outputDeclarationsFromArtifacts(step.artifacts);
 }
 
-function outputDeclarationsFromArtifacts(raw: Readonly<Record<string, unknown>>): Readonly<Record<string, OutputDeclaration>> {
-  const artifacts = isRecord(raw.artifacts) ? raw.artifacts : {};
-  const wrapAs = typeof artifacts.wrap_as === "string" ? artifacts.wrap_as : undefined;
-  if (!wrapAs) {
-    return {};
+function outputDeclarationsFromArtifacts(
+  artifacts: SkillArtifactContract | undefined,
+): Readonly<Record<string, OutputDeclaration>> {
+  const declarations: Record<string, OutputDeclaration> = {};
+  const wrapAs = artifacts?.wrap_as;
+  if (wrapAs) {
+    declarations[wrapAs] = { packet: artifacts?.packet };
   }
-  return {
-    [wrapAs]: {
-      packet: typeof artifacts.packet === "string" ? artifacts.packet : undefined,
-      packetDataShape: "payload",
-    },
-  };
+  for (const [name, packet] of Object.entries(artifacts?.packets ?? {})) {
+    declarations[name] = { packet };
+  }
+  return declarations;
 }
 
 function validateGraphFieldReference(
@@ -445,7 +483,7 @@ function validateGraphFieldReference(
   if (declaration.packet?.startsWith("runx.payment.") && !packetIds.has(declaration.packet)) {
     return `unknown packet ${declaration.packet}`;
   }
-  if (declaration.packet === "runx.payment.approval.v1" && payloadPath[0] !== "approved") {
+  if (declaration.packet === "runx.approval.decision.v1" && payloadPath[0] !== "approved") {
     return `approval transition must read approved from ${stepId}.${outputName}.data.approved`;
   }
   return undefined;
@@ -471,7 +509,7 @@ function buildPaymentRegistryFixtureVersion(
   readonly profile_digest: string;
   readonly runner_names: readonly string[];
 } {
-  const skill = validateSkillMarkdown(markdown, { mode: "strict" });
+  const skill = validateSkillMarkdown(markdown);
   const manifest = parseRunnerManifest(options.profileDocument);
 
   expect(manifest.skill ?? skill.name, `${skill.name} profile skill binding`).toBe(skill.name);

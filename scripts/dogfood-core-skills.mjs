@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { generateKeyPairSync, sign } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
-  readdirSync,
-  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -14,6 +11,11 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  createRegistryTestSigningKey,
+  signSingleRegistryVersion,
+} from "./lib/registry-test-signing.mjs";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
@@ -28,7 +30,7 @@ const rustKernelBin = path.join(
 );
 const dogfoodEnv = {
   ...process.env,
-  RUNX_KERNEL_EVAL_BIN: rustKernelBin,
+  RUNX_RUST_CLI_BIN: rustKernelBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "runx-dogfood-test-key",
   RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
     process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64 ?? "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
@@ -43,24 +45,34 @@ if (registryResolverOnly) {
 
 const steps = [
   {
-    label: "build rust kernel eval binary",
+    label: "build rust kernel and JavaScript worker",
     command: cargo,
-    args: ["build", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--bin", "runx"],
+    args: [
+      "build",
+      "--quiet",
+      "--manifest-path",
+      "crates/Cargo.toml",
+      "-p",
+      "runx-cli",
+      "-p",
+      "runx-js-worker",
+      "--bins",
+    ],
   },
   {
     label: "prove rust payment runtime",
     command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-runtime", "--test", "payment_execution"],
+    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-pay", "--test", "integration", "--", "execution"],
   },
   {
     label: "prove rust Stripe SPT payment runtime",
     command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-runtime", "--test", "stripe_spt_payment"],
+    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-pay", "--test", "integration", "--", "stripe_spt"],
   },
   {
     label: "prove native x402 mock dogfood CLI",
     command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--test", "x402_native_dogfood"],
+    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--test", "integration", "--", "x402_native_dogfood"],
   },
   {
     label: "build workspace packages",
@@ -78,9 +90,14 @@ const steps = [
     args: ["exec", "vitest", "run", "tests/payment-skill-profile-validation.test.ts"],
   },
   {
-    label: "prove official skills with a fresh caller",
-    command: pnpm,
-    args: ["exec", "vitest", "run", "tests/external-skill-proving-ground.test.ts"],
+    label: "prove official skills with a fresh isolated caller",
+    command: process.execPath,
+    args: [
+      "scripts/harness-sweep.mjs",
+      "--no-build",
+      "--runx-bin",
+      rustKernelBin,
+    ],
   },
 ];
 
@@ -100,9 +117,19 @@ for (const step of steps) {
 
 function runRegistryResolverDogfood() {
   runStep({
-    label: "build native runx binary",
+    label: "build native runx and JavaScript worker",
     command: cargo,
-    args: ["build", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--bin", "runx"],
+    args: [
+      "build",
+      "--quiet",
+      "--manifest-path",
+      "crates/Cargo.toml",
+      "-p",
+      "runx-cli",
+      "-p",
+      "runx-js-worker",
+      "--bins",
+    ],
   });
 
   const root = mkdtempSync(path.join(os.tmpdir(), "runx-registry-dogfood-"));
@@ -113,11 +140,30 @@ function runRegistryResolverDogfood() {
     writeFileSync(skillDirPath(skillDir, "SKILL.md"), "---\nname: echo\n---\n# Echo\n", "utf8");
     writeFileSync(
       skillDirPath(skillDir, "X.yaml"),
-      "skill: echo\nrunners:\n  default:\n    type: agent\n    default: true\n",
+      [
+        "skill: echo",
+        "harness:",
+        "  cases:",
+        "    - name: registry-agent-boundary",
+        "      runner: default",
+        "      expect: { status: needs_agent }",
+        "runners:",
+        "  default:",
+        "    type: agent",
+        "    default: true",
+        "    agent: fixture",
+        "    task: echo",
+        "    outputs:",
+        "      result: object",
+        "",
+      ].join("\n"),
       "utf8",
     );
 
-    const signingKey = testManifestSigningKey();
+    const signingKey = createRegistryTestSigningKey({
+      keyId: "runx-dogfood-registry-ed25519",
+      signerId: "runx-dogfood-registry",
+    });
     const env = {
       ...dogfoodEnv,
       RUNX_HOME: path.join(root, "home"),
@@ -143,7 +189,7 @@ function runRegistryResolverDogfood() {
       ],
       env,
     });
-    signPublishedRegistryEntry(registryDir, signingKey);
+    signSingleRegistryVersion(registryDir, signingKey);
 
     const result = spawnSync(
       rustKernelBin,
@@ -196,64 +242,4 @@ function runStep(step) {
 
 function skillDirPath(skillDir, file) {
   return path.join(skillDir, file);
-}
-
-function testManifestSigningKey() {
-  const keyPair = generateKeyPairSync("ed25519");
-  const publicKeyDer = keyPair.publicKey.export({ format: "der", type: "spki" });
-  return {
-    keyId: "runx-dogfood-registry-ed25519",
-    signerId: "runx-dogfood-registry",
-    publicKeyBase64: Buffer.from(publicKeyDer).subarray(-32).toString("base64"),
-    privateKey: keyPair.privateKey,
-  };
-}
-
-function signPublishedRegistryEntry(registryDir, signingKey) {
-  const entryPath = findSingleRegistryEntry(registryDir);
-  const entry = JSON.parse(readFileSync(entryPath, "utf8"));
-  const payload =
-    "runx.registry.signed_manifest.v1\n" +
-    `skill_id=${entry.skill_id}\n` +
-    `version=${entry.version}\n` +
-    `digest=${entry.digest}\n` +
-    `profile_digest=${entry.profile_digest ?? ""}\n` +
-    `signer_id=${signingKey.signerId}\n` +
-    `key_id=${signingKey.keyId}\n`;
-  entry.signed_manifest = {
-    schema: "runx.registry.signed_manifest.v1",
-    skill_id: entry.skill_id,
-    version: entry.version,
-    digest: entry.digest,
-    ...(entry.profile_digest ? { profile_digest: entry.profile_digest } : {}),
-    signer: {
-      id: signingKey.signerId,
-      key_id: signingKey.keyId,
-    },
-    signature: {
-      alg: "ed25519",
-      value: `base64:${sign(null, Buffer.from(payload), signingKey.privateKey).toString("base64")}`,
-    },
-  };
-  writeFileSync(entryPath, `${JSON.stringify(entry, null, 2)}\n`, "utf8");
-}
-
-function findSingleRegistryEntry(root) {
-  const matches = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir)) {
-      const entryPath = path.join(dir, entry);
-      const stats = statSync(entryPath);
-      if (stats.isDirectory()) {
-        walk(entryPath);
-      } else if (entryPath.endsWith(".json")) {
-        matches.push(entryPath);
-      }
-    }
-  };
-  walk(root);
-  if (matches.length !== 1) {
-    throw new Error(`expected one registry fixture entry, found ${matches.length}`);
-  }
-  return matches[0];
 }

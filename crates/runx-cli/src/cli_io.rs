@@ -1,11 +1,5 @@
-use std::collections::BTreeMap;
-use std::env;
 use std::io::{self, Write};
 use std::process::ExitCode;
-
-pub(crate) fn env_map() -> BTreeMap<String, String> {
-    env::vars().collect()
-}
 
 pub(crate) fn write_stdout(message: &str) -> io::Result<()> {
     let stdout = io::stdout();

@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because payment rail proof schemas, claim
+// Module rationale: payment rail proof schemas, claim
 // validation, evidence metadata, and receipt binding share one audited payment
 // trust boundary.
 use runx_contracts::{
@@ -86,7 +86,7 @@ pub struct PaymentSupervisorProofMatch<'a> {
     pub receipt_digest: &'a str,
 }
 
-// rust-style-allow: long-function because finality supervisor evidence is one
+// Function rationale: finality supervisor evidence is one
 // flat wire payload assembled from a strongly typed settlement record.
 pub fn payment_finality_supervisor_evidence_payload(
     evidence: &PaymentSupervisorSettlementEvidence,
@@ -456,64 +456,6 @@ pub fn payment_supervisor_proof_reference(proof: &PaymentSupervisorProof) -> Ref
         observed_at: None,
         proof_kind: Some(ProofKind::EffectEvidence),
     }
-}
-
-/// Re-bind a stored supervisor proof to a receipt whose digest changed after the
-/// proof was created. Sealing a step receipt into a graph re-seals it with the
-/// parent harness ref, which changes its body digest; rebuilding the proof from
-/// the stored evidence keeps `receipt_ref`, `receipt_digest`, and
-/// `evidence_digest` consistent with the final sealed receipt. No-op when the
-/// step output carries no supervisor proof.
-pub fn rebind_supervisor_proof_to_receipt(
-    metadata: &mut JsonObject,
-    receipt: &Receipt,
-) -> Result<(), PaymentSupervisorError> {
-    let Some(proof) = payment_supervisor_proof_from_metadata(metadata)? else {
-        return Ok(());
-    };
-    let Some(evidence) = payment_supervisor_evidence_from_metadata(metadata)? else {
-        return Ok(());
-    };
-    // The stored evidence must still hash to the digest sealed in the existing
-    // proof; rebinding may only change the receipt binding, never re-bless
-    // evidence that was altered after issuance.
-    let issued_digest = supervisor_evidence_digest(
-        &evidence,
-        PaymentSupervisorProofMatch {
-            proof_ref: &proof.proof_ref,
-            rail: &proof.rail,
-            counterparty: &proof.counterparty,
-            amount_minor: proof.amount_minor,
-            currency: &proof.currency,
-            idempotency_key: &proof.idempotency_key,
-            spend_capability_ref: &proof.spend_capability_ref,
-            act_id: &proof.act_id,
-            receipt_ref: &proof.receipt_ref,
-            receipt_digest: &proof.receipt_digest,
-        },
-    )?;
-    if issued_digest != proof.evidence_digest {
-        return Err(PaymentSupervisorError::InvalidSupervisorProof {
-            message: "stored supervisor evidence does not match the sealed evidence_digest"
-                .to_owned(),
-        });
-    }
-    let rebound = build_payment_supervisor_proof(
-        &evidence,
-        PaymentSupervisorProofMatch {
-            proof_ref: &proof.proof_ref,
-            rail: &proof.rail,
-            counterparty: &proof.counterparty,
-            amount_minor: proof.amount_minor,
-            currency: &proof.currency,
-            idempotency_key: &proof.idempotency_key,
-            spend_capability_ref: &proof.spend_capability_ref,
-            act_id: &proof.act_id,
-            receipt_ref: &receipt.id,
-            receipt_digest: &receipt.digest,
-        },
-    )?;
-    insert_payment_supervisor_proof_metadata(metadata, &rebound)
 }
 
 pub fn payment_supervisor_proof_metadata_value(

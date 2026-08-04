@@ -1,0 +1,15 @@
+name: issue-triage-preserves-mcp-read-pattern
+kind: skill
+target: ..
+runner: mcp-read
+env:
+  RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-issue-triage-read
+  RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["repo.read"]'
+inputs:
+  repository: runxhq/runx
+  issue_number: "241"
+expect:
+  status: sealed
+  steps: [read_issue]
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: issue-triage, source_case: deterministic-mcp-read, source: skills-fixture }

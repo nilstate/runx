@@ -8,21 +8,83 @@ inputs:
   target_dir: skills/example
 caller:
   answers:
-    agent_task.skill-lab-harness.output:
-      change_bundle:
+    agent_task.skill-lab-architecture.output:
+      architecture_decision:
+        schema: runx.skill.architecture_decision.v1
+        disposition: extend_existing
+        objective: Decide whether a vague report justifies a new regression fixture.
+        operator_value: Keep the harness evidence-bound and free of invented failures.
+        knowledge_contract:
+          purpose: Add only fixtures that reproduce a named public behavior boundary.
+          evidence_required:
+            - Reproducible inputs and an expected public outcome.
+          decision_logic:
+            - Leave fixtures unchanged when the report cannot define a replay.
+          stop_conditions:
+            - Stop when no reproducible behavior was supplied.
+          recovery:
+            - Resume with focused inputs and an expected result.
+        required_behaviors:
+          - id: fixture-evidence-gate
+            outcome: Refuse speculative fixture changes.
+            lane: manual
+        native_reuse:
+          inspected_capabilities:
+            - runx.skill.inspect
+            - runx.skill.plan
+            - runx.skill.bind
+            - runx.skill.apply
+          selected_capabilities: []
+          missing_capabilities: []
+        effects:
+          - effect: none
+            authority_scopes: []
+            approval: none
+            provider_boundary: false
+        skill_chain:
+          context_skills: []
+          routes: []
+        resource_budget:
+          max_files: 0
+          max_executable_lines: 0
+          max_fanout: 0
+          max_process_spawns: 0
+          network_allowed: false
+        preservation_obligations:
+          - Preserve every existing fixture and production file.
+        deletions: []
+        proof_plan:
+          - name: vague-report-no-change
+            kind: harness
+            expected: The harness runner performs no filesystem mutation.
+    agent_task.skill-lab-author.output:
+      change_draft:
+        schema: runx.skill.change_draft.v1
         decision: no_change
         summary: No reproducible behavior or harness output was supplied.
         non_goals:
           - Do not invent a regression case.
-        files: []
+        writes: []
+        deletes: []
+        expected_outputs: []
 expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
   steps:
     - inspect
-    - author-fixtures
-    - prepare
+    - architect
+    - plan
+    - author
+    - bind
+    - apply
+  step_outputs:
+    apply:
+      subset:
+        apply_result:
+          data:
+            decision: no_change
+            verdict: unchanged
 metadata:
   public_skill: skill-lab
   source_case: harness-no-change-skips-write

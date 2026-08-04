@@ -1,7 +1,7 @@
-// rust-style-allow: large-file because CLI runtime wiring binds payment
+// Module rationale: CLI runtime wiring binds payment
 // finality supervisor selection, external adapter translation, and receipt
 // metadata persistence at one audited command boundary.
-use std::env;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -30,25 +30,31 @@ pub const RUNX_PAYMENT_FINALITY_SUPERVISOR_MANIFEST_ENV: &str =
     "RUNX_PAYMENT_FINALITY_SUPERVISOR_MANIFEST";
 const PAYMENT_FINALITY_SUPERVISOR_SKILL_REF: &str = "runx/payment-finality-supervisor";
 
-#[must_use]
-pub fn local_orchestrator() -> LocalOrchestrator {
-    LocalOrchestrator::with_effects(payment_effect_registry())
+pub fn local_orchestrator(
+    env: &BTreeMap<String, String>,
+) -> Result<LocalOrchestrator, runx_runtime::RuntimeEffectError> {
+    payment_effect_registry(env)
+        .map(|effects| LocalOrchestrator::with_effects_and_environment(effects, env.clone()))
 }
 
-#[must_use]
-pub fn payment_effect_registry() -> RuntimeEffectRegistry {
+pub fn payment_effect_registry(
+    env: &BTreeMap<String, String>,
+) -> Result<RuntimeEffectRegistry, runx_runtime::RuntimeEffectError> {
     let mut registry = RuntimeEffectRegistry::with_effect(PaymentRuntimeEffect::new(
-        ConfiguredPaymentFinalitySupervisor::from_env(),
-    ));
-    let _ = registry.register_effect(ProviderPermissionEffect);
-    registry
+        ConfiguredPaymentFinalitySupervisor::from_env(env),
+    ))?;
+    registry.register_effect(ProviderPermissionEffect::default())?;
+    Ok(registry)
 }
 
-pub fn persist_payment_ledger_projection(output: &HarnessReplayOutput) -> Result<(), String> {
+pub fn persist_payment_ledger_projection(
+    output: &HarnessReplayOutput,
+    env: &BTreeMap<String, String>,
+) -> Result<(), String> {
     if metadata_string(output, "payment_ledger_profile") != Some(X402_PAY_PAYMENT_PROFILE) {
         return Ok(());
     }
-    let Some(receipt_dir) = env::var_os(RUNX_RECEIPT_DIR_ENV).map(PathBuf::from) else {
+    let Some(receipt_dir) = env.get(RUNX_RECEIPT_DIR_ENV).map(PathBuf::from) else {
         return Ok(());
     };
     let scenario_id = metadata_string(output, "payment_ledger_scenario_id")
@@ -83,12 +89,15 @@ enum ConfiguredPaymentFinalitySupervisor {
 }
 
 impl ConfiguredPaymentFinalitySupervisor {
-    fn from_env() -> Self {
-        let Some(path) = env::var_os(RUNX_PAYMENT_FINALITY_SUPERVISOR_MANIFEST_ENV) else {
+    fn from_env(env: &BTreeMap<String, String>) -> Self {
+        let Some(path) = env.get(RUNX_PAYMENT_FINALITY_SUPERVISOR_MANIFEST_ENV) else {
             return Self::Deterministic(DeterministicPaymentFinalitySupervisor);
         };
         let path = PathBuf::from(path);
-        match ExternalAdapterPaymentFinalitySupervisor::from_manifest_path(path.clone()) {
+        match ExternalAdapterPaymentFinalitySupervisor::from_manifest_path(
+            path.clone(),
+            env.clone(),
+        ) {
             Ok(supervisor) => Self::External(Box::new(supervisor)),
             Err(message) => Self::Unavailable(format!(
                 "{}={} is invalid: {message}",
@@ -117,23 +126,36 @@ impl PaymentFinalitySupervisor for ConfiguredPaymentFinalitySupervisor {
 struct ExternalAdapterPaymentFinalitySupervisor<S = ExternalAdapterProcessSupervisor> {
     manifest: ExternalAdapterManifest,
     supervisor: S,
+    environment: BTreeMap<String, String>,
 }
 
 impl ExternalAdapterPaymentFinalitySupervisor {
-    fn from_manifest_path(path: PathBuf) -> Result<Self, String> {
+    fn from_manifest_path(
+        path: PathBuf,
+        environment: BTreeMap<String, String>,
+    ) -> Result<Self, String> {
         let raw = fs::read_to_string(&path)
             .map_err(|source| format!("could not read manifest: {source}"))?;
         let manifest: ExternalAdapterManifest = serde_json::from_str(&raw)
             .map_err(|source| format!("manifest JSON is invalid: {source}"))?;
-        Ok(Self::new(manifest, ExternalAdapterProcessSupervisor))
+        Ok(Self::new(
+            manifest,
+            ExternalAdapterProcessSupervisor,
+            environment,
+        ))
     }
 }
 
 impl<S> ExternalAdapterPaymentFinalitySupervisor<S> {
-    fn new(manifest: ExternalAdapterManifest, supervisor: S) -> Self {
+    fn new(
+        manifest: ExternalAdapterManifest,
+        supervisor: S,
+        environment: BTreeMap<String, String>,
+    ) -> Self {
         Self {
             manifest,
             supervisor,
+            environment,
         }
     }
 }
@@ -146,10 +168,15 @@ where
         &self,
         request: PaymentFinalitySupervisorRequest<'_>,
     ) -> Result<PaymentFinalitySupervisorEvidence, PaymentFinalitySupervisorError> {
-        let invocation = payment_finality_invocation(&self.manifest, &request)?;
+        let invocation = payment_finality_invocation(&self.manifest, &request, &self.environment)?;
         let outcome = self
             .supervisor
-            .invoke_external_adapter(&self.manifest, &invocation, &CredentialDelivery::none())
+            .invoke_external_adapter(
+                &self.manifest,
+                &invocation,
+                &self.environment,
+                &CredentialDelivery::none(),
+            )
             .map_err(|source| PaymentFinalitySupervisorError::InvalidEvidence {
                 message: format!("external adapter payment finality supervisor failed: {source}"),
             })?;
@@ -169,6 +196,7 @@ where
 fn payment_finality_invocation(
     manifest: &ExternalAdapterManifest,
     request: &PaymentFinalitySupervisorRequest<'_>,
+    env: &BTreeMap<String, String>,
 ) -> Result<ExternalAdapterInvocation, PaymentFinalitySupervisorError> {
     let proof_ref = required_payload_string(&request.payload, "proof_ref")?;
     let invocation_id = format!("payment_finality.{}.invoke", identifier_segment(proof_ref));
@@ -191,12 +219,12 @@ fn payment_finality_invocation(
         host_ref: Reference::with_uri(ReferenceType::Host, "runx:host:cli"),
         inputs,
         resolved_inputs: None,
-        cwd: env::current_dir()
-            .ok()
-            .map(|path| path.to_string_lossy().into_owned())
-            .filter(|value| !value.is_empty())
+        cwd: env
+            .get(runx_runtime::RUNX_CWD_ENV)
+            .filter(|value| !value.trim().is_empty())
+            .cloned()
             .map(Into::into),
-        receipt_dir: env::var(RUNX_RECEIPT_DIR_ENV).ok().map(Into::into),
+        receipt_dir: env.get(RUNX_RECEIPT_DIR_ENV).cloned().map(Into::into),
         env: None,
         credential_refs: None,
         metadata: None,
@@ -258,9 +286,9 @@ mod tests {
     use std::sync::Mutex;
 
     use runx_contracts::{
-        EXTERNAL_ADAPTER_PROTOCOL_VERSION, ExternalAdapterResponse, ExternalAdapterSandboxIntent,
-        ExternalAdapterStatus, ExternalAdapterTimeouts, ExternalAdapterTransport,
-        ExternalAdapterTransportKind, JsonNumber,
+        EXTERNAL_ADAPTER_PROTOCOL_VERSION, ExternalAdapterResponse, ExternalAdapterStatus,
+        ExternalAdapterTimeouts, ExternalAdapterTransport, ExternalAdapterTransportKind,
+        JsonNumber,
     };
     use runx_pay::PAYMENT_EFFECT_FAMILY;
 
@@ -269,7 +297,11 @@ mod tests {
     #[test]
     fn external_adapter_payment_finality_supervisor_round_trips_evidence() -> Result<(), String> {
         let supervisor = RecordingSupervisor::with_payload(nested_evidence_output());
-        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(test_manifest(), supervisor);
+        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(
+            test_manifest(),
+            supervisor,
+            BTreeMap::new(),
+        );
         let result = adapter
             .supervise(test_request())
             .map_err(|error| error.to_string())?;
@@ -298,7 +330,11 @@ mod tests {
     fn external_adapter_payment_finality_supervisor_accepts_direct_evidence_output()
     -> Result<(), String> {
         let supervisor = RecordingSupervisor::with_payload(evidence_payload());
-        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(test_manifest(), supervisor);
+        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(
+            test_manifest(),
+            supervisor,
+            BTreeMap::new(),
+        );
         let result = adapter
             .supervise(test_request())
             .map_err(|error| error.to_string())?;
@@ -313,7 +349,11 @@ mod tests {
     #[test]
     fn external_adapter_payment_finality_supervisor_rejects_missing_output() {
         let supervisor = RecordingSupervisor::without_output();
-        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(test_manifest(), supervisor);
+        let adapter = ExternalAdapterPaymentFinalitySupervisor::new(
+            test_manifest(),
+            supervisor,
+            BTreeMap::new(),
+        );
         let result = adapter.supervise(test_request());
 
         assert!(matches!(
@@ -348,6 +388,7 @@ mod tests {
             &self,
             manifest: &ExternalAdapterManifest,
             invocation: &ExternalAdapterInvocation,
+            _runtime_environment: &BTreeMap<String, String>,
             _credential_delivery: &CredentialDelivery,
         ) -> Result<
             ExternalAdapterProcessOutcome,
@@ -401,12 +442,6 @@ mod tests {
                 invocation_ms: 30_000,
             },
             credential_needs: None,
-            sandbox_intent: ExternalAdapterSandboxIntent {
-                profile: "network".into(),
-                network: true,
-                cwd_policy: "workspace".into(),
-                writable_paths: None,
-            },
             metadata: None,
         }
     }

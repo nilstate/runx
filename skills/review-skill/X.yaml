@@ -1,5 +1,5 @@
 skill: review-skill
-version: "0.2.0"
+version: "0.2.3"
 
 catalog:
   kind: graph
@@ -42,6 +42,17 @@ harness:
         steps:
           - collect-evidence
           - assess
+        step_outputs:
+          collect-evidence:
+            subset:
+              skill_validation:
+                data:
+                  verdict: tested
+                  inspect:
+                    status: ok
+                    name: review-receipt
+                  harness:
+                    status: passed
 
     - name: review-skill-assesses-supplied-evidence
       runner: assess
@@ -65,7 +76,7 @@ harness:
               - check: supplied harness
                 status: passed
             recommendation_report:
-              recommendation: sandbox
+              recommendation: improve
               rationale: Supplied evidence is useful but lacks independent provider proof.
       expect:
         status: sealed
@@ -77,7 +88,7 @@ harness:
       inputs:
         skill_ref: example/skill
       expect:
-        status: failure
+        status: needs_agent
 
 runners:
   review:
@@ -87,7 +98,7 @@ runners:
       skill_ref:
         type: string
         required: true
-        description: Skill package path, registry id, or marketplace id.
+        description: Workspace- or owning-skill-relative local package path.
       objective:
         type: string
         required: false
@@ -102,34 +113,26 @@ runners:
         description: Time, environment, or safety constraints on evaluation.
     graph:
       name: review-skill
+      result_from: [assess]
       steps:
         - id: collect-evidence
           label: inspect target and run safe native harness
+          tool: runx.skill.validate
+          scopes:
+            - fs.read
           inputs:
             skill_ref: $input.skill_ref
-            evidence_pack: $input.evidence_pack
-            test_constraints: $input.test_constraints
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - ./probe.mjs
-            outputs:
-              native_test_evidence: object
-          artifacts:
-            named_emits:
-              native_test_evidence: native_test_evidence
-            packets:
-              native_test_evidence: runx.skill.native_test_evidence.v1
+            allow_execute_harness: false
         - id: assess
           skill: .
           runner: assess
           inputs:
             skill_ref: $input.skill_ref
             objective: $input.objective
+            evidence_pack: $input.evidence_pack
             test_constraints: $input.test_constraints
           context:
-            evidence_pack: collect-evidence.native_test_evidence.data
+            native_validation: collect-evidence.skill_validation.data
 
   assess:
     type: agent-task
@@ -143,15 +146,6 @@ runners:
       trust_assessment: object
       test_matrix: array
       recommendation_report: object
-    instructions: >
-      Assess only the supplied evidence for one skill. Separate declared
-      capability, native inspection, harness evidence, provider readback,
-      supplied assertions, and unverified claims. Check the happy path, stop or
-      refusal path, authority, artifact or effect, provenance, and recovery
-      posture appropriate to the capability. Return needs_more_evidence when the
-      packet cannot support a decision. Never infer provider readiness from a
-      parse result, local supplied answer, or prose claim. Recommend adopt,
-      adopt_with_caveats, sandbox, improve, or reject with concrete blockers.
     artifacts:
       wrap_as: skill_evaluation_packet
       packet: runx.skill.evaluation.v1
@@ -166,8 +160,12 @@ runners:
         description: Specific decision the evaluation should support.
       evidence_pack:
         type: json
-        required: true
+        required: false
         description: Native inspection, harness, receipts, docs, or source notes.
+      native_validation:
+        type: json
+        required: false
+        description: Native runx.skill.validate evidence collected by the default runner.
       test_constraints:
         type: string
         required: false

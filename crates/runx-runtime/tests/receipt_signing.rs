@@ -15,7 +15,7 @@ use runx_runtime::receipts::{
     RuntimeReceiptSigner, RuntimeReceiptSigningError, graph_receipt_with_signature_policy,
     step_receipt_with_signature_policy,
 };
-use runx_runtime::{InvocationStatus, SkillOutput, StepRun};
+use runx_runtime::{InvocationOutput, InvocationStatus, StepRun};
 
 const CREATED_AT: &str = "2026-05-22T00:00:00Z";
 const FIXTURE_KID: &str = "runx-runtime-prod-fixture-key";
@@ -47,7 +47,8 @@ fn production_step_receipt_uses_real_ed25519_signature() -> Result<(), Box<dyn E
 }
 
 #[test]
-fn production_graph_receipt_resigns_children_and_verifies_tree() -> Result<(), Box<dyn Error>> {
+fn production_graph_receipt_commits_immutable_children_and_verifies_tree()
+-> Result<(), Box<dyn Error>> {
     let signer = fixture_signer()?;
     let verifier = fixture_verifier(&signer);
     let mut steps = vec![production_step_run(
@@ -71,13 +72,13 @@ fn production_graph_receipt_resigns_children_and_verifies_tree() -> Result<(), B
 
     assert!(graph.signature.value.starts_with("base64:"));
     assert!(children[0].signature.value.starts_with("base64:"));
-    assert_eq!(
+    assert!(
         children[0]
             .lineage
             .as_ref()
-            .and_then(|l| l.parent.as_ref())
-            .map(|r| r.uri.clone()),
-        Some(format!("runx:receipt:{}", graph.id).into())
+            .and_then(|lineage| lineage.parent.as_ref())
+            .is_none(),
+        "content-addressed children must remain reusable across graph parents"
     );
     assert!(
         runx_runtime::receipts::tree::validate_runtime_receipt_tree_with_policy(
@@ -101,6 +102,7 @@ fn production_sealing_fails_closed_without_signer_or_verifier() -> Result<(), Bo
         "signer",
         1,
         &skill_output(InvocationStatus::Success),
+        &JsonObject::new(),
         CREATED_AT,
         RuntimeReceiptSignaturePolicy::production(&verifier),
     ) else {
@@ -113,6 +115,7 @@ fn production_sealing_fails_closed_without_signer_or_verifier() -> Result<(), Bo
         "verifier",
         1,
         &skill_output(InvocationStatus::Success),
+        &JsonObject::new(),
         CREATED_AT,
         RuntimeReceiptSignaturePolicy::production_signing_without_verifier(&signer),
     ) else {
@@ -252,6 +255,7 @@ fn production_signing_env_requires_non_local_issuer_type() -> Result<(), Box<dyn
         "seal",
         1,
         &skill_output(InvocationStatus::Success),
+        &JsonObject::new(),
         CREATED_AT,
         config.signature_policy(),
     )?;
@@ -268,6 +272,7 @@ fn production_step_receipt(
         "seal",
         1,
         &skill_output(InvocationStatus::Success),
+        &JsonObject::new(),
         CREATED_AT,
         RuntimeReceiptSignaturePolicy::production_signing(signer, verifier),
     )?)
@@ -285,6 +290,7 @@ fn production_step_run(
         step_id,
         1,
         &output,
+        &JsonObject::new(),
         CREATED_AT,
         RuntimeReceiptSignaturePolicy::production_signing(signer, verifier),
     )?;
@@ -294,9 +300,10 @@ fn production_step_run(
         skill: step_id.to_owned(),
         runner: None,
         fanout_group: None,
-        output,
-        outputs: JsonObject::new(),
+        contract: JsonObject::new(),
+        outcome: output.into(),
         receipt,
+        nested_receipts: Vec::new(),
         admission_witness: StepAdmissionWitness::local_runtime(step_id, "receipt"),
     })
 }
@@ -338,19 +345,12 @@ fn signing_env(issuer_type: Option<&str>) -> std::collections::BTreeMap<String, 
     env
 }
 
-fn skill_output(status: InvocationStatus) -> SkillOutput {
+fn skill_output(status: InvocationStatus) -> InvocationOutput {
     let (stdout, stderr, exit_code) = match status {
         InvocationStatus::Success => ("ok".to_owned(), String::new(), Some(0)),
         InvocationStatus::Failure => (String::new(), "failed".to_owned(), Some(1)),
     };
-    SkillOutput {
-        status,
-        stdout,
-        stderr,
-        exit_code,
-        duration_ms: 1,
-        metadata: JsonObject::new(),
-    }
+    InvocationOutput::process(status, stdout, stderr, exit_code, 1, JsonObject::new())
 }
 
 fn refresh_digest_and_signature(
@@ -372,6 +372,7 @@ fn sign_with_fixed_signer(
         "seal",
         1,
         &skill_output(InvocationStatus::Success),
+        &JsonObject::new(),
         CREATED_AT,
         RuntimeReceiptSignaturePolicy::production_signing(signer, verifier),
     )

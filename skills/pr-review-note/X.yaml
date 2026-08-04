@@ -1,37 +1,72 @@
 skill: pr-review-note
-version: "0.1.1"
+version: "0.2.2"
 
 catalog:
   kind: graph
   audience: public
   visibility: public
-  role: context
+  role: canonical
   execution: execute
   completion: provider_readback
   requires_adapter: true
   approval: required
+
+input_definitions:
+  repository:
+    type: string
+    required: true
+    description: Exact GitHub repository slug as owner/name.
+    schema: { pattern: '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$', maxLength: 201 }
+  pr_number:
+    type: string
+    required: true
+    description: Positive decimal pull-request number.
+    schema: { pattern: '^[1-9][0-9]*$', maxLength: 20 }
+  body:
+    type: string
+    required: true
+    description: Exact review note body bound into approval and provider readback.
+    schema: { minLength: 1, maxLength: 65536 }
+  idempotency_key:
+    type: string
+    required: true
+    description: Stable retry key for this exact repository, pull request, and body.
+    schema: { minLength: 8, maxLength: 256, pattern: '^[A-Za-z0-9._:-]+$' }
 harness:
   cases:
     - name: pr-review-note-comment-seals
       runner: comment
       env:
         RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-pr-comment
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: pr.comment
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["pr.comment"]'
       inputs:
         repository: runxhq/runx
         pr_number: "42"
         body: The reviewed path is sound; please add the missing harness case.
+        idempotency_key: runxhq-runx-pr-42-review-note-v1
+      caller:
+        approvals:
+          pr-review-note.comment.approval: true
       expect:
         status: sealed
         receipt:
           schema: runx.receipt.v1
           state: sealed
           disposition: closed
+        steps:
+          - approve
+          - review_note
+        step_outputs:
+          review_note:
+            subset:
+              repository: runxhq/runx
+              number: "42"
+              review_note_id: pr-review-note-fixture-001
     - name: pr-review-note-merge-refused
       runner: merge-refused
       env:
         RUNX_PROVIDER_PERMISSION_GRANT_ID: github-mcp-pr-comment
-        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: pr.comment
+        RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["pr.comment"]'
       inputs:
         repository: runxhq/runx
         pr_number: "42"
@@ -45,32 +80,43 @@ harness:
 
 runners:
   comment:
-    default: true
     type: graph
     runx:
       category: code
     inputs:
       repository:
-        type: string
-        required: true
-        description: Repository slug.
+        definition: repository
       pr_number:
-        type: string
-        required: true
-        description: Pull request number.
+        definition: pr_number
       body:
-        type: string
-        required: true
-        description: Review note body.
+        definition: body
+      idempotency_key:
+        definition: idempotency_key
+    examples:
+      - repository: runxhq/runx
+        pr_number: "42"
+        body: The reviewed path is sound; please add the missing harness case.
+        idempotency_key: runxhq-runx-pr-42-review-note-v1
     graph:
       name: pr-review-note-comment
+      result_from: [review_note]
       steps:
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: pr-review-note.comment.approval
+            reason: Approve this exact PR review comment before it reaches GitHub.
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
+
         - id: review_note
           skill: ../../examples/github-mcp-hero/review-note
           scopes:
             - pr.comment
           mutation: true
-          idempotency_key: pr-review-note-comment
+          idempotency_key: "$input.idempotency_key"
           policy:
             provider_permission:
               grant_id: github-mcp-pr-comment
@@ -80,19 +126,101 @@ runners:
             pr_number: "$input.pr_number"
             body: "$input.body"
 
+      policy:
+        guards:
+          - step: review_note
+            field: approve.approval_decision.data.approved
+            equals: true
+
+  connect-comment:
+    default: true
+    type: graph
+    runx:
+      category: code
+    inputs:
+      repository:
+        definition: repository
+      pr_number:
+        definition: pr_number
+      body:
+        definition: body
+      idempotency_key:
+        definition: idempotency_key
+    examples:
+      - repository: runxhq/runx
+        pr_number: "42"
+        body: The reviewed path is sound; please add the missing harness case.
+        idempotency_key: runxhq-runx-pr-42-connect-note-v1
+    graph:
+      name: pr-review-note-connect-comment
+      result_from: [readback]
+      steps:
+        - id: digest-body
+          tool: data.digest
+          inputs:
+            value: $input.body
+            encoding: utf8_text
+
+        - id: post-comment
+          tool: provider.mutate
+          mutation: true
+          idempotency_key: $input.idempotency_key
+          scopes:
+            - pr.comment
+          policy:
+            provider_permission:
+              verb: write
+          inputs:
+            operation: pullrequest.comment
+            target: $input.repository
+            expected_provider: github
+            idempotency_key: $input.idempotency_key
+            expected_result:
+              repository: $input.repository
+              number: $input.pr_number
+            result_fields: [repository, number, comment_ref, body_digest]
+            input:
+              repository: $input.repository
+              pr_number: $input.pr_number
+              body: $input.body
+
+        - id: bind-body
+          tool: data.compare
+          context:
+            actual: post-comment.provider_operation.data.result.body_digest
+            expected: digest-body.digest_result.data.digest
+
+        - id: readback
+          when:
+            field: bind-body.comparison.data.equal
+            equals: true
+          tool: provider.read
+          scopes:
+            - pr.read
+          policy:
+            provider_permission:
+              verb: read
+          inputs:
+            operation: pullrequest.comment.read
+            target: $input.repository
+            expected_provider: github
+            result_fields: [repository, number, comment_ref, body_digest, state]
+          context:
+            expected_result: post-comment.provider_operation.data.result
+            input: post-comment.provider_operation.data.result
   merge-refused:
     type: graph
     inputs:
       repository:
-        type: string
-        required: true
-        description: Repository slug.
+        definition: repository
       pr_number:
-        type: string
-        required: true
-        description: Pull request number.
+        definition: pr_number
+    examples:
+      - repository: runxhq/runx
+        pr_number: "42"
     graph:
       name: pr-review-note-merge-refused
+      result_from: [merge_pr]
       steps:
         - id: merge_pr
           skill: ../../examples/github-mcp-hero/merge-pr

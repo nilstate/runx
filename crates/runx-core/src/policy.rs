@@ -10,7 +10,6 @@ pub(crate) mod posix_basename;
 pub mod public_work;
 mod retry;
 mod rfc3339;
-pub mod sandbox;
 pub mod scope;
 mod tool_ref;
 mod types;
@@ -28,6 +27,7 @@ pub use authority_proof::{
     validate_credential_binding,
 };
 pub use graph_scope::admit_graph_step_scopes;
+pub use interpreter::strict_cli_tool_inline_code_denial;
 pub use local::admit_local_skill;
 pub use maturity::compute_maturity;
 pub use public_work::{
@@ -35,10 +35,7 @@ pub use public_work::{
     evaluate_public_pull_request_candidate, normalize_public_work_policy,
 };
 pub use retry::admit_retry_policy;
-pub use sandbox::{
-    admit_sandbox, is_reserved_runx_sandbox_env_name, normalize_sandbox_declaration,
-    sandbox_requires_approval,
-};
+pub use rfc3339::parse_rfc3339_moment;
 pub use tool_ref::{ToolRefAdmission, admit_agent_tool_ref};
 pub use types::{
     AdmissionDecision, AuthorityKind, AuthorityProof, AuthorityProofApproval,
@@ -46,16 +43,13 @@ pub use types::{
     AuthorityProofApprovalGate, AuthorityProofCredentialMaterial,
     AuthorityProofCredentialMaterialStatus, AuthorityProofMetadata, AuthorityProofRedaction,
     AuthorityProofRedactionSecretMaterial, AuthorityProofRedactionStatus,
-    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSandbox,
-    AuthorityProofSandboxDeclaration, AuthorityProofSandboxFilesystem,
-    AuthorityProofSandboxNetwork, AuthorityProofSandboxRuntime, AuthorityProofSchemaVersion,
+    AuthorityProofRedactionStream, AuthorityProofRequested, AuthorityProofSchemaVersion,
     BuildAuthorityProofOptions, CredentialBindingDecision, CredentialBindingRequest,
-    CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference, CwdPolicy,
+    CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference,
     GraphScopeAdmissionDecision, GraphScopeAdmissionRequest, GraphScopeGrant, LocalAdmissionGrant,
     LocalAdmissionGrantStatus, LocalAdmissionOptions, LocalAdmissionSkill, LocalAdmissionSource,
     LocalExecutionPolicy, LocalScopeAdmissionOptions, PublicCommentOpportunityRequest,
     PublicCommentPolicyDecision, PublicPolicyDecision, PublicPullRequestCandidateRequest,
-    PublicRecentOutcome, PublicWorkPolicy, RequiredPublicWorkPolicy, RequiredSandboxDeclaration,
-    RetryAdmissionRequest, RetryPolicy, SandboxAdmissionDecision, SandboxAdmissionOptions,
-    SandboxDeclaration, SandboxProfile, ScopeAdmission, ScopeAdmissionStatus,
+    PublicRecentOutcome, PublicWorkPolicy, RequiredPublicWorkPolicy, RetryAdmissionRequest,
+    RetryPolicy, ScopeAdmission, ScopeAdmissionStatus,
 };

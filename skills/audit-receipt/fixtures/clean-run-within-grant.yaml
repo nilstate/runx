@@ -10,9 +10,54 @@ inputs:
       status: closed
       created_at: "2026-07-16T00:00:00Z"
       verification_status: verified
-  receipt_summary: "Sealed run of issue-triage. Authority proof granted repo.read. Acts: one observation that read the issue thread. No mutating acts. Material referenced by hash (material_ref_hash present, no raw token). No denied requests."
+  receipt_details:
+    - id: rcpt_issue_triage_4471
+      receipt_ref: runx:receipt:rcpt_issue_triage_4471
+      subject_kind: skill
+      subject_ref: issue-triage
+      created_at: "2026-07-16T00:00:00Z"
+      status: closed
+      verification:
+        status: verified
+      authority:
+        actor_ref: runx:principal:operator
+        grant_refs:
+          - runx:grant:repo-read
+        scope_refs:
+          - runx:scope_admission:repo.read
+        exercised_scopes:
+          - scope: repo:read
+            source: scope_ref
+            term_id: null
+            resource_ref: runx:scope_admission:repo.read
+        authority_proof_refs: []
+        approval_refs: []
+        term_count: 0
+        parent_authority_ref: null
+        subset_proof_present: false
+        enforcement_profile_hash: sha256:profile
+        redaction_refs: []
+        credential_ref_count: 0
+      decisions: []
+      acts:
+        - id: act_read
+          form: observation
+          purpose: Read the issue thread.
+          legitimacy: Held repo.read.
+          summary: Read issue evidence.
+          disposition: closed
+          reason_code: process_closed
+          source_refs: []
+          target_refs: []
+          artifact_refs: []
+          criterion_statuses: []
+          context_ref_present: false
+      artifact_refs: []
+      lineage_refs: []
+      seal_reason_code: process_closed
+      seal_summary: Read completed.
   granted_scopes:
-    - repo.read
+    - repo:read
   objective: Confirm the triage run stayed within its read-only grant.
 caller:
   answers:
@@ -21,22 +66,41 @@ caller:
         decision: ready
         run_ref: rcpt_issue_triage_4471
         granted_scopes:
-          - repo.read
+          - repo:read
         exercised_scopes:
-          - repo.read
+          - repo:read
         refusals: []
         findings:
           - id: receipt.clean
             severity: info
-            message: Exercised authority (repo.read) is within the grant; no mutation to gate; material referenced by hash.
+            message: Exercised authority (repo:read) is within the grant; no mutation to gate; no credential material is exposed.
         verdict: clean
-        rationale: The only exercised scope, repo.read, is covered by the proof. The single act is an observation, so there is no mutation requiring a gate, and material appears only as a hash reference. The run honored its bound.
+        rationale: The only exercised scope, repo:read, is covered by the proof. The single act is an observation, so there is no mutation requiring a gate, and no credential material is projected. The run honored its bound.
         recommendations: []
         success_checkpoint:
           milestone: audit_clean
           description: A sealed read-only run audited as within its granted authority.
 expect:
   status: sealed
+  steps:
+    - evidence
+    - audit
+  step_outputs:
+    evidence:
+      subset:
+        ledger_answer_packet:
+          data:
+            ledger_answer:
+              decision: answered
+            matched_receipts:
+              - receipt_id: rcpt_issue_triage_4471
+                verification_status: verified
+            receipt_details:
+              - id: rcpt_issue_triage_4471
+                subject_ref: issue-triage
+                authority:
+                  exercised_scopes:
+                    - scope: repo:read
   receipt:
     schema: runx.receipt.v1
     state: sealed

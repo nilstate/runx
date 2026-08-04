@@ -43,7 +43,7 @@ fn native_cli_smoke_runs_without_node_or_typescript_env() -> Result<(), Box<dyn 
         "runx-runtime.local-history.v1"
     );
 
-    let skill_dir = write_agent_task_skill(&temp)?;
+    let skill_dir = crate::support::write_agent_task_skill(&temp)?;
     let skill = native_command()?
         .args([
             "skill",
@@ -52,7 +52,6 @@ fn native_cli_smoke_runs_without_node_or_typescript_env() -> Result<(), Box<dyn 
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     assert_eq!(
@@ -62,7 +61,7 @@ fn native_cli_smoke_runs_without_node_or_typescript_env() -> Result<(), Box<dyn 
         String::from_utf8_lossy(&skill.stderr),
         String::from_utf8_lossy(&skill.stdout)
     );
-    assert_eq!(String::from_utf8(skill.stderr.clone())?, "");
+    crate::support::assert_json_stderr(&skill.stderr)?;
     let skill_json = serde_json::from_slice::<serde_json::Value>(&skill.stdout)?;
     assert_eq!(skill_json["status"], "needs_agent");
     assert_eq!(skill_json["requests"][0]["kind"], "agent_act");
@@ -74,6 +73,8 @@ fn native_cli_smoke_runs_without_node_or_typescript_env() -> Result<(), Box<dyn 
             harness_fixture
                 .to_str()
                 .ok_or("non-utf8 harness fixture path")?,
+            "--receipt-dir",
+            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
         ])
         .output()?;
@@ -101,30 +102,6 @@ fn assert_success(output: &std::process::Output) -> Result<(), Box<dyn std::erro
     );
     assert_eq!(String::from_utf8(output.stderr.clone())?, "");
     Ok(())
-}
-
-fn write_agent_task_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let skill_dir = root.join("issue-intake");
-    fs::create_dir_all(&skill_dir)?;
-    fs::write(
-        skill_dir.join("SKILL.md"),
-        "---\nname: issue-intake\n---\n# Issue Intake\n",
-    )?;
-    fs::write(
-        skill_dir.join("X.yaml"),
-        r#"
-skill: issue-intake
-runners:
-  intake:
-    default: true
-    type: agent-task
-    agent: builder
-    task: issue-intake
-    outputs:
-      intake_report: object
-"#,
-    )?;
-    Ok(skill_dir)
 }
 
 fn write_sequential_graph_smoke_harness(

@@ -14,10 +14,10 @@
 //!
 //! Output and telemetry reuse the existing agent contracts ([`AgentResolution`],
 //! [`AgentExecutionTelemetry`], [`AgentToolExecutionTrace`]) and tool execution
-//! reuses the runtime's universal [`SkillOutput`]; this module only adds the two
+//! reuses the runtime's universal [`InvocationOutput`]; this module only adds the two
 //! seams that did not exist before (the per-turn model call and tool execution).
 //!
-// rust-style-allow: large-file because the governed agent loop, its provider and
+// Module rationale: the governed agent loop, its provider and
 // executor seams, the transcript contracts, and the loop-coverage tests belong in
 // one cohesive unit; splitting them would scatter the single source of truth for
 // the tool-use protocol.
@@ -26,9 +26,73 @@ use runx_contracts::JsonValue;
 
 use super::agent::{AgentExecutionTelemetry, AgentResolution, AgentToolExecutionTrace};
 use crate::RuntimeError;
-use crate::adapter::{InvocationStatus, SkillOutput};
+use crate::adapter::{InvocationOutput, InvocationStatus};
 
-const MANAGED_AGENT_SKILL: &str = "managed-agent";
+pub(crate) const UNRECOGNIZED_MODEL_TOOL: &str = "unrecognized_tool";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AgentLoopFailureReason {
+    ProviderFailed,
+    EmptyTurnBudgetExhausted,
+    ToolExecutionFailed,
+    RoundBudgetExhausted,
+}
+
+impl AgentLoopFailureReason {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ProviderFailed => "provider_failed",
+            Self::EmptyTurnBudgetExhausted => "empty_turn_budget_exhausted",
+            Self::ToolExecutionFailed => "tool_execution_failed",
+            Self::RoundBudgetExhausted => "round_budget_exhausted",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentLoopFailure {
+    reason: AgentLoopFailureReason,
+    sanitized_message: String,
+    telemetry: Box<AgentExecutionTelemetry>,
+}
+
+impl AgentLoopFailure {
+    fn new(
+        reason: AgentLoopFailureReason,
+        sanitized_message: impl Into<String>,
+        telemetry: AgentExecutionTelemetry,
+    ) -> Self {
+        Self {
+            reason,
+            sanitized_message: sanitized_message.into(),
+            telemetry: Box::new(telemetry),
+        }
+    }
+
+    #[must_use]
+    pub const fn reason(&self) -> AgentLoopFailureReason {
+        self.reason
+    }
+
+    #[must_use]
+    pub fn sanitized_message(&self) -> &str {
+        &self.sanitized_message
+    }
+
+    #[must_use]
+    pub const fn telemetry(&self) -> &AgentExecutionTelemetry {
+        &self.telemetry
+    }
+}
+
+impl std::fmt::Display for AgentLoopFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.sanitized_message)
+    }
+}
+
+impl std::error::Error for AgentLoopFailure {}
 
 /// A tool-call request the model emitted on one round.
 #[derive(Clone, Debug)]
@@ -62,10 +126,15 @@ pub trait ModelCaller {
 }
 
 /// Executes one chosen tool through the governed runtime, returning the standard
-/// [`SkillOutput`]. Production implementations delegate to skill execution (which
+/// [`InvocationOutput`]. Production implementations delegate to skill execution (which
 /// passes through authority admission); tests supply a fake.
 pub trait ToolExecutor {
-    fn execute(&self, tool: &str, input: &JsonValue) -> Result<SkillOutput, RuntimeError>;
+    /// Return the canonical name this executor would admit for execution.
+    /// Model-authored names that were not offered must return `None`; the loop
+    /// records only a fixed sentinel for those attempts.
+    fn admitted_tool_name(&self, tool: &str) -> Option<String>;
+
+    fn execute(&self, tool: &str, input: &JsonValue) -> Result<InvocationOutput, RuntimeError>;
 }
 
 /// Loop bounds and the name of the tool the model calls to finalize.
@@ -81,18 +150,13 @@ pub struct AgentLoopConfig {
     pub final_result_tool: String,
 }
 
-fn loop_failure(message: String) -> RuntimeError {
-    RuntimeError::SkillFailed {
-        skill_name: MANAGED_AGENT_SKILL.to_owned(),
-        message,
-    }
-}
-
-fn tool_result_content(output: &SkillOutput, is_error: bool) -> String {
-    if is_error && !output.stderr.is_empty() {
-        output.stderr.clone()
+fn tool_result_content(output: &InvocationOutput, is_error: bool) -> String {
+    if is_error {
+        output
+            .failure_message()
+            .unwrap_or_else(|| output.rendered_value())
     } else {
-        output.stdout.clone()
+        output.rendered_value()
     }
 }
 
@@ -104,26 +168,43 @@ fn next_tool_uses_resilient<M>(
     model: &M,
     transcript: &[AgentTurn],
     max_resamples: u32,
-) -> Result<Vec<AgentToolUse>, RuntimeError>
+    model_calls: &mut u32,
+) -> Result<Vec<AgentToolUse>, AgentLoopFailureReason>
 where
     M: ModelCaller,
 {
     for _ in 0..=max_resamples {
-        let uses = model.next_tool_uses(transcript)?;
+        *model_calls = model_calls.saturating_add(1);
+        let uses = model
+            .next_tool_uses(transcript)
+            .map_err(|_| AgentLoopFailureReason::ProviderFailed)?;
         if !uses.is_empty() {
             return Ok(uses);
         }
     }
-    Err(loop_failure(format!(
-        "managed agent returned no tool use after {} attempts",
-        max_resamples + 1
-    )))
+    Err(AgentLoopFailureReason::EmptyTurnBudgetExhausted)
+}
+
+fn failure_telemetry(
+    rounds: u32,
+    model_calls: u32,
+    tool_calls: u32,
+    tools: Vec<String>,
+    tool_executions: Vec<AgentToolExecutionTrace>,
+) -> AgentExecutionTelemetry {
+    AgentExecutionTelemetry {
+        rounds: Some(u64::from(rounds)),
+        model_calls: Some(u64::from(model_calls)),
+        tool_calls: Some(u64::from(tool_calls)),
+        tools: Some(tools),
+        tool_executions: Some(tool_executions),
+    }
 }
 
 /// Run the bounded tool-use loop, returning the existing [`AgentResolution`] when
 /// the model finalizes. Fails closed on an empty turn or on exhausting the round
 /// budget without a final result.
-// rust-style-allow: long-function because this is one bounded round loop whose
+// Function rationale: this is one bounded round loop whose
 // turn sequencing (model call, fail-closed checks, per-tool execution, transcript
 // append, telemetry accumulation) must stay linear to remain auditable.
 pub fn run_agent_loop<M, T>(
@@ -131,12 +212,13 @@ pub fn run_agent_loop<M, T>(
     model: &M,
     executor: &T,
     prompt: String,
-) -> Result<AgentResolution, RuntimeError>
+) -> Result<AgentResolution, AgentLoopFailure>
 where
     M: ModelCaller,
     T: ToolExecutor,
 {
     let mut transcript = vec![AgentTurn::User(prompt)];
+    let mut model_calls: u32 = 0;
     let mut tool_calls: u32 = 0;
     let mut tools: Vec<String> = Vec::new();
     let mut tool_executions: Vec<AgentToolExecutionTrace> = Vec::new();
@@ -145,7 +227,38 @@ where
     let mut last_effect: Option<JsonValue> = None;
 
     for round in 1..=config.max_rounds {
-        let uses = next_tool_uses_resilient(model, &transcript, config.max_empty_turn_resamples)?;
+        let uses = match next_tool_uses_resilient(
+            model,
+            &transcript,
+            config.max_empty_turn_resamples,
+            &mut model_calls,
+        ) {
+            Ok(uses) => uses,
+            Err(AgentLoopFailureReason::ProviderFailed) => {
+                return Err(AgentLoopFailure::new(
+                    AgentLoopFailureReason::ProviderFailed,
+                    "Managed agent provider request failed.",
+                    failure_telemetry(round, model_calls, tool_calls, tools, tool_executions),
+                ));
+            }
+            Err(AgentLoopFailureReason::EmptyTurnBudgetExhausted) => {
+                return Err(AgentLoopFailure::new(
+                    AgentLoopFailureReason::EmptyTurnBudgetExhausted,
+                    format!(
+                        "Managed agent returned no tool use after {} attempts.",
+                        config.max_empty_turn_resamples + 1
+                    ),
+                    failure_telemetry(round, model_calls, tool_calls, tools, tool_executions),
+                ));
+            }
+            Err(reason) => {
+                return Err(AgentLoopFailure::new(
+                    reason,
+                    "Managed agent failed.",
+                    failure_telemetry(round, model_calls, tool_calls, tools, tool_executions),
+                ));
+            }
+        };
         transcript.push(AgentTurn::AssistantToolUses(uses.clone()));
 
         let mut results = Vec::with_capacity(uses.len());
@@ -153,6 +266,7 @@ where
             if use_.name == config.final_result_tool {
                 let telemetry = AgentExecutionTelemetry {
                     rounds: Some(u64::from(round)),
+                    model_calls: Some(u64::from(model_calls)),
                     tool_calls: Some(u64::from(tool_calls)),
                     tools: Some(tools),
                     tool_executions: Some(tool_executions),
@@ -165,20 +279,49 @@ where
             }
 
             tool_calls = tool_calls.saturating_add(1);
-            if !tools.iter().any(|name| name == &use_.name) {
-                tools.push(use_.name.clone());
+            let Some(tool_name) = executor.admitted_tool_name(&use_.name) else {
+                if !tools.iter().any(|name| name == UNRECOGNIZED_MODEL_TOOL) {
+                    tools.push(UNRECOGNIZED_MODEL_TOOL.to_owned());
+                }
+                tool_executions.push(AgentToolExecutionTrace {
+                    tool: UNRECOGNIZED_MODEL_TOOL.to_owned(),
+                    status: "failure".to_owned(),
+                    receipt_id: None,
+                    resolution_kind: None,
+                });
+                return Err(AgentLoopFailure::new(
+                    AgentLoopFailureReason::ToolExecutionFailed,
+                    "Managed agent tool execution failed.",
+                    failure_telemetry(round, model_calls, tool_calls, tools, tool_executions),
+                ));
+            };
+            if !tools.iter().any(|name| name == &tool_name) {
+                tools.push(tool_name.clone());
             }
 
-            let output = executor.execute(&use_.name, &use_.input)?;
+            let output = match executor.execute(&tool_name, &use_.input) {
+                Ok(output) => output,
+                Err(_) => {
+                    tool_executions.push(AgentToolExecutionTrace {
+                        tool: tool_name.clone(),
+                        status: "failure".to_owned(),
+                        receipt_id: None,
+                        resolution_kind: None,
+                    });
+                    return Err(AgentLoopFailure::new(
+                        AgentLoopFailureReason::ToolExecutionFailed,
+                        "Managed agent tool execution failed.",
+                        failure_telemetry(round, model_calls, tool_calls, tools, tool_executions),
+                    ));
+                }
+            };
             let is_error = !matches!(output.status, InvocationStatus::Success);
             if !is_error {
-                if let Ok(effect) = serde_json::from_str::<JsonValue>(output.stdout.trim()) {
-                    last_effect = Some(effect);
-                }
+                last_effect = Some(output.value.clone());
             }
             let content = tool_result_content(&output, is_error);
             tool_executions.push(AgentToolExecutionTrace {
-                tool: use_.name.clone(),
+                tool: tool_name,
                 status: (if is_error { "failure" } else { "success" }).to_owned(),
                 receipt_id: None,
                 resolution_kind: None,
@@ -192,34 +335,47 @@ where
         transcript.push(AgentTurn::ToolResults(results));
     }
 
-    Err(loop_failure(format!(
-        "managed agent exceeded {} tool-call rounds without finalizing",
-        config.max_rounds
-    )))
+    Err(AgentLoopFailure::new(
+        AgentLoopFailureReason::RoundBudgetExhausted,
+        format!(
+            "Managed agent exceeded {} tool-call rounds without finalizing.",
+            config.max_rounds
+        ),
+        failure_telemetry(
+            config.max_rounds,
+            model_calls,
+            tool_calls,
+            tools,
+            tool_executions,
+        ),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{InvocationStatus, SkillOutput};
+    use crate::adapter::InvocationOutput;
     use runx_contracts::{JsonObject, JsonValue};
 
     const FINAL: &str = "runx_final_result";
 
-    fn skill_output(stdout: &str) -> SkillOutput {
-        SkillOutput {
-            status: InvocationStatus::Success,
-            stdout: stdout.to_owned(),
-            stderr: String::new(),
-            exit_code: Some(0),
-            duration_ms: 0,
-            metadata: JsonObject::new(),
-        }
+    fn skill_output(stdout: &str) -> InvocationOutput {
+        let value =
+            serde_json::from_str(stdout).unwrap_or_else(|_| JsonValue::String(stdout.to_owned()));
+        InvocationOutput::runtime_success(value, 0, JsonObject::new())
     }
 
     struct OkExecutor;
     impl ToolExecutor for OkExecutor {
-        fn execute(&self, _tool: &str, _input: &JsonValue) -> Result<SkillOutput, RuntimeError> {
+        fn admitted_tool_name(&self, tool: &str) -> Option<String> {
+            Some(tool.to_owned())
+        }
+
+        fn execute(
+            &self,
+            _tool: &str,
+            _input: &JsonValue,
+        ) -> Result<InvocationOutput, RuntimeError> {
             Ok(skill_output("charged"))
         }
     }
@@ -271,6 +427,7 @@ mod tests {
                     if matches!(resolution.response.payload, JsonValue::String(ref s) if s == "done")
                     && resolution.telemetry.as_ref().and_then(|t| t.tool_calls) == Some(1)
                     && resolution.telemetry.as_ref().and_then(|t| t.rounds) == Some(2)
+                    && resolution.telemetry.as_ref().and_then(|t| t.model_calls) == Some(2)
             ),
             "loop should execute the tool then finalize; got: {result:?}"
         );
@@ -298,7 +455,15 @@ mod tests {
         };
         let result = run_agent_loop(&config, &NeverFinal, &OkExecutor, "go".to_owned());
         assert!(
-            matches!(&result, Err(RuntimeError::SkillFailed { message, .. }) if message.contains("rounds")),
+            matches!(
+                &result,
+                Err(error)
+                    if error.reason() == AgentLoopFailureReason::RoundBudgetExhausted
+                    && error.sanitized_message().contains("rounds")
+                    && error.telemetry().rounds == Some(3)
+                    && error.telemetry().model_calls == Some(3)
+                    && error.telemetry().tool_calls == Some(3)
+            ),
             "loop should fail closed on max rounds; got: {result:?}"
         );
     }
@@ -324,7 +489,15 @@ mod tests {
         };
         let result = run_agent_loop(&config, &Silent, &OkExecutor, "go".to_owned());
         assert!(
-            matches!(&result, Err(RuntimeError::SkillFailed { message, .. }) if message.contains("no tool use")),
+            matches!(
+                &result,
+                Err(error)
+                    if error.reason() == AgentLoopFailureReason::EmptyTurnBudgetExhausted
+                    && error.sanitized_message().contains("no tool use")
+                    && error.telemetry().rounds == Some(1)
+                    && error.telemetry().model_calls == Some(4)
+                    && error.telemetry().tool_calls == Some(0)
+            ),
             "loop should fail closed on an empty turn; got: {result:?}"
         );
     }
@@ -383,6 +556,7 @@ mod tests {
                 Ok(resolution)
                     if matches!(resolution.response.payload, JsonValue::String(ref s) if s == "done")
                     && resolution.telemetry.as_ref().and_then(|t| t.rounds) == Some(2)
+                    && resolution.telemetry.as_ref().and_then(|t| t.model_calls) == Some(3)
             ),
             "a transient empty turn should be resampled and recovered, finalizing normally; got: {result:?}"
         );
@@ -392,7 +566,15 @@ mod tests {
         calls: std::cell::Cell<u32>,
     }
     impl ToolExecutor for ErrExecutor {
-        fn execute(&self, _tool: &str, _input: &JsonValue) -> Result<SkillOutput, RuntimeError> {
+        fn admitted_tool_name(&self, tool: &str) -> Option<String> {
+            Some(tool.to_owned())
+        }
+
+        fn execute(
+            &self,
+            _tool: &str,
+            _input: &JsonValue,
+        ) -> Result<InvocationOutput, RuntimeError> {
             self.calls.set(self.calls.get() + 1);
             Err(RuntimeError::SkillFailed {
                 skill_name: "managed-tool".to_owned(),
@@ -419,25 +601,140 @@ mod tests {
         assert_eq!(
             executor.calls.get(),
             1,
-            "the executor must actually be invoked before its error can propagate"
+            "the executor must actually be invoked before its error can be projected"
         );
         assert!(
-            matches!(&result, Err(RuntimeError::SkillFailed { message, .. }) if message.contains("executor down")),
-            "an executor error must propagate; got: {result:?}"
+            matches!(
+                &result,
+                Err(error)
+                    if error.reason() == AgentLoopFailureReason::ToolExecutionFailed
+                    && error.sanitized_message() == "Managed agent tool execution failed."
+                    && error.telemetry().tool_calls == Some(1)
+                    && error.telemetry().tool_executions.as_ref().is_some_and(|traces|
+                        traces.len() == 1
+                        && traces[0].tool == "pay"
+                        && traces[0].status == "failure")
+            ),
+            "an executor error must become a bounded failure; got: {result:?}"
         );
+    }
+
+    #[test]
+    fn loop_sanitizes_provider_failure_and_preserves_bounded_telemetry() {
+        struct FailingModel;
+        impl ModelCaller for FailingModel {
+            fn next_tool_uses(
+                &self,
+                _transcript: &[AgentTurn],
+            ) -> Result<Vec<AgentToolUse>, RuntimeError> {
+                Err(RuntimeError::SkillFailed {
+                    skill_name: "provider".to_owned(),
+                    message: "secret prompt and raw provider body".to_owned(),
+                })
+            }
+        }
+        let config = AgentLoopConfig {
+            max_rounds: 3,
+            max_empty_turn_resamples: 3,
+            final_result_tool: FINAL.to_owned(),
+        };
+
+        let result = run_agent_loop(
+            &config,
+            &FailingModel,
+            &OkExecutor,
+            "private prompt".to_owned(),
+        );
+
+        assert!(
+            matches!(
+                &result,
+                Err(error)
+                    if error.reason() == AgentLoopFailureReason::ProviderFailed
+                    && error.sanitized_message() == "Managed agent provider request failed."
+                    && error.telemetry().rounds == Some(1)
+                    && error.telemetry().model_calls == Some(1)
+                    && error.telemetry().tool_calls == Some(0)
+                    && !error.to_string().contains("secret")
+                    && !error.to_string().contains("private prompt")
+            ),
+            "provider failures must retain only bounded telemetry; got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn unknown_model_tool_name_never_reaches_durable_telemetry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        const SENSITIVE_MARKER: &str = "leak_customer_secret_7f3a";
+
+        struct UnknownToolModel;
+        impl ModelCaller for UnknownToolModel {
+            fn next_tool_uses(
+                &self,
+                _transcript: &[AgentTurn],
+            ) -> Result<Vec<AgentToolUse>, RuntimeError> {
+                Ok(vec![AgentToolUse {
+                    id: "unknown".to_owned(),
+                    name: SENSITIVE_MARKER.to_owned(),
+                    input: JsonValue::Null,
+                }])
+            }
+        }
+
+        struct PayOnlyExecutor;
+        impl ToolExecutor for PayOnlyExecutor {
+            fn admitted_tool_name(&self, tool: &str) -> Option<String> {
+                (tool == "pay").then(|| tool.to_owned())
+            }
+
+            fn execute(
+                &self,
+                _tool: &str,
+                _input: &JsonValue,
+            ) -> Result<InvocationOutput, RuntimeError> {
+                Ok(skill_output("paid"))
+            }
+        }
+
+        let result = run_agent_loop(
+            &AgentLoopConfig {
+                max_rounds: 2,
+                max_empty_turn_resamples: 0,
+                final_result_tool: FINAL.to_owned(),
+            },
+            &UnknownToolModel,
+            &PayOnlyExecutor,
+            "go".to_owned(),
+        );
+        let Err(error) = result else {
+            return Err("an unoffered model tool did not fail closed".into());
+        };
+        let projection = JsonValue::Object(error.telemetry().public_projection());
+        let serialized = serde_json::to_string(&projection).unwrap_or_default();
+
+        assert!(!serialized.contains(SENSITIVE_MARKER));
+        assert!(serialized.contains(UNRECOGNIZED_MODEL_TOOL));
+        assert_eq!(error.telemetry().tool_calls, Some(1));
+        Ok(())
     }
 
     struct FailingExecutor;
     impl ToolExecutor for FailingExecutor {
-        fn execute(&self, _tool: &str, _input: &JsonValue) -> Result<SkillOutput, RuntimeError> {
-            Ok(SkillOutput {
-                status: InvocationStatus::Failure,
-                stdout: String::new(),
-                stderr: "insufficient funds".to_owned(),
-                exit_code: Some(1),
-                duration_ms: 0,
-                metadata: JsonObject::new(),
-            })
+        fn admitted_tool_name(&self, tool: &str) -> Option<String> {
+            Some(tool.to_owned())
+        }
+
+        fn execute(
+            &self,
+            _tool: &str,
+            _input: &JsonValue,
+        ) -> Result<InvocationOutput, RuntimeError> {
+            Ok(InvocationOutput::runtime_failure(
+                JsonValue::Null,
+                "insufficient funds",
+                0,
+                JsonObject::new(),
+            ))
         }
     }
 

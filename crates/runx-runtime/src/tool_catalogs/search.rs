@@ -9,6 +9,13 @@ pub struct ToolSearchOptions {
 }
 
 pub fn search_tools(options: &ToolSearchOptions) -> ToolCatalogSearchReport {
+    search_tools_with_effects(options, &crate::RuntimeEffectRegistry::default())
+}
+
+pub fn search_tools_with_effects(
+    options: &ToolSearchOptions,
+    effects: &crate::RuntimeEffectRegistry,
+) -> ToolCatalogSearchReport {
     let source = options.source.as_deref().unwrap_or("all").to_owned();
     let normalized_source = options
         .source
@@ -16,10 +23,20 @@ pub fn search_tools(options: &ToolSearchOptions) -> ToolCatalogSearchReport {
         .map(|source| source.trim().to_ascii_lowercase());
     let mut results = Vec::new();
 
-    if fixture_catalog_allowed(
-        options.fixture_catalog_enabled,
-        normalized_source.as_deref(),
-    ) {
+    if native_catalog_allowed(normalized_source.as_deref(), effects) {
+        let mut native = super::native::search(&options.query, options.limit, effects);
+        if let Some(source) = exact_native_source(normalized_source.as_deref()) {
+            native.retain(|tool| tool.source.eq_ignore_ascii_case(source));
+        }
+        results.extend(native);
+    }
+
+    if results.len() < options.limit
+        && fixture_catalog_allowed(
+            options.fixture_catalog_enabled,
+            normalized_source.as_deref(),
+        )
+    {
         let query = options.query.trim().to_ascii_lowercase();
         for fixture in fixture_tools() {
             let result = fixture.search_result();
@@ -37,6 +54,25 @@ pub fn search_tools(options: &ToolSearchOptions) -> ToolCatalogSearchReport {
         query: options.query.clone(),
         source,
         results,
+    }
+}
+
+fn native_catalog_allowed(source: Option<&str>, effects: &crate::RuntimeEffectRegistry) -> bool {
+    matches!(
+        source,
+        None | Some("") | Some("all") | Some("native") | Some("runx-runtime")
+    ) || source.is_some_and(|source| {
+        effects
+            .capabilities()
+            .iter()
+            .any(|capability| capability.definition().owner.eq_ignore_ascii_case(source))
+    })
+}
+
+fn exact_native_source(source: Option<&str>) -> Option<&str> {
+    match source {
+        None | Some("") | Some("all") | Some("native") => None,
+        Some(source) => Some(source),
     }
 }
 

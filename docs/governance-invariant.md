@@ -1,77 +1,85 @@
 # The uniform-governance invariant
 
-Every governed execution in runx passes through the same four stages, in order:
+Every governed execution in Runx passes through one ordered chain:
 
+```text
+admit -> resolve grant -> deliver -> execute -> seal
 ```
-admit  ->  deliver credentials  ->  sandbox  ->  seal
-```
 
-This is the contract that makes "governed execution layer" true rather than
-aspirational: a front cannot run an act without being admitted, cannot leak
-ambient secrets, cannot escape its declared sandbox, and cannot finish without a
-signed receipt that attests what was authorized. Adding a new front does not get
-to opt out of any stage.
-
-Two stages are enforced **structurally** by the graph-step orchestration, so a new
-step type gets them for free and cannot regress them. Two are **adapter contracts**
-every front honors in its own execution path.
+This is the contract that makes Runx a permissions broker. A front cannot run
+an act without admission, reconstruct authority from its manifest, receive
+ambient secrets, or finish without a receipt that records the granted authority
+and the boundary the runtime actually observed.
 
 ## The stages
 
-### 1. Admit (structural)
+### 1. Admit
 
-Before any step handler runs, the orchestration admits the act against the
-configured authority and effects: `enforce_step_authority_admission`
-(`crates/runx-runtime/src/execution/runner/authority.rs`), called once per step at
-`crates/runx-runtime/src/execution/runner/steps.rs:230` before dispatch. Local
-skills admit through `admit_local_skill` in the core policy crate
-(`crates/runx-core/src/policy/local.rs`). An unadmitted act never reaches a handler.
+The orchestration admits the act against the configured authority and effect
+policy before dispatch. Local skills use the same pure policy owner. An
+unadmitted act never reaches an adapter.
 
-### 2. Deliver credentials (adapter contract)
+### 2. Resolve grant
 
-The resolver turns a runner's declared requirement into `CredentialDelivery`.
-Adapters receive that delivery separately from ambient configuration, inject
-only its declared secret environment bindings into the child boundary, and
-redact material from captured output before projection. The cli-tool front does
-this in `crates/runx-runtime/src/adapters/cli_tool.rs`; HTTP substitutes only
-`${secret:NAME}` header references. Sandbox `env_allowlist` is not a credential
-transport.
+The request is the selected runner's `ExecutionRequirements`: auth, arbitrary
+scope strings, declared environment names, credential requirement, and runtime
+metadata. Connected grant resolution and attenuation produce the authority
+decision. Adapters consume that decision; they do not reinterpret YAML or
+invent scopes.
 
-### 3. Sandbox (adapter contract)
+### 3. Deliver
 
-The adapter resolves the declared sandbox profile to a platform runtime and wraps
-the command in it: `resolve_sandbox_runtime` plus the command wrapping in
-`crates/runx-runtime/src/sandbox/command.rs` (bubblewrap on Linux, sandbox-exec on
-macOS, fail-closed `DeclaredPolicyOnly` when no backend enforces and enforcement is
-required). The resolved sandbox is recorded in the output metadata
-(`crates/runx-runtime/src/sandbox/metadata.rs`) so the receipt attests it.
+The runtime projects only the resolved non-secret environment and credential
+delivery into the selected execution lane. Environment declarations never
+become a credential transport. Secret values remain separate, are delivered
+only through the credential contract supported by that lane, and are redacted
+before captured output enters a receipt.
 
-### 4. Seal (structural)
+### 4. Execute
 
-After the handler returns, the orchestration seals the step centrally:
-`run_registered_step` overrides the receipt's admission witness via the single
-`step_admission_witness` helper (both in
-`crates/runx-runtime/src/execution/runner/steps.rs`), recording which authority
-admitted the act (or a local-runtime witness when none was admitted). Because the
-witness is set in one central place rather than per handler, a new step type cannot
-seal without it.
+Execution truth is lane-specific:
 
-## Adding a front
+- native capabilities enforce their own typed scope and effect contract;
+- deterministic JavaScript receives an in-memory module bundle, JSON,
+  declared non-secret environment, fixed limits, and no host APIs;
+- managed agent and A2A work record a remote-provider boundary;
+- CLI tools, local MCP servers, external adapters, and process protocols are
+  trusted host code.
 
-A new graph-step front (a new entry in the step-type registry) inherits **admit**
-and **seal** from the orchestration automatically. It must honor the **credentials**
-and **sandbox** contracts in its own adapter, exactly as the cli-tool front does.
-The structural stages cannot be bypassed; the adapter-contract stages are the
-front author's obligation and are covered by the conformance tests below.
+For host processes Runx controls exact argv, cwd, delivered environment,
+credentials, stdin, timeout, bounded output, interruption, process groups or
+Job Objects, kill-tree behavior, and cleanup. It does not claim portable
+filesystem, network, or syscall confinement.
+
+Every executed lane records one typed `ExecutionBoundaryObservation`:
+`native_capability`, `deterministic_worker`, `trusted_host_process`, or
+`remote_provider`.
+
+### 5. Seal
+
+The orchestration seals the outcome centrally with its admission witness,
+resolved grant references, public credential observations, typed execution
+boundary, output hashes, and closure state. Raw credential material and ambient
+environment never enter the proof.
+
+## Adding an execution front
+
+A new front must reuse the existing requirements, grant, credential-delivery,
+process-supervision, and receipt owners. It may add a new domain protocol, but
+not a second parser, scope vocabulary, environment loader, process wrapper,
+approval system, or receipt projection.
+
+The front must identify the boundary it can actually observe. A declaration is
+not evidence. A host process remains `trusted_host_process` even when the skill
+requests narrow scopes; those scopes govern Runx capabilities and provider
+calls, not the process's operating-system syscalls.
 
 ## Conformance
 
-| Stage | Guarding test |
+| Invariant | Primary proof |
 | --- | --- |
-| Admit + Seal | `crates/runx-runtime/tests/governance_witness.rs` (an admitted step records its authority in the sealed witness; an unadmitted step falls back to local-runtime) |
-| Deliver credentials | `crates/runx-runtime/tests/credential_delivery.rs`, `credential_grant_policy.rs` |
-| Sandbox | `crates/runx-runtime/tests/cli_tool_contract.rs` (enforced-readonly) |
-
-The seal stage was made structural and uniform across step types in the runtime
-runner; the broader contract (this document) is the operative statement of the
-invariant for new fronts.
+| admission and sealing | `crates/runx-runtime/tests/governance_witness.rs` |
+| exact environment and credential delivery | `credential_grant_policy.rs`, `credential_delivery.rs`, `process_invocation_contract.rs` |
+| process lifecycle and kill-tree behavior | process supervisor unit tests, external-adapter and thread-outbox-provider integration tests |
+| deterministic worker isolation and limits | JavaScript worker hostile-module and supervisor tests |
+| typed execution-boundary evidence | adapter, native-dispatch, agent-context, and receipt-history tests |

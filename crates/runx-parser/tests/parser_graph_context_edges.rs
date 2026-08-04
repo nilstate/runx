@@ -34,22 +34,45 @@ fn graph_accepts_contract_context_edge() -> Result<(), String> {
 }
 
 #[test]
-fn graph_rejects_base_key_context_edge() -> Result<(), String> {
-    // A context edge may bind only to a producing step's declared contract (outputs or
-    // artifact packets), never to a base/diagnostic field. The parser rejects this at
-    // validate time so authors fail fast rather than only at run time.
-    for base in ["stdout", "skill_claim", "status", "raw", "stderr"] {
-        let error = validate_graph(
-            parse_graph_yaml(&graph_with_edge(base)).map_err(|error| error.to_string())?,
+fn graph_does_not_reserve_process_diagnostic_names() -> Result<(), String> {
+    // Process diagnostics live outside the declared step contract. A producer
+    // may therefore intentionally declare any of these ordinary field names.
+    for name in ["stdout", "skill_claim", "status", "raw", "stderr"] {
+        let graph = validate_graph(
+            parse_graph_yaml(&graph_with_edge(name)).map_err(|error| error.to_string())?,
         )
-        .err()
-        .ok_or_else(|| format!("expected base-key context edge rejection for {base:?}"))?;
-
-        let message = error.to_string();
-        assert!(
-            message.contains(&format!("base/diagnostic field '{base}'")),
-            "unexpected error for {base:?}: {message}"
-        );
+        .map_err(|error| error.to_string())?;
+        assert_eq!(graph.steps[1].context_edges[0].output, name);
     }
+    Ok(())
+}
+
+#[test]
+fn inline_graph_source_preserves_exact_environment_requirements() -> Result<(), String> {
+    let graph = validate_graph(
+        parse_graph_yaml(
+            r#"
+name: inline-environment
+steps:
+  - id: compute
+    run:
+      type: javascript
+      module: compute.mjs
+      environment:
+        required: [REGION, TENANT_LABEL]
+        optional: [TRACE_LABEL]
+"#,
+        )
+        .map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| error.to_string())?;
+
+    let source = graph.steps[0]
+        .run
+        .as_ref()
+        .and_then(|run| run.source())
+        .ok_or_else(|| "inline source was not preserved".to_owned())?;
+    assert_eq!(source.environment.required, ["REGION", "TENANT_LABEL"]);
+    assert_eq!(source.environment.optional, ["TRACE_LABEL"]);
     Ok(())
 }

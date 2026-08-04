@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the mint primitive keeps its core fn, the
+// Module rationale: the mint primitive keeps its core fn, the
 // family-comparator trait, the generic scope-bounds comparator, and their unit tests
 // as one cohesive unit; splitting them would fracture the fail-closed minting path.
 //! Authority minting: derive a narrowed child authority from a parent charter
@@ -93,7 +93,7 @@ impl FamilySubsetComparator for ScopeBoundsComparator {
         Self::ALGORITHM
     }
 
-    // rust-style-allow: long-function - the exhaustive destructure of both bounds
+    // Function rationale: the exhaustive destructure of both bounds
     // sides plus the single subset conjunction is one trust-boundary comparison;
     // splitting it would let a forgotten field fail open.
     fn bounds_subset(&self, child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
@@ -260,7 +260,7 @@ pub enum AttenuationError {
 /// Returns the matching [`AttenuationError`] when the requested family, resource
 /// address, verbs, capabilities, or expiry widen the parent, or when the derived
 /// child fails the family subset check.
-// rust-style-allow: long-function - minting is one linear derive/compare/prove
+// Function rationale: minting is one linear derive/compare/prove
 // sequence; splitting it would scatter the fail-closed checks across helpers.
 pub fn mint_attenuated(
     parent: &AuthorityTerm,

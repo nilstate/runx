@@ -2,16 +2,18 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
-use runx_contracts::{Receipt, Reference};
+use runx_contracts::Reference;
 use runx_parser::GraphStep;
 
-use crate::adapter::SkillOutput;
+use crate::CapabilityApproval;
 
 use super::{
-    EffectAdmission, EffectMetadataRefreshRequest, EffectOutputRequest, EffectReceiptRequest,
+    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
     EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest,
     RuntimeEffect, RuntimeEffectError,
 };
+
+mod catalog;
 
 #[derive(Clone)]
 pub struct RuntimeEffectRegistry {
@@ -26,15 +28,13 @@ impl RuntimeEffectRegistry {
         }
     }
 
-    #[must_use]
-    pub fn with_effect<T>(effect: T) -> Self
+    pub fn with_effect<T>(effect: T) -> Result<Self, RuntimeEffectError>
     where
         T: RuntimeEffect + 'static,
     {
         let mut registry = Self::empty();
-        let family = effect.family();
-        registry.families.insert(family, Arc::new(effect));
-        registry
+        registry.register_effect(effect)?;
+        Ok(registry)
     }
 
     pub fn register_effect<T>(&mut self, effect: T) -> Result<(), RuntimeEffectError>
@@ -47,6 +47,29 @@ impl RuntimeEffectRegistry {
                 family: family.to_owned(),
             });
         }
+        catalog::validate_capabilities(family, effect.capabilities())?;
+        for capability in effect.capabilities() {
+            let definition = capability.definition();
+            #[cfg(feature = "catalog")]
+            if crate::tool_catalogs::native::is_core_tool(definition.id) {
+                return Err(RuntimeEffectError::InvalidMetadata {
+                    family: family.to_owned(),
+                    message: format!(
+                        "tool {} conflicts with a runtime-owned catalog tool",
+                        definition.id
+                    ),
+                });
+            }
+            if let Some(owner) = self.capability_owner(definition.id) {
+                return Err(RuntimeEffectError::InvalidMetadata {
+                    family: family.to_owned(),
+                    message: format!(
+                        "tool {} is already owned by effect family {owner}",
+                        definition.id
+                    ),
+                });
+            }
+        }
         self.families.insert(family, Arc::new(effect));
         Ok(())
     }
@@ -55,10 +78,8 @@ impl RuntimeEffectRegistry {
         &self,
         request: EffectStepRequest<'_>,
     ) -> Result<Option<EffectReplay>, RuntimeEffectError> {
-        for effect in self.families.values() {
-            if let Some(replay) = effect.find_replay(request)? {
-                return Ok(Some(replay));
-            }
+        if let Some(effect) = self.resolved_effect(request)? {
+            return effect.find_replay(request);
         }
         Ok(None)
     }
@@ -67,8 +88,8 @@ impl RuntimeEffectRegistry {
         &self,
         request: EffectStepRequest<'_>,
     ) -> Result<(), RuntimeEffectError> {
-        for effect in self.families.values() {
-            effect.recover_pending(request)?;
+        if let Some(effect) = self.resolved_effect(request)? {
+            return effect.recover_pending(request);
         }
         Ok(())
     }
@@ -77,12 +98,39 @@ impl RuntimeEffectRegistry {
         &self,
         request: EffectStepRequest<'_>,
     ) -> Result<Option<EffectAdmission>, RuntimeEffectError> {
-        for effect in self.families.values() {
-            if let Some(admission) = effect.admit(request)? {
-                return Ok(Some(admission));
-            }
+        if let Some(effect) = self.resolved_effect(request)? {
+            return effect.admit(request)?.map(Some).ok_or_else(|| {
+                RuntimeEffectError::InvalidMetadata {
+                    family: effect.family().to_owned(),
+                    message: format!(
+                        "resolved target for step {} belongs to this effect family but did not provide an admissible effect contract",
+                        request.step.id
+                    ),
+                }
+            });
         }
         Ok(None)
+    }
+
+    pub(crate) fn resolve_approval(
+        &self,
+        request: EffectStepRequest<'_>,
+        admission: EffectAdmission,
+        host: &mut dyn crate::Host,
+    ) -> Result<EffectAdmission, RuntimeEffectError> {
+        let effect = self.require_effect(admission.family())?;
+        let requirement = request
+            .target
+            .tool_ref
+            .and_then(|tool_ref| self.capability(tool_ref))
+            .map_or(EffectApprovalRequirement::Forbidden, |capability| {
+                if capability.definition().approval == CapabilityApproval::Effect {
+                    EffectApprovalRequirement::Required
+                } else {
+                    EffectApprovalRequirement::Forbidden
+                }
+            });
+        effect.resolve_approval(requirement, request.step, admission, host)
     }
 
     pub(crate) fn prepare_output(
@@ -125,23 +173,20 @@ impl RuntimeEffectRegistry {
         self.require_effect(family)?.validate_replay(request)
     }
 
-    pub(crate) fn refresh_output_metadata(
-        &self,
-        output: &mut SkillOutput,
-        receipt: &Receipt,
-    ) -> Result<(), RuntimeEffectError> {
-        for effect in self.families.values() {
-            effect.refresh_output_metadata(EffectMetadataRefreshRequest { output, receipt })?;
-        }
-        Ok(())
-    }
-
     pub(crate) fn authority_grant_refs(
         &self,
         admission: &EffectAdmission,
     ) -> Result<Vec<Reference>, RuntimeEffectError> {
         self.require_effect(admission.family())?
             .authority_grant_refs(admission)
+    }
+
+    pub(crate) fn authority_scope_refs(
+        &self,
+        admission: &EffectAdmission,
+    ) -> Result<Vec<Reference>, RuntimeEffectError> {
+        self.require_effect(admission.family())?
+            .authority_scope_refs(admission)
     }
 
     pub(crate) fn replay_authority_grant_refs(
@@ -156,6 +201,28 @@ impl RuntimeEffectRegistry {
         self.families
             .values()
             .all(|effect| effect.can_run_parallel(step))
+    }
+
+    fn resolved_effect(
+        &self,
+        request: EffectStepRequest<'_>,
+    ) -> Result<Option<&dyn RuntimeEffect>, RuntimeEffectError> {
+        let mut matched = self
+            .families
+            .values()
+            .filter(|effect| effect.matches_target(request));
+        let first = matched.next().map(Arc::as_ref);
+        let Some(second) = matched.next() else {
+            return Ok(first);
+        };
+        let first_family = first.map_or("unknown", RuntimeEffect::family);
+        Err(RuntimeEffectError::InvalidMetadata {
+            family: second.family().to_owned(),
+            message: format!(
+                "resolved target is claimed by both effect families {first_family} and {}",
+                second.family()
+            ),
+        })
     }
 
     fn require_effect(

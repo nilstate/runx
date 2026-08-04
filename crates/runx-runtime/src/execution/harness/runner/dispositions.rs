@@ -3,16 +3,15 @@
 
 use runx_contracts::{ClosureDisposition, JsonObject, JsonValue};
 
-use super::super::super::super::adapter::{InvocationStatus, SkillOutput};
+use super::super::super::super::adapter::InvocationOutput;
 use super::super::fixtures::{HarnessExpectedStatus, HarnessFixture};
 use super::HarnessReplayError;
-use crate::RuntimeError;
 use crate::execution::disposition::agent_answer_disposition_or_closed;
 
 pub(super) fn agent_task_output(
     fixture: &HarnessFixture,
     request_id: &str,
-) -> Result<SkillOutput, HarnessReplayError> {
+) -> Result<InvocationOutput, HarnessReplayError> {
     let mut metadata = JsonObject::new();
     metadata.insert(
         "agent_request_id".to_owned(),
@@ -26,34 +25,21 @@ pub(super) fn agent_task_output(
         .cloned()
         .unwrap_or(JsonValue::Null);
     if matches!(payload, JsonValue::Null) {
-        return Ok(SkillOutput {
-            status: InvocationStatus::Failure,
-            stdout: String::new(),
-            stderr: format!("missing replay answer for {request_id}"),
-            exit_code: None,
-            duration_ms: 0,
+        return Ok(InvocationOutput::runtime_failure(
+            JsonValue::Null,
+            format!("missing replay answer for {request_id}"),
+            0,
             metadata,
-        });
+        ));
     }
-    Ok(SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: serde_json::to_string(&payload).map_err(|source| RuntimeError::Json {
-            context: format!("serializing replay answer {request_id}"),
-            source,
-        })?,
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 0,
-        metadata,
-    })
+    Ok(InvocationOutput::runtime_success(payload, 0, metadata))
 }
 
-pub(super) fn skill_output_object(output: &SkillOutput) -> JsonObject {
-    let mut object = JsonObject::new();
-    if let Ok(parsed) = serde_json::from_str::<JsonValue>(&output.stdout) {
-        object.insert("skill_claim".to_owned(), parsed);
+pub(super) fn skill_output_object(output: &InvocationOutput) -> JsonObject {
+    match &output.value {
+        JsonValue::Object(object) => object.clone(),
+        _ => JsonObject::new(),
     }
-    object
 }
 
 pub(super) fn string_metadata<'a>(fixture: &'a HarnessFixture, field: &str) -> Option<&'a str> {

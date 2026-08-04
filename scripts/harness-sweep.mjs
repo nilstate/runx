@@ -1,25 +1,29 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
 const schema = "runx.inline_harness_sweep.v1";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const defaultPackageTimeoutMs = 120_000;
 
 try {
   const options = parseArgs(process.argv.slice(2));
-  const report = runSweep(options);
+  if (options.selfTest) {
+    await runSelfTests();
+    process.stdout.write("harness-sweep self-test passed\n");
+    process.exit(0);
+  }
+  const report = await runSweep(options);
   const json = `${JSON.stringify(report, null, 2)}\n`;
   if (options.output) {
     const outputPath = path.resolve(repoRoot, options.output);
@@ -36,25 +40,36 @@ try {
   process.exitCode = 1;
 }
 
-function runSweep(options) {
+async function runSweep(options) {
   const started = performance.now();
   const runxBin = resolveRunxBinary(options);
   const skills = officialSkills();
   const allowed = new Set(options.allowed);
-  const tempRoot = mkdtempSync(path.join(os.tmpdir(), "runx-harness-sweep-"));
+  const scratchRoot = path.join(repoRoot, ".runx", "harness-sweep");
+  mkdirSync(scratchRoot, { recursive: true });
+  const tempRoot = mkdtempSync(path.join(scratchRoot, "run-"));
   const workspaceDir = path.join(tempRoot, "workspace");
   mkdirSync(workspaceDir, { recursive: true });
   const results = [];
 
   try {
     for (const skill of skills) {
-      const result = runSkillHarness(skill, runxBin, tempRoot, workspaceDir, allowed);
+      const result = await runSkillHarness(
+        skill,
+        runxBin,
+        tempRoot,
+        workspaceDir,
+        allowed,
+        options.timeoutMs ?? defaultPackageTimeoutMs,
+      );
       results.push(result);
       const label = result.status === "passed"
         ? "PASS"
-        : result.status === "allowed_failure"
-          ? "ALLOW"
-          : "FAIL";
+        : result.status === "not_declared"
+          ? "NONE"
+          : result.status === "allowed_failure"
+            ? "ALLOW"
+            : "FAIL";
       process.stderr.write(`[harness-sweep] ${label} ${skill.name} ${result.elapsed_ms}ms\n`);
     }
   } finally {
@@ -64,38 +79,37 @@ function runSweep(options) {
   }
 
   const passedSkillCount = results.filter((result) => result.status === "passed").length;
+  const notDeclaredSkillCount = results.filter(
+    (result) => result.status === "not_declared",
+  ).length;
   const allowedFailureCount = results.filter((result) => result.status === "allowed_failure").length;
   const failed = results.filter((result) => result.status === "failed");
   const required = options.require ?? 0;
   const gating = options.require !== undefined;
   const expectedSkillCount = options.expectedCount;
-  const failures = [];
-  if (expectedSkillCount !== undefined && skills.length !== expectedSkillCount) {
-    failures.push(
-      `expected ${expectedSkillCount} official skills, discovered ${skills.length}`,
-    );
-  }
-  if (gating && passedSkillCount < required) {
-    failures.push(`required ${required} passing skills, got ${passedSkillCount}`);
-  }
-  if (gating && failed.length > 0) {
-    failures.push(
-      `unallowed harness failures: ${failed.map((result) => result.skill).join(", ")}`,
-    );
-  }
+  const failures = sweepFailures({
+    discoveredSkillCount: skills.length,
+    expectedSkillCount,
+    failed,
+    gating,
+    passedSkillCount,
+    required,
+  });
 
   return {
     schema,
     status: failures.length === 0 ? "passed" : "failed",
-    summary: `${passedSkillCount}/${skills.length}`,
+    summary: `${passedSkillCount} passed, ${notDeclaredSkillCount} internal not declared, ${skills.length} official`,
     required,
     expected_skill_count: expectedSkillCount ?? null,
     discovered_skill_count: skills.length,
     passed_skill_count: passedSkillCount,
+    not_declared_skill_count: notDeclaredSkillCount,
     failed_skill_count: failed.length,
     allowed_failure_count: allowedFailureCount,
     allowed_failures: [...allowed].sort(),
     elapsed_ms: Math.round(performance.now() - started),
+    package_timeout_ms: options.timeoutMs ?? defaultPackageTimeoutMs,
     runx_bin: path.relative(repoRoot, runxBin),
     temp_root: options.keepTemp ? tempRoot : undefined,
     failures,
@@ -103,7 +117,141 @@ function runSweep(options) {
   };
 }
 
-function runSkillHarness(skill, runxBin, tempRoot, workspaceDir, allowed) {
+function sweepFailures({
+  discoveredSkillCount,
+  expectedSkillCount,
+  failed,
+  gating,
+  passedSkillCount,
+  required,
+}) {
+  const failures = [];
+  if (expectedSkillCount !== undefined && discoveredSkillCount !== expectedSkillCount) {
+    failures.push(
+      `expected ${expectedSkillCount} official skills, discovered ${discoveredSkillCount}`,
+    );
+  }
+  if (gating && passedSkillCount < required) {
+    failures.push(`required ${required} passing skills, got ${passedSkillCount}`);
+  }
+  if (failed.length > 0) {
+    failures.push(
+      `unallowed harness failures: ${failed.map((result) => result.skill).join(", ")}`,
+    );
+  }
+  return failures;
+}
+
+async function runSelfTests() {
+  const defaults = {
+    discoveredSkillCount: 2,
+    expectedSkillCount: undefined,
+    gating: false,
+    passedSkillCount: 1,
+    required: 0,
+  };
+  assertFailures(
+    sweepFailures({ ...defaults, failed: [{ skill: "broken" }] }),
+    ["unallowed harness failures: broken"],
+    "an unallowed failure must fail an ungated sweep",
+  );
+  assertFailures(
+    sweepFailures({ ...defaults, failed: [] }),
+    [],
+    "a clean ungated sweep must pass",
+  );
+  assertFailures(
+    sweepFailures({ ...defaults, failed: [], gating: true, required: 2 }),
+    ["required 2 passing skills, got 1"],
+    "--require must enforce the minimum passing count",
+  );
+  assertFailures(
+    sweepFailures({ ...defaults, failed: [], expectedSkillCount: 3 }),
+    ["expected 3 official skills, discovered 2"],
+    "--expected-count must catch catalog drift",
+  );
+  const started = performance.now();
+  const timedOut = await spawnBounded(
+    process.execPath,
+    ["-e", "setInterval(() => {}, 1000)"],
+    { encoding: "utf8" },
+    50,
+  );
+  const elapsedMs = performance.now() - started;
+  if (timedOut.error?.code !== "ETIMEDOUT") {
+    throw new Error(
+      `bounded package execution must time out: ${timedOut.error?.code ?? "no error"}`,
+    );
+  }
+  if (elapsedMs > 2_000) {
+    throw new Error(`bounded package execution exceeded its watchdog: ${elapsedMs}ms`);
+  }
+  // POSIX process groups are owned directly by this Node watchdog. On Windows,
+  // the spawned Runx binary owns the kernel Job Object and its focused Rust
+  // tests exercise descendant containment on a real Windows runner.
+  if (process.platform !== "win32") {
+    const treeStarted = performance.now();
+    const tree = await spawnBounded(
+      process.execPath,
+      [
+        "-e",
+        [
+          "const { spawn } = require('node:child_process');",
+          "const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'],",
+          "  { stdio: ['ignore', 'inherit', 'inherit'] });",
+          "process.stdout.write(`${child.pid}\\n`);",
+          "setInterval(() => {}, 1000);",
+        ].join(" "),
+      ],
+      { encoding: "utf8" },
+      250,
+    );
+    const treeElapsedMs = performance.now() - treeStarted;
+    if (tree.error?.code !== "ETIMEDOUT") {
+      throw new Error(
+        `bounded process-tree execution must time out: ${tree.error?.code ?? "no error"}`,
+      );
+    }
+    if (treeElapsedMs > 5_000) {
+      throw new Error(`process-tree cleanup exceeded its watchdog: ${treeElapsedMs}ms`);
+    }
+    const descendantPid = Number.parseInt(tree.stdout, 10);
+    if (!Number.isInteger(descendantPid)) {
+      throw new Error("bounded package execution did not report its descendant");
+    }
+    if (!(await processExited(descendantPid, 2_000))) {
+      throw new Error(`timed-out package left descendant ${descendantPid} alive`);
+    }
+  }
+  const internalEmpty = classifyHarnessResult({
+    exitStatus: 0,
+    reportStatus: "not_declared",
+    caseCount: 0,
+    visibility: "internal",
+    allowed: false,
+  });
+  if (internalEmpty !== "not_declared") {
+    throw new Error(`internal no-case package must remain not_declared, got ${internalEmpty}`);
+  }
+  const publicEmpty = classifyHarnessResult({
+    exitStatus: 0,
+    reportStatus: "not_declared",
+    caseCount: 0,
+    visibility: "public",
+    allowed: false,
+  });
+  if (publicEmpty !== "failed") {
+    throw new Error(`public no-case package must fail admission, got ${publicEmpty}`);
+  }
+}
+
+function assertFailures(actual, expected, message) {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${message}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  }
+}
+
+async function runSkillHarness(skill, runxBin, tempRoot, workspaceDir, allowed, timeoutMs) {
   const started = performance.now();
   const skillDir = path.join(repoRoot, "skills", skill.name);
   const receiptDir = path.join(tempRoot, "receipts", skill.name);
@@ -117,12 +265,7 @@ function runSkillHarness(skill, runxBin, tempRoot, workspaceDir, allowed) {
   if (!existsSync(path.join(skillDir, "X.yaml"))) {
     return failedSkill(skill.name, started, "missing X.yaml");
   }
-  const fixtureFiles = standaloneFixtureFiles(skillDir);
-  if (fixtureFiles.length > 0) {
-    return runStandaloneFixtureHarness(skill, fixtureFiles, runxBin, tempRoot, receiptDir, started, skillWorkspaceDir, allowed);
-  }
-
-  const result = spawnSync(
+  const result = await spawnBounded(
     runxBin,
     ["harness", skillDir, "--json", "--receipt-dir", receiptDir],
     {
@@ -131,90 +274,240 @@ function runSkillHarness(skill, runxBin, tempRoot, workspaceDir, allowed) {
       maxBuffer: 64 * 1024 * 1024,
       env: harnessEnv(runxBin, tempRoot, skillWorkspaceDir),
     },
+    timeoutMs,
   );
   const elapsedMs = Math.round(performance.now() - started);
   const report = parseHarnessReport(result.stdout);
   const error = result.error
     ? result.error.message
-    : report.parse_error
-      ?? nonEmpty(result.stderr)
+    : nonEmpty(result.stderr)
+      ?? report.parse_error
       ?? (result.status === 0 ? undefined : `runx exited ${result.status ?? "with signal"}`);
-  const passed = result.status === 0 && report.status === "passed";
-  const allowedFailure = !passed && allowed.has(skill.name);
+  const caseCount = report.case_count ?? 0;
+  const status = classifyHarnessResult({
+    exitStatus: result.status,
+    reportStatus: report.status,
+    caseCount,
+    visibility: skill.visibility,
+    allowed: allowed.has(skill.name),
+  });
   return {
     skill: skill.name,
-    status: passed ? "passed" : allowedFailure ? "allowed_failure" : "failed",
+    visibility: skill.visibility,
+    status,
     elapsed_ms: elapsedMs,
     exit_status: result.status,
-    case_count: report.case_count ?? 0,
+    case_count: caseCount,
     graph_case_count: report.graph_case_count ?? 0,
     assertion_error_count: report.assertion_error_count ?? 0,
     assertion_errors: report.assertion_errors ?? [],
     case_names: report.case_names ?? [],
     receipt_count: Array.isArray(report.receipt_ids) ? report.receipt_ids.length : 0,
-    error: passed ? undefined : error,
+    error: ["passed", "not_declared"].includes(status) ? undefined : error,
   };
 }
 
-function runStandaloneFixtureHarness(skill, fixtureFiles, runxBin, tempRoot, receiptDir, started, workspaceDir, allowed) {
-  const assertionErrors = [];
-  const caseNames = [];
-  let receiptCount = 0;
-  let exitStatus = 0;
-  for (const fixturePath of fixtureFiles) {
-    const caseName = path.basename(fixturePath).replace(/\.ya?ml$/u, "");
-    const fixtureWorkspaceDir = path.join(workspaceDir, caseName);
-    mkdirSync(fixtureWorkspaceDir, { recursive: true });
-    caseNames.push(caseName);
-    const result = spawnSync(
-      runxBin,
-      ["harness", fixturePath, "--json", "--receipt-dir", receiptDir],
-      {
-        cwd: fixtureWorkspaceDir,
-        encoding: "utf8",
-        maxBuffer: 64 * 1024 * 1024,
-        env: harnessEnv(runxBin, tempRoot, fixtureWorkspaceDir),
-      },
-    );
-    if (result.status !== 0 && exitStatus === 0) {
-      exitStatus = result.status ?? 1;
-    }
-    const output = parseHarnessReport(result.stdout);
-    if (result.status === 0 && output.schema === "runx.receipt.v1") {
-      receiptCount += 1;
-      continue;
-    }
-    assertionErrors.push(
-      `${caseName}: ${nonEmpty(result.stderr) ?? output.parse_error ?? `runx exited ${result.status ?? "with signal"}`}`,
-    );
+function classifyHarnessResult({
+  exitStatus,
+  reportStatus,
+  caseCount,
+  visibility,
+  allowed,
+}) {
+  if (exitStatus === 0 && reportStatus === "passed" && caseCount > 0) {
+    return "passed";
   }
-  const elapsedMs = Math.round(performance.now() - started);
-  const passed = assertionErrors.length === 0;
-  const allowedFailure = !passed && allowed.has(skill.name);
+  if (
+    exitStatus === 0
+    && reportStatus === "not_declared"
+    && caseCount === 0
+    && visibility === "internal"
+  ) {
+    return "not_declared";
+  }
+  return allowed ? "allowed_failure" : "failed";
+}
+
+async function spawnBounded(command, args, options, timeoutMs) {
+  const {
+    encoding,
+    maxBuffer = 1024 * 1024,
+    ...spawnOptions
+  } = options;
+  const child = spawn(command, args, {
+    ...spawnOptions,
+    detached: process.platform !== "win32",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const stdout = [];
+  const stderr = [];
+  let stdoutBytes = 0;
+  let stderrBytes = 0;
+  let overflowError;
+  let signalOverflow;
+  const overflow = new Promise((resolve) => {
+    signalOverflow = resolve;
+  });
+
+  const capture = (stream, chunks, streamName) => {
+    stream.on("data", (value) => {
+      const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+      const nextBytes = streamName === "stdout"
+        ? stdoutBytes + chunk.length
+        : stderrBytes + chunk.length;
+      if (streamName === "stdout") {
+        stdoutBytes = nextBytes;
+      } else {
+        stderrBytes = nextBytes;
+      }
+      if (nextBytes <= maxBuffer) {
+        chunks.push(chunk);
+        return;
+      }
+      if (!overflowError) {
+        overflowError = processError(
+          "ENOBUFS",
+          `${command} ${streamName} exceeded maxBuffer (${maxBuffer} bytes)`,
+        );
+        signalOverflow("overflow");
+      }
+    });
+  };
+  capture(child.stdout, stdout, "stdout");
+  capture(child.stderr, stderr, "stderr");
+
+  let status = null;
+  let signal = null;
+  let spawnError;
+  let rootClosed = false;
+  let resolveRootClosed;
+  const rootClose = new Promise((resolve) => {
+    resolveRootClosed = resolve;
+    child.once("close", (code, closeSignal) => {
+      rootClosed = true;
+      if (status === null) {
+        status = code;
+        signal = closeSignal;
+      }
+      resolve();
+    });
+  });
+  let completionSettled = false;
+  let resolveCompletion;
+  const completion = new Promise((resolve) => {
+    resolveCompletion = resolve;
+  });
+  const finish = (outcome) => {
+    if (completionSettled) return;
+    completionSettled = true;
+    resolveCompletion(outcome);
+  };
+  child.once("error", (error) => {
+    spawnError = error;
+    resolveRootClosed();
+    finish("spawn_error");
+  });
+  child.once("exit", (code, exitSignal) => {
+    status = code;
+    signal = exitSignal;
+    finish("completed");
+  });
+  let timeoutHandle;
+  const timedOut = new Promise((resolve) => {
+    timeoutHandle = setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+  const outcome = await Promise.race([completion, overflow, timedOut]);
+  clearTimeout(timeoutHandle);
+
+  let error = spawnError;
+  let cleanupError;
+  if (outcome !== "completed" || !rootClosed) {
+    try {
+      terminateSpawnedProcess(child);
+    } catch (candidate) {
+      cleanupError = candidate;
+    }
+    await Promise.race([rootClose, delay(1_000)]);
+    if (!rootClosed) {
+      try {
+        child.kill("SIGKILL");
+      } catch (candidate) {
+        if (!isMissingProcess(candidate) && !cleanupError) {
+          cleanupError = candidate;
+        }
+      }
+      await Promise.race([rootClose, delay(1_000)]);
+    }
+    child.stdout.destroy();
+    child.stderr.destroy();
+    child.unref();
+  }
+  if (cleanupError) {
+    error = cleanupError;
+  } else if (!error && outcome !== "completed") {
+    error = outcome === "timeout"
+      ? processError("ETIMEDOUT", `${command} timed out after ${timeoutMs}ms`)
+      : overflowError;
+  }
+
   return {
-    skill: skill.name,
-    status: passed ? "passed" : allowedFailure ? "allowed_failure" : "failed",
-    elapsed_ms: elapsedMs,
-    exit_status: passed ? 0 : exitStatus,
-    case_count: fixtureFiles.length,
-    graph_case_count: 0,
-    assertion_error_count: assertionErrors.length,
-    assertion_errors: assertionErrors,
-    case_names: caseNames,
-    receipt_count: receiptCount,
-    error: passed ? undefined : assertionErrors.join("; "),
+    pid: child.pid,
+    status,
+    signal,
+    stdout: decodeOutput(stdout, encoding),
+    stderr: decodeOutput(stderr, encoding),
+    error,
   };
 }
 
-function standaloneFixtureFiles(skillDir) {
-  const fixturesDir = path.join(skillDir, "fixtures");
-  if (!existsSync(fixturesDir)) {
-    return [];
+function terminateSpawnedProcess(child) {
+  if (!Number.isInteger(child.pid)) {
+    return;
   }
-  return readdirSync(fixturesDir)
-    .filter((entry) => entry.endsWith(".yaml") || entry.endsWith(".yml"))
-    .sort()
-    .map((entry) => path.join(fixturesDir, entry));
+  if (process.platform === "win32") {
+    // Runx owns its descendants with a kernel Job Object. Killing the Runx
+    // root closes the outer job handle and atomically terminates that tree.
+    child.kill("SIGKILL");
+    return;
+  }
+  try {
+    process.kill(-child.pid, "SIGKILL");
+  } catch (error) {
+    if (!isMissingProcess(error)) throw error;
+  }
+}
+
+async function processExited(pid, timeoutMs) {
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      if (isMissingProcess(error)) return true;
+      throw error;
+    }
+    await delay(25);
+  }
+  return false;
+}
+
+function isMissingProcess(error) {
+  return error instanceof Error && "code" in error && error.code === "ESRCH";
+}
+
+function processError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function decodeOutput(chunks, encoding) {
+  const output = Buffer.concat(chunks);
+  return encoding ? output.toString(encoding) : output;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function failedSkill(skill, started, error) {
@@ -254,8 +547,9 @@ function resolveRunxBinary(options) {
         "crates/Cargo.toml",
         "-p",
         "runx-cli",
-        "--bin",
-        "runx",
+        "-p",
+        "runx-js-worker",
+        "--bins",
       ],
       {
         cwd: repoRoot,
@@ -264,7 +558,7 @@ function resolveRunxBinary(options) {
       },
     );
     if (result.status !== 0) {
-      throw new Error(`cargo build runx failed with exit ${result.status ?? "signal"}`);
+      throw new Error(`cargo build runx and runx-js-worker failed with exit ${result.status ?? "signal"}`);
     }
   }
   const targetRoot = process.env.CARGO_TARGET_DIR
@@ -285,10 +579,17 @@ function officialSkills() {
   }
   return lock
     .map((entry) => {
-      if (typeof entry?.skill_id !== "string" || !entry.skill_id.startsWith("runx/")) {
+      const parts = typeof entry?.skill_id === "string" ? entry.skill_id.split("/") : [];
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
         throw new Error(`invalid official skill entry: ${JSON.stringify(entry)}`);
       }
-      return { name: entry.skill_id.slice("runx/".length) };
+      if (!["internal", "public"].includes(entry.catalog_visibility)) {
+        throw new Error(`invalid official skill visibility: ${JSON.stringify(entry)}`);
+      }
+      return {
+        name: parts[1],
+        visibility: entry.catalog_visibility,
+      };
     })
     .sort((left, right) => left.name.localeCompare(right.name));
 }
@@ -302,10 +603,7 @@ function harnessEnv(runxBin, tempRoot, workspaceDir) {
     NO_COLOR: "1",
     RUNX_HOME: runxHome,
     RUNX_CWD: workspaceDir,
-    RUNX_KERNEL_EVAL_BIN: runxBin,
-    RUNX_PARSER_EVAL_BIN: runxBin,
     RUNX_RUST_CLI_BIN: runxBin,
-    RUNX_DEV_RUST_CLI_BIN: runxBin,
     RUNX_TOOL_ROOTS: process.env.RUNX_TOOL_ROOTS
       ? `${process.env.RUNX_TOOL_ROOTS}${path.delimiter}${toolRoots}`
       : toolRoots,
@@ -356,12 +654,19 @@ function parseArgs(argv) {
       options.output = requiredValue(argv, ++index, arg);
     } else if (arg === "--runx-bin") {
       options.runxBin = requiredValue(argv, ++index, arg);
+    } else if (arg === "--timeout-ms") {
+      options.timeoutMs = positiveInteger(requiredValue(argv, ++index, arg), arg);
+      if (options.timeoutMs === 0) {
+        throw new Error("--timeout-ms requires a positive integer");
+      }
     } else if (arg === "--no-build") {
       options.noBuild = true;
     } else if (arg === "--keep-temp") {
       options.keepTemp = true;
+    } else if (arg === "--self-test") {
+      options.selfTest = true;
     } else if (arg === "--help" || arg === "-h") {
-      throw new Error("usage: node scripts/harness-sweep.mjs [--require n] [--allow skill[,skill]] [--expected-count n] [--output path] [--runx-bin path] [--no-build] [--keep-temp]");
+      throw new Error("usage: node scripts/harness-sweep.mjs [--require n] [--allow skill[,skill]] [--expected-count n] [--output path] [--runx-bin path] [--timeout-ms n] [--no-build] [--keep-temp] [--self-test]");
     } else {
       throw new Error(`unknown argument '${arg}'`);
     }

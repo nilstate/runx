@@ -1,0 +1,28 @@
+name: issue-to-pr-native-boundaries
+steps:
+  - id: write-spec
+    tool: fs.write
+    mutation: true
+    scopes:
+      - fs.write
+    inputs:
+      path: .runx-tmp/issue-to-pr-native-boundary.md
+      contents: |
+        # Native boundary proof
+
+        The issue-to-PR filesystem lane is runtime-owned.
+  - id: read-spec
+    tool: fs.read
+    scopes:
+      - fs.read
+    inputs:
+      path: .runx-tmp/issue-to-pr-native-boundary.md
+  - id: cleanup-spec
+    tool: fs.apply_bundle
+    mutation: true
+    scopes:
+      - fs.delete
+      - fs.write
+    inputs:
+      deletes:
+        - .runx-tmp/issue-to-pr-native-boundary.md

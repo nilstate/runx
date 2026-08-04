@@ -47,6 +47,20 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
+  output:
+    subset:
+      send_plan:
+        decision: needs_input
+        action_family: send-as
+        audience:
+          ref: ""
+        gates:
+          human_approval_required: true
+        blockers:
+          - audience is missing
+        provider_actions: []
+        success_checkpoint:
+          milestone: awaiting_audience
 metadata:
   public_skill: send-as
   source_case: missing-audience-needs-input

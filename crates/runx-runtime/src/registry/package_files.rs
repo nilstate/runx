@@ -1,24 +1,27 @@
 use std::path::Path;
 
 use runx_contracts::sha256_hex;
+use runx_parser::{
+    SkillPackageError, SkillPackageSource, ValidatedSkillPackage, validate_skill_package,
+};
+use serde::Serialize;
 
 use super::types::RegistryPackageFile;
 
 pub(crate) fn normalize_registry_package_files(
     files: Vec<RegistryPackageFile>,
 ) -> Result<Vec<RegistryPackageFile>, String> {
-    let mut normalized = Vec::with_capacity(files.len());
-    for file in files {
+    for file in &files {
         validate_registry_package_file_path(&file.path)?;
-        if normalized
-            .iter()
-            .any(|entry: &RegistryPackageFile| entry.path == file.path)
-        {
-            return Err(format!("duplicate package file '{}'", file.path));
-        }
-        normalized.push(file);
     }
+    let mut normalized = files;
     normalized.sort_by(|left, right| left.path.cmp(&right.path));
+    if let Some(duplicate) = normalized
+        .windows(2)
+        .find(|pair| pair[0].path == pair[1].path)
+    {
+        return Err(format!("duplicate package file '{}'", duplicate[0].path));
+    }
     Ok(normalized)
 }
 
@@ -26,29 +29,30 @@ pub(crate) fn registry_package_digest(files: &[RegistryPackageFile]) -> Option<S
     if files.is_empty() {
         return None;
     }
-    let mut sorted = files.to_vec();
+    let mut sorted = files.iter().collect::<Vec<_>>();
     sorted.sort_by(|left, right| left.path.cmp(&right.path));
-    let mut canonical = String::from("{\"files\":[");
-    for (index, file) in sorted.iter().enumerate() {
-        if index > 0 {
-            canonical.push(',');
-        }
-        canonical.push_str("{\"content\":");
-        let content = match serde_json::to_string(&file.content) {
-            Ok(value) => value,
-            Err(_) => return None,
-        };
-        canonical.push_str(&content);
-        canonical.push_str(",\"path\":");
-        let path = match serde_json::to_string(&file.path) {
-            Ok(value) => value,
-            Err(_) => return None,
-        };
-        canonical.push_str(&path);
-        canonical.push('}');
-    }
-    canonical.push_str("]}");
-    Some(sha256_hex(canonical.as_bytes()))
+    let canonical = serde_json::to_vec(&RegistryPackageDigestDocument {
+        files: sorted
+            .into_iter()
+            .map(|file| RegistryPackageDigestFile {
+                content: &file.content,
+                path: &file.path,
+            })
+            .collect(),
+    })
+    .ok()?;
+    Some(sha256_hex(&canonical))
+}
+
+#[derive(Serialize)]
+struct RegistryPackageDigestDocument<'a> {
+    files: Vec<RegistryPackageDigestFile<'a>>,
+}
+
+#[derive(Serialize)]
+struct RegistryPackageDigestFile<'a> {
+    content: &'a str,
+    path: &'a str,
 }
 
 pub(crate) fn validate_registry_package_file_path(path: &str) -> Result<(), String> {
@@ -75,6 +79,30 @@ pub(crate) fn validate_registry_package_file_path(path: &str) -> Result<(), Stri
         return Err(format!("{path} is stored in its dedicated registry field"));
     }
     Ok(())
+}
+
+pub(crate) fn validate_registry_skill_package(
+    markdown: &str,
+    profile_document: Option<&str>,
+    files: &[RegistryPackageFile],
+) -> Result<ValidatedSkillPackage, SkillPackageError> {
+    let mut source = SkillPackageSource::from_documents(
+        markdown.to_owned(),
+        profile_document.map(str::to_owned),
+    );
+    for file in files {
+        if source
+            .files
+            .insert(file.path.clone(), file.content.as_bytes().to_vec())
+            .is_some()
+        {
+            return Err(SkillPackageError::invalid(
+                &file.path,
+                "package source contains a duplicate path",
+            ));
+        }
+    }
+    validate_skill_package(source)
 }
 
 #[cfg(test)]

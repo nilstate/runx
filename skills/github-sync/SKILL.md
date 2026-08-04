@@ -1,165 +1,96 @@
 ---
 name: github-sync
-description: Plan a scoped pull or push of GitHub issues, threads, or PRs, gating any write behind human approval.
+description: Plan or execute a scoped GitHub issue, thread, or pull-request synchronization through a configured Runx Connect grant, with approval and readback on writes.
 runx:
   category: ops
 ---
 
 # GitHub Sync
 
-Decide exactly what state to move between a GitHub repo and the local graph, in
-which direction, and whether the agent is even allowed to write.
+Define one bounded synchronization between local Runx state and a GitHub
+repository. The skill makes direction, resource set, filters, content identity,
+scope, cursor, and approval posture explicit before the hosted GitHub driver is
+allowed to read or mutate GitHub.
 
-`github-sync` is the generic repo state connector. It turns a loose request like
-"sync the open issues" into a bounded plan that names the resources, the
-direction, the scope, the records it will touch, and the point where the run
-must stop for a human. A pull is observation and stays inside `repo:read`. A
-push is mutation and never proceeds without an explicit `repo:write` grant and
-human approval.
+The default runner is deterministic planning. The `pull` and `push` runners
+execute that same plan through Runx's native provider boundary. Pulls need no
+human approval because they are bounded reads. Each push carries exactly one
+bounded typed mutation, stops at an approval bound to its native digest, uses a
+stable idempotency key, and closes only on an independent GitHub readback. No
+GitHub token enters this package.
 
-## What this skill does
+## Composes
 
-`github-sync` produces a sealed `sync_plan`: a scoped record of which GitHub
-resources the run will pull or push, the scope it will use, the gates a write
-must clear, and any blockers that stop the run cleanly. For a push it carries a
-`diff_summary` described by digest and ref, never by raw body text, so a
-reviewer can approve the shape of a change without leaking issue contents,
-tokens, or PII into the plan or the receipt.
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
 
-The plan binds direction to scope. `pull` is read-only and lists the resources
-it will fetch. `push` enumerates the mutations by ref and digest, marks
-`approval_required: true`, and refuses to proceed past planning when the run
-lacks a `repo:write` grant.
+- `data-store#append_event`
+- `data-store#read_projection`
 
-This skill plans the sync; it does not perform the GitHub mutation itself. The
-plan is the artifact a downstream adapter executes after the approval gate
-clears. Planning and mutation stay on opposite sides of the gate so a review can
-read intent before anything changes on the remote.
+## When to use it
 
-When a sync loop needs a durable cursor, use `plan_and_append_cursor`. That
-runner reads the cursor projection through `data-store`, plans the bounded sync,
-appends the plan as a cursor event, and reads back the projection. The storage
-provider is selected by `data_source_ref`, not by GitHub-specific code.
+Use `github-sync` when an operator needs a reproducible pull or push contract for
+issues, pull requests, or threads—especially when cursor state must survive
+across runs. Use `pull` when the configured Connect grant may read repository
+state. Use `push` for one already-decided issue, pull-request, or thread
+mutation; use another run for another mutation. This avoids presenting a
+non-atomic remote batch as one transaction. Use `issue-triage` to decide what an
+issue means and `issue-to-pr` to govern an implementation lane.
 
-## When to use this skill
+Do not use a plan as evidence that remote state was read or changed. Only the
+native `runx.provider.operation.v1` result from `pull` or `push` is provider
+evidence. Do not silently turn a denied push into a pull.
 
-- An agent needs to fetch a bounded set of issues, threads, or PRs into the
-  local graph for triage or analysis.
-- An agent needs to mirror local state back to GitHub (reopen, label, comment,
-  close) and the operator wants the write shape reviewed before it lands.
-- A workflow must prove which repo, direction, and scope a sync used, with a
-  receipt that names the resources touched.
-- A review needs to distinguish a read-only pull from a write that crossed an
-  approval gate.
+## How it works
 
-## When not to use this skill
+1. Validate the exact `owner/name` repository, direction, resource kind, bounded
+   filters, maximum result count, and requested scope.
+2. A `pull` plan requires read scope and records the exact resources a provider
+   may fetch.
+3. A `push` plan requires write scope and exactly one typed mutation. It
+   rejects unknown fields and oversized content, then returns
+   `ready_for_approval`; planning itself does not open or satisfy that gate.
+4. Optional `plan_and_append_cursor` composes the canonical `data-store` skill
+   to append the bounded plan and read the projection back. That proves local
+   cursor persistence, not GitHub synchronization; this package does not own a
+   second cursor database or storage adapter.
+5. `pull` executes the plan with `repo.read`. `push` hashes the exact mutation
+   with the native digest tool, requests approval, executes it with
+   `repo.write`, verifies the returned digest, and reads the resource back.
+   Both runners use the native provider lane.
 
-`github-sync` is the generic repo state connector. Reach for it when the job is
-moving issue, thread, or PR state in or out, not authoring a change or composing
-one comment.
+## Inputs and result
 
-- To drive a thread through spec, build, review, and a draft PR. Use
-  `issue-to-pr`, which governs the full issue-to-PR lane.
-- To draft one review comment on one PR. Use `pr-review-note`.
-- To push without a named repo and direction.
-- To carry raw issue bodies, comment text, access tokens, or contributor PII in
-  the plan or receipt. Reference them by digest, span, or ref only.
-- To bypass the human approval gate on any write.
+- `repo` is exactly `owner/name`.
+- `direction` is `pull` or `push`.
+- `resources` contains the issue, PR, or thread selector and a limit no greater
+  than 100. A push has one `mutations` entry with `ref`, `op`, and an exact
+  typed `payload`. Issue and PR changes use `op: update`; new thread comments
+  use `op: comment`. Bodies are capped at 65,536 characters.
+- `scope` is the requested read or write scope.
 
-## Procedure
+The `runx.github_sync.v1` plan records exact direction, provider operation,
+scope, filters, blockers, approval posture, cursor state when used, and the
+explicit absence of remote effects. Execution additionally emits the native
+provider-operation packet; it does not rewrite the planning packet to imply a
+remote effect.
 
-1. Resolve the target repo and confirm the run holds at least `repo:read`.
-2. Read `direction`. `pull` is observation; `push` is mutation and changes the
-   gate posture.
-3. Read `resources`. Bind the concrete set: issues, PRs, or threads, plus the
-   filters that bound it (state, label, author, range). An unbounded "all"
-   becomes a blocker until reconfirmed.
-4. Read `scope`. A `push` requires `scope: write` backed by a real `repo:write`
-   grant. If a write is requested without that grant, stop and refuse rather
-   than downgrade to a silent pull.
-5. For a `pull`, list `resources_touched` by ref and leave `diff_summary` empty.
-6. For a `push`, build `diff_summary` as a list of intended mutations described
-   by ref and content digest, set `gates.approval_required: true`, and record
-   the approval reference once granted.
-7. Record `scope_used` as the narrowest scope the plan actually needs.
-8. Emit the smallest `sync_plan` an adapter can execute without widening
-   authority, and stop at the approval gate for any write.
-9. For cursor-backed loops, read the cursor projection first, append one sync
-   plan event with an idempotency key and expected version, and read back the
-   projection before the next turn.
+## Stop conditions
 
-## Edge cases and stop conditions
+- Refuse malformed repositories, unknown resource kinds, unbounded selectors,
+  limits above the contract, multiple mutations, unknown mutation fields, or
+  content beyond the declared bounds.
+- Refuse push when write scope is missing; do not degrade silently.
+- Do not treat local cursor persistence as remote provider readback.
+- Refuse a missing, ambiguous, wrong-provider, or under-scoped GitHub Connect
+  grant rather than falling back to a raw token or package HTTP client.
+- Do not claim comments, labels, issues, or PRs were read or changed until the
+  native provider operation proves the expected access, operation, and readback.
 
-- **Missing repo or direction:** return `needs_agent`; the sync target is
-  undefined.
-- **Write requested without `repo:write`:** the request is `refused`; never
-  downgrade it to a silent pull. The plan stays unexecutable.
-- **Unbounded resource set:** mark a blocker and require an explicit filter
-  before a push.
-- **Approval absent or denied on a push:** keep the decision blocked and the
-  plan unexecutable; do not emit an executable mutation plan.
-- **Raw bodies, tokens, or PII in the resource payload:** reference by digest
-  and ref; if redaction would remove the evidence needed to plan, return
-  `needs_agent`.
+## Example
 
-## Output schema
-
-```yaml
-sync_plan:
-  decision: ready | blocked | refused | needs_agent
-  repo: string                       # resolved owner/name target
-  direction: pull | push
-  resources_touched:                 # resources by ref; no raw bodies
-    - kind: issue | pr | thread
-      ref: string
-      selected_by: string            # the filter that selected it
-  diff_summary:                      # push only; empty for a pull
-    - ref: string
-      op: string
-      digest: string
-  scope_used: string                 # narrowest scope, e.g. repo:read or repo:write
-  gates:
-    approval_required: boolean       # true for any push
-    approval_ref: string             # set once the write is approved
-  blockers: array                    # conditions that must clear before execution
-```
-
-`sync_plan` is a composable object. Downstream skills read it as arbitrary JSON;
-the fields above are the contract a reviewer and adapter rely on.
-
-The receipt (`runx.receipt.v1`) carries the repo, direction, `scope_used`, the
-resource refs touched, and the approval reference for a write. It carries no
-issue bodies, comment text, tokens, or contributor PII; mutations appear as refs
-and digests only. Default scope is `repo:read` and a `pull` never escalates; a
-`push` needs an explicit `repo:write` grant plus human approval, so missing the
-grant is a refusal and missing the approval keeps the plan blocked.
-
-## Worked example
-
-Input: "Sync the open triage issues into the graph" on `runxhq/runx`, with
-`direction: pull`, `scope: read`, and a filter of `state:open label:triage`.
-
-Output: `decision: ready`; `direction: pull`; `scope_used: repo:read`;
-`resources_touched` lists the two matched issues by ref and the filter that
-selected each; `diff_summary` is empty and `gates.approval_required` is false.
-No write grant is exercised and no approval gate is opened, because a pull is
-pure observation. Had the same request asked to `push` labels without a
-`repo:write` grant, the run would refuse instead of reading.
-
-Cursor-backed loop:
-
-```text
-read cursor -> plan bounded pull/push -> append sync plan event -> read cursor
-```
-
-The cursor event stores refs, filters, digests, and gate status. It does not
-store raw issue bodies, OAuth tokens, or write payload secrets.
-
-## Inputs
-
-- `repo` (required): target repository as `owner/name`.
-- `direction` (required): `pull` or `push`.
-- `resources` (required): structured selector for `issues`, `prs`, or `threads`
-  plus filters (state, label, author, range).
-- `scope` (required): `read` or `write`. A `push` needs `write` backed by a real
-  `repo:write` grant.
+A caller wants to pull the next 50 open issues after cursor `2`. Planning can
+persist that cursor locally; `pull` then performs `issues.read` through the
+configured grant and returns the provider result. To close issue 241, a push
+carries `ref: issues/241`, `op: update`, and
+`payload: {state: closed, state_reason: completed}`. Runx hashes and approves
+that exact mutation, applies only that issue update, and reads issue 241 back.

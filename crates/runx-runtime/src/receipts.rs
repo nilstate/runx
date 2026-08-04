@@ -19,7 +19,8 @@ pub(crate) use seal::{
     DomainActFrame, DomainActReceiptRequest, GraphClosure, RuntimeReceiptProofContextProvider,
     StepReceiptWithDisposition, StepSeal, StepSealClosure, domain_act_receipt,
     graph_receipt_with_disposition_and_policy, graph_receipt_with_effects_and_signature_policy,
-    seal_step, step_receipt_with_disposition_and_policy,
+    seal_step, step_receipt_with_declared_claim_and_policy,
+    step_receipt_with_disposition_and_policy,
 };
 pub use seal::{
     RuntimeReceiptSignaturePolicy, graph_receipt, graph_receipt_with_signature_policy,
@@ -28,6 +29,8 @@ pub use seal::{
 pub use signing::{
     Ed25519ReceiptSigner, Ed25519ReceiptVerifier, ProductionReceiptKey,
     RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV, RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
-    RUNX_RECEIPT_SIGN_KID_ENV, RuntimeReceiptSignatureConfig, RuntimeReceiptSigner,
-    RuntimeReceiptSigningError,
+    RUNX_RECEIPT_SIGN_KID_ENV, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
+    RUNX_RECEIPT_VERIFY_KID_ENV, ResolvedReceiptVerifier, RuntimeReceiptSignatureConfig,
+    RuntimeReceiptSigner, RuntimeReceiptSigningError, RuntimeReceiptVerifierSource,
+    receipt_verifier_from_env,
 };

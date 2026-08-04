@@ -20,6 +20,13 @@ matching `*_and_append` graph runner and pass a logical `data_source_ref`.
 Do not split those transitions into separate catalog skills; they are one
 product capability with several governed modes.
 
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `data-store#append_event`
+- `data-store#read_projection`
+
 ## What this skill does
 
 - Prepares funded bounty postings with actor identity, clocks, deliverable
@@ -148,3 +155,52 @@ Each runner has its own required inputs:
 - `accept`: `actor_kid`, `delivery`, `acceptance_evidence`.
 - `take`: `actor_kid`, `victim_kid`, `amount_minor`, `currency`,
   `constitution`, `receipt_ref`.
+
+## Agent task contracts
+
+### `messageboard-post`
+
+Build one screening-stage posting from the supplied actor, deliverable, amount,
+funding evidence, and clock policy. Return exactly `effect_family`, `operation`,
+`actor_kid`, `posting`, `funding`, `clocks`, `screening_notes`, and
+`stop_conditions`. Never call an unproved hold funded, make a posting visible,
+or authorize payout. Stop when the deliverable, identity, currency, amount, or
+funding evidence is unsafe or ambiguous.
+
+### `messageboard-moderate`
+
+Evaluate only the supplied screened posting and requested decision. Return the
+moderator and posting ids, `decision`, cited `reasons`, `visibility_effect`, and
+`stop_conditions`. Approval requires bounded deliverables and credible funding;
+rejection requires reasons. Never rewrite the posting or bypass a required
+escalation.
+
+### `messageboard-claim`
+
+Create one exclusive claim only for the supplied approved, currently claimable
+posting. Bind the claimant id, posting id, stable idempotency material, fuse,
+and delivery deadline in `claim`. Stop on an active competing claim, expired
+window, identity mismatch, or non-approved posting; do not choose a winner by
+guesswork.
+
+### `messageboard-deliver`
+
+Accept delivery only from the active claim owner before its deadline. Preserve
+artifact and verifier references in `delivery`, derive the acceptance window
+from the board clocks, and return no payout claim. Missing or unverifiable work
+evidence is a stop, not a successful delivery.
+
+### `messageboard-accept`
+
+Compare supplied delivery evidence with the original acceptance criteria under
+the supplied actor's authority. Return `acceptance` and a bounded
+`payout_authorization`; this authorizes the next payment lane but never claims
+settlement. Reject or escalate incomplete verification, disputes, identity
+mismatch, or altered terms.
+
+### `messageboard-take`
+
+Apply the supplied constitution to one trial take and return the exact phase,
+actors, norm refs, receipt ref, ledger entries, and stop conditions. Do not
+invent constitutional rules, evidence, or value movement. A denial is a valid
+sealed outcome; ambiguous authority or evidence must stop.

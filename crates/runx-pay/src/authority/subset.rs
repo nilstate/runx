@@ -4,29 +4,36 @@
 //! incomparable, and incomparable terms are denied.
 
 use runx_contracts::{
-    AuthorityCapability, AuthorityEffectCredentialForm, AuthorityEffectLimit,
-    AuthorityResourceFamily, AuthorityTerm, AuthorityVerb,
+    AuthorityCapability, AuthorityEffectCredentialForm, AuthorityEffectLimit, AuthorityTerm,
+    AuthorityVerb,
 };
 
 use super::payment_authority_spends;
-use runx_core::policy::authority_algebra::{
-    items_subset, optional_bound_subset, optional_exact_or_narrower, optional_ref_bound_subset,
-    parent_items_preserved, same_reference_address,
-};
+use runx_core::policy::authority_algebra::{optional_bound_subset, optional_exact_or_narrower};
+use runx_core::policy::{FamilySubsetComparator, is_authority_subset};
 
 const PAYMENT_EFFECT_FAMILY: &str = "payment";
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PaymentBoundsComparator;
+
+impl PaymentBoundsComparator {
+    pub const ALGORITHM: &'static str = "runx.payment-authority-subset.v1";
+}
+
+impl FamilySubsetComparator for PaymentBoundsComparator {
+    fn comparison_algorithm(&self) -> &str {
+        Self::ALGORITHM
+    }
+
+    fn bounds_subset(&self, child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
+        payment_bounds_subset(child, parent)
+    }
+}
+
 #[must_use]
 pub fn is_payment_authority_subset(child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
-    child.resource_family == AuthorityResourceFamily::Effect
-        && parent.resource_family == AuthorityResourceFamily::Effect
-        && same_reference_address(&child.resource_ref, &parent.resource_ref)
-        && items_subset(&child.verbs, &parent.verbs)
-        && items_subset(&child.capabilities, &parent.capabilities)
-        && parent_items_preserved(&child.conditions, &parent.conditions)
-        && parent_items_preserved(&child.approvals, &parent.approvals)
-        && optional_ref_bound_subset(child.expires_at.as_ref(), parent.expires_at.as_ref())
-        && payment_bounds_subset(child, parent)
+    is_authority_subset(child, parent, &PaymentBoundsComparator)
 }
 
 fn payment_bounds_subset(child: &AuthorityTerm, parent: &AuthorityTerm) -> bool {
@@ -36,6 +43,8 @@ fn payment_bounds_subset(child: &AuthorityTerm, parent: &AuthorityTerm) -> bool 
     let Some(parent_payment) = payment_effect_limit(parent) else {
         return false;
     };
+    authority_effect_limit_exhaustive(child_payment);
+    authority_effect_limit_exhaustive(parent_payment);
 
     required_currency_equal(child_payment, parent_payment)
         && minor_unit_caps_subset(child, child_payment, parent_payment)
@@ -55,6 +64,55 @@ fn payment_bounds_subset(child: &AuthorityTerm, parent: &AuthorityTerm) -> bool 
         )
         && authorization_form_exact_match(child_payment, parent_payment)
         && spend_authorization_form_granted(child, parent)
+}
+
+// This destructure is deliberately exhaustive. Adding a field to the shared
+// authority contract must break this comparator at compile time so the new
+// dimension receives an explicit monotonicity rule before payment authority
+// can be attenuated again.
+fn authority_effect_limit_exhaustive(limit: &AuthorityEffectLimit) {
+    let AuthorityEffectLimit {
+        family,
+        unit,
+        max_per_call_units,
+        max_per_run_units,
+        max_per_period_units,
+        period,
+        channels,
+        realm,
+        peer,
+        operation,
+        preflight_ttl_ms,
+        approval_threshold_units,
+        authorization_form,
+        preflight_required,
+        commitment_required,
+        idempotency_required,
+        recovery_required,
+        receipt_before_success,
+        single_use_capability,
+    } = limit;
+    let _ = (
+        family,
+        unit,
+        max_per_call_units,
+        max_per_run_units,
+        max_per_period_units,
+        period,
+        channels,
+        realm,
+        peer,
+        operation,
+        preflight_ttl_ms,
+        approval_threshold_units,
+        authorization_form,
+        preflight_required,
+        commitment_required,
+        idempotency_required,
+        recovery_required,
+        receipt_before_success,
+        single_use_capability,
+    );
 }
 
 fn payment_effect_limit(term: &AuthorityTerm) -> Option<&AuthorityEffectLimit> {
@@ -179,6 +237,8 @@ fn spend_authorization_form_granted(child: &AuthorityTerm, parent: &AuthorityTer
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::is_payment_authority_subset;
     use runx_contracts::{
         AuthorityBounds, AuthorityCapability, AuthorityEffectCredentialForm, AuthorityEffectLimit,
@@ -213,6 +273,18 @@ mod tests {
         let child = payment_term("child", AuthorityEffectCredentialForm::SingleUseCapability);
 
         assert!(!is_payment_authority_subset(&child, &parent));
+    }
+
+    #[test]
+    fn authority_effect_limit_exhaustive() {
+        let term = payment_term("term", AuthorityEffectCredentialForm::SingleUseCapability);
+        let limit = term
+            .bounds
+            .effect_limits
+            .first()
+            .expect("payment effect limit");
+
+        super::authority_effect_limit_exhaustive(limit);
     }
 
     fn payment_term(

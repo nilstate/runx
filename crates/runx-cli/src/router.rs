@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - router argument parity is centralized for CLI routing tests.
+// Module rationale: router argument parity is centralized for CLI routing tests.
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
@@ -6,19 +6,22 @@ use crate::cli_args::{flag_value, optional_flag_value, os_arg, os_flag_value, sp
 use crate::config::ConfigPlan;
 use crate::connect::ConnectPlan;
 use crate::credential::CredentialPlan;
+use crate::data::DataPlan;
+use crate::document_input::DocumentInputSource;
 use crate::export::ExportPlan;
-use crate::kernel::{KernelInputSource, KernelPlan};
+use crate::kernel::KernelPlan;
 use crate::login::LoginPlan;
+use crate::managed_agent::{managed_agent_policy, parse_boolean_flag, parse_managed_agent_rounds};
 use crate::mcp::McpPlan;
-use crate::parser::{ParserInputSource, ParserPlan};
-use crate::payment::{PaymentAction, PaymentAdmissionPlan, PaymentInputSource, PaymentPlan};
+use crate::parser::ParserPlan;
+use crate::payment::{PaymentAction, PaymentAdmissionPlan, PaymentPlan};
 use crate::policy::{PolicyAction, PolicyPlan};
 use crate::publish::PublishPlan;
 use crate::registry::{RegistryAction, RegistryPlan};
 use crate::resume::ResumePlan;
 use crate::skill::SkillPlan;
-use runx_runtime::WorkspaceEnv;
 use runx_runtime::registry::parse_registry_ref;
+use runx_runtime::{ManagedAgentPolicy, WorkspaceEnv};
 
 #[derive(Debug, PartialEq)]
 pub enum RouterAction {
@@ -41,6 +44,7 @@ pub enum RouterAction {
     RunConfig(ConfigPlan),
     RunConnect(ConnectPlan),
     RunCredential(CredentialPlan),
+    RunData(DataPlan),
     RunPolicy(PolicyPlan),
     RunPublish(PublishPlan),
     RunRegistry(RegistryPlan),
@@ -49,6 +53,7 @@ pub enum RouterAction {
     RunTool(ToolPlan),
     RunAddUrl(AddUrlPlan),
     PrintHelp,
+    PrintHelpJson,
     PrintCommandHelp(&'static str),
     PrintCommandUsageError(&'static str),
     PrintVersion,
@@ -138,8 +143,13 @@ pub enum ListKind {
 #[derive(Debug, Eq, PartialEq)]
 pub struct NewPlan {
     pub name: String,
+    pub objective: String,
+    pub project_context: Option<String>,
     pub directory: Option<PathBuf>,
+    pub receipt_dir: Option<PathBuf>,
     pub json: bool,
+    pub non_interactive: bool,
+    pub managed_agent: ManagedAgentPolicy,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -166,7 +176,7 @@ pub enum ToolAction {
     Inspect,
 }
 
-// rust-style-allow: long-function because router routing is the cutover gate:
+// Function rationale: router routing is the cutover gate:
 // every native command branch and fail-closed decision is reviewed here.
 pub fn route_args(args: Vec<OsString>) -> RouterAction {
     route_args_with_optional_workspace(args, None)
@@ -176,12 +186,16 @@ pub fn route_args_with_workspace(args: Vec<OsString>, workspace: &WorkspaceEnv) 
     route_args_with_optional_workspace(args, Some(workspace))
 }
 
-// rust-style-allow: long-function because router routing is the cutover gate:
+// Function rationale: router routing is the cutover gate:
 // every native command branch and fail-closed decision is reviewed here.
 fn route_args_with_optional_workspace(
     args: Vec<OsString>,
     workspace: Option<&WorkspaceEnv>,
 ) -> RouterAction {
+    if root_help_json_requested(&args) {
+        return RouterAction::PrintHelpJson;
+    }
+
     if args.is_empty() || single_arg_is(&args, "--help") || single_arg_is(&args, "-h") {
         return RouterAction::PrintHelp;
     }
@@ -213,6 +227,14 @@ fn route_args_with_optional_workspace(
             &args,
             crate::credential::parse_credential_plan(&args),
             RouterAction::RunCredential,
+        );
+    }
+
+    if first_arg_is(&args, "data") {
+        return route_parse(
+            &args,
+            crate::data::parse_data_plan(&args),
+            RouterAction::RunData,
         );
     }
 
@@ -355,6 +377,14 @@ fn route_args_with_optional_workspace(
     )
 }
 
+fn root_help_json_requested(args: &[OsString]) -> bool {
+    args.len() == 2
+        && json_requested(args)
+        && args
+            .iter()
+            .any(|arg| matches!(arg.to_str(), Some("--help" | "-h")))
+}
+
 pub fn help_text() -> String {
     crate::command_spec::help_text()
 }
@@ -483,7 +513,7 @@ fn mcp_runner_before_serve(args: &[OsString]) -> bool {
         })
 }
 
-// rust-style-allow: long-function - harness flag parsing stays local to the
+// Function rationale: harness flag parsing stays local to the
 // router boundary so native dispatch does not grow a second parser surface.
 fn native_harness_plan(args: &[OsString]) -> RouterAction {
     let mut fixture_paths = Vec::new();
@@ -553,64 +583,125 @@ fn native_harness_plan(args: &[OsString]) -> RouterAction {
 }
 
 fn parse_new_plan(args: &[OsString]) -> Result<NewPlan, String> {
-    let mut name = None;
-    let mut directory = None;
-    let mut json = false;
-    let mut positional_directory = None;
-    let mut extra_positionals = Vec::new();
-    let mut index = 1;
+    let parsed = parse_new_args(args)?;
+    Ok(NewPlan {
+        name: parsed
+            .name
+            .ok_or_else(|| "runx new requires a package name".to_owned())?,
+        objective: parsed
+            .objective
+            .ok_or_else(|| "runx new requires --objective".to_owned())?,
+        project_context: parsed.project_context,
+        directory: parsed.directory,
+        receipt_dir: parsed.receipt_dir,
+        json: parsed.json,
+        non_interactive: parsed.non_interactive,
+        managed_agent: managed_agent_policy(
+            "new",
+            parsed.managed_agent,
+            parsed.managed_agent_rounds,
+        )?,
+    })
+}
 
+#[derive(Default)]
+struct NewParseState {
+    name: Option<String>,
+    objective: Option<String>,
+    project_context: Option<String>,
+    directory: Option<PathBuf>,
+    receipt_dir: Option<PathBuf>,
+    json: bool,
+    non_interactive: bool,
+    managed_agent: bool,
+    managed_agent_rounds: Option<u32>,
+}
+
+fn parse_new_args(args: &[OsString]) -> Result<NewParseState, String> {
+    let mut parsed = NewParseState::default();
+    let mut index = 1;
     while index < args.len() {
         let Some(token) = args[index].to_str() else {
-            if name.is_none() {
-                return Err("runx new package name must be UTF-8".to_owned());
-            }
-            if positional_directory.is_none() {
-                positional_directory = Some(PathBuf::from(args[index].clone()));
-                index += 1;
-                continue;
-            }
-            return Err("runx new accepts at most one directory argument".to_owned());
+            return Err("runx new package name and option values must be UTF-8".to_owned());
         };
-        if !token.starts_with("--") {
-            if name.is_none() {
-                name = Some(token.to_owned());
-            } else if positional_directory.is_none() {
-                positional_directory = Some(PathBuf::from(token));
+        if !token.starts_with('-') {
+            if parsed.name.is_none() {
+                parsed.name = Some(token.to_owned());
             } else {
-                extra_positionals.push(token.to_owned());
+                return Err(format!("unexpected runx new argument {token}"));
             }
             index += 1;
             continue;
         }
+        index = parse_new_flag(args, index, token, &mut parsed)?;
+    }
+    Ok(parsed)
+}
 
-        let (flag, inline_value) = split_flag(token);
-        match flag {
-            "--json" => {
-                if inline_value.is_some() {
-                    return Err("--json does not take a value".to_owned());
-                }
-                json = true;
-                index += 1;
+fn parse_new_flag(
+    args: &[OsString],
+    index: usize,
+    token: &str,
+    parsed: &mut NewParseState,
+) -> Result<usize, String> {
+    let (flag, inline_value) = split_flag(token);
+    match flag {
+        "--json" | "-j" => {
+            if inline_value.is_some() {
+                return Err(format!("{flag} does not take a value"));
             }
-            "--directory" | "--dir" => {
-                let (value, next_index) = os_flag_value(args, index, flag, inline_value)?;
-                directory = Some(PathBuf::from(value));
-                index = next_index;
-            }
-            _ => return Err(format!("unknown new flag {flag}")),
+            parsed.json = true;
+            Ok(index + 1)
         }
+        "--objective" => {
+            let (value, next_index) = flag_value(args, index, flag, inline_value, "runx new")?;
+            parsed.objective = Some(non_empty_new_value(flag, value)?);
+            Ok(next_index)
+        }
+        "--project-context" => {
+            let (value, next_index) = flag_value(args, index, flag, inline_value, "runx new")?;
+            parsed.project_context = Some(non_empty_new_value(flag, value)?);
+            Ok(next_index)
+        }
+        "--directory" => {
+            let (value, next_index) = os_flag_value(args, index, flag, inline_value)?;
+            parsed.directory = Some(PathBuf::from(value));
+            Ok(next_index)
+        }
+        "--receipt-dir" | "--receipts" | "-R" => {
+            let (value, next_index) = os_flag_value(args, index, flag, inline_value)?;
+            parsed.receipt_dir = Some(PathBuf::from(value));
+            Ok(next_index)
+        }
+        "--non-interactive" => {
+            if inline_value.is_some() {
+                return Err("--non-interactive does not take a value".to_owned());
+            }
+            parsed.non_interactive = true;
+            Ok(index + 1)
+        }
+        "--managed-agent" => {
+            parsed.managed_agent = match inline_value {
+                Some(value) => parse_boolean_flag("new", flag, value)?,
+                None => true,
+            };
+            Ok(index + 1)
+        }
+        "--managed-agent-rounds" => {
+            let (value, next_index) = flag_value(args, index, flag, inline_value, "runx new")?;
+            parsed.managed_agent_rounds = Some(parse_managed_agent_rounds("new", &value)?);
+            Ok(next_index)
+        }
+        _ => Err(format!("unknown new flag {flag}")),
     }
+}
 
-    if !extra_positionals.is_empty() {
-        return Err("runx new accepts at most one directory argument".to_owned());
+fn non_empty_new_value(flag: &str, value: String) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(format!("runx new {flag} requires a non-empty value"));
     }
-
-    Ok(NewPlan {
-        name: name.ok_or_else(|| "runx new requires a package name".to_owned())?,
-        directory: directory.or(positional_directory),
-        json,
-    })
+    Ok(value.to_owned())
 }
 
 fn parse_add_plan(args: &[OsString]) -> Result<RouterAction, String> {
@@ -864,7 +955,7 @@ fn parse_dev_plan(args: &[OsString]) -> Result<DevPlan, String> {
     Ok(DevPlan { root, lane, json })
 }
 
-// rust-style-allow: long-function - doctor parsing keeps mode selection and native path handling in one fail-closed pass.
+// Function rationale: doctor parsing keeps mode selection and native path handling in one fail-closed pass.
 fn parse_doctor_plan(args: &[OsString]) -> Result<DoctorPlan, String> {
     let mut mode = DoctorMode::Workspace;
     let mut path = None;
@@ -1010,12 +1101,12 @@ fn parse_kernel_plan(args: &[OsString]) -> Result<KernelPlan, String> {
         },
     )?;
     Ok(KernelPlan {
-        input: parsed.input.into_kernel_source(),
+        input: parsed.input,
         json: true,
     })
 }
 
-// rust-style-allow: long-function because this flat argument parser walks the
+// Function rationale: this flat argument parser walks the
 // payment subcommand grammar in a single readable pass; extracting sub-parsers
 // would obscure which flags belong to which positional verb.
 fn parse_payment_plan(args: &[OsString]) -> Result<PaymentPlan, String> {
@@ -1040,7 +1131,7 @@ fn parse_payment_plan(args: &[OsString]) -> Result<PaymentPlan, String> {
     )?;
     Ok(PaymentPlan {
         action: PaymentAction::IssueAdmission(PaymentAdmissionPlan {
-            input: parsed.input.into_payment_source(),
+            input: parsed.input,
             json: true,
         }),
     })
@@ -1063,7 +1154,7 @@ fn parse_parser_plan(args: &[OsString]) -> Result<ParserPlan, String> {
         },
     )?;
     Ok(ParserPlan {
-        input: parsed.input.into_parser_source(),
+        input: parsed.input,
         json: true,
     })
 }
@@ -1077,35 +1168,7 @@ struct JsonEvalCommand {
 }
 
 struct JsonEvalPlan {
-    input: JsonEvalInput,
-}
-
-enum JsonEvalInput {
-    Stdin,
-    Path(PathBuf),
-}
-
-impl JsonEvalInput {
-    fn into_kernel_source(self) -> KernelInputSource {
-        match self {
-            Self::Stdin => KernelInputSource::Stdin,
-            Self::Path(path) => KernelInputSource::Path(path),
-        }
-    }
-
-    fn into_payment_source(self) -> PaymentInputSource {
-        match self {
-            Self::Stdin => PaymentInputSource::Stdin,
-            Self::Path(path) => PaymentInputSource::Path(path),
-        }
-    }
-
-    fn into_parser_source(self) -> ParserInputSource {
-        match self {
-            Self::Stdin => ParserInputSource::Stdin,
-            Self::Path(path) => ParserInputSource::Path(path),
-        }
-    }
+    input: DocumentInputSource,
 }
 
 fn parse_json_eval_input(
@@ -1136,9 +1199,9 @@ fn parse_json_eval_input(
                 }
                 let (value, next_index) = os_flag_value(args, index, flag, inline_value)?;
                 input = Some(if value == OsStr::new("-") {
-                    JsonEvalInput::Stdin
+                    DocumentInputSource::Stdin
                 } else {
-                    JsonEvalInput::Path(PathBuf::from(value))
+                    DocumentInputSource::Path(PathBuf::from(value))
                 });
                 index = next_index;
             }
@@ -1350,6 +1413,7 @@ fn parse_registry_plan(args: &[OsString]) -> Result<RegistryPlan, String> {
     let action = parse_registry_action(subcommand)?;
     let mut state = RegistryParseState::default();
     parse_registry_args(args, &mut state)?;
+    validate_registry_action_flags(&action, &state)?;
     let subject = registry_subject(&action, subcommand, &mut state.positionals)?;
 
     Ok(RegistryPlan {
@@ -1367,6 +1431,28 @@ fn parse_registry_plan(args: &[OsString]) -> Result<RegistryPlan, String> {
         upsert: state.upsert,
         json: state.json,
     })
+}
+
+fn validate_registry_action_flags(
+    action: &RegistryAction,
+    state: &RegistryParseState,
+) -> Result<(), String> {
+    if *action != RegistryAction::Package {
+        return Ok(());
+    }
+    if state.registry.is_some()
+        || state.registry_dir.is_some()
+        || state.version.is_some()
+        || state.expected_digest.is_some()
+        || state.destination.is_some()
+        || state.owner.is_some()
+        || state.trust_tier.is_some()
+        || state.limit.is_some()
+        || state.upsert
+    {
+        return Err("runx registry package accepts only --profile and --json".to_owned());
+    }
+    Ok(())
 }
 
 #[derive(Default)]
@@ -1391,6 +1477,7 @@ fn parse_registry_action(subcommand: &str) -> Result<RegistryAction, String> {
         "read" => Ok(RegistryAction::Read),
         "resolve" => Ok(RegistryAction::Resolve),
         "install" => Ok(RegistryAction::Install),
+        "package" => Ok(RegistryAction::Package),
         "publish" => Ok(RegistryAction::Publish),
         _ => Err(format!("unknown registry subcommand {subcommand}")),
     }
@@ -1559,11 +1646,11 @@ fn registry_subject(
             validate_registry_ref_version(&subject)?;
             Ok(subject)
         }
-        RegistryAction::Publish => {
+        RegistryAction::Package | RegistryAction::Publish => {
             if positionals.len() != 1 {
-                return Err(
-                    "runx registry publish requires exactly one skill markdown path".to_owned(),
-                );
+                return Err(format!(
+                    "runx registry {subcommand} requires exactly one skill markdown path"
+                ));
             }
             Ok(positionals.remove(0))
         }

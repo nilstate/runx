@@ -7,7 +7,6 @@ use crate::receipts::paths::{RUNX_CWD_ENV, RUNX_PROJECT_DIR_ENV};
 use crate::services::tool_roots::inferred_tool_roots;
 use thiserror::Error;
 
-const PROCESS_ENV_KEYS: [&str; 3] = ["PATH", "SystemRoot", "PATHEXT"];
 const WORKSPACE_ENV_FILE: &str = ".env";
 
 #[derive(Clone, PartialEq, Eq)]
@@ -31,7 +30,9 @@ impl WorkspaceEnv {
         ambient_env: BTreeMap<String, String>,
         cwd: PathBuf,
     ) -> Result<Self, WorkspaceEnvError> {
+        require_absolute_cwd(&cwd)?;
         let cwd = crate::config::resolve_runx_workspace_base(&ambient_env, &cwd);
+        require_absolute_cwd(&cwd)?;
         let env_path = cwd.join(WORKSPACE_ENV_FILE);
         let mut env = ambient_env;
         let env_file_loaded = merge_env_file(&mut env, &env_path)?;
@@ -47,13 +48,28 @@ impl WorkspaceEnv {
         })
     }
 
-    pub(crate) fn new(env: BTreeMap<String, String>, cwd: PathBuf) -> Self {
+    pub(crate) fn new(
+        mut env: BTreeMap<String, String>,
+        cwd: PathBuf,
+    ) -> Result<Self, WorkspaceEnvError> {
+        require_absolute_cwd(&cwd)?;
         let cwd = crate::config::resolve_runx_workspace_base(&env, &cwd);
-        Self {
+        require_absolute_cwd(&cwd)?;
+        env.insert(RUNX_CWD_ENV.to_owned(), cwd.to_string_lossy().into_owned());
+        Ok(Self {
             env,
             cwd,
             env_file_loaded: false,
-        }
+        })
+    }
+
+    #[cfg(any(feature = "cli-tool", test))]
+    pub(crate) fn from_admitted(env: BTreeMap<String, String>) -> Result<Self, WorkspaceEnvError> {
+        let cwd = env
+            .get(RUNX_CWD_ENV)
+            .map(PathBuf::from)
+            .ok_or(WorkspaceEnvError::MissingCwd)?;
+        Self::new(env, cwd)
     }
 
     #[must_use]
@@ -73,13 +89,6 @@ impl WorkspaceEnv {
 
     pub(crate) fn skill_env_for_skill(&self, skill_dir: &Path) -> BTreeMap<String, String> {
         let mut env = self.env.clone();
-        for key in PROCESS_ENV_KEYS {
-            if !env.contains_key(key)
-                && let Ok(value) = std::env::var(key)
-            {
-                env.insert(key.to_owned(), value);
-            }
-        }
         let cwd = self.cwd.to_string_lossy().into_owned();
         env.insert(RUNX_CWD_ENV.to_owned(), cwd);
         env.entry(RUNX_PROJECT_DIR_ENV.to_owned())
@@ -102,6 +111,11 @@ impl fmt::Debug for WorkspaceEnv {
 
 #[derive(Debug, Error)]
 pub enum WorkspaceEnvError {
+    #[cfg(any(feature = "cli-tool", test))]
+    #[error("admitted workspace environment is missing RUNX_CWD")]
+    MissingCwd,
+    #[error("workspace cwd must be absolute, got {path}")]
+    RelativeCwd { path: PathBuf },
     #[error("could not read workspace environment file {path}: {source}")]
     Read {
         path: PathBuf,
@@ -114,6 +128,16 @@ pub enum WorkspaceEnvError {
     EnvironmentReference { path: PathBuf },
     #[error("workspace environment file {path} could not be parsed")]
     Parse { path: PathBuf },
+}
+
+fn require_absolute_cwd(cwd: &Path) -> Result<(), WorkspaceEnvError> {
+    if cwd.is_absolute() {
+        Ok(())
+    } else {
+        Err(WorkspaceEnvError::RelativeCwd {
+            path: cwd.to_path_buf(),
+        })
+    }
 }
 
 fn merge_env_file(
@@ -189,18 +213,13 @@ pub(crate) fn process_env_value(key: &str) -> Option<String> {
     std::env::var(key).ok()
 }
 
-#[cfg(any(feature = "cli-tool", feature = "mcp", feature = "agent"))]
-pub(crate) fn process_env_snapshot() -> BTreeMap<String, String> {
-    std::env::vars().collect()
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::PathBuf;
 
-    use super::{RUNX_CWD_ENV, WorkspaceEnv, merge_path_env};
+    use super::{RUNX_CWD_ENV, WorkspaceEnv, WorkspaceEnvError, merge_path_env};
 
     #[test]
     fn workspace_env_loads_optional_file_without_mutating_process_env()
@@ -246,6 +265,32 @@ mod tests {
             Some(&temp.path().to_string_lossy().into_owned())
         );
         Ok(())
+    }
+
+    #[test]
+    fn supplied_workspace_env_freezes_resolved_cwd() -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+
+        let workspace = WorkspaceEnv::new(BTreeMap::new(), temp.path().to_path_buf())?;
+
+        assert_eq!(workspace.cwd(), temp.path());
+        assert_eq!(
+            workspace.env().get(RUNX_CWD_ENV),
+            Some(&temp.path().to_string_lossy().into_owned())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn workspace_env_rejects_relative_or_missing_workspace_identity() {
+        assert!(matches!(
+            WorkspaceEnv::new(BTreeMap::new(), PathBuf::from("relative")),
+            Err(WorkspaceEnvError::RelativeCwd { .. })
+        ));
+        assert!(matches!(
+            WorkspaceEnv::from_admitted(BTreeMap::new()),
+            Err(WorkspaceEnvError::MissingCwd)
+        ));
     }
 
     #[test]

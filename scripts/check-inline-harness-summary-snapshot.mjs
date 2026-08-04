@@ -111,8 +111,9 @@ function resolveRunxBinary(options) {
         "crates/Cargo.toml",
         "-p",
         "runx-cli",
-        "--bin",
-        "runx",
+        "-p",
+        "runx-js-worker",
+        "--bins",
       ],
       {
         cwd: repoRoot,
@@ -121,7 +122,7 @@ function resolveRunxBinary(options) {
       },
     );
     if (result.status !== 0) {
-      throw new Error(`cargo build runx failed with exit ${result.status ?? "signal"}`);
+      throw new Error(`cargo build runx and runx-js-worker failed with exit ${result.status ?? "signal"}`);
     }
   }
   const targetRoot = process.env.CARGO_TARGET_DIR
@@ -140,10 +141,7 @@ function harnessEnv(runxBin, tempRoot, workspaceDir) {
     NO_COLOR: "1",
     RUNX_HOME: path.join(tempRoot, "runx-home"),
     RUNX_CWD: workspaceDir,
-    RUNX_KERNEL_EVAL_BIN: runxBin,
-    RUNX_PARSER_EVAL_BIN: runxBin,
     RUNX_RUST_CLI_BIN: runxBin,
-    RUNX_DEV_RUST_CLI_BIN: runxBin,
     RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "inline-harness-snapshot-key",
     RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
       process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64

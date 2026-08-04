@@ -51,20 +51,23 @@ A skill is a definition; a run is an act. The relationship is fixed:
 - **Acts chain.** An act records the authority it held (`Receipt.authority`,
   including the credentials it carried, as `grant_refs`) and chains by lineage:
   `lineage.previous` (this act follows the one it acts on, e.g. a review follows
-  the delivery it reviewed), `lineage.parent`/`children` (a graph turn is the
-  parent act and its steps are child acts), and `Intent.derived_from` (the acts an
-  act reasoned from). A graph is therefore a composition of chained acts, not a
-  separate kind of thing.
+  the delivery it reviewed), `lineage.children` (a graph receipt commits the
+  identity and body digest of each immutable step receipt), and
+  `Intent.derived_from` (the acts an act reasoned from). Runtime children do not
+  carry a single `lineage.parent`: the same content-addressed receipt may be
+  reused by more than one graph, so rebinding it would change its signed body.
+  A graph is therefore a composition of chained acts, not a separate kind of
+  thing.
 - **One act per run.** The discipline that keeps a receipt honest: a run produces
   one declared (or default) act, composed into chains by lineage, never a loose
   bag of acts. A standalone skill is a one-act run; a graph is a chain of acts.
   (Pausing for the host is today a `needs_agent` side channel, not yet a
   first-class pending act; making pause an act state is planned, not live.)
 
-## Plan vocabulary -> live contracts
+## Design vocabulary -> live contracts
 
-Some plans (`plans/runx.md`, `plans/aster.md`) use an alternate vocabulary. It maps
-onto the live shape with no contract change required:
+Design discussions sometimes use alternate vocabulary. It maps onto the live
+shape with no contract change required:
 
 | Plan concept                  | Live contract                                                        |
 | ----------------------------- | -------------------------------------------------------------------- |
@@ -82,6 +85,6 @@ future version adopts that naming, it can be added then.
 
 v1 finalizes the act/decision/signal/receipt model; the alternate plan vocabulary is
 future-aspirational, not an outstanding reconciliation against the core contracts.
-The remaining act-model work is in *enforcement and adoption* (e.g. aster gating its
-dispatch on declared act forms and verification status), not in reshaping these
-types. Those live on the aster/consumer side, not in the kernel contracts.
+The remaining act-model work is in *enforcement and adoption*: consuming
+applications gate dispatch on declared act forms and verification status rather
+than reshaping the kernel contracts.

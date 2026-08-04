@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 
 use runx_contracts::JsonValue;
-use runx_core::policy::is_reserved_runx_sandbox_env_name;
 
 use crate::ValidationError;
 
-use super::{CredentialRequirement, FIELDS};
+use super::{CredentialRequirement, FIELDS, environment::is_reserved_runx_environment_name};
 
 const CREDENTIAL_FIELDS: &[&str] = &["provider", "audience", "auth"];
 const AUTH_MODE_FIELDS: &[&str] = &["delivery"];
@@ -87,7 +86,7 @@ fn validate_delivery_env(value: &str, field: &str) -> Result<(), ValidationError
             FIELDS.validation_error(format!("{field} must be a valid environment variable name"))
         );
     }
-    if is_reserved_runx_sandbox_env_name(value) {
+    if is_reserved_runx_environment_name(value) {
         return Err(FIELDS.validation_error(format!(
             "{field} cannot use reserved Runx environment variable {value}"
         )));

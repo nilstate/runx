@@ -5,10 +5,11 @@ autotests = false
 name = "runx-cli"
 # Kept in lockstep with packages/cli/package.json (the npm distribution line).
 # The release workflow stamps this from the npm manifest before building.
-version = "0.7.2"
+version = "0.8.2"
+publish = false
 edition.workspace = true
 rust-version.workspace = true
-description = "Cargo-installed launcher for the runx governed agent workflow CLI."
+description = "Native launcher for the runx governed agent workflow CLI."
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
@@ -25,17 +26,20 @@ default = []
 
 [dependencies]
 base64 = "0.22.1"
+ctrlc = "3.5.2"
 ring = "0.17.14"
 runx-contracts.workspace = true
+runx-parser.workspace = true
 runx-pay.workspace = true
 runx-receipts.workspace = true
-runx-runtime = { workspace = true, features = ["cli-tool", "catalog", "mcp", "mcp-http-server", "external-adapter", "agent", "http", "thread-outbox-provider"] }
+runx-runtime = { workspace = true, features = ["cli-tool", "catalog", "mcp", "mcp-http-server", "external-adapter", "agent", "thread-outbox-provider"] }
 serde.workspace = true
 serde_json.workspace = true
-serde_norway.workspace = true
-url = "2.5.7"
+url.workspace = true
 
 [dev-dependencies]
+rusqlite = { version = "0.40.1", default-features = false, features = ["bundled"] }
+rustix = { version = "1.1.4", features = ["process"] }
 
 [[bin]]
 name = "runx"
@@ -51,7 +55,10 @@ copyright = "2026, runxhq"
 extended-description = "Native governed runtime for agent skills, tools, graphs, and packets."
 section = "utils"
 priority = "optional"
-assets = [["target/release/runx", "usr/bin/", "755"]]
+assets = [
+    ["target/release/runx", "usr/bin/", "755"],
+    ["target/release/runx-js-worker", "usr/bin/", "755"],
+]
 
 [[test]]
 name = "integration"

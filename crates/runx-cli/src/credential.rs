@@ -24,6 +24,7 @@ pub enum CredentialAction {
         provider: String,
         profile: String,
         auth_mode: String,
+        audience: Option<String>,
         from_stdin: bool,
     },
     List,
@@ -42,18 +43,6 @@ pub enum CredentialBindingTarget {
     Skill { skill: String, credential: String },
 }
 
-pub fn run_native_credential(plan: CredentialPlan) -> ExitCode {
-    let cwd = match std::env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => return fail(&plan, &format!("failed to resolve cwd: {error}")),
-    };
-    let workspace = match WorkspaceEnv::load_process(cwd) {
-        Ok(workspace) => workspace,
-        Err(error) => return fail(&plan, &error.to_string()),
-    };
-    run_native_credential_with_workspace(plan, &workspace)
-}
-
 pub fn run_native_credential_with_workspace(
     plan: CredentialPlan,
     workspace: &WorkspaceEnv,
@@ -70,15 +59,22 @@ fn execute(plan: &CredentialPlan, workspace: &WorkspaceEnv) -> Result<String, St
             provider,
             profile,
             auth_mode,
+            audience,
             from_stdin,
         } => {
             if !from_stdin {
                 return Err("credential secret input must come from stdin".to_owned());
             }
             let secret = read_secret_stdin()?;
-            let profile =
-                set_local_credential_profile(workspace, profile, provider, auth_mode, &secret)
-                    .map_err(|error| error.to_string())?;
+            let profile = set_local_credential_profile(
+                workspace,
+                profile,
+                provider,
+                auth_mode,
+                audience.as_deref(),
+                &secret,
+            )
+            .map_err(|error| error.to_string())?;
             CredentialResult::Set { profile }
         }
         CredentialAction::List => CredentialResult::List {
@@ -164,18 +160,28 @@ struct CredentialJsonOutput<'a> {
 
 fn render_text(result: &CredentialResult) -> String {
     match result {
-        CredentialResult::Set { profile } => format!(
-            "credential profile '{}' stored for {} ({}) and set as default\n",
-            profile.name, profile.provider, profile.auth_mode
-        ),
+        CredentialResult::Set { profile } => {
+            let audience = profile
+                .audience
+                .as_deref()
+                .map_or(String::new(), |value| format!(" for {value}"));
+            format!(
+                "credential profile '{}' stored for {} ({}){audience} and set as default\n",
+                profile.name, profile.provider, profile.auth_mode
+            )
+        }
         CredentialResult::List { profiles } if profiles.is_empty() => {
             "no credential profiles configured\n".to_owned()
         }
         CredentialResult::List { profiles } => profiles
             .iter()
             .map(|profile| {
+                let audience = profile
+                    .audience
+                    .as_deref()
+                    .map_or(String::new(), |value| format!("  audience={value}"));
                 format!(
-                    "{}  {}  {}{}\n",
+                    "{}  {}  {}{audience}{}\n",
                     profile.name,
                     profile.provider,
                     profile.auth_mode,
@@ -232,6 +238,7 @@ mod tests {
                     provider: "nitrosend".to_owned(),
                     profile: "account-one".to_owned(),
                     auth_mode: "api_key".to_owned(),
+                    audience: None,
                     from_stdin: true,
                 },
                 json: true,
@@ -260,6 +267,36 @@ mod tests {
                         skill: "nitrosend/support".to_owned(),
                         credential: "nitrosend".to_owned(),
                     },
+                },
+                json: false,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_profile_audience_binding() {
+        let args = [
+            "credential",
+            "set",
+            "n8n",
+            "--profile",
+            "workflow",
+            "--auth-mode",
+            "bearer",
+            "--audience",
+            "https://n8n.example.com",
+            "--from-stdin",
+        ]
+        .map(Into::into);
+        assert_eq!(
+            parse_credential_plan(&args),
+            Ok(CredentialPlan {
+                action: CredentialAction::Set {
+                    provider: "n8n".to_owned(),
+                    profile: "workflow".to_owned(),
+                    auth_mode: "bearer".to_owned(),
+                    audience: Some("https://n8n.example.com".to_owned()),
+                    from_stdin: true,
                 },
                 json: false,
             })

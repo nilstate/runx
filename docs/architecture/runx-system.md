@@ -1,0 +1,276 @@
+# Runx system architecture
+
+Status: normative. This document defines the ownership and execution boundaries
+for Runx OSS. Historical migration notes may explain how the repository arrived
+here, but they do not override this contract.
+
+## Product model
+
+Runx is an operator runtime. A skill is the durable operating manual and bounded
+program that teaches a human and an acting agent how to perform one operation.
+The runtime supplies reusable execution capabilities, authority, deterministic
+worker isolation, process supervision, receipts, replay, and provider
+boundaries. Product-owned skills retain domain
+judgment. Runx Cloud is a hosted control plane and provider-execution service;
+it is not the owner of local operator workflows.
+
+The dependency direction is one way:
+
+    portable contracts
+          |
+          v
+    parser + pure policy/authority + receipts
+          |
+          v
+    runtime orchestration + capabilities + supervised adapters
+          |
+          v
+    CLI and generated language bindings
+          |
+          v
+    skills and product-owned operator packages
+
+    hosted Connect grant -> bounded provider driver -> provider
+
+There is one production owner for every contract and behavior. Catalog views,
+CLI commands, SDKs, generated schemas, exported agent shims, and documentation
+consume those owners; none is a parallel implementation.
+
+## Repository ownership
+
+- `runx-contracts` owns domain-neutral portable Rust wire types and schema
+  mechanics. Domain crates own their wire types; for example, `runx-pay` owns
+  payment contracts and contributes their schema artifacts to the same catalog.
+- `runx-core` owns pure policy, authority, and state-transition algebra.
+- `runx-parser` owns all pure package parsing and validation. It returns one
+  aggregate validated package representation; consumers do not reparse package
+  Markdown or YAML.
+- `runx-receipts` owns canonical receipt/proof encoding and verification.
+- `runx-runtime` owns filesystem loading, execution, typed native capability
+  registration, exact process invocation and supervision, adapter lifecycles,
+  effects, typed execution-boundary evidence, and receipt emission.
+- `runx-cli` owns argument parsing and presentation only. It calls runtime
+  services and does not implement a second executor, parser, credential loader,
+  authoring engine, or provider client.
+- `@runxhq/contracts` is a generated or mechanically checked binding over the
+  portable contract owner.
+- `@runxhq/extension-sdk` owns the narrow protocol helpers required by genuine
+  external process or provider extensions. It does not recreate Runx.
+- `skills/*` and product-local skill trees own operator knowledge, declarative
+  composition, harnesses, and irreducible deterministic domain computation.
+- `runx/cloud` owns hosted control-plane state, credential custody, grant
+  resolution, and bounded provider API execution only.
+
+Forbidden dependency arrows include parser-to-runtime, core-to-runtime,
+contracts-to-runtime, receipts-to-runtime, CLI-to-package-source parsing,
+skill modules-to-filesystem/network/process APIs, OSS operator logic-to-a Cloud
+checkout, and Cloud-to-local operator workflow ownership.
+
+## Skill knowledge contract
+
+`SKILL.md` is a substantive operating manual, not a terse tool index. It must
+give a human and an acting agent the context that changes how they operate:
+
+- what the operation achieves and when this is the correct lane;
+- the domain model and distinctions an unfamiliar operator would otherwise
+  miss;
+- the evidence required before judgment or mutation;
+- the safe workflow and where deterministic work ends and judgment begins;
+- what authority and approval mean in operator language;
+- failure, stop, escalation, retry, and recovery conditions;
+- how to interpret outputs, receipts, readback, and unresolved state; and
+- when and why to route to a declared adjacent skill.
+
+`X.yaml` owns runner composition, typed inputs and outputs, effects, scopes,
+approvals, harness cases, and skill references. It must not repeat the manual.
+Package JavaScript exists only for deterministic domain computation the graph
+and native capability plane cannot express cleanly. It never exists merely to
+perform HTTP, filesystem, subprocess, credential, packet, or receipt mechanics
+that Runx already owns.
+
+The current skill's complete manual is digest-bound into the acting context and
+resume envelope. Declared `context_skills` contribute bounded catalog summaries
+until invoked; the invoked skill then supplies its own complete manual. A chain
+must neither hide the target instructions nor preload and duplicate every
+manual.
+
+## Execution lanes
+
+Each target has one meaning and one authority boundary:
+
+- **Graph:** deterministic composition, dependencies, branches, explicit
+  bounded fan-out, guards, and recovery. A graph author cannot choose an effect
+  owner or gain provider/process authority by naming inputs.
+- **Agent task:** bounded judgment under the current manual and an explicit
+  allowed-tool set. It yields `needs_agent` by default. In-process managed-agent
+  execution requires fresh per-run consent and a visible round budget;
+  configured credentials never imply consent.
+- **Native capability:** trusted, product-neutral Rust behavior registered from
+  one typed definition that owns schema, defaults, dispatch, authority, effect,
+  and catalog metadata.
+- **Deterministic module (`javascript`):** an isolated
+  `(JSON, { environment }) -> JSON` computation. It has no ambient filesystem,
+  network, process environment, credential, host clock, or host randomness
+  authority; only exact manifest-declared non-secret values cross its typed
+  worker protocol.
+- **CLI tool:** intentional trusted host code with explicit command, arguments,
+  declared environment, timeout, and output policy. Runx supervises the
+  process and records the boundary but does not claim filesystem, network, or
+  syscall confinement. Bundled tool manifests and their local
+  source closure are parser-owned skill-package truth, not a second runtime or
+  registry scan.
+- **Provider adapter:** a supervised HTTP, MCP, A2A, external-adapter, outbox,
+  or Connect operation under typed authority and effect contracts. Hosted
+  credentials remain opaque.
+
+Harness fixtures are test data interpreted by the runtime harness. They are not
+an execution source and cannot become selectable production behavior.
+
+Static step inputs and graph context are materialized once into the invocation
+map for every target kind. A static/context name collision is a validation
+error. Missing or type-invalid context fails at the producing edge. No target
+kind gets a private context projection path.
+
+## Deterministic module boundary
+
+Deterministic JavaScript runs in a dedicated, versioned `runx-js-worker`
+process behind a length-delimited protocol. The runtime sends only a validated
+in-memory module bundle, entrypoint, JSON input, and fixed limits. It never sends
+a workspace path, skill path, environment map, credential, provider grant, or
+ambient input source.
+
+The CLI and worker are one protocol-coupled runtime distribution. Release and
+operator build paths build them together, and the runtime rejects a mismatched
+worker version before decoding or executing an invocation. It never guesses
+across worker response shapes.
+
+There is no Node or shell fallback. Each invocation receives a fresh
+engine context. Imports resolve only through normalized relative `.js`/`.mjs`
+paths in the validated bundle. Bare specifiers, `node:` modules, URLs, absolute
+paths, traversal, symlinks, native modules, and imports outside the bundle are
+rejected.
+
+The worker exposes ECMAScript plus one frozen Runx helper:
+`Runx.parseUrl(value)`. It performs deterministic absolute-URL parsing and
+returns `href`, `origin`, `protocol`, and `hostname`. Browser and Node globals
+are not implied; adding another helper requires a reusable domain-independent
+need and one runtime-owned implementation.
+
+The fixed global surface is installed with native engine builders. Runx does
+not parse a bootstrap script for every invocation; package source is the only
+JavaScript parsed on the execution hot path.
+
+Runtime-owned ceilings are 4 MiB source, 4 MiB input, 4 MiB output, 64 MiB
+JavaScript heap, 4 MiB JavaScript stack, 30 seconds wall time, and 4,096 queued
+jobs. Wall time defaults to two seconds and a runner may select 1 through 30
+seconds; other package limits may narrow but never widen the runtime ceiling.
+The worker starts with a cleared environment, a non-workspace current
+directory, no inherited handles, process memory supervision, and no host APIs.
+A timeout, memory fault, protocol error, crash, or polluted stdout fails the
+invocation and discards the worker.
+
+The same hostile-module contract is required on `darwin-arm64`, `darwin-x64`,
+`linux-arm64`, `linux-x64`, and `win32-x64`. A supported release target cannot
+silently lose official JavaScript skills.
+
+## Native capability boundary
+
+A native capability has one typed definition containing its stable id, input,
+output, defaults, summary, owner, effect class, authority rule, approval rule,
+and executor. Schema generation, deserialization, inspection, search, managed
+agent exposure, and dispatch all originate from that definition. Parallel
+string maps or effect registries are not contract owners.
+
+Behavior is promoted to native only when it enforces a runtime/security
+invariant or has at least two independent skill or SDK consumers. Package-only
+validation and domain-specific transforms stay in the owning skill. Reusable
+HTTP, schema, file, data, receipt, and effect mechanics are native candidates.
+
+Caller paths are always interpreted under an invocation-owned workspace or
+runtime-issued opaque handle. Absolute roots, fixture roots, traversal, and
+symlink escapes are rejected. Generic command execution is credential-free and
+runs under exact process supervision. Authenticated HTTP destinations are
+derived from the resolved grant; caller input can only narrow that set.
+
+New or changed Rust files stay at roughly 350 lines and functions at 60 lines.
+An exception requires a specific architectural reason and review evidence.
+Existing waivers are migration debt, not precedent; the native monolith and
+its waiver are deleted when typed capabilities land.
+
+## Effect and finality boundary
+
+The registered target capability or provider adapter owns the effect family.
+Graph/package authors do not supply `effect_family`. Consequential provider
+mutation follows one chain:
+
+    resolved authority
+      -> exact approval when the act is consequential
+      -> idempotent attempt
+      -> provider acknowledgement
+      -> identity-bound independent readback
+      -> finality or explicit recovery state
+      -> sealed receipt
+
+Reads and drafts do not acquire performative approval gates. A receipt claims
+only what the provider evidence proves. Ambiguous outcomes remain pending and
+recoverable; they are never converted into success by retries or prose.
+
+Payment subset comparison is compile-time exhaustive. Payment-marked or
+payment-targeted work cannot route around payment admission, sequential
+execution, receipt-before-success, or non-replay guarantees by selecting
+another registered family.
+
+## Authoring and extension boundary
+
+Skill Lab and `runx new` call one authoring service and one closed,
+digest-bound change contract. Design is judgment; inspect, validate, diff,
+write, and harness execution are native mechanics. No template generator creates a
+placeholder `.mjs`. No package writes outside its declared target. A no-op
+design produces no file churn.
+
+External extensions use stable manifests and wire protocols. They do not link
+the runtime, fork the executor, or acquire a second authoring framework.
+
+## Cloud boundary
+
+All public skills, end-user and domain-operator commands and UX, local host
+loops, queues, schedules, default local state, and operator orchestration live
+in Runx OSS or the owning product repository. Using a hosted connector does not
+move ownership into Cloud. Cloud may resolve an opaque grant and perform a
+bounded provider call; the local runtime retains the workflow, decision state,
+and receipt chain unless the user explicitly chooses a hosted operator service.
+
+If a native operator surface is missing, add the reusable capability to OSS.
+Never extend a Cloud dogfood script as a substitute.
+
+Skill-declared provider scopes are opaque capability identifiers to the parser,
+CLI, Connect grant transport, grant resolver, and receipt path. Those layers
+preserve the exact ordered strings without delimiter parsing, a
+provider-specific allowlist, an alias table, or translation. String-only host
+boundaries carry the list as JSON, so punctuation, whitespace, order, and
+duplicates cannot change its meaning. A concrete provider driver may map a
+capability it actually implements to the provider's OAuth scopes and bounded
+API operation; an unknown operation remains unsupported rather than being
+silently broadened or rewritten.
+
+## Performance contract
+
+Performance is measured by named, replayable workloads rather than line-count
+intuition. Baselines cover graph planning and context projection, native
+dispatch, deterministic module cold and warm execution, large payloads,
+bounded fan-out, provider-effect transitions, MCP session reuse, receipt
+sealing/storage, and process launch.
+
+Session-safe adapters reuse supervised workers. Arbitrary CLI commands are
+never pooled. Every workload records throughput, p99 latency, allocation or
+resource signals where available, and process spawn count. Release gates compare
+against a captured baseline; performance exceptions require explicit evidence,
+not a silent budget increase.
+
+## Replacement rule
+
+A replacement and deletion land in the same governed phase. Runx does not keep
+compatibility parsers, unsafe JavaScript fallbacks, duplicate authoring SDKs,
+alias exports, dual effect drivers, or Cloud-owned local operator paths. When a
+cutover cannot preserve the contract, it stops rather than shipping a weaker
+parallel path.

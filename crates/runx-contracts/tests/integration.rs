@@ -17,7 +17,6 @@ mod host_protocol_fixtures;
 mod operational_policy;
 mod operational_proposal_fixtures;
 mod reference;
-mod schema_generator_check;
 mod schema_validation;
 mod schema_wire_conformance;
 mod thread_outbox_provider_fixtures;

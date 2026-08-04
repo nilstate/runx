@@ -13,6 +13,7 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 
 interface Options {
   readonly binary: string;
+  readonly worker: string;
   readonly target: string;
   readonly version: string;
   readonly outDir: string;
@@ -21,6 +22,7 @@ interface Options {
 const options = parseArgs(process.argv.slice(2));
 const isWindows = options.target.includes("windows");
 const binaryName = isWindows ? "runx.exe" : "runx";
+const workerName = isWindows ? "runx-js-worker.exe" : "runx-js-worker";
 const stem = `runx-${options.version}-${options.target}`;
 const archiveName = isWindows ? `${stem}.zip` : `${stem}.tar.gz`;
 
@@ -30,6 +32,7 @@ rmSync(stageDir, { recursive: true, force: true });
 mkdirSync(stageDir, { recursive: true });
 
 copyFileSync(path.resolve(workspaceRoot, options.binary), path.join(stageDir, binaryName));
+copyFileSync(path.resolve(workspaceRoot, options.worker), path.join(stageDir, workerName));
 for (const doc of ["LICENSE", "README.md"]) {
   const source = path.join(workspaceRoot, "packages", "cli", doc);
   try {
@@ -63,19 +66,22 @@ console.log(JSON.stringify({
 
 function parseArgs(argv: readonly string[]): Options {
   let binary = "";
+  let worker = "";
   let target = "";
   let version = "";
   let outDir = "dist/archives";
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--binary") { binary = argv[index + 1] ?? ""; index += 1; continue; }
+    if (arg === "--worker") { worker = argv[index + 1] ?? ""; index += 1; continue; }
     if (arg === "--target") { target = argv[index + 1] ?? ""; index += 1; continue; }
     if (arg === "--version") { version = argv[index + 1] ?? ""; index += 1; continue; }
     if (arg === "--out-dir") { outDir = argv[index + 1] ?? ""; index += 1; continue; }
     throw new Error(`unknown argument: ${arg}`);
   }
   if (!binary) throw new Error("--binary requires a path");
+  if (!worker) throw new Error("--worker requires a path");
   if (!target) throw new Error("--target requires a rust target triple");
   if (!version) throw new Error("--version requires a value");
-  return { binary, target, version, outDir };
+  return { binary, worker, target, version, outDir };
 }

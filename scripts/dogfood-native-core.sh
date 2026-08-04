@@ -4,8 +4,8 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 RUNX="$ROOT/crates/target/debug/runx"
 
-echo "[dogfood:native] build runx"
-cargo build --manifest-path "$ROOT/crates/Cargo.toml" -p runx-cli
+echo "[dogfood:native] build runx and JavaScript worker"
+cargo build --manifest-path "$ROOT/crates/Cargo.toml" -p runx-cli -p runx-js-worker --bins
 
 echo "[dogfood:native] skill"
 RUNX_HOME="$ROOT/.runx/native-dogfood-home" \

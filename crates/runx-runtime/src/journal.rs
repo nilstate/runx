@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the initial journal projection slice
+// Module rationale: the initial journal projection slice
 // keeps history filtering and receipt-backed rows together until CLI wiring
 // decides the permanent module boundary.
 use std::collections::BTreeSet;
@@ -19,6 +19,16 @@ use crate::lifecycle::receipt_lifecycle_records;
 use crate::receipts::paths::safe_receipt_store_label;
 use crate::receipts::store::{LocalReceiptStore, ReceiptStoreError};
 use crate::receipts::{RuntimeReceiptProofContextProvider, RuntimeReceiptSignaturePolicy};
+
+mod inspection;
+
+pub use inspection::{
+    RECEIPT_INSPECTION_PROJECTOR_ID, RECEIPT_INSPECTION_SCHEMA, ReceiptActInspection,
+    ReceiptAuthorityInspection, ReceiptDecisionInspection, ReceiptExercisedScope,
+    ReceiptInspection, ReceiptInspectionProjection, inspect_local_receipt,
+    inspect_local_receipt_with_policy, project_receipt_inspection,
+    project_receipt_inspection_with_policy,
+};
 
 pub const JOURNAL_PROJECTION_SCHEMA: &str = "runx.journal_projection.v1";
 pub const JOURNAL_PROJECTOR_ID: &str = "runx-runtime.local-journal.v1";
@@ -102,6 +112,10 @@ pub struct PausedRunSummary {
     pub selected_runner: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_profile: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_closure_digest: Option<String>,
     pub step_ids: Vec<String>,
     pub step_labels: Vec<String>,
     pub ledger_verification: Option<LedgerVerificationProjection>,
@@ -123,6 +137,8 @@ pub struct PausedRunCheckpoint {
     pub resume_skill_ref: Option<String>,
     pub selected_runner: Option<String>,
     pub credential_profile: Option<String>,
+    pub package_digest: Option<String>,
+    pub execution_closure_digest: Option<String>,
     pub step_ids: Vec<String>,
     pub step_labels: Vec<String>,
 }
@@ -146,6 +162,8 @@ pub fn append_paused_run_checkpoint(
                 resume_skill_ref: checkpoint.resume_skill_ref.clone(),
                 selected_runner: checkpoint.selected_runner.clone(),
                 credential_profile: checkpoint.credential_profile.clone(),
+                package_digest: checkpoint.package_digest.clone(),
+                execution_closure_digest: checkpoint.execution_closure_digest.clone(),
                 step_ids: checkpoint.step_ids.clone(),
                 step_labels: checkpoint.step_labels.clone(),
             },
@@ -310,7 +328,7 @@ pub fn project_journal_for_receipt(
 }
 
 #[must_use]
-// rust-style-allow: long-function because this projection assembles one sealed
+// Function rationale: this projection assembles one sealed
 // receipt into a deterministic row set; splitting it before CLI and
 // paused-run sources land would obscure the ordering invariants.
 pub fn project_receipt_journal(receipt: &Receipt) -> JournalProjection {
@@ -318,7 +336,7 @@ pub fn project_receipt_journal(receipt: &Receipt) -> JournalProjection {
 }
 
 #[must_use]
-// rust-style-allow: long-function because this projection assembles one sealed
+// Function rationale: this projection assembles one sealed
 // receipt into a deterministic row set; splitting it before CLI and
 // paused-run sources land would obscure the ordering invariants.
 pub fn project_receipt_journal_with_policy(
@@ -758,6 +776,8 @@ fn paused_run_from_checkpoint(checkpoint: &PausedRunCheckpoint) -> PausedRunSumm
         resume_skill_ref: checkpoint.resume_skill_ref.clone(),
         selected_runner: checkpoint.selected_runner.clone(),
         credential_profile: checkpoint.credential_profile.clone(),
+        package_digest: checkpoint.package_digest.clone(),
+        execution_closure_digest: checkpoint.execution_closure_digest.clone(),
         step_ids: checkpoint.step_ids.clone(),
         step_labels: checkpoint.step_labels.clone(),
         ledger_verification: None,
@@ -838,6 +858,10 @@ struct LedgerEventDetail {
     #[serde(default)]
     credential_profile: Option<String>,
     #[serde(default)]
+    package_digest: Option<String>,
+    #[serde(default)]
+    execution_closure_digest: Option<String>,
+    #[serde(default)]
     step_ids: Vec<String>,
     #[serde(default)]
     step_labels: Vec<String>,
@@ -868,6 +892,8 @@ struct LedgerRunEvent {
     resume_skill_ref: Option<String>,
     selected_runner: Option<String>,
     credential_profile: Option<String>,
+    package_digest: Option<String>,
+    execution_closure_digest: Option<String>,
     step_ids: Vec<String>,
     step_labels: Vec<String>,
 }
@@ -888,6 +914,8 @@ fn ledger_event(value: LedgerLine) -> Option<LedgerRunEvent> {
         resume_skill_ref: entry.data.detail.resume_skill_ref,
         selected_runner: entry.data.detail.selected_runner,
         credential_profile: entry.data.detail.credential_profile,
+        package_digest: entry.data.detail.package_digest,
+        execution_closure_digest: entry.data.detail.execution_closure_digest,
         step_ids: clean_string_array(entry.data.detail.step_ids),
         step_labels: clean_string_array(entry.data.detail.step_labels),
     })
@@ -926,6 +954,8 @@ fn paused_run_from_events(run_id: &str, events: &[LedgerRunEvent]) -> Option<Pau
                     .clone()
                     .or_else(|| event.runner.clone()),
                 credential_profile: event.credential_profile.clone(),
+                package_digest: event.package_digest.clone(),
+                execution_closure_digest: event.execution_closure_digest.clone(),
                 step_ids: event.step_ids.clone(),
                 step_labels: event.step_labels.clone(),
                 ledger_verification: Some(LedgerVerificationProjection {
@@ -948,6 +978,8 @@ fn invalid_paused_run(run_id: &str, reason: String) -> PausedRunSummary {
         resume_skill_ref: None,
         selected_runner: None,
         credential_profile: None,
+        package_digest: None,
+        execution_closure_digest: None,
         step_ids: Vec::new(),
         step_labels: Vec::new(),
         ledger_verification: Some(LedgerVerificationProjection {

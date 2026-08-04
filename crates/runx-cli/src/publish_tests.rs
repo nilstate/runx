@@ -1,6 +1,9 @@
 use super::*;
 
-use runx_runtime::registry::{HttpResponse, RuntimeHttpError};
+use runx_runtime::{
+    HttpMethod, RuntimeHttpError, RuntimeHttpRequest as HttpRequest,
+    RuntimeHttpResponse as HttpResponse, RuntimeHttpTransport as Transport,
+};
 use std::cell::RefCell;
 
 #[derive(Default)]
@@ -12,18 +15,20 @@ struct StubTransport {
 impl Transport for StubTransport {
     fn send(&self, request: HttpRequest) -> Result<HttpResponse, RuntimeHttpError> {
         self.requests.borrow_mut().push(request);
-        Ok(self.response.borrow_mut().take().unwrap_or(HttpResponse {
-            status: 201,
-            body: serde_json::json!({
-                "status": "notarized",
-                "digest": "sha256:abc",
-                "public_hash": "abc",
-                "mode": "full",
-                "published": true,
-                "public_url": "https://runx.test/r/abc",
-                "verdict": {"valid": true}
-            })
-            .to_string(),
+        Ok(self.response.borrow_mut().take().unwrap_or_else(|| {
+            HttpResponse::new(
+                201,
+                serde_json::json!({
+                    "status": "notarized",
+                    "digest": "sha256:abc",
+                    "public_hash": "abc",
+                    "mode": "full",
+                    "published": true,
+                    "public_url": "https://runx.test/r/abc",
+                    "verdict": {"valid": true}
+                })
+                .to_string(),
+            )
         }))
     }
 }
@@ -75,7 +80,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         json: false,
     };
 
-    let explicit = crate::public_api::ApiEnvironment::resolve(
+    let explicit = runx_runtime::HostedApiEnvironment::resolve(
         plan.api_base_url.as_deref(),
         plan.token.as_deref(),
         &env,
@@ -89,7 +94,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         api_base_url: None,
         ..plan
     };
-    let from_env = crate::public_api::ApiEnvironment::resolve(
+    let from_env = runx_runtime::HostedApiEnvironment::resolve(
         env_plan.api_base_url.as_deref(),
         env_plan.token.as_deref(),
         &env,
@@ -105,7 +110,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         allow_local_api: false,
         json: false,
     };
-    let blank_explicit = crate::public_api::ApiEnvironment::resolve(
+    let blank_explicit = runx_runtime::HostedApiEnvironment::resolve(
         empty_token_plan.api_base_url.as_deref(),
         empty_token_plan.token.as_deref(),
         &env,
@@ -114,7 +119,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
     assert_eq!(blank_explicit.require_token()?, "public-token");
 
     env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
-    let blank = crate::public_api::ApiEnvironment::resolve(
+    let blank = runx_runtime::HostedApiEnvironment::resolve(
         empty_token_plan.api_base_url.as_deref(),
         empty_token_plan.token.as_deref(),
         &env,
@@ -124,7 +129,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
 
     let empty_url_plan = PublishPlan {
         receipt_path: PathBuf::from("receipt.json"),
-        api_base_url: Some("  /  ".to_owned()),
+        api_base_url: Some("   ".to_owned()),
         token: None,
         allow_local_api: false,
         json: false,
@@ -134,7 +139,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         temp.join("isolated").to_string_lossy().into_owned(),
     )]);
     assert_eq!(
-        crate::public_api::ApiEnvironment::resolve(
+        runx_runtime::HostedApiEnvironment::resolve(
             empty_url_plan.api_base_url.as_deref(),
             None,
             &isolated_env,
@@ -158,10 +163,10 @@ fn resolves_stored_public_api_token_after_explicit_sources()
         &temp,
     )?;
     runx_runtime::write_runx_config_file(&temp.join("config.json"), &config)?;
-    let environment = crate::public_api::ApiEnvironment::resolve(None, None, &env, &temp)?;
+    let environment = runx_runtime::HostedApiEnvironment::resolve(None, None, &env, &temp)?;
     assert_eq!(environment.require_token()?, "stored-token");
 
-    let mismatched = crate::public_api::ApiEnvironment::resolve(
+    let mismatched = runx_runtime::HostedApiEnvironment::resolve(
         Some("https://other.runx.test"),
         None,
         &env,
@@ -189,7 +194,7 @@ fn unauthenticated_environment_does_not_load_stored_credentials()
         },
     )?;
 
-    let environment = crate::public_api::ApiEnvironment::resolve_unauthenticated(
+    let environment = runx_runtime::HostedApiEnvironment::resolve_unauthenticated(
         Some("https://login.runx.test/"),
         &env,
         &temp,
@@ -232,13 +237,11 @@ fn posts_full_receipt_publish_request() -> Result<(), String> {
     let transport = StubTransport::default();
     let receipt: JsonValue =
         serde_json::from_value(serde_json::json!({"id": "receipt_1"})).map_err(stringify)?;
-    let response = publish_receipt(
+    let response = runx_runtime::publish_hosted_receipt(
         &transport,
-        &PublishOptions {
-            base_url: "https://runx.test/",
-            token: "rxk_test",
-            receipt: &receipt,
-        },
+        "https://runx.test/",
+        "rxk_test",
+        &receipt,
     )
     .map_err(|error| error.to_string())?;
 
@@ -296,12 +299,14 @@ fn human_output_reflects_notary_status() -> Result<(), PublishCliError> {
 
 #[test]
 fn publish_error_explains_receipt_scope_mismatch() {
-    let message = PublishError::RunxApi {
+    let message = PublishCliError::Publish(HostedApiOperationError::Api {
+        operation: "receipt publish",
+        status: 403,
         code: "missing_scope".to_owned(),
         detail: "Missing required scope: receipts:write.".to_owned(),
         hint: None,
         retry_after_seconds: None,
-    }
+    })
     .to_string();
 
     assert!(message.contains("can publish skills but not receipts"));

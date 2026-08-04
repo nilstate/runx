@@ -6,10 +6,11 @@ use std::process::ExitCode;
 
 use runx_runtime::journal::list_local_history;
 use runx_runtime::{
-    DEFAULT_MANAGED_AGENT_MAX_ROUNDS, LocalReceiptStore, ManagedAgentPolicy, ReceiptPathInputs,
-    RuntimeReceiptConfig, WorkspaceEnv, resolve_receipt_path,
+    LocalReceiptStore, ManagedAgentPolicy, ReceiptPathInputs, RuntimeReceiptConfig, WorkspaceEnv,
+    resolve_receipt_path,
 };
 
+use crate::managed_agent::{managed_agent_policy, parse_boolean_flag, parse_managed_agent_rounds};
 use crate::skill::{SkillAction, SkillPlan};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -17,24 +18,26 @@ pub struct ResumePlan {
     pub run_id: String,
     pub answers_path: PathBuf,
     pub receipt_dir: Option<PathBuf>,
+    pub expected_package_digest: Option<String>,
+    pub expected_execution_closure_digest: Option<String>,
     pub json: bool,
     pub managed_agent: ManagedAgentPolicy,
 }
 
 pub(crate) struct SkillResumeCommand<'a> {
-    pub(crate) skill_ref: Option<&'a str>,
     pub(crate) run_id: &'a str,
-    pub(crate) selected_runner: Option<&'a str>,
     pub(crate) receipt_dir: Option<&'a Path>,
     pub(crate) answers_path: Option<&'a Path>,
 }
 
-// rust-style-allow: long-function - resume parsing keeps UTF-8 identifiers and native path arguments in one audited cursor.
+// Function rationale: resume parsing keeps UTF-8 identifiers and native path arguments in one audited cursor.
 pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
     if args.first().and_then(|arg| arg.to_str()) != Some("resume") {
         return Err("internal error: resume dispatcher received non-resume command".to_owned());
     }
     let mut receipt_dir = None;
+    let mut expected_package_digest = None;
+    let mut expected_execution_closure_digest = None;
     let mut json = false;
     let mut managed_agent = false;
     let mut managed_agent_rounds = None;
@@ -60,6 +63,7 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
             }
             value if value.starts_with("--managed-agent=") => {
                 managed_agent = parse_boolean_flag(
+                    "resume",
                     "--managed-agent",
                     value.trim_start_matches("--managed-agent="),
                 )?;
@@ -67,6 +71,7 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
             }
             value if value.starts_with("--managed-agent-rounds=") => {
                 managed_agent_rounds = Some(parse_managed_agent_rounds(
+                    "resume",
                     value.trim_start_matches("--managed-agent-rounds="),
                 )?);
                 index += 1;
@@ -74,6 +79,7 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
             "--managed-agent-rounds" => {
                 index += 1;
                 managed_agent_rounds = Some(parse_managed_agent_rounds(
+                    "resume",
                     args.get(index)
                         .and_then(|value| value.to_str())
                         .ok_or_else(|| "--managed-agent-rounds requires a value".to_owned())?,
@@ -101,6 +107,40 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
                 ));
                 index += 1;
             }
+            value if value.starts_with("--package-digest=") => {
+                expected_package_digest = Some(binding_flag_value(
+                    "--package-digest",
+                    value.trim_start_matches("--package-digest="),
+                )?);
+                index += 1;
+            }
+            "--package-digest" => {
+                index += 1;
+                expected_package_digest = Some(binding_flag_value(
+                    "--package-digest",
+                    args.get(index)
+                        .and_then(|value| value.to_str())
+                        .ok_or_else(|| "--package-digest requires a value".to_owned())?,
+                )?);
+                index += 1;
+            }
+            value if value.starts_with("--execution-closure-digest=") => {
+                expected_execution_closure_digest = Some(binding_flag_value(
+                    "--execution-closure-digest",
+                    value.trim_start_matches("--execution-closure-digest="),
+                )?);
+                index += 1;
+            }
+            "--execution-closure-digest" => {
+                index += 1;
+                expected_execution_closure_digest = Some(binding_flag_value(
+                    "--execution-closure-digest",
+                    args.get(index)
+                        .and_then(|value| value.to_str())
+                        .ok_or_else(|| "--execution-closure-digest requires a value".to_owned())?,
+                )?);
+                index += 1;
+            }
             value if value.starts_with('-') => {
                 return Err(format!("unknown runx resume option {value}"));
             }
@@ -120,23 +160,14 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
             .map_err(|_| "runx resume run id must be UTF-8".to_owned())?,
         answers_path: PathBuf::from(positionals.remove(0)),
         receipt_dir,
+        expected_package_digest,
+        expected_execution_closure_digest,
         json,
-        managed_agent: managed_agent_policy(managed_agent, managed_agent_rounds)?,
+        managed_agent: managed_agent_policy("resume", managed_agent, managed_agent_rounds)?,
     })
 }
 
-// rust-style-allow: long-function - resume reconstructs one guarded continuation
-// request and keeps its path, receipt, and output error handling in one transaction.
-pub fn run_native_resume(plan: ResumePlan) -> ExitCode {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let workspace = match WorkspaceEnv::load_process(cwd) {
-        Ok(workspace) => workspace,
-        Err(error) => return write_resume_failure(&error.to_string(), plan.json, 1),
-    };
-    run_native_resume_with_workspace(plan, &workspace)
-}
-
-// rust-style-allow: long-function - resume reconstructs one guarded continuation
+// Function rationale: resume reconstructs one guarded continuation
 // request and keeps its path, receipt, and output error handling in one transaction.
 pub fn run_native_resume_with_workspace(plan: ResumePlan, workspace: &WorkspaceEnv) -> ExitCode {
     let cwd = workspace.cwd().to_path_buf();
@@ -182,6 +213,32 @@ pub fn run_native_resume_with_workspace(plan: ResumePlan, workspace: &WorkspaceE
             1,
         );
     };
+    let expected_package_digest = match resume_binding(
+        "package",
+        plan.expected_package_digest.as_deref(),
+        pending.package_digest.as_deref(),
+    ) {
+        Ok(digest) => digest,
+        Err(error) => return write_resume_failure(&error, plan.json, 1),
+    };
+    let expected_execution_closure_digest = match resume_binding(
+        "execution closure",
+        plan.expected_execution_closure_digest.as_deref(),
+        pending.execution_closure_digest.as_deref(),
+    ) {
+        Ok(digest) => digest,
+        Err(error) => return write_resume_failure(&error, plan.json, 1),
+    };
+    if expected_package_digest.is_none() || expected_execution_closure_digest.is_none() {
+        return write_resume_failure(
+            &format!(
+                "run {} predates immutable package and execution-closure binding and cannot be resumed",
+                plan.run_id
+            ),
+            plan.json,
+            1,
+        );
+    }
     let skill_plan = SkillPlan {
         action: SkillAction::Run,
         skill_path: PathBuf::from(skill_ref),
@@ -191,45 +248,41 @@ pub fn run_native_resume_with_workspace(plan: ResumePlan, workspace: &WorkspaceE
         answers: Some(plan.answers_path),
         registry: None,
         expected_digest: None,
+        expected_package_digest,
+        expected_execution_closure_digest,
         json: plan.json,
         non_interactive: true,
-        skip_operator_context: true,
+        trusted_command_execution: false,
         full_operator_context: false,
-        approve_operator_context: None,
         inputs: BTreeMap::new(),
+        input_document: None,
         credential_profile: pending.credential_profile.clone(),
         managed_agent: plan.managed_agent,
     };
     crate::skill::run_native_skill_with_workspace(skill_plan, workspace)
 }
 
-fn managed_agent_policy(
-    enabled: bool,
-    max_rounds: Option<u32>,
-) -> Result<ManagedAgentPolicy, String> {
-    if !enabled {
-        if max_rounds.is_some() {
-            return Err("runx resume --managed-agent-rounds requires --managed-agent".to_owned());
-        }
-        return Ok(ManagedAgentPolicy::HostDriven);
+fn binding_flag_value(flag: &str, value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(format!("{flag} requires a non-empty value"));
     }
-    ManagedAgentPolicy::inline(max_rounds.unwrap_or(DEFAULT_MANAGED_AGENT_MAX_ROUNDS))
-        .map_err(|error| format!("runx resume {error}"))
+    Ok(value.to_owned())
 }
 
-fn parse_managed_agent_rounds(value: &str) -> Result<u32, String> {
-    value
-        .trim()
-        .parse::<u32>()
-        .map_err(|_| "runx resume --managed-agent-rounds expects a positive integer".to_owned())
-}
-
-fn parse_boolean_flag(flag: &str, value: &str) -> Result<bool, String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "true" | "1" => Ok(true),
-        "false" | "0" => Ok(false),
-        _ => Err(format!("runx resume {flag} expects true or false")),
+fn resume_binding(
+    label: &str,
+    requested: Option<&str>,
+    checkpointed: Option<&str>,
+) -> Result<Option<String>, String> {
+    if let (Some(requested), Some(checkpointed)) = (requested, checkpointed)
+        && requested != checkpointed
+    {
+        return Err(format!(
+            "resume {label} binding mismatch: requested {requested}, checkpoint recorded {checkpointed}"
+        ));
     }
+    Ok(requested.or(checkpointed).map(str::to_owned))
 }
 
 pub(crate) fn render_skill_resume_command(command: SkillResumeCommand<'_>) -> String {
@@ -247,19 +300,10 @@ pub(crate) fn render_skill_resume_command(command: SkillResumeCommand<'_>) -> St
         parts.push("--receipt-dir".to_owned());
         parts.push(shell_token(&receipt_dir.to_string_lossy()));
     }
-    let _legacy_context = (
-        command.skill_ref,
-        command.selected_runner.and_then(non_empty),
-    );
     parts.join(" ")
 }
 
-fn non_empty(value: &str) -> Option<&str> {
-    let value = value.trim();
-    (!value.is_empty()).then_some(value)
-}
-
-fn shell_token(value: &str) -> String {
+pub(crate) fn shell_token(value: &str) -> String {
     if value.is_empty() {
         return "''".to_owned();
     }
@@ -311,11 +355,49 @@ mod tests {
     }
 
     #[test]
+    fn resume_accepts_execution_bindings_without_treating_them_as_answers() -> Result<(), String> {
+        let plan = super::parse_resume_plan(
+            &[
+                "resume",
+                "run_123",
+                "answers.json",
+                "--package-digest=sha256:package",
+                "--execution-closure-digest",
+                "sha256:closure",
+            ]
+            .into_iter()
+            .map(OsString::from)
+            .collect::<Vec<_>>(),
+        )?;
+        assert_eq!(
+            plan.expected_package_digest.as_deref(),
+            Some("sha256:package")
+        );
+        assert_eq!(
+            plan.expected_execution_closure_digest.as_deref(),
+            Some("sha256:closure")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn resume_rejects_a_binding_that_disagrees_with_its_checkpoint() -> Result<(), String> {
+        let error = match super::resume_binding(
+            "execution closure",
+            Some("sha256:requested"),
+            Some("sha256:checkpoint"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("resume replaced its durable execution binding".to_owned()),
+        };
+        assert!(error.contains("resume execution closure binding mismatch"));
+        Ok(())
+    }
+
+    #[test]
     fn resume_command_quotes_operator_supplied_tokens() {
         let command = render_skill_resume_command(SkillResumeCommand {
-            skill_ref: Some("skills/support reply"),
             run_id: "run abc",
-            selected_runner: Some("agent task"),
             receipt_dir: Some(Path::new("custom receipts")),
             answers_path: Some(Path::new("my answers.json")),
         });
@@ -329,9 +411,7 @@ mod tests {
     #[test]
     fn resume_command_uses_safe_defaults_when_metadata_is_missing() {
         let command = render_skill_resume_command(SkillResumeCommand {
-            skill_ref: None,
             run_id: "rx_123",
-            selected_runner: None,
             receipt_dir: None,
             answers_path: None,
         });

@@ -1,6 +1,9 @@
 use super::*;
 
-use runx_runtime::registry::{HttpResponse, RuntimeHttpError};
+use runx_runtime::{
+    HttpMethod, RuntimeHttpError, RuntimeHttpRequest as HttpRequest,
+    RuntimeHttpResponse as HttpResponse,
+};
 use std::cell::RefCell;
 use std::fs;
 
@@ -22,10 +25,11 @@ impl StubTransport {
 impl Transport for StubTransport {
     fn send(&self, request: HttpRequest) -> Result<HttpResponse, RuntimeHttpError> {
         self.requests.borrow_mut().push(request);
-        Ok(self.responses.borrow_mut().pop().unwrap_or(HttpResponse {
-            status: 500,
-            body: "missing stub response".to_owned(),
-        }))
+        Ok(self
+            .responses
+            .borrow_mut()
+            .pop()
+            .unwrap_or_else(|| HttpResponse::new(500, "missing stub response")))
     }
 }
 
@@ -62,9 +66,9 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
     let transport = StubTransport::with_responses(vec![
-        HttpResponse {
-            status: 201,
-            body: serde_json::json!({
+        HttpResponse::new(
+            201,
+            serde_json::json!({
                 "status": "pending",
                 "session_id": "login_1",
                 "login_token": "ticket_1",
@@ -72,19 +76,19 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
                 "poll_after_ms": 0
             })
             .to_string(),
-        },
-        HttpResponse {
-            status: 202,
-            body: serde_json::json!({
+        ),
+        HttpResponse::new(
+            202,
+            serde_json::json!({
                 "status": "pending",
                 "session_id": "login_1",
                 "poll_after_ms": 0
             })
             .to_string(),
-        },
-        HttpResponse {
-            status: 200,
-            body: serde_json::json!({
+        ),
+        HttpResponse::new(
+            200,
+            serde_json::json!({
                 "status": "success",
                 "session_id": "login_1",
                 "principal_id": "user_1",
@@ -92,7 +96,7 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
                 "token": "rxk_secret"
             })
             .to_string(),
-        },
+        ),
     ]);
     let output = run_login_command_with_transport(
         &LoginPlan {
@@ -138,14 +142,14 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
 
 #[test]
 fn login_surfaces_api_error() -> Result<(), String> {
-    let transport = StubTransport::with_responses(vec![HttpResponse {
-        status: 400,
-        body: serde_json::json!({
+    let transport = StubTransport::with_responses(vec![HttpResponse::new(
+        400,
+        serde_json::json!({
             "status": "error",
             "error": {"code": "login_request_invalid", "detail": "provider must be github"}
         })
         .to_string(),
-    }]);
+    )]);
     let error = match run_login_command_with_transport(
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
@@ -172,16 +176,16 @@ fn github_cli_login_exchanges_provider_token_without_serializing_it()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
-    let transport = StubTransport::with_responses(vec![HttpResponse {
-        status: 200,
-        body: serde_json::json!({
+    let transport = StubTransport::with_responses(vec![HttpResponse::new(
+        200,
+        serde_json::json!({
             "status": "success",
             "principal_id": "user_from_gh",
             "credential_id": "cred_from_gh",
             "token": "rxk_from_gh"
         })
         .to_string(),
-    }]);
+    )]);
     let output = run_provider_token_login_with_transport(
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
@@ -224,16 +228,16 @@ fn github_cli_login_exchanges_provider_token_without_serializing_it()
 fn github_cli_login_rejects_an_unpinned_principal() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
-    let transport = StubTransport::with_responses(vec![HttpResponse {
-        status: 200,
-        body: serde_json::json!({
+    let transport = StubTransport::with_responses(vec![HttpResponse::new(
+        200,
+        serde_json::json!({
             "status": "success",
             "principal_id": " ",
             "credential_id": "cred_from_gh",
             "token": "rxk_from_gh"
         })
         .to_string(),
-    }]);
+    )]);
     let Err(error) = run_provider_token_login_with_transport(
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),

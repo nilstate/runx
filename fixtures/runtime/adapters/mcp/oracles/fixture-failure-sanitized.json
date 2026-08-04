@@ -7,10 +7,13 @@
   "durationMs": 0,
   "errorMessage": "MCP tool returned error -32000.",
   "metadata": {
+    "execution_boundary": {
+      "kind": "trusted_host_process"
+    },
     "mcp": {
       "tool": "fail",
       "server_command_hash": "545ea538461003efdc8c81c244531b003f6f26cfccf6c0073b3239fdedf49446",
-      "server_args_hash": "e67ab531b4f51b7259e543dec4d22753f83dc051fc7da45d4cb6483c89656e8d"
+      "server_args_hash": "81dfe7a9d471d3890417b000a8d85d3c55ee9628dc21e05a1998a5bfa9423cd9"
     }
   }
 }

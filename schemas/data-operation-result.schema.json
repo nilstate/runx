@@ -1,0 +1,171 @@
+{
+  "$id": "https://schemas.runx.ai/runx/data/operation-result/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "after_version": {
+      "type": "integer"
+    },
+    "aggregate_id": {
+      "type": "string"
+    },
+    "before_version": {
+      "type": "integer"
+    },
+    "data_source_ref": {
+      "type": "string"
+    },
+    "event_digest": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "event_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "events": {
+      "items": {},
+      "type": "array"
+    },
+    "has_more": {
+      "type": "boolean"
+    },
+    "idempotency_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "limit": {
+      "type": "integer"
+    },
+    "next_after_version": {
+      "type": "integer"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "projection": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "projection_digest": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "provider_evidence": {
+      "additionalProperties": {},
+      "type": "object"
+    },
+    "redactions": {
+      "items": {},
+      "type": "array"
+    },
+    "resource": {
+      "type": "string"
+    },
+    "result_digest": {
+      "type": "string"
+    },
+    "rows": {
+      "items": {},
+      "type": "array"
+    },
+    "schema": {
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "const": "committed",
+          "type": "string"
+        },
+        {
+          "const": "idempotent_replay",
+          "type": "string"
+        },
+        {
+          "const": "read",
+          "type": "string"
+        },
+        {
+          "const": "conflict",
+          "type": "string"
+        },
+        {
+          "const": "provider_unavailable",
+          "type": "string"
+        }
+      ]
+    },
+    "stop_conditions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "data_source_ref",
+    "provider",
+    "operation",
+    "resource",
+    "aggregate_id",
+    "status",
+    "before_version",
+    "after_version",
+    "idempotency_key",
+    "event_ref",
+    "event_digest",
+    "result_digest",
+    "projection_digest",
+    "projection",
+    "events",
+    "rows",
+    "redactions",
+    "stop_conditions",
+    "provider_evidence"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.data.operation_result.v1"
+}

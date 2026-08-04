@@ -23,5 +23,18 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
+    child_receipt_count: 1
   steps:
     - open
+  step_outputs:
+    open:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            aggregate_id: case-open-1
+            after_version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite

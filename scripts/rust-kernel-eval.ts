@@ -208,9 +208,7 @@ export function evaluateRustKernelInputSync(
 
 function resolveRustKernelCommand(options: RustKernelEvalOptions): string {
   const command = options.command
-    ?? options.env?.RUNX_KERNEL_EVAL_BIN
     ?? options.env?.RUNX_RUST_CLI_BIN
-    ?? process.env.RUNX_KERNEL_EVAL_BIN
     ?? process.env.RUNX_RUST_CLI_BIN;
   if (command) {
     return command;
@@ -219,7 +217,7 @@ function resolveRustKernelCommand(options: RustKernelEvalOptions): string {
     return defaultRunxBinary;
   }
   throw new RustKernelEvalError(
-    `Rust kernel eval requires RUNX_KERNEL_EVAL_BIN or a built CLI at ${path.relative(workspaceRoot, defaultRunxBinary)}.`,
+    `Rust kernel eval requires RUNX_RUST_CLI_BIN or a built CLI at ${path.relative(workspaceRoot, defaultRunxBinary)}.`,
   );
 }
 

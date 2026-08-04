@@ -6,9 +6,10 @@ observations; it is not the source of truth.
 
 ## Current Shape
 
-The shared implementation for bundled tools is inlined in the tool-local story
-helpers (`tools/outbox/story.ts`, `tools/thread/story.ts`, and
-`tools/thread/handoff.ts`) as typed helpers:
+The shared runtime implementation for bundled tools lives in
+`tools/outbox/story.mjs`; handoff-state validation remains in the typed
+`tools/thread/handoff.ts` contract helper. There is one story implementation,
+not a thread alias beside the outbox owner:
 
 - `StoryMilestoneId`
 - `ThreadStorySectionId`
@@ -43,7 +44,7 @@ pushes are credential-free persistence for fixtures and local dogfood. GitHub,
 Slack, support-channel, or other provider mutations require the separate
 `thread-outbox-provider-protocol-v1` lane and Rust-supervised credential
 delivery; they must not be implemented as hidden provider side effects in a
-TypeScript helper package.
+local helper module.
 
 A source (such as Frantic) uses that provider lane for source-thread continuity
 through a generic, declarative reconcile. The source publishes a

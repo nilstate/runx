@@ -58,15 +58,23 @@ harness:
             proof_refs:
               - receipt-proof:mock:demo-search-001
             recommended_action:
-              action: seal_recovered_proof
+              action: seal
             open_questions: []
       expect:
         status: sealed
+        output:
+          subset:
+            recovery_assessment:
+              status: recovered
+              already_mutated: true
+            recommended_action:
+              action: seal
+            proof_refs:
+              - receipt-proof:mock:demo-search-001
         receipt:
           schema: runx.receipt.v1
           state: sealed
           disposition: closed
-          reason_code: payment_recovery_closed
 runners:
   inspect:
     default: true
@@ -74,10 +82,33 @@ runners:
     agent: operator
     task: pay-recover
     outputs:
-      recovery_assessment: object
-      rail_lookup: object
+      recovery_assessment:
+        type: object
+        schema:
+          required: [status, already_mutated]
+          properties:
+            status: { type: string, enum: [recovered, retry_safe, failed, ambiguous] }
+            already_mutated: { type: boolean }
+            rationale: { type: string }
+          additionalProperties: false
+      rail_lookup:
+        type: object
+        schema:
+          required: [idempotency_key, rail_profile_ref]
+          properties:
+            idempotency_key: { type: string, minLength: 1 }
+            rail_profile_ref: { type: string, minLength: 1 }
+            status: { type: string }
+          additionalProperties: false
       proof_refs: array
-      recommended_action: object
+      recommended_action:
+        type: object
+        schema:
+          required: [action]
+          properties:
+            action: { type: string, enum: [seal, retry_same_key, decline, escalate] }
+            rationale: { type: string }
+          additionalProperties: false
       open_questions: array
     artifacts:
       wrap_as: payment_recovery_packet

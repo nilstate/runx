@@ -10,40 +10,61 @@ inputs:
     provider: nws
     gridpoint: LWX/97,71
     generated_at: 2026-06-09T00:00:00Z
+    source_refs:
+      - gridpoints/LWX/97,71/forecast
+    receipt_refs: []
     periods:
       - name: Tomorrow
         shortForecast: Chance Showers
         windSpeed: 8 mph
 caller:
   answers:
-    agent_task.weather-forecast.output:
-      decision: ready
-      location: Washington Monument
-      horizon: tomorrow
-      forecast_packet:
-        summary: NWS evidence indicates possible showers during the planning horizon.
-        periods:
-          - name: Tomorrow
-            forecast: Chance Showers
-            wind: 8 mph
-        hazards:
-          - rain could affect an outdoor demo
-        confidence: medium
-        generated_at: 2026-06-09T00:00:00Z
-      provider_evidence:
-        provider: nws
-        source_refs:
-          - gridpoints/LWX/97,71/forecast
-        receipt_refs: []
-      safety_notes:
-        - Not for emergency, aviation, maritime, or life-safety decisions.
-      stop_conditions:
-        - Do not reschedule or notify attendees without a downstream action gate.
-      receipt_notes:
-        authority: context-only
-        mutation: false
+    agent_task.weather-forecast-interpret.output:
+      forecast_draft:
+        decision: ready
+        location: Washington Monument
+        horizon: tomorrow
+        forecast_packet:
+          summary: NWS evidence indicates possible showers during the planning horizon.
+          periods:
+            - name: Tomorrow
+              forecast: Chance Showers
+              wind: 8 mph
+          hazards:
+            - rain could affect an outdoor demo
+          confidence: medium
+          generated_at: 2026-06-09T00:00:00Z
+        provider_evidence:
+          provider: nws
+          source_refs:
+            - gridpoints/LWX/97,71/forecast
+          receipt_refs: []
+        safety_notes:
+          - Not for emergency, aviation, maritime, or life-safety decisions.
+        stop_conditions:
+          - Do not reschedule or notify attendees without a downstream action gate.
+        receipt_notes:
+          authority: context-only
+          mutation: false
 expect:
   status: sealed
+  steps:
+    - interpret
+    - validate
+  step_outputs:
+    validate:
+      subset:
+        decision: ready
+        location: Washington Monument
+        horizon: tomorrow
+        provider_evidence:
+          provider: nws
+          source_refs:
+            - gridpoints/LWX/97,71/forecast
+          receipt_refs: []
+        receipt_notes:
+          authority: context-only
+          mutation: false
   receipt:
     schema: runx.receipt.v1
 metadata:

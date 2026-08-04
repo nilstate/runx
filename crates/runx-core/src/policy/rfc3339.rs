@@ -6,7 +6,7 @@
 
 /// Parse an RFC 3339 timestamp into a `(days_from_civil, seconds_of_day, nanos)`
 /// triple, normalising the UTC offset. Returns `None` for any malformed input.
-pub(super) fn parse_rfc3339_moment(value: &str) -> Option<(i64, i64, u32)> {
+pub fn parse_rfc3339_moment(value: &str) -> Option<(i64, i64, u32)> {
     let (date, time_and_offset) = value.split_once('T')?;
     let (year, month, day) = parse_date(date)?;
     let (time, offset_seconds) = parse_time_and_offset(time_and_offset)?;

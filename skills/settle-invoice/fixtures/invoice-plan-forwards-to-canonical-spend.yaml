@@ -1,0 +1,17 @@
+name: invoice-plan-forwards-to-canonical-spend
+kind: graph
+target: ../harness/invoice-to-spend.yaml
+caller:
+  approvals:
+    spend.stripe-spt.approval: true
+expect:
+  status: sealed
+  steps:
+    - prepare
+    - spend
+  receipt:
+    schema: runx.receipt.v1
+metadata:
+  public_skill: settle-invoice
+  source_case: invoice-plan-forwards-to-canonical-spend
+  source: skills-fixture

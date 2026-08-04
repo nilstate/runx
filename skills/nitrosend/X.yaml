@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.2.1"
+version: "0.2.6"
 catalog:
   kind: skill
   audience: public
@@ -30,17 +30,133 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - brand_sid: brnd_demo123
     graph:
       name: nitrosend-status
+      result_from: [status]
       steps:
         - id: status
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: status
             arguments: {}
             brand_sid: "$input.brand_sid"
+  configure-sender:
+    type: graph
+    credential: nitrosend
+    act:
+      purpose: Replace one explicitly selected Nitrosend brand's exact sender defaults.
+    inputs:
+      brand_sid:
+        type: string
+        required: true
+        description: Public Nitrosend brand SID; account-default selection is forbidden.
+      from_name:
+        type: string
+        required: true
+        description: Exact sender display name.
+      from_email:
+        type: string
+        required: true
+        description: Exact sender address on a verified domain.
+      reply_to:
+        type: string
+        required: true
+        description: Exact reply-to address.
+      test_email_recipients:
+        type: array
+        required: true
+        description: Exact saved test-recipient array, empty to clear, maximum five.
+        schema:
+          maxItems: 5
+          uniqueItems: true
+          items: { type: string, format: email }
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry identity for this exact brand and sender configuration.
+    examples:
+      - brand_sid: brnd_demo123
+        from_name: Example Team
+        from_email: hello@example.com
+        reply_to: support@example.com
+        test_email_recipients: [owner@example.com]
+        idempotency_key: sender-brnd_demo123-20260803
+    graph:
+      name: nitrosend-configure-sender
+      result_from: [readback, verify]
+      steps:
+        - id: current
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: sender_settings
+            arguments: {}
+            brand_sid: "$input.brand_sid"
+        - id: verify-current-brand
+          tool: data.compare
+          inputs:
+            expected: "$input.brand_sid"
+          context:
+            actual: current.provider_evidence.data.result.sender_settings.brand_sid
+        - id: approve
+          when:
+            field: verify-current-brand.comparison.data.equal
+            equals: true
+          run:
+            type: approval
+          inputs:
+            gate_id: nitrosend.configure_sender.approval
+            reason: Replace the selected Nitrosend brand's sender defaults with these exact values.
+          context:
+            current: current.provider_evidence.data
+        - id: apply
+          skill: graph/provider-operation
+          runner: act
+          mutation: true
+          idempotency_key: $input.idempotency_key
+          inputs:
+            operation: configure_sender
+            arguments:
+              from_name: "$input.from_name"
+              from_email: "$input.from_email"
+              reply_to: "$input.reply_to"
+              test_email_recipients: "$input.test_email_recipients"
+            brand_sid: "$input.brand_sid"
+        - id: readback
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: sender_settings
+            arguments: {}
+            brand_sid: "$input.brand_sid"
+        - id: verify
+          tool: data.compare
+          inputs:
+            expected:
+              brand_sid: "$input.brand_sid"
+              from_name: "$input.from_name"
+              from_email: "$input.from_email"
+              reply_to: "$input.reply_to"
+              test_email_recipients: "$input.test_email_recipients"
+          context:
+            actual: readback.provider_evidence.data.result.sender_settings
+    policy:
+      guards:
+        - step: apply
+          field: approve.approval_decision.data.approved
+          equals: true
+        - step: apply
+          field: verify-current-brand.comparison.data.equal
+          equals: true
+        - step: readback
+          field: apply.provider_evidence.data.decision
+          equals: ok
+        - step: verify
+          field: readback.provider_evidence.data.decision
+          equals: ok
   review-delivery:
     type: graph
     credential: nitrosend
@@ -49,26 +165,36 @@ runners:
         type: string
         required: true
         description: template, flow, or campaign.
+        schema: { enum: [template, flow, campaign] }
       target_id:
         type: number
         required: true
         description: Nitrosend entity ID.
+      revision_id:
+        type: number
+        required: false
+        description: Required for flows; exact immutable flow revision to review.
       brand_sid:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - target_type: campaign
+        target_id: 42
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-review-delivery
+      result_from: [review]
       steps:
         - id: review
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: review_delivery
             arguments:
               target_type: "$input.target_type"
               target_id: "$input.target_id"
+              revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
   import-status:
     type: graph
@@ -82,13 +208,16 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - import_id: 42
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-import-status
+      result_from: [status]
       steps:
         - id: status
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: import_status
             arguments:
@@ -104,26 +233,37 @@ runners:
         type: string
         required: true
         description: flow or campaign.
+        schema: { enum: [flow, campaign] }
       target_id:
         type: number
         required: true
         description: Nitrosend entity ID.
+      revision_id:
+        type: number
+        required: false
+        description: Required for flows; exact current draft revision to review and approve.
       brand_sid:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - target_type: flow
+        target_id: 42
+        revision_id: 3
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-approve-delivery
+      result_from: [apply]
       steps:
         - id: review
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: review_delivery
             arguments:
               target_type: "$input.target_type"
               target_id: "$input.target_id"
+              revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
         - id: approve
           run:
@@ -134,9 +274,8 @@ runners:
           context:
             review: review.provider_evidence.data
         - id: apply
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-approve-delivery
           inputs:
@@ -145,6 +284,7 @@ runners:
               target_type: "$input.target_type"
               target_id: "$input.target_id"
               operation: approve
+              revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
     policy:
       guards:
@@ -165,6 +305,7 @@ runners:
         type: string
         required: true
         description: live or schedule.
+        schema: { enum: [live, schedule] }
       scheduled_at:
         type: string
         required: false
@@ -182,13 +323,20 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - campaign_id: 42
+        operation: schedule
+        scheduled_at: '2026-08-04T09:00:00Z'
+        confirm_send_to_all: false
+        idempotency_key: campaign-42-20260804T090000Z
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-send-campaign
+      result_from: [deliver]
       steps:
         - id: review
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: review_delivery
             arguments:
@@ -204,9 +352,8 @@ runners:
           context:
             review: review.provider_evidence.data
         - id: deliver
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-send-campaign
           inputs:
@@ -237,22 +384,31 @@ runners:
         type: number
         required: true
         description: Approved Nitrosend flow ID.
+      revision_id:
+        type: number
+        required: true
+        description: Exact approved flow draft revision to review and publish.
       brand_sid:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - flow_id: 42
+        revision_id: 3
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-activate-flow
+      result_from: [activate]
       steps:
         - id: review
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: review_delivery
             arguments:
               target_type: flow
               target_id: "$input.flow_id"
+              revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
         - id: approve-live
           run:
@@ -263,9 +419,8 @@ runners:
           context:
             review: review.provider_evidence.data
         - id: activate
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-activate-flow
           inputs:
@@ -274,6 +429,7 @@ runners:
               target_type: flow
               target_id: "$input.flow_id"
               operation: live
+              revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
     policy:
       guards:
@@ -293,16 +449,26 @@ runners:
         type: string
         required: true
         description: compose_campaign, compose_flow, manage_template, or define_segment.
+        schema: { enum: [compose_campaign, compose_flow, manage_template, define_segment] }
       arguments:
-        type: json
+        type: object
         required: true
         description: Exact arguments produced by the matching planning runner and current Nitrosend schema.
+        schema:
+          additionalProperties: true
       brand_sid:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - operation: define_segment
+        arguments:
+          name: Active customers
+          filters: { all: [{ field: status, operator: eq, value: active }] }
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-apply-draft
+      result_from: [apply]
       steps:
         - id: approve-draft
           run:
@@ -311,9 +477,8 @@ runners:
             gate_id: nitrosend.apply_draft.approval
             reason: Apply this reviewed draft to the live Nitrosend account. This does not deliver to recipients or activate a flow.
         - id: apply
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-apply-draft
           inputs:
@@ -330,7 +495,48 @@ runners:
     agent: builder
     task: send-campaign
     outputs:
-      campaign_plan: object
+      campaign_plan:
+        type: object
+        schema:
+          required: [decision]
+          additionalProperties: false
+          properties:
+            decision: { type: string, enum: [ready, needs_input, reject] }
+            canonical_skill: { type: string }
+            provider: { type: string }
+            channel: { type: string }
+            audience:
+              type: object
+              required: [type, ref, requires_reconfirmation]
+              additionalProperties: false
+              properties:
+                type: { type: string }
+                ref: { type: string }
+                requires_reconfirmation: { type: boolean }
+            schedule: { type: string }
+            rationale: { type: string }
+            ordered_tool_calls:
+              type: array
+              items:
+                type: object
+                required: [tool, purpose, requires_confirmation]
+                additionalProperties: false
+                properties:
+                  tool: { type: string, minLength: 1 }
+                  purpose: { type: string, minLength: 1 }
+                  requires_confirmation: { type: boolean }
+            human_actions: { type: array, items: { type: string } }
+            blockers: { type: array, items: { type: string } }
+            needs_input: { type: array, items: { type: string } }
+            unsupported_requirements: { type: array, items: { type: string } }
+            rejection_reason: { type: string }
+            success_checkpoint:
+              type: object
+              required: [milestone, description]
+              additionalProperties: false
+              properties:
+                milestone: { type: string, minLength: 1 }
+                description: { type: string, minLength: 1 }
     artifacts:
       wrap_as: campaign_plan_packet
       packet: nitrosend.campaign_plan.v1
@@ -355,12 +561,64 @@ runners:
         type: string
         required: false
         description: Caller surface, usually runx_skill_cli or mcp_direct.
+    examples:
+      - objective: Schedule the August product update for the engaged-customer segment.
+        account_status_json: '{"decision":"ready","sender_ready":true}'
+        audience_brief: Engaged customers segment; do not send to all contacts.
+        operator_context: Prepare only; delivery requires later review and approval.
+        client_surface: runx_skill_cli
   plan-flow:
     type: agent-task
     agent: builder
     task: build-flow-plan
     outputs:
-      flow_plan: object
+      flow_plan:
+        type: object
+        schema:
+          required: [decision]
+          additionalProperties: false
+          properties:
+            decision: { type: string, enum: [ready, needs_input, reject] }
+            flow_type: { type: string }
+            trigger:
+              type: object
+              required: [event, ref]
+              additionalProperties: false
+              properties:
+                event: { type: string }
+                ref: { type: string }
+            steps:
+              type: array
+              items:
+                type: object
+                required: [type, summary]
+                additionalProperties: false
+                properties:
+                  type: { type: string }
+                  summary: { type: string }
+            rationale: { type: string }
+            ordered_tool_calls:
+              type: array
+              items:
+                type: object
+                required: [tool, purpose, requires_confirmation]
+                additionalProperties: false
+                properties:
+                  tool: { type: string, minLength: 1 }
+                  purpose: { type: string, minLength: 1 }
+                  requires_confirmation: { type: boolean }
+            human_actions: { type: array, items: { type: string } }
+            blockers: { type: array, items: { type: string } }
+            needs_input: { type: array, items: { type: string } }
+            unsupported_requirements: { type: array, items: { type: string } }
+            rejection_reason: { type: string }
+            success_checkpoint:
+              type: object
+              required: [milestone, description]
+              additionalProperties: false
+              properties:
+                milestone: { type: string, minLength: 1 }
+                description: { type: string, minLength: 1 }
     artifacts:
       wrap_as: flow_packet
       packet: nitrosend.flow.v1
@@ -385,12 +643,49 @@ runners:
         type: string
         required: false
         description: Caller surface, usually runx_skill_cli or mcp_direct.
+    examples:
+      - objective: Welcome newly subscribed contacts with one email after signup.
+        account_status_json: '{"decision":"ready","sender_ready":true}'
+        flow_brief: Trigger on subscribed contact and send one welcome email immediately.
+        operator_context: Prepare a draft flow only.
+        client_surface: runx_skill_cli
   plan-transactional:
     type: agent-task
     agent: builder
     task: send-transactional-plan
     outputs:
-      transactional_plan: object
+      transactional_plan:
+        type: object
+        schema:
+          required: [decision]
+          additionalProperties: false
+          properties:
+            decision: { type: string, enum: [ready, needs_input, reject] }
+            channel: { type: string }
+            recipient: { type: string }
+            idempotency_key: { type: string }
+            ordered_tool_calls:
+              type: array
+              items:
+                type: object
+                required: [tool, purpose, requires_confirmation]
+                additionalProperties: false
+                properties:
+                  tool: { type: string, minLength: 1 }
+                  purpose: { type: string, minLength: 1 }
+                  requires_confirmation: { type: boolean }
+            human_actions: { type: array, items: { type: string } }
+            blockers: { type: array, items: { type: string } }
+            needs_input: { type: array, items: { type: string } }
+            unsupported_requirements: { type: array, items: { type: string } }
+            rejection_reason: { type: string }
+            success_checkpoint:
+              type: object
+              required: [milestone, description]
+              additionalProperties: false
+              properties:
+                milestone: { type: string, minLength: 1 }
+                description: { type: string, minLength: 1 }
     artifacts:
       wrap_as: transactional_packet
       packet: nitrosend.transactional.v1
@@ -415,6 +710,12 @@ runners:
         type: string
         required: false
         description: Extra operator guardrails.
+    examples:
+      - objective: Send an order confirmation email for order 1001.
+        recipient: buyer@example.com
+        data: '{"order_number":"1001","total":"49.00"}'
+        account_status_json: '{"decision":"ready","sender_ready":true}'
+        operator_context: One recipient only; prepare the plan without sending.
   send-transactional:
     type: graph
     credential: nitrosend
@@ -425,6 +726,7 @@ runners:
         type: string
         required: true
         description: email or sms.
+        schema: { enum: [email, sms] }
       to:
         type: string
         required: true
@@ -442,9 +744,11 @@ runners:
         required: false
         description: Existing Nitrosend email template ID.
       data:
-        type: json
+        type: object
         required: false
         description: Transactional merge variables.
+        schema:
+          additionalProperties: true
       dry_run:
         type: boolean
         required: false
@@ -458,8 +762,18 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - channel: email
+        to: buyer@example.com
+        subject: Your order is confirmed
+        body: Thanks—your order 1001 is confirmed.
+        data: { order_number: '1001' }
+        dry_run: true
+        idempotency_key: order-confirmation-1001
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-send-transactional
+      result_from: [send]
       steps:
         - id: approve-send
           run:
@@ -468,9 +782,8 @@ runners:
             gate_id: nitrosend.send_transactional.approval
             reason: Send this transactional message to the named recipient. A dry run performs validation only.
         - id: send
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-send-transactional
           inputs:
@@ -491,31 +804,114 @@ runners:
           field: approve-send.approval_decision.data.approved
           equals: true
   compose-email:
-    type: agent-task
-    agent: builder
-    task: compose-email-plan
-    outputs:
-      email_design: object
-    artifacts:
-      wrap_as: email_design_packet
-      packet: nitrosend.email_design.v1
+    type: graph
+    credential: nitrosend
     inputs:
       objective:
         type: string
         required: true
-        description: One bounded email design objective.
-      account_status_json:
+        description: One bounded email objective compiled by Nitrosend into an authoring contract.
+      name:
         type: string
         required: false
-        description: JSON string from nitro_get_status.
-      brand_brief:
+        description: Optional campaign working name retained in the composition intent.
+      design_mode_override:
         type: string
         required: false
-        description: Voice or layout guidance beyond the saved brand.
+        description: Optional Nitrosend design mode such as premium_rich, premium_minimal, founder_letter, or utility_plain.
+      brand_context_ref:
+        type: string
+        required: false
+        description: Optional current context ref from a prior intent; omit on first composition to receive full context.
       operator_context:
         type: string
         required: false
-        description: Extra operator guardrails.
+        description: Extra authoring constraints; this is context, never delivery authority.
+      brand_sid:
+        type: string
+        required: false
+        description: Optional public Nitrosend brand SID.
+    examples:
+      - objective: Announce the August product update to engaged customers.
+        name: August product update
+        design_mode_override: premium_minimal
+        operator_context: Keep the email concise and use the current brand voice.
+        brand_sid: brnd_demo123
+    graph:
+      name: nitrosend-compose-email
+      result_from: [validate]
+      steps:
+        - id: intent
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: compose_campaign_intent
+            arguments:
+              composition_mode: intent
+              goal: "$input.objective"
+              name: "$input.name"
+              design_mode_override: "$input.design_mode_override"
+              brand_context_ref: "$input.brand_context_ref"
+              user_instruction: "$input.operator_context"
+            brand_sid: "$input.brand_sid"
+        - id: author
+          when:
+            field: intent.provider_evidence.data.decision
+            equals: ok
+          skill: .
+          runner: compose-email-candidate
+          inputs:
+            objective: "$input.objective"
+            operator_context: "$input.operator_context"
+          context:
+            composition_intent: intent.provider_evidence.data
+        - id: validate
+          when:
+            field: author.campaign_candidate.data.decision
+            equals: ready
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: validate_campaign_composition
+            brand_sid: "$input.brand_sid"
+          context:
+            arguments: author.campaign_candidate.data.arguments
+
+  compose-email-candidate:
+    type: agent-task
+    agent: builder
+    task: compose-email-from-contract
+    outputs:
+      campaign_candidate: object
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: One bounded email objective.
+      composition_intent:
+        type: json
+        packet: nitrosend.provider_evidence.v1
+        required: true
+        description: Authoritative provider evidence from compose_campaign_intent, supplied directly or as graph context.
+      operator_context:
+        type: string
+        required: false
+        description: Extra authoring constraints that do not grant persistence or delivery authority.
+    examples:
+      - objective: Announce the August product update to engaged customers.
+        composition_intent:
+          decision: ok
+          provider: nitrosend
+          mode: read
+          operation: compose_campaign_intent
+          tool: nitro_compose_campaign
+          provider_ref: null
+          result:
+            authoring_contract: { design_mode: premium_minimal }
+            brand_context: { name: Example }
+          evidence: null
+          blockers: []
+        operator_context: Produce a candidate only; do not persist or deliver.
   analytics:
     type: graph
     credential: nitrosend
@@ -526,8 +922,9 @@ runners:
         description: Optional human-readable analytics objective retained in the receipt.
       scope:
         type: string
-        required: true
-        description: account, campaign, flow, or message.
+        required: false
+        description: account, campaign, flow, or message; omission returns a bounded needs-input result.
+        schema: { enum: [account, campaign, flow, message] }
       entity_id:
         type: number
         required: false
@@ -537,17 +934,23 @@ runners:
         required: false
         default: 30d
         description: 7d, 30d, or 90d.
+        schema: { enum: [7d, 30d, 90d] }
       brand_sid:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - objective: Review account delivery performance for the last 30 days.
+        scope: account
+        period: 30d
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-analytics
+      result_from: [insights]
       steps:
         - id: insights
-          tool: nitrosend.read
-          scopes:
-            - nitrosend:read
+          skill: graph/provider-operation
+          runner: read
           inputs:
             operation: insights
             arguments:
@@ -560,7 +963,39 @@ runners:
     agent: builder
     task: import-contacts-plan
     outputs:
-      import_plan: object
+      import_plan:
+        type: object
+        schema:
+          required: [decision]
+          additionalProperties: false
+          properties:
+            decision: { type: string, enum: [ready, needs_input, reject] }
+            source: { type: string }
+            record_count: { type: integer, minimum: 0 }
+            channels: { type: array, items: { type: string }, uniqueItems: true }
+            compliance_checks: { type: array, items: { type: string } }
+            ordered_tool_calls:
+              type: array
+              items:
+                type: object
+                required: [tool, purpose, requires_confirmation]
+                additionalProperties: false
+                properties:
+                  tool: { type: string, minLength: 1 }
+                  purpose: { type: string, minLength: 1 }
+                  requires_confirmation: { type: boolean }
+            human_actions: { type: array, items: { type: string } }
+            blockers: { type: array, items: { type: string } }
+            needs_input: { type: array, items: { type: string } }
+            unsupported_requirements: { type: array, items: { type: string } }
+            rejection_reason: { type: string }
+            success_checkpoint:
+              type: object
+              required: [milestone, description]
+              additionalProperties: false
+              properties:
+                milestone: { type: string, minLength: 1 }
+                description: { type: string, minLength: 1 }
     artifacts:
       wrap_as: import_packet
       packet: nitrosend.import.v1
@@ -585,6 +1020,12 @@ runners:
         type: string
         required: false
         description: Extra operator guardrails.
+    examples:
+      - objective: Import the supplied event attendees into the webinar list.
+        source_brief: Attendees explicitly opted in during webinar registration.
+        records: '[{"email":"person@example.com","first_name":"Pat"}]'
+        account_status_json: '{"decision":"ready"}'
+        operator_context: Prepare a dry-run import plan first.
   import-contacts:
     type: graph
     credential: nitrosend
@@ -592,9 +1033,13 @@ runners:
       purpose: Import one consented inline contact batch after explicit approval.
     inputs:
       records:
-        type: json
+        type: array
         required: true
         description: Up to 100 contact objects.
+        schema:
+          minItems: 1
+          maxItems: 100
+          items: { type: object, minProperties: 1 }
       source_id:
         type: string
         required: true
@@ -604,9 +1049,12 @@ runners:
         required: true
         description: How these contacts consented; purchased or scraped lists are forbidden.
       list_ids:
-        type: json
+        type: array
         required: false
         description: Optional Nitrosend list IDs.
+        schema:
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
       dry_run:
         type: boolean
         required: false
@@ -620,8 +1068,17 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - records: [{ email: person@example.com, first_name: Pat }]
+        source_id: webinar-2026-08
+        consent_basis: Explicit webinar registration opt-in.
+        list_ids: [42]
+        dry_run: true
+        idempotency_key: webinar-2026-08-inline-1
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-import-contacts
+      result_from: [import]
       steps:
         - id: approve-import
           run:
@@ -630,9 +1087,8 @@ runners:
             gate_id: nitrosend.import_contacts.approval
             reason: Import this consented contact batch into Nitrosend. A dry run only validates it.
         - id: import
-          tool: nitrosend.act
-          scopes:
-            - nitrosend:write
+          skill: graph/provider-operation
+          runner: act
           mutation: true
           idempotency_key: nitrosend-import-contacts
           inputs:
@@ -670,13 +1126,19 @@ runners:
         required: true
         description: How these contacts consented; purchased or scraped lists are forbidden.
       columns:
-        type: json
+        type: object
         required: false
         description: Optional CSV column mapping.
+        schema:
+          maxProperties: 64
+          additionalProperties: { type: string, minLength: 1, maxLength: 128 }
       list_ids:
-        type: json
+        type: array
         required: false
         description: Optional Nitrosend list IDs.
+        schema:
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
       dry_run:
         type: boolean
         required: false
@@ -690,8 +1152,18 @@ runners:
         type: string
         required: false
         description: Optional public Nitrosend brand SID.
+    examples:
+      - csv_path: /absolute/path/to/webinar-attendees.csv
+        source_id: webinar-2026-08
+        consent_basis: Explicit webinar registration opt-in.
+        columns: { email: email, first_name: first_name }
+        list_ids: [42]
+        dry_run: true
+        idempotency_key: webinar-2026-08-csv-1
+        brand_sid: brnd_demo123
     graph:
       name: nitrosend-import-contacts-csv
+      result_from: [import]
       steps:
         - id: approve-import
           run:
@@ -700,22 +1172,20 @@ runners:
             gate_id: nitrosend.import_contacts_csv.approval
             reason: Upload and import this consented local CSV. A dry run only validates file metadata.
         - id: import
-          tool: nitrosend.act
+          tool: nitrosend.bulk_import
           scopes:
             - nitrosend:write
           mutation: true
           idempotency_key: nitrosend-import-contacts-csv
           inputs:
-            operation: import_contacts_file
-            arguments:
-              csv_path: "$input.csv_path"
-              source_id: "$input.source_id"
-              consent_basis: "$input.consent_basis"
-              columns: "$input.columns"
-              options:
-                list_ids: "$input.list_ids"
-              dry_run: "$input.dry_run"
-              idempotency_key: "$input.idempotency_key"
+            csv_path: "$input.csv_path"
+            source_id: "$input.source_id"
+            consent_basis: "$input.consent_basis"
+            columns: "$input.columns"
+            options:
+              list_ids: "$input.list_ids"
+            dry_run: "$input.dry_run"
+            idempotency_key: "$input.idempotency_key"
             brand_sid: "$input.brand_sid"
     policy:
       guards:
@@ -727,7 +1197,33 @@ runners:
     agent: builder
     task: segment-from-prose-plan
     outputs:
-      segment_plan: object
+      segment_plan:
+        type: object
+        schema:
+          required: [decision, rationale, unsupported_requirements]
+          additionalProperties: false
+          properties:
+            decision: { type: string, enum: [ready, needs_input, reject] }
+            rationale: { type: string }
+            unsupported_requirements: { type: array, items: { type: string } }
+            rejection_reason: { type: string }
+            segment_request:
+              type: object
+              required: [name, preview_only, filters]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1 }
+                preview_only: { type: boolean }
+                filters:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, predicate, value]
+                    additionalProperties: false
+                    properties:
+                      name: { type: string, minLength: 1 }
+                      predicate: { type: string, minLength: 1 }
+                      value: { type: [string, number, boolean] }
     artifacts:
       wrap_as: segment_from_prose_packet
       packet: nitrosend.segment_from_prose.v1
@@ -748,3 +1244,8 @@ runners:
         type: string
         required: true
         description: JSON filters object from the current nitro://schema resource.
+    examples:
+      - segment_brief: Contacts who opened any campaign in the last 30 days.
+        segment_name: Engaged 30d
+        preview_only: 'true'
+        filter_catalog_json: '{"filters":{"opened_within_days":{"type":"integer"}}}'

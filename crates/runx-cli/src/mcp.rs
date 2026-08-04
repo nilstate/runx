@@ -19,7 +19,7 @@ pub struct McpPlan {
     pub http_allow_non_loopback: bool,
 }
 
-// rust-style-allow: long-function -- flag parsing is kept in one linear pass so
+// Function rationale: flag parsing is kept in one linear pass so
 // CLI usage errors preserve exact native argument semantics.
 pub fn parse_mcp_plan(args: &[OsString]) -> Result<McpPlan, String> {
     let subcommand = os_arg(args, 1, "mcp")?;
@@ -88,21 +88,7 @@ pub fn parse_mcp_plan(args: &[OsString]) -> Result<McpPlan, String> {
     })
 }
 
-// rust-style-allow: long-function -- native MCP startup owns one cohesive
-// stdio-vs-HTTP transport selection and error presentation boundary.
-pub fn run_native_mcp(plan: McpPlan) -> ExitCode {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let workspace = match WorkspaceEnv::load_process(cwd) {
-        Ok(workspace) => workspace,
-        Err(error) => {
-            let _ignored = writeln!(std::io::stderr(), "runx: {error}");
-            return ExitCode::from(1);
-        }
-    };
-    run_native_mcp_with_workspace(plan, &workspace)
-}
-
-// rust-style-allow: long-function -- native MCP startup owns one cohesive
+// Function rationale: native MCP startup owns one cohesive
 // stdio-vs-HTTP transport selection and error presentation boundary.
 pub fn run_native_mcp_with_workspace(plan: McpPlan, workspace: &WorkspaceEnv) -> ExitCode {
     let credential_deliveries = match resolve_mcp_credential_deliveries(&plan, workspace) {

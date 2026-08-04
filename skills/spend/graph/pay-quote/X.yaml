@@ -1,136 +1,82 @@
 skill: pay-quote
-version: "0.1.0"
+version: "0.2.1"
 catalog:
   kind: skill
   audience: operator
   visibility: internal
   role: graph-stage
-  part_of:
-    - runx/spend
+  part_of: [runx/spend]
 harness:
   cases:
-    - name: pay-quote-normalizes-challenge
+    - name: pay-quote-native-bounded
       runner: quote
       inputs:
-        payment_signal:
-          signal_type: effect_required
-          challenge_id: ch_mock_001
-          amount_minor: 125
-          currency: USD
-          rail: mock
-          counterparty: merchant:demo
-          operation: search.paid
-        realm: test
+        payment_signal: { signal_type: effect_required, challenge_id: ch_mock_001, amount_minor: 125, currency: USD, rail: mock, counterparty: "merchant:demo", operation: search.paid, realm: test }
+        parent_payment_authority:
+          term_id: authority-term:payment:test
+          principal_ref: { type: principal, uri: "principal:operator:test" }
+          resource_ref: { type: surface, uri: "merchant:demo" }
+          resource_family: effect
+          verbs: [prepare, commit]
+          bounds:
+            effect_limits:
+              - family: payment
+                unit: USD
+                max_per_call_units: 1000
+                max_per_run_units: 5000
+                channels: [mock]
+                realm: test
+                peer: "merchant:demo"
+                operation: search.paid
+                authorization_form: single_use_capability
+                idempotency_required: true
+                recovery_required: true
+                receipt_before_success: true
+                single_use_capability: true
+          conditions: []
+          approvals: []
+          capabilities: [effect_single_use_capability]
+          expires_at: 2026-05-22T00:00:00Z
+          issued_by_ref: { type: host, uri: "authority:payment:test" }
         idempotency_seed: demo-search-001
-      caller:
-        answers:
-          agent_task.pay-quote.output:
-            payment_quote:
-              quote_id: quote_demo_001
-              amount_minor: 125
-              currency: USD
-              rails:
-                - mock
-              counterparty: merchant:demo
-              operation: search.paid
-              expires_at: 2026-05-20T01:00:00Z
-            requested_payment_authority:
-              term_id: authority-term:payment:quote-demo-001
-              principal_ref:
-                type: host
-                uri: principal:operator:test
-              resource_ref:
-                type: surface
-                uri: merchant:demo
-              resource_family: effect
-              verbs:
-                - prepare
-                - commit
-              bounds:
-                effect_limits:
-                  - family: payment
-                    unit: USD
-                    max_per_call_units: 125
-                    channels:
-                      - mock
-                    realm: test
-                    peer: merchant:demo
-                    operation: search.paid
-                    idempotency_required: true
-                    recovery_required: true
-                    receipt_before_success: true
-              conditions: []
-              approvals: []
-              capabilities: []
-              issued_by_ref:
-                type: host
-                uri: authority:payment:test
-            challenge_evidence:
-              source_refs:
-                - signal:ch_mock_001
-              redactions: []
-            risk_notes: []
-            open_questions: []
       expect:
         status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: payment_quote_closed
+        receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+        steps: [quote]
+    - name: pay-quote-refuses-unbound-parent-reference
+      runner: quote
+      inputs:
+        payment_signal: { amount_minor: 125, currency: USD, rail: mock, counterparty: "merchant:demo", operation: search.paid }
+        parent_payment_authority: { authority_ref: "authority:payment:test" }
+        idempotency_seed: demo-search-001
+      expect: { status: failure }
 runners:
   quote:
     default: true
-    type: agent-task
-    agent: operator
-    task: pay-quote
-    outputs:
-      payment_quote: object
-      requested_payment_authority: object
-      challenge_evidence: object
-      risk_notes: array
-      open_questions: array
-    artifacts:
-      wrap_as: payment_quote_packet
-      packet: runx.payment.quote.v1
-    runx:
-      payment_authority:
-        phase: quote
-        resource_family: effect
-        verbs:
-          - estimate
-        mutates_rail: false
-        receives_funding_material: false
+    type: graph
     inputs:
-      payment_signal:
-        type: object
-        required: true
-        description: Payment-required signal, MCP challenge, invoice, checkout request, or operator intent.
-      realm:
-        type: string
-        required: false
-        description: Authority realm such as local, test, or prod.
-      rail_preferences:
-        type: json
-        required: false
-        description: Ordered list of preferred payment rails.
-      max_per_call_units:
-        type: number
-        required: false
-        description: Caller cap in minor currency units.
-      currency:
-        type: string
-        required: false
-        description: Caller-expected ISO 4217 currency.
-      operation:
-        type: string
-        required: false
-        description: Stable operation name for the paid action.
-      counterparty:
-        type: string
-        required: false
-        description: Expected merchant or payee reference.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable caller-provided idempotency material.
+      payment_signal: { type: json, packet: runx.payment.signal.v1, required: true, description: Structured payment-required signal. }
+      parent_payment_authority: { type: json, packet: runx.authority_term.v1, required: true, description: Full typed parent AuthorityTerm; references alone are refused. }
+      realm: { type: string, required: false, description: Expected payment realm., schema: { minLength: 1, maxLength: 64 } }
+      rail_preferences: { type: array, required: false, description: Ordered preferred rails within the parent authority., schema: { minItems: 1, maxItems: 10, uniqueItems: true, items: { type: string, minLength: 1, maxLength: 64 } } }
+      max_per_call_units: { type: integer, required: false, description: Positive caller ceiling in minor units., schema: { minimum: 1 } }
+      currency: { type: string, required: false, description: Expected uppercase currency., schema: { pattern: '^[A-Z]{3}$' } }
+      operation: { type: string, required: false, description: Expected paid operation., schema: { minLength: 1, maxLength: 256 } }
+      counterparty: { type: string, required: false, description: Expected bounded counterparty., schema: { minLength: 1, maxLength: 256 } }
+      idempotency_seed: { type: string, required: true, description: Stable caller-owned idempotency seed., schema: { minLength: 1, maxLength: 256 } }
+    graph:
+      name: pay-quote
+      result_from: [quote]
+      steps:
+        - id: quote
+          tool: payment.quote
+          inputs:
+            payment_signal: $input.payment_signal
+            parent_payment_authority: $input.parent_payment_authority
+            realm: $input.realm
+            rail_preferences: $input.rail_preferences
+            max_per_call_units: $input.max_per_call_units
+            currency: $input.currency
+            operation: $input.operation
+            counterparty: $input.counterparty
+            idempotency_seed: $input.idempotency_seed

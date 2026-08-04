@@ -1,4 +1,5 @@
 {
+  "schema": "runx.tool.manifest.v1",
   "name": "fixture.metadata_heavy",
   "version": "0.0.1",
   "description": "Fixture tool with optional metadata.",
@@ -27,15 +28,11 @@
     "fixture.metadata_heavy",
     "workspace.read"
   ],
-  "risk": {
-    "mutating": false
+  "mutating": false,
+  "artifacts": {
+    "wrap_as": "metadata_summary"
   },
-  "runx": {
-    "artifacts": {
-      "wrap_as": "metadata_summary"
-    },
-    "idempotency": {
-      "key": "fixture-metadata-heavy"
-    }
+  "idempotency": {
+    "key": "fixture-metadata-heavy"
   }
 }

@@ -1,5 +1,5 @@
 skill: mock-refund
-version: "0.1.1"
+version: "0.3.1"
 catalog:
   kind: graph
   audience: operator
@@ -7,80 +7,6 @@ catalog:
   role: harness-fixture
   part_of:
     - runx/refund
-harness:
-  cases:
-    - name: mock-refund-links-original-receipt
-      runner: mock
-      inputs:
-        original_receipt_ref: receipt:charge:mock:paid-search-001
-        original_receipt:
-          amount_minor: 125
-          currency: USD
-          settlement_family: mock
-        refund_request:
-          amount_minor: 125
-          reason: operator_refund
-        parent_payment_authority:
-          authority_ref: authority:payment:refund:test
-        idempotency_seed: refund-paid-search-001
-      caller:
-        answers:
-          agent_task.refund-quote.output:
-            refund_quote:
-              quote_id: refund_quote_demo_001
-              original_receipt_ref: receipt:charge:mock:paid-search-001
-              amount_minor: 125
-              currency: USD
-            refundable_bounds:
-              remaining_minor: 125
-              max_refund_minor: 125
-              currency: USD
-            original_receipt_link:
-              receipt_ref: receipt:charge:mock:paid-search-001
-            settlement_family: mock
-            open_questions: []
-          agent_task.refund-reserve.output:
-            payment_decision:
-              decision_id: decision_refund_demo_001
-              selected: true
-              operation: refund
-              original_receipt_ref: receipt:charge:mock:paid-search-001
-            reserved_payment_authority:
-              authority_ref: authority:payment:refund-demo-001
-            idempotency:
-              key: refund:paid-search-001
-              recovery_required: true
-              original_receipt_ref: receipt:charge:mock:paid-search-001
-            reservation:
-              original_receipt_ref: receipt:charge:mock:paid-search-001
-              settlement_family: mock
-            approval:
-              required: false
-              status: not_required
-            open_questions: []
-          agent_task.settlement.output:
-            refund_closure:
-              status: refunded
-              settlement_family: mock
-              original_receipt_ref: receipt:charge:mock:paid-search-001
-            refund_proof:
-              proof_ref: receipt-proof:mock-refund:paid-search-001
-              refund_idempotency_key: refund:paid-search-001
-            refund_receipt_ref: receipt:refund:mock:paid-search-001
-        approvals:
-          refund.mock.approval: true
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: graph_closed
-        steps:
-          - quote
-          - reserve
-          - approve-refund
-          - settlement
 runners:
   mock:
     default: true
@@ -89,46 +15,33 @@ runners:
       original_receipt_ref:
         type: string
         required: true
-        description: Linked sealed charge receipt reference.
-      original_receipt:
-        type: object
-        required: true
-        description: Redacted original charge receipt summary.
+        description: Opaque sealed charge receipt reference.
       refund_request:
-        type: object
+        type: json
+        packet: runx.payment.refund_request.v1
         required: true
-        description: Requested amount and reason.
+        description: Positive minor-unit amount, reason, and optional payer check.
       parent_payment_authority:
-        type: object
+        type: json
+        packet: runx.authority_term.v1
         required: true
-        description: Parent payment authority term or ref.
-      approval_context:
-        type: object
-        required: false
-        description: Prior approval evidence.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable refund idempotency seed.
+        description: Full typed parent refund AuthorityTerm.
     graph:
       name: mock-refund
+      result_from: [refund]
       steps:
         - id: refund
           skill: ../refund
           runner: mock
           inputs:
-            original_receipt_ref: "$input.original_receipt_ref"
-            original_receipt: "$input.original_receipt"
-            refund_request: "$input.refund_request"
-            parent_payment_authority: "$input.parent_payment_authority"
-            approval_context: "$input.approval_context"
-            idempotency_seed: "$input.idempotency_seed"
+            original_receipt_ref: $input.original_receipt_ref
+            refund_request: $input.refund_request
+            parent_payment_authority: $input.parent_payment_authority
     runx:
       payment_authority:
         direction: provider_refund
-        phase: graph
+        phase: plan
         resource_family: effect
         settlement_family: mock
-        requires_original_receipt_ref: true
-        same_family_required: true
+        receipt_before_success_required: true
         runtime_refund_enabled: false

@@ -31,7 +31,7 @@ the governance is real rather than narrated.
 ## Export
 
 ```bash
-runx export claude                          # all public skills -> ~/.claude/skills (global)
+runx export claude                          # current workspace's public skills -> ~/.claude/skills
 runx export claude --project                # -> ./.claude/skills (checked into a repo)
 runx export claude weather-forecast spend   # only the named skills
 runx export codex                           # ~/.codex/skills plus managed rules
@@ -39,6 +39,13 @@ runx export codex                           # ~/.codex/skills plus managed rules
 
 Add `--json` for machine-readable output. Only public skills export; hidden and
 builder-surface skills are skipped.
+
+A full export must run from a skill workspace containing a root `SKILL.md` or
+`skills/`. It synchronizes that workspace's managed catalog and removes only
+stale generated shims sourced from the same workspace; exports owned by other
+repositories remain intact. An unrelated directory fails closed without
+changing existing shims. Supplying one or more skill refs is additive: Runx
+updates those shims without removing any other managed skills.
 
 ## What A Claude Shim Looks Like
 

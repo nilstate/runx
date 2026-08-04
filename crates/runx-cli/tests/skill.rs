@@ -1,11 +1,12 @@
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use ring::signature::KeyPair;
-use runx_runtime::LocalReceiptStore;
 use serde_json::json;
 
 const TEST_MANIFEST_KEY_ID: &str = "runx-registry-skill-test-key";
@@ -13,69 +14,126 @@ const TEST_MANIFEST_SIGNER_ID: &str = "runx-registry-skill-test-signer";
 const TEST_MANIFEST_SEED: [u8; 32] = [7; 32];
 
 #[test]
-fn native_skill_pauses_and_resumes_with_run_id() -> Result<(), Box<dyn std::error::Error>> {
-    let root = crate::support::temp_root("runx-skill");
-    let skill_dir = write_agent_task_skill(&root)?;
-    let receipt_dir = root.join("receipts");
+fn input_document_supports_file_and_stdin_without_a_second_input_map()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-skill-input-document");
+    let skill_dir = crate::support::write_agent_task_skill(&root.join("skills"))?;
+    fs::write(root.join("inputs.json"), r#"{"thread_title":"from-file"}"#)?;
+    let workspace = runx_runtime::WorkspaceEnv::load_process(root.clone())?;
+    let args = [
+        "skill",
+        skill_dir.to_str().ok_or("skill path was not UTF-8")?,
+        "--inputs",
+        "inputs.json",
+    ]
+    .into_iter()
+    .map(std::ffi::OsString::from)
+    .collect::<Vec<_>>();
 
-    let pause = runx_command()
-        .args([
-            "skill",
-            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
-            "--receipt-dir",
-            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
-            "--json",
-            "--non-interactive",
-            "--skip-operator-context",
-            "--thread-title",
-            "Docs bug",
-        ])
-        .output()?;
-    let pause_json = assert_json(&pause, Some(2))?;
-    assert_eq!(pause_json["status"], "needs_agent");
-    assert_eq!(pause_json["run_id"], "run_agent_task-issue-intake-output");
-    assert_eq!(pause_json["requests"][0]["kind"], "agent_act");
-    let run_id = pause_json["run_id"].as_str().ok_or("missing run_id")?;
-
-    let answers_path = root.join("answers.json");
-    fs::write(
-        &answers_path,
-        serde_json::json!({
-            "answers": {
-                "agent_task.issue-intake.output": {
-                    "intake_report": {
-                        "summary": "Docs bug is bounded."
-                    }
-                }
-            }
-        })
-        .to_string(),
-    )?;
-
-    let resume = runx_command()
-        .args([
-            "resume",
-            run_id,
-            answers_path.to_str().ok_or("non-utf8 answers path")?,
-            "--receipt-dir",
-            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
-            "--json",
-        ])
-        .output()?;
-    let resume_json = assert_json(&resume, Some(0))?;
-    assert_eq!(resume_json["status"], "sealed");
-    assert_eq!(resume_json["run_id"], run_id);
-    assert_eq!(resume_json["closure"]["disposition"], "closed");
-    assert_eq!(resume_json["receipt"]["schema"], "runx.receipt.v1");
-    let receipt_id = resume_json["receipt_id"]
-        .as_str()
-        .ok_or("missing receipt_id")?;
-    assert!(
-        LocalReceiptStore::new(&receipt_dir)
-            .receipt_path(receipt_id)?
-            .exists()
+    let plan = runx_cli::skill::parse_skill_plan_with_workspace(&args, &workspace)?;
+    assert!(plan.inputs.is_empty());
+    assert_eq!(
+        plan.input_document,
+        Some(runx_cli::document_input::DocumentInputSource::Path(
+            PathBuf::from("inputs.json")
+        ))
     );
 
+    let mixed = [
+        "skill",
+        skill_dir.to_str().ok_or("skill path was not UTF-8")?,
+        "--inputs",
+        "inputs.json",
+        "--input",
+        "thread_title=inline",
+    ]
+    .into_iter()
+    .map(std::ffi::OsString::from)
+    .collect::<Vec<_>>();
+    let error = runx_cli::skill::parse_skill_plan_with_workspace(&mixed, &workspace)
+        .err()
+        .ok_or_else(|| std::io::Error::other("mixed document and per-key inputs should fail"))?;
+    assert!(error.contains("cannot be combined"));
+
+    let output = runx_command()
+        .current_dir(&root)
+        .env("RUNX_CWD", &root)
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("skill path was not UTF-8")?,
+            "--inputs",
+            "inputs.json",
+            "--json",
+            "--non-interactive",
+        ])
+        .output()?;
+    let value = assert_json(&output, Some(2))?;
+    assert_eq!(
+        value["requests"][0]["invocation"]["envelope"]["inputs"]["thread_title"],
+        "from-file"
+    );
+
+    let mut child = runx_command()
+        .current_dir(&root)
+        .env("RUNX_CWD", &root)
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("skill path was not UTF-8")?,
+            "--inputs",
+            "-",
+            "--json",
+            "--non-interactive",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("skill stdin was not piped")?
+        .write_all(br#"{"thread_title":"from-stdin"}"#)?;
+    let output = child.wait_with_output()?;
+    let value = assert_json(&output, Some(2))?;
+    assert_eq!(
+        value["requests"][0]["invocation"]["envelope"]["inputs"]["thread_title"],
+        "from-stdin"
+    );
+    Ok(())
+}
+
+#[test]
+fn input_document_rejects_paths_outside_the_invocation_workspace()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-skill-input-containment");
+    let skill_dir = crate::support::write_agent_task_skill(&root.join("skills"))?;
+    let outside = crate::support::temp_root("runx-skill-input-outside").join("inputs.json");
+    fs::create_dir_all(outside.parent().ok_or("outside fixture has no parent")?)?;
+    fs::write(&outside, r#"{"thread_title":"outside"}"#)?;
+
+    for path in [
+        outside.to_string_lossy().into_owned(),
+        "../inputs.json".to_owned(),
+    ] {
+        let output = runx_command()
+            .current_dir(&root)
+            .env("RUNX_CWD", &root)
+            .args([
+                "skill",
+                skill_dir.to_str().ok_or("skill path was not UTF-8")?,
+                "--inputs",
+                &path,
+                "--json",
+                "--non-interactive",
+            ])
+            .output()?;
+
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)?
+                .contains("workspace file path must be a non-empty relative path")
+        );
+    }
     Ok(())
 }
 
@@ -85,7 +143,7 @@ fn native_skill_resolves_bare_local_skill_and_documented_input_flags()
     let root = crate::support::temp_root("runx-skill-bare-ref");
     let skills_root = root.join("skills");
     fs::create_dir_all(&skills_root)?;
-    let skill_dir = write_agent_task_skill(&skills_root)?;
+    let skill_dir = crate::support::write_agent_task_skill(&skills_root)?;
     let receipt_dir = root.join("receipts");
 
     let output = runx_command()
@@ -102,7 +160,6 @@ fn native_skill_resolves_bare_local_skill_and_documented_input_flags()
             "low",
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -146,12 +203,21 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
     assert!(stderr.contains("Prepared run"));
     assert!(stderr.contains("Steps:"));
     assert!(stderr.contains("Tools:"));
+    assert!(stderr.contains("Boundaries:"));
+    assert!(stderr.contains("trusted_host_process"));
+    assert!(stderr.contains("remote_provider"));
     assert!(stderr.contains("Full context: add --full-operator-context"));
     assert!(!stderr.contains("--- root skill ---"));
     assert!(!stderr.contains("# Operator Context Fixture"));
     let stdout = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
     assert_eq!(stdout["status"], "needs_agent");
     assert!(stdout.get("approval_flag").is_none());
+    let instructions = stdout["requests"][0]["invocation"]["envelope"]["instructions"]
+        .as_str()
+        .ok_or("missing nested skill instructions")?;
+    assert!(instructions.contains("# Nested Review Skill"));
+    assert!(instructions.contains("Judge the work against the supplied review-rubric"));
+    assert!(!instructions.contains("# Operator Context Fixture"));
 
     let full = runx_command()
         .args([
@@ -168,7 +234,10 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
     assert!(full_stderr.contains("--- root skill ---"));
     assert!(full_stderr.contains("# Operator Context Fixture"));
     assert!(full_stderr.contains("--- skill node: entry.review ---"));
+    assert!(full_stderr.contains("execution_boundary: remote_provider"));
+    assert!(full_stderr.contains("execution_boundary: trusted_host_process"));
     assert!(full_stderr.contains("context skill: ./context/review-rubric"));
+    assert!(full_stderr.contains("production bar from context skill"));
     assert!(full_stderr.contains("tool manifest: example.record at entry.review"));
     let full_stdout = serde_json::from_slice::<serde_json::Value>(&full.stdout)?;
     assert_eq!(full_stdout["status"], "needs_agent");
@@ -177,7 +246,7 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
 }
 
 #[test]
-fn native_mutating_skill_requires_digest_bound_operator_approval()
+fn native_mutating_skill_prepares_once_and_defers_its_action_gate()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-mutating-operator-context");
     let skill_dir = write_operator_context_skill(&root)?;
@@ -202,24 +271,101 @@ fn native_mutating_skill_requires_digest_bound_operator_approval()
     assert_eq!(output.status.code(), Some(2));
     let stderr = String::from_utf8(output.stderr)?;
     assert!(stderr.contains("1 mutating"));
+    assert_eq!(stderr.matches("Prepared run").count(), 1);
     let stdout = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
-    assert_eq!(stdout["status"], "needs_operator_approval");
-    let digest = stdout["digest"].as_str().ok_or("missing digest")?;
-    assert!(digest.starts_with("sha256:"));
+    assert_eq!(stdout["status"], "needs_agent");
+    assert!(stdout.get("approval_flag").is_none());
 
-    let approved = runx_command()
+    Ok(())
+}
+
+#[test]
+fn graph_action_approval_remains_the_only_operator_resolution()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-explicit-approval");
+    fs::create_dir_all(&root)?;
+    let receipt_dir = root.join(".runx/receipts");
+    let approval_skill = write_approval_graph_skill(&root)?;
+
+    let graph_run = crate::support::unsigned_runx_command_at(&root)
         .args([
             "skill",
-            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            approval_skill
+                .to_str()
+                .ok_or("non-utf8 approval skill dir")?,
+            "--receipt-dir",
+            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
             "--non-interactive",
-            "--approve-operator-context",
-            digest,
         ])
         .output()?;
-    assert_eq!(approved.status.code(), Some(2));
-    let approved_stdout = serde_json::from_slice::<serde_json::Value>(&approved.stdout)?;
-    assert_eq!(approved_stdout["status"], "needs_agent");
+    assert_eq!(
+        graph_run.status.code(),
+        Some(2),
+        "stdout={}\nstderr={}",
+        String::from_utf8_lossy(&graph_run.stdout),
+        String::from_utf8_lossy(&graph_run.stderr)
+    );
+    let graph_json = serde_json::from_slice::<serde_json::Value>(&graph_run.stdout)?;
+    assert_eq!(graph_json["status"], "needs_agent");
+    assert_eq!(graph_json["requests"][0]["kind"], "approval");
+
+    let mutating_skill = write_operator_context_skill(&root.join("mutating"))?;
+    let child_profile = mutating_skill.join("nested-review/X.yaml");
+    let profile = fs::read_to_string(&child_profile)?;
+    fs::write(
+        &child_profile,
+        profile.replace(
+            "          tool: example.record\n",
+            "          tool: example.record\n          mutation: true\n",
+        ),
+    )?;
+    let prepared_run = crate::support::unsigned_runx_command_at(&root)
+        .args([
+            "skill",
+            mutating_skill
+                .to_str()
+                .ok_or("non-utf8 mutating skill dir")?,
+            "--receipt-dir",
+            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
+            "--json",
+            "--non-interactive",
+        ])
+        .output()?;
+    assert_eq!(
+        prepared_run.status.code(),
+        Some(2),
+        "stdout={}\nstderr={}",
+        String::from_utf8_lossy(&prepared_run.stdout),
+        String::from_utf8_lossy(&prepared_run.stderr)
+    );
+    let prepared_json = serde_json::from_slice::<serde_json::Value>(&prepared_run.stdout)?;
+    assert_eq!(prepared_json["status"], "needs_agent");
+    assert_eq!(
+        String::from_utf8_lossy(&prepared_run.stderr)
+            .matches("Prepared run")
+            .count(),
+        1
+    );
+
+    let signed_run = runx_command()
+        .current_dir(&root)
+        .env("RUNX_HOME", root.join("home"))
+        .args([
+            "skill",
+            approval_skill
+                .to_str()
+                .ok_or("non-utf8 approval skill dir")?,
+            "--receipt-dir",
+            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
+            "--json",
+            "--non-interactive",
+        ])
+        .output()?;
+    assert_eq!(signed_run.status.code(), Some(2));
+    let signed_json = serde_json::from_slice::<serde_json::Value>(&signed_run.stdout)?;
+    assert_eq!(signed_json["status"], "needs_agent");
+    assert_eq!(signed_json["requests"][0]["kind"], "approval");
 
     Ok(())
 }
@@ -241,7 +387,6 @@ fn native_skill_positional_runner_selects_non_default_runner()
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -298,7 +443,7 @@ fn native_skill_inspect_reports_declared_credential_readiness()
 #[test]
 fn native_skill_exported_shim_resolves_to_source_skill() -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-exported-shim");
-    let source_dir = write_agent_task_skill(&root.join("source with spaces"))?;
+    let source_dir = crate::support::write_agent_task_skill(&root.join("source with spaces"))?;
     let shim_dir = root.join("claude").join("issue-intake");
     fs::create_dir_all(&shim_dir)?;
     fs::write(
@@ -317,7 +462,6 @@ fn native_skill_exported_shim_resolves_to_source_skill() -> Result<(), Box<dyn s
             "Docs bug",
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -347,7 +491,6 @@ fn native_skill_resolves_trusted_registry_ref() -> Result<(), Box<dyn std::error
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -373,7 +516,6 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(2))?;
@@ -412,7 +554,6 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     assert_eq!(text_output.status.code(), Some(2));
@@ -445,7 +586,6 @@ fn native_skill_registry_run_reports_provenance_on_execution_error()
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(1))?;
@@ -482,7 +622,6 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let v1_json = assert_json(&v1, Some(2))?;
@@ -496,7 +635,6 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
             "--non-interactive",
-            "--skip-operator-context",
         ])
         .output()?;
     let v2_json = assert_json(&v2, Some(2))?;
@@ -588,45 +726,9 @@ fn native_skill_json_parse_failure_uses_failure_envelope() -> Result<(), Box<dyn
 }
 
 #[test]
-fn native_skill_text_output_is_concise_for_pending_agent_request()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = crate::support::temp_root("runx-skill-text-output");
-    let skill_dir = write_agent_task_skill(&root)?;
-
-    let output = runx_command()
-        .args([
-            "skill",
-            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
-            "--thread-title",
-            "Docs bug",
-            "--non-interactive",
-            "--skip-operator-context",
-        ])
-        .output()?;
-
-    assert_eq!(output.status.code(), Some(2));
-    assert_eq!(String::from_utf8(output.stderr)?, "");
-    let stdout = String::from_utf8(output.stdout)?;
-    assert!(stdout.contains("status: needs_agent"));
-    assert!(stdout.contains("pending_requests: 1"));
-    assert!(stdout.contains("agent_task.issue-intake.output"));
-    assert!(stdout.contains("runx resume run_agent_task-issue-intake-output answers.json"));
-    assert!(!stdout.contains("<answers.json>"));
-    assert!(!stdout.trim_start().starts_with('{'));
-
-    Ok(())
-}
-
-#[test]
-fn native_skill_text_output_includes_copy_paste_resume_command()
--> Result<(), Box<dyn std::error::Error>> {
-    native_skill_text_output_is_concise_for_pending_agent_request()
-}
-
-#[test]
 fn native_skill_rejects_legacy_answers_flag() -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-reject-answers");
-    let skill_dir = write_agent_task_skill(&root)?;
+    let skill_dir = crate::support::write_agent_task_skill(&root)?;
     let answers_path = root.join("answers.json");
     fs::write(&answers_path, "{}")?;
     let output = runx_command()
@@ -650,7 +752,7 @@ fn native_skill_rejects_legacy_answers_flag() -> Result<(), Box<dyn std::error::
 #[test]
 fn native_skill_rejects_legacy_run_id_flag() -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-reject-run-id");
-    let skill_dir = write_agent_task_skill(&root)?;
+    let skill_dir = crate::support::write_agent_task_skill(&root)?;
     let output = runx_command()
         .args([
             "skill",
@@ -672,7 +774,7 @@ fn native_skill_rejects_legacy_run_id_flag() -> Result<(), Box<dyn std::error::E
 #[test]
 fn native_skill_rejects_retired_receipt_options() -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-reject-retired-receipt");
-    let skill_dir = write_agent_task_skill(&root)?;
+    let skill_dir = crate::support::write_agent_task_skill(&root)?;
     let receipt_dir = root.join("receipts");
     let retired_receipt = format!("--{}", "receipt");
     let retired_receipt_dir = format!("--{}", ["receipt", "Dir"].concat());
@@ -714,6 +816,213 @@ fn native_skill_rejects_retired_receipt_options() -> Result<(), Box<dyn std::err
     }
 
     Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn terminal_interrupt_exits_130_and_kills_the_active_skill_context()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-skill-interrupt");
+    let skill_dir = root.join("skill");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: interrupt-fixture\ndescription: Interrupt fixture.\n---\n\n# Interrupt fixture\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"skill: interrupt-fixture
+version: "0.1.0"
+runners:
+  default:
+    default: true
+    type: cli-tool
+    command: sh
+    args:
+      - ./run.sh
+      - "{{started_path}}"
+      - "{{sentinel_path}}"
+    timeout_seconds: 30
+    inputs:
+      started_path:
+        type: string
+        required: true
+      sentinel_path:
+        type: string
+        required: true
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("run.sh"),
+        r#"#!/bin/sh
+set -eu
+started_path=$1
+sentinel_path=$2
+(
+  printf started > "$started_path"
+  sleep 1
+  printf survived > "$sentinel_path"
+) &
+sleep 30
+"#,
+    )?;
+    let started_path = root.join("started");
+    let sentinel_path = root.join("survived");
+    fs::write(&started_path, "")?;
+    fs::write(&sentinel_path, "")?;
+    let started_input = format!("started-path={}", started_path.display());
+    let sentinel_input = format!("sentinel-path={}", sentinel_path.display());
+    let mut child = runx_command()
+        .current_dir(&root)
+        .env("RUNX_CWD", &root)
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--input",
+            &started_input,
+            "--input",
+            &sentinel_input,
+            "--json",
+            "--non-interactive",
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    let started_wait = Instant::now();
+    while fs::read_to_string(&started_path).unwrap_or_default() != "started" {
+        if started_wait.elapsed() >= Duration::from_secs(5) {
+            let _killed = child.kill();
+            return Err("skill child never reached its active context".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let (status, _elapsed) = interrupt_child_and_wait(&mut child)?;
+    assert_eq!(
+        status.code(),
+        Some(130),
+        "runx exited from signal {:?}",
+        std::os::unix::process::ExitStatusExt::signal(&status)
+    );
+    std::thread::sleep(Duration::from_millis(1_250));
+    assert_eq!(
+        fs::read_to_string(&sentinel_path).unwrap_or_default(),
+        "",
+        "active skill context survived the terminal interrupt"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn terminal_interrupt_kills_the_active_javascript_worker_before_the_watchdog()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-javascript-interrupt");
+    let skill_dir = root.join("skill");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: javascript-interrupt-fixture\ndescription: JavaScript interrupt fixture.\n---\n\n# JavaScript interrupt fixture\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"skill: javascript-interrupt-fixture
+version: "0.1.0"
+runners:
+  default:
+    default: true
+    type: javascript
+    module: main.mjs
+"#,
+    )?;
+    fs::write(
+        skill_dir.join("main.mjs"),
+        "export default function run() { return {}; }\n",
+    )?;
+
+    // `wc` blocks on the worker protocol pipe without producing a response.
+    // Use an exact absolute binary path on both Linux and macOS.
+    let wc = [Path::new("/usr/bin/wc"), Path::new("/bin/wc")]
+        .into_iter()
+        .find(|candidate| candidate.is_file())
+        .ok_or("wc executable is unavailable")?;
+
+    let mut child = runx_command()
+        .current_dir(&root)
+        .env("RUNX_CWD", &root)
+        .env("RUNX_JS_WORKER_PATH", wc)
+        .args([
+            "skill",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+            "--non-interactive",
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    let child_started_at = Instant::now();
+    loop {
+        let process_table = Command::new("ps").args(["-axo", "ppid=,pid="]).output()?;
+        let runx_pid = child.id();
+        let worker_exists = String::from_utf8(process_table.stdout)?
+            .lines()
+            .filter_map(|line| {
+                let mut fields = line.split_whitespace();
+                Some((
+                    fields.next()?.parse::<u32>().ok()?,
+                    fields.next()?.parse::<u32>().ok()?,
+                ))
+            })
+            .any(|(parent_pid, _process_id)| parent_pid == runx_pid);
+        if worker_exists {
+            break;
+        }
+        if let Some(status) = child.try_wait()? {
+            return Err(format!(
+                "runx exited before the JavaScript worker reached its handshake: {status}"
+            )
+            .into());
+        }
+        if child_started_at.elapsed() >= Duration::from_secs(5) {
+            let _killed = child.kill();
+            return Err("the JavaScript worker did not reach its blocking handshake".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    std::thread::sleep(Duration::from_millis(50));
+    let (status, elapsed) = interrupt_child_and_wait(&mut child)?;
+    assert_eq!(
+        status.code(),
+        Some(130),
+        "runx exited from signal {:?}",
+        std::os::unix::process::ExitStatusExt::signal(&status)
+    );
+    assert!(
+        elapsed < Duration::from_millis(1_500),
+        "JavaScript context survived until the two-second interrupt watchdog"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+fn interrupt_child_and_wait(
+    child: &mut std::process::Child,
+) -> Result<(std::process::ExitStatus, Duration), Box<dyn std::error::Error>> {
+    let child_pid = i32::try_from(child.id())?;
+    let child_pid = rustix::process::Pid::from_raw(child_pid).ok_or("invalid runx child pid")?;
+    let interrupted_at = Instant::now();
+    rustix::process::kill_process(child_pid, rustix::process::Signal::INT)?;
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok((status, interrupted_at.elapsed()));
+        }
+        if interrupted_at.elapsed() >= Duration::from_secs(5) {
+            let _killed = child.kill();
+            return Err("runx did not exit promptly after SIGINT".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 
 fn runx_command() -> Command {
@@ -759,36 +1068,8 @@ fn assert_json(
         String::from_utf8_lossy(&output.stderr),
         String::from_utf8_lossy(&output.stdout)
     );
-    assert_eq!(String::from_utf8(output.stderr.clone())?, "");
+    crate::support::assert_json_stderr(&output.stderr)?;
     Ok(serde_json::from_slice(&output.stdout)?)
-}
-
-fn write_agent_task_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let skill_dir = root.join("issue-intake");
-    fs::create_dir_all(&skill_dir)?;
-    fs::write(
-        skill_dir.join("SKILL.md"),
-        "---\nname: issue-intake\n---\n# Issue Intake\n",
-    )?;
-    fs::write(
-        skill_dir.join("X.yaml"),
-        r#"
-skill: issue-intake
-runners:
-  intake:
-    default: true
-    type: agent-task
-    agent: builder
-    task: issue-intake
-    outputs:
-      intake_report: object
-    inputs:
-      thread_title:
-        type: string
-        required: false
-"#,
-    )?;
-    Ok(skill_dir)
 }
 
 fn write_operator_context_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -802,7 +1083,7 @@ fn write_operator_context_skill(root: &Path) -> Result<PathBuf, Box<dyn std::err
     )?;
     fs::write(
         child_dir.join("SKILL.md"),
-        "---\nname: nested-review\n---\n# Nested Review Skill\n",
+        "---\nname: nested-review\n---\n# Nested Review Skill\n\nJudge the work against the supplied review-rubric context skill.\n",
     )?;
     fs::write(
         child_dir.join("context/review-rubric/SKILL.md"),
@@ -825,6 +1106,11 @@ fn write_operator_context_skill(root: &Path) -> Result<PathBuf, Box<dyn std::err
       "type": "string",
       "required": true
     }
+  },
+  "artifacts": {
+    "named_emits": {
+      "decision": "decision"
+    }
   }
 }
 "#,
@@ -843,6 +1129,7 @@ runners:
     type: graph
     graph:
       name: operator-context-review
+      result_from: [review]
       steps:
         - id: review
           skill: ./nested-review
@@ -858,6 +1145,7 @@ runners:
     type: graph
     graph:
       name: nested-review
+      result_from: [record]
       steps:
         - id: verdict
           run:
@@ -868,11 +1156,43 @@ runners:
               decision: string
           context_skills:
             - ./context/review-rubric
-          instructions: Judge the work against the context skill.
         - id: record
           tool: example.record
           context:
             decision: verdict.decision
+"#,
+    )?;
+    Ok(skill_dir)
+}
+
+fn write_approval_graph_skill(root: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let skill_dir = root.join("approval-graph");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: approval-graph\n---\n# Approval Graph\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"
+skill: approval-graph
+runners:
+  approval-graph:
+    default: true
+    type: graph
+    graph:
+      name: approval-graph
+      result_from: [approve]
+      steps:
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: approval-graph.local-development
+            reason: approve the local development fixture
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
 "#,
     )?;
     Ok(skill_dir)

@@ -1,20 +1,13 @@
 ---
 name: helpdesk
-version: 0.1.1
 description: Classify a bounded support request, choose the safe next path, and draft a customer-ready reply only when a human-gated send is appropriate.
-source:
-  type: cli-tool
-  command: node
-  args:
-    - run.mjs
 links:
   source: https://github.com/runxhq/runx/tree/main/skills/helpdesk
 runx:
   category: ops
-  input_resolution:
-    required:
-      - support_request
 ---
+
+# Helpdesk
 
 ## What this skill does
 

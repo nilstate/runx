@@ -9,16 +9,17 @@ packages during the final runtime cutover.
 Rust is canonical for trusted local runtime and execution: local skill and
 graph execution, harness and dogfood execution, receipt sealing and
 verification, history, policy and registry configuration, generic authority and
-effect admission, sandbox admission/metadata, built-in adapter execution, and
-external execution-adapter supervision (defined as a contract; see the
-shipped-vs-defined note below for what the CLI actually enables). OS sandbox
-enforcement is implemented in the Rust runtime for the local sandbox profile
-(bubblewrap on Linux, sandbox-exec/seatbelt on macOS); TypeScript is not a
-fallback confinement layer.
+effect admission, exact process invocation and supervision, typed
+execution-boundary evidence, built-in adapter execution, and external
+execution-adapter supervision. Runx is a permissions broker, not a portable OS
+jail: Runx delivers a documented launch baseline plus resolved inputs, declared
+environment, and credential material to trusted host processes, then reports
+them honestly without a filesystem, network, or syscall-confinement claim.
 TypeScript remains for generated contracts, CLI/client wrappers,
-cloud/product integrations, host adapters, authoring tooling, docs,
-and helper SDKs over language-neutral external protocols. TypeScript does not
-own a local executor-package fallback for trusted local behavior.
+cloud/product integrations, host adapters, docs, and narrow helper SDKs over
+language-neutral external protocols. Native authoring plus Skill Lab own skill
+creation and improvement. TypeScript does not own a parallel authoring service
+or a local executor-package fallback for trusted local behavior.
 
 MCP follows the same rule. `rmcp` is an adapter-tier Rust dependency for MCP
 protocol behavior, while runx keeps graph state, policy, authority, approvals,
@@ -107,31 +108,32 @@ truth, so it is recorded here rather than implied.
   provider resolver respectively, neither owning a second MCP server or a second
   agent loop. The identity this boundary serves (runx as the governed execution
   layer: one governed core, protocol fronts, TypeScript as transport plus ecosystem
-  adapters plus authoring) is recorded in the superproject plan
+  and extension adapters) is recorded in the superproject plan
   `plans/governed-execution-layer.md`.
 
 ## OSS package dispositions
 
 | Package | Disposition |
 | --- | --- |
-| `@runxhq/authoring` | Stays as authoring tooling for skills, manifests, protocol fixtures, and generated artifacts until the authoring DX plan decides whether any piece moves to Rust or scafld. It does not own trusted local execution. |
-| `@runxhq/cli` | Stays as a platform-aware npm launcher that resolves and execs the Rust binary. It must remain useful from an installed package without TypeScript sources and must fail closed instead of falling back to TypeScript local execution. It also carries the drift-free cold-start: `npx @runxhq/cli new <name>` downloads the launcher and runs the same native `runx new` scaffold without a prior runx install. |
-| `@runxhq/contracts` | Stays as the published generated TypeScript view of `runx-contracts`, maintained with fixture cross-validation. |
+| `@runxhq/contracts` | Publishes portable packet definitions and the generated TypeScript view of Rust-owned wire schemas, maintained with fixture cross-validation. |
+| `@runxhq/extension-sdk` | Owns only the process/protocol helpers needed by genuine external extensions. It does not author skills or own trusted local execution. |
+| `@runxhq/cli` | Stays as a platform-aware npm launcher that resolves and execs the Rust binary. It must remain useful from an installed package without TypeScript sources and must fail closed instead of falling back to TypeScript local execution. It also carries the drift-free cold-start: `npx @runxhq/cli new <name> --objective <outcome>` downloads the launcher and enters the same canonical Skill Lab authoring lane without a prior Runx install. The launcher owns no templates or authoring logic. |
 | `@runxhq/core` | Deleted. Its registry/config/parser remnants were not a shipped execution boundary; live OSS code uses Rust crates, generated contracts, tool-local modules, or explicit protocol packages instead. Cloud imports the promoted `@runx/protocol` package. |
 | `@runxhq/host-adapters` | Stays as thin host response adapters over the runx host protocol, retargeted to `@runxhq/contracts` types. It can shape host/client responses, not execute trusted local runtime behavior. |
 | `@runxhq/langchain` | Stays as an optional LangChain bridge that shells the `runx` CLI or uses documented external protocols for governed skill and tool invocation. |
 | `runx-py` | Stays as a thin Python client over `runx` CLI JSON output. |
 
-The deleted trusted executor packages and their npm deprecation text are
-tracked in `docs/runtime-cutover-inventory.json`. They are intentionally absent
-from the surviving package table because they no longer have a TypeScript
-runtime surface, alias, path mapping, workspace dependency, or API export.
+The deleted trusted executor packages are intentionally absent from the
+surviving package table. The canonical boundary and crate-graph checks prevent
+their package names, aliases, imports, runtime edges, and compatibility shims
+from returning; no historical cutover inventory participates in runtime or
+release correctness.
 
 Cloud packages remain TypeScript. The Rust runtime consumes cloud through the
 cloud HTTP contracts. Local registry and policy configuration remains
 Rust-owned when exercised by the native CLI. Cloud/product integrations, host
-adapters, authoring tooling, and helper SDKs can remain TypeScript as long as
-they stay on one of the contract surfaces above or the cloud-owned
+adapters, and protocol helper SDKs can remain TypeScript as long as they stay
+on one of the contract surfaces above or the cloud-owned
 `@runx/protocol` helper package. External integration authors target the correct
 language-neutral protocol lane; they must not need Rust, `runx-core`,
 `runx-runtime`, or a fork of the core repository to ship an extension.

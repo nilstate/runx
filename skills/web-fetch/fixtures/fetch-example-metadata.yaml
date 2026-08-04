@@ -12,6 +12,26 @@ expect:
   status: sealed
   receipt:
     schema: runx.receipt.v1
+  steps:
+    - fetch
+  step_outputs:
+    fetch:
+      subset:
+        fetch_result:
+          data:
+            decision: ready
+            status: 200
+            final_url: https://example.com/
+            extract_mode: metadata
+            extracted:
+              title: Example Domain
+              content_type: text/html
+              declared_language: en
+            policy:
+              attempted_host: example.com
+              allowlist_decision: allowed
+            provenance:
+              truncated: false
 metadata:
   public_skill: web-fetch
   source_case: live-keyless-read

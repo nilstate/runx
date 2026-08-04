@@ -1,9 +1,12 @@
-// rust-style-allow: large-file - graph skill-front execution keeps nested skill
+// Module rationale: graph skill-front execution keeps nested skill
 // resolution, graph state projection, and receipt handoff together until the
 // graph runner/front boundary is split.
+#[cfg(test)]
+use super::contract_json_value;
 use super::{
-    GRAPH_SKILL_STATE_SCHEMA, SkillRunError, SkillRunOverrides, build_domain_act_frame,
-    contract_json_value, identifier_segment, invalid, needs_agent_output, sealed_output,
+    GRAPH_SKILL_STATE_SCHEMA, SkillExecutionContext, SkillRunError, SkillSourceAdapter,
+    build_domain_act_frame, generated_run_id, identifier_segment, invalid, needs_agent_output,
+    sealed_output,
 };
 
 use std::collections::BTreeMap;
@@ -11,53 +14,48 @@ use std::path::PathBuf;
 
 use runx_contracts::{
     ClosureDisposition, JsonObject, JsonValue, ResolutionRequest, ResolutionResponse,
-    ResolutionResponseActor, sha256_hex,
+    ResolutionResponseActor,
 };
 use runx_core::state_machine::GraphStatus;
 use runx_parser::{ExecutionGraph, SkillRunnerDefinition, SkillRunnerManifest};
 use serde::{Deserialize, Serialize};
 
 use crate::RuntimeError;
-#[cfg(any(
-    feature = "catalog",
-    feature = "cli-tool",
-    feature = "external-adapter",
-    feature = "http",
-    feature = "thread-outbox-provider"
-))]
-use crate::adapter::SkillAdapter;
-use crate::adapter::{SkillInvocation, SkillOutput};
-#[cfg(feature = "cli-tool")]
-use crate::adapters::cli_tool::CliToolAdapter;
+#[cfg(test)]
+use crate::adapter::SkillInvocation;
 use crate::credentials::CredentialDelivery;
 use crate::effects::RuntimeEffectRegistry;
-use crate::execution::graph::materialize_graph_inputs;
+use crate::execution::graph::materialize_graph_parameter_inputs;
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::execution::runner::{
-    GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions, graph_run_payload,
-    graph_run_skill_output,
+    GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions, graph_run_context,
+    graph_run_result, graph_run_skill_output, graph_run_trace,
 };
 use crate::host::Host;
 use crate::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
 use crate::receipts::{DomainActReceiptRequest, RuntimeReceiptSignatureConfig, domain_act_receipt};
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
-use super::graph_state::{read_answers, read_graph_state, write_graph_state};
-use super::runner_manifest::{
-    credential_delivery_from_invocation, resolve_skill_dir, write_skill_receipt,
-};
+use super::graph_state::{read_graph_state, write_graph_state};
+use super::resolution_answers::{ResolutionAnswers, read_answers};
+use super::runner_manifest::{credential_delivery_from_invocation, write_skill_receipt};
 
-// rust-style-allow: long-function because graph-backed skill execution keeps
+// Function rationale: graph-backed skill execution keeps
 // checkpoint hydration, host resolution, and final receipt sealing in one path.
 pub(super) fn execute_graph_skill_run(
-    request: &SkillRunRequest,
-    overrides: &SkillRunOverrides,
-    effects: &RuntimeEffectRegistry,
-    workspace: &WorkspaceEnv,
-    receipts: &ReceiptServices,
-    manifest: &SkillRunnerManifest,
-    runner: &SkillRunnerDefinition,
+    context: &SkillExecutionContext<'_>,
 ) -> Result<JsonValue, SkillRunError> {
+    let SkillExecutionContext {
+        request,
+        overrides,
+        effects,
+        workspace,
+        receipts,
+        manifest,
+        runner,
+        package_digest,
+        execution_closure_digest,
+    } = *context;
     let graph = runner
         .source
         .graph
@@ -68,21 +66,36 @@ pub(super) fn execute_graph_skill_run(
         .iter()
         .map(|(key, value)| (key.clone(), value.clone()))
         .collect::<JsonObject>();
-    let run_id = graph_run_id(request, runner)?;
-    let skill_dir = resolve_skill_dir(&request.skill_path)?;
+    let run_id = graph_run_id(
+        request,
+        manifest,
+        runner,
+        package_digest,
+        execution_closure_digest,
+    )?;
+    let execution_closure_digest = execution_closure_digest
+        .ok_or_else(|| invalid("graph execution requires an execution-closure digest"))?;
+    let skill_dir = crate::skill_package::resolve_skill_package_directory(&request.skill_path)?;
     let mut env = workspace.skill_env_for_skill(&skill_dir);
     env.insert(RUNX_RUN_ID_ENV.to_owned(), run_id.clone());
+    let receipt_path = receipts.resolve_path(workspace, request.receipt_dir.as_deref(), None);
+    env.insert(
+        crate::receipts::paths::RUNX_RECEIPT_DIR_ENV.to_owned(),
+        receipt_path.path.to_string_lossy().into_owned(),
+    );
     let credential_delivery =
         credential_delivery_from_invocation(workspace.env(), request.local_credential.as_ref())?;
+    let created_at = crate::time::now_iso8601();
     let inline_resolver = InlineResolver {
         skill_directory: skill_dir.clone(),
         env: env.clone(),
         credential_delivery: credential_delivery.clone(),
+        effects: effects.clone(),
+        observed_at: created_at.clone(),
         policy: request.managed_agent.clone(),
     };
-    let created_at = crate::time::now_iso8601();
     let runtime = Runtime::new(
-        SkillRunGraphAdapter::default(),
+        SkillSourceAdapter::default(),
         RuntimeOptions {
             created_at: created_at.clone(),
             env,
@@ -101,7 +114,7 @@ pub(super) fn execute_graph_skill_run(
         Some(seeded) => seeded.clone(),
         None => match &request.answers_path {
             Some(path) => read_answers(path)?,
-            None => JsonObject::new(),
+            None => ResolutionAnswers::default(),
         },
     };
     let mut resumed_state = if resume {
@@ -111,6 +124,8 @@ pub(super) fn execute_graph_skill_run(
             receipts,
             &run_id,
             &runner.name,
+            package_digest,
+            execution_closure_digest,
         )?)
     } else {
         None
@@ -132,7 +147,7 @@ pub(super) fn execute_graph_skill_run(
             missing_request,
         )));
     }
-    let graph = materialize_graph_inputs(graph, &graph_inputs);
+    let graph = materialize_graph_parameter_inputs(graph, &graph_inputs);
     let mut host = SkillRunGraphHost::with_inline(answers, inline_resolver);
     let mut checkpoint = if let Some(state) = resumed_state.take() {
         state.checkpoint
@@ -147,14 +162,17 @@ pub(super) fn execute_graph_skill_run(
         {
             Ok(next_checkpoint) => {
                 if next_checkpoint.state.status == GraphStatus::Succeeded {
-                    let mut final_host = SkillRunGraphHost::new(JsonObject::new());
+                    let completed_checkpoint = next_checkpoint.clone();
+                    let mut final_host = SkillRunGraphHost::new(ResolutionAnswers::default());
                     let run = runtime.seal_completed_graph_checkpoint_with_host(
                         graph.clone(),
                         next_checkpoint,
                         &mut final_host,
                     )?;
                     write_graph_receipts(request, workspace, receipts, &run)?;
-                    let payload = graph_run_payload(&run, false);
+                    let result = graph_run_result(&run)?;
+                    let public_context = graph_run_context(&run);
+                    let trace = graph_run_trace(&run);
                     // A graph that declares an `act:` block seals a clean domain-act
                     // receipt as its primary receipt; the step receipts above remain
                     // as its execution trace.
@@ -169,15 +187,31 @@ pub(super) fn execute_graph_skill_run(
                     if let Some(domain_receipt) = &domain {
                         write_skill_receipt(request, workspace, receipts, domain_receipt)?;
                     }
+                    write_graph_state(
+                        request,
+                        workspace,
+                        receipts,
+                        &run_id,
+                        &GraphSkillRunState {
+                            schema: GRAPH_SKILL_STATE_SCHEMA.to_owned(),
+                            run_id: run_id.clone(),
+                            runner_name: runner.name.clone(),
+                            package_digest: package_digest.to_owned(),
+                            execution_closure_digest: execution_closure_digest.to_owned(),
+                            graph_inputs: graph_inputs.clone(),
+                            checkpoint: completed_checkpoint,
+                        },
+                    )?;
                     let receipt = domain.as_ref().unwrap_or(&run.receipt);
-                    let output = graph_run_skill_output(&payload, &run)?;
+                    let output = graph_run_skill_output(&result, &run)?;
                     return Ok(JsonValue::Object(sealed_output(
                         manifest,
                         &run_id,
                         &output,
-                        &payload,
+                        &result,
+                        Some(public_context),
+                        Some(trace),
                         receipt,
-                        contract_json_value(receipt)?,
                     )));
                 }
                 write_graph_state(
@@ -189,6 +223,8 @@ pub(super) fn execute_graph_skill_run(
                         schema: GRAPH_SKILL_STATE_SCHEMA.to_owned(),
                         run_id: run_id.clone(),
                         runner_name: runner.name.clone(),
+                        package_digest: package_digest.to_owned(),
+                        execution_closure_digest: execution_closure_digest.to_owned(),
                         graph_inputs: graph_inputs.clone(),
                         checkpoint: next_checkpoint.clone(),
                     },
@@ -205,6 +241,8 @@ pub(super) fn execute_graph_skill_run(
                         schema: GRAPH_SKILL_STATE_SCHEMA.to_owned(),
                         run_id: run_id.clone(),
                         runner_name: runner.name.clone(),
+                        package_digest: package_digest.to_owned(),
+                        execution_closure_digest: execution_closure_digest.to_owned(),
                         graph_inputs: graph_inputs.clone(),
                         checkpoint: previous_checkpoint,
                     },
@@ -219,6 +257,8 @@ pub(super) fn execute_graph_skill_run(
                     manifest,
                     runner,
                     graph: &graph,
+                    package_digest,
+                    execution_closure_digest: Some(execution_closure_digest),
                     run_id: &run_id,
                     request_id,
                 })?;
@@ -229,7 +269,7 @@ pub(super) fn execute_graph_skill_run(
                 )));
             }
             Err(RuntimeError::GraphBlocked { step_id, reason }) => {
-                return seal_blocked_graph_skill_run(BlockedGraphSkillRun {
+                return seal_terminal_graph_skill_run(TerminalGraphSkillRun {
                     request,
                     workspace,
                     receipts,
@@ -241,6 +281,7 @@ pub(super) fn execute_graph_skill_run(
                     step_id: &step_id,
                     reason_code: "graph_blocked",
                     summary: format!("graph {} blocked at {step_id}: {reason}", graph.name),
+                    cause: GraphTerminalCause::Blocked,
                 });
             }
             Err(RuntimeError::AuthorityDenied {
@@ -248,7 +289,7 @@ pub(super) fn execute_graph_skill_run(
                 step_id,
                 reason,
             }) => {
-                return seal_blocked_graph_skill_run(BlockedGraphSkillRun {
+                return seal_terminal_graph_skill_run(TerminalGraphSkillRun {
                     request,
                     workspace,
                     receipts,
@@ -263,6 +304,62 @@ pub(super) fn execute_graph_skill_run(
                         "graph {} denied {verb:?} at {step_id}: {reason}",
                         graph.name
                     ),
+                    cause: GraphTerminalCause::Blocked,
+                });
+            }
+            #[cfg(feature = "agent")]
+            Err(RuntimeError::ManagedAgentResolution {
+                step_id,
+                request_id,
+                source,
+            }) => {
+                let reason_code = format!("managed_agent_{}", source.reason_code());
+                let summary = format!(
+                    "graph {} managed agent failed at {step_id} ({})",
+                    graph.name,
+                    source.reason_code()
+                );
+                let error = RuntimeError::ManagedAgentResolution {
+                    step_id: step_id.clone(),
+                    request_id,
+                    source,
+                };
+                return seal_terminal_graph_skill_run(TerminalGraphSkillRun {
+                    request,
+                    workspace,
+                    receipts,
+                    manifest,
+                    graph: graph.clone(),
+                    checkpoint: previous_checkpoint,
+                    run_id: &run_id,
+                    runtime: &runtime,
+                    step_id: &step_id,
+                    reason_code: &reason_code,
+                    summary,
+                    cause: GraphTerminalCause::Failed(error),
+                });
+            }
+            Err(error) if !error.is_fatal_step_fault() => {
+                let step_id = error.graph_step_id().map(str::to_owned).ok_or_else(|| {
+                    RuntimeError::EngineInvariant {
+                        context: "sealing graph step failure",
+                        message: format!("sealable graph error has no authoritative step: {error}"),
+                    }
+                })?;
+                let summary = format!("graph {} failed at {step_id}: {error}", graph.name);
+                return seal_terminal_graph_skill_run(TerminalGraphSkillRun {
+                    request,
+                    workspace,
+                    receipts,
+                    manifest,
+                    graph: graph.clone(),
+                    checkpoint: previous_checkpoint,
+                    run_id: &run_id,
+                    runtime: &runtime,
+                    step_id: &step_id,
+                    reason_code: "graph_step_failed",
+                    summary,
+                    cause: GraphTerminalCause::Failed(error),
                 });
             }
             Err(error) => return Err(error.into()),
@@ -277,6 +374,8 @@ struct PausedGraphCheckpoint<'a> {
     manifest: &'a SkillRunnerManifest,
     runner: &'a SkillRunnerDefinition,
     graph: &'a ExecutionGraph,
+    package_digest: &'a str,
+    execution_closure_digest: Option<&'a str>,
     run_id: &'a str,
     request_id: &'a str,
 }
@@ -302,6 +401,8 @@ fn write_paused_graph_checkpoint(input: PausedGraphCheckpoint<'_>) -> Result<(),
             .local_credential
             .as_ref()
             .and_then(|credential| credential.profile.clone()),
+        package_digest: Some(input.package_digest.to_owned()),
+        execution_closure_digest: input.execution_closure_digest.map(str::to_owned),
         step_ids: vec![input.request_id.to_owned()],
         step_labels: vec![input.request_id.to_owned()],
     };
@@ -361,7 +462,12 @@ fn missing_required_graph_input_request(
     Some(JsonValue::Object(request))
 }
 
-struct BlockedGraphSkillRun<'a> {
+enum GraphTerminalCause {
+    Blocked,
+    Failed(RuntimeError),
+}
+
+struct TerminalGraphSkillRun<'a> {
     request: &'a SkillRunRequest,
     workspace: &'a WorkspaceEnv,
     receipts: &'a ReceiptServices,
@@ -369,34 +475,60 @@ struct BlockedGraphSkillRun<'a> {
     graph: ExecutionGraph,
     checkpoint: GraphCheckpoint,
     run_id: &'a str,
-    runtime: &'a Runtime<SkillRunGraphAdapter>,
+    runtime: &'a Runtime<SkillSourceAdapter>,
     step_id: &'a str,
     reason_code: &'a str,
     summary: String,
+    cause: GraphTerminalCause,
 }
 
-fn seal_blocked_graph_skill_run(
-    context: BlockedGraphSkillRun<'_>,
+fn seal_terminal_graph_skill_run(
+    context: TerminalGraphSkillRun<'_>,
 ) -> Result<JsonValue, SkillRunError> {
-    let mut final_host = SkillRunGraphHost::new(JsonObject::new());
-    let run = context.runtime.seal_blocked_graph_checkpoint_with_host(
-        context.graph,
-        context.checkpoint,
-        context.step_id,
-        context.reason_code,
-        context.summary,
-        &mut final_host,
-    )?;
+    let mut final_host = SkillRunGraphHost::new(ResolutionAnswers::default());
+    let failure_result = match &context.cause {
+        GraphTerminalCause::Failed(error) => {
+            Some(JsonValue::Object(error.public_failure_projection()))
+        }
+        GraphTerminalCause::Blocked => None,
+    };
+    let run = match context.cause {
+        GraphTerminalCause::Blocked => context.runtime.seal_blocked_graph_checkpoint_with_host(
+            context.graph,
+            context.checkpoint,
+            context.step_id,
+            context.reason_code,
+            context.summary,
+            &mut final_host,
+        )?,
+        GraphTerminalCause::Failed(error) => {
+            context.runtime.seal_failed_graph_checkpoint_with_host(
+                context.graph,
+                context.checkpoint,
+                context.step_id,
+                error,
+                crate::receipts::GraphClosure {
+                    disposition: ClosureDisposition::Failed,
+                    reason_code: context.reason_code.to_owned(),
+                    summary: context.summary,
+                },
+                &mut final_host,
+            )?
+        }
+    };
     write_graph_receipts(context.request, context.workspace, context.receipts, &run)?;
-    let payload = graph_run_payload(&run, false);
-    let output = graph_run_skill_output(&payload, &run)?;
+    let result = failure_result.unwrap_or(graph_run_result(&run)?);
+    let public_context = graph_run_context(&run);
+    let trace = graph_run_trace(&run);
+    let output = graph_run_skill_output(&result, &run)?;
     Ok(JsonValue::Object(sealed_output(
         context.manifest,
         context.run_id,
         &output,
-        &payload,
+        &result,
+        Some(public_context),
+        Some(trace),
         &run.receipt,
-        contract_json_value(&run.receipt)?,
     )))
 }
 
@@ -405,141 +537,11 @@ pub(super) struct GraphSkillRunState {
     pub(super) schema: String,
     pub(super) run_id: String,
     pub(super) runner_name: String,
+    pub(super) package_digest: String,
+    pub(super) execution_closure_digest: String,
     #[serde(default)]
     pub(super) graph_inputs: JsonObject,
     pub(super) checkpoint: GraphCheckpoint,
-}
-
-type SourceHandlerFn = fn(SkillInvocation) -> Result<SkillOutput, RuntimeError>;
-
-#[derive(Clone, Copy, Debug)]
-struct SourceHandler {
-    source_type: &'static str,
-    handler: SourceHandlerFn,
-}
-
-#[derive(Clone, Debug)]
-struct SourceAdapterRegistry {
-    handlers: Vec<SourceHandler>,
-}
-
-impl SourceAdapterRegistry {
-    fn builtins() -> Self {
-        Self {
-            handlers: builtin_source_handlers(),
-        }
-    }
-
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-        let source_type = request.source.source_type.as_str();
-        let Some(handler) = self
-            .handlers
-            .iter()
-            .find(|registered| registered.source_type == source_type)
-            .map(|registered| registered.handler)
-        else {
-            return Err(RuntimeError::UnsupportedSource {
-                source_kind: source_type.to_owned(),
-            });
-        };
-        handler(request)
-    }
-}
-
-fn builtin_source_handlers() -> Vec<SourceHandler> {
-    vec![
-        #[cfg(feature = "cli-tool")]
-        SourceHandler {
-            source_type: "cli-tool",
-            handler: invoke_graph_cli_tool,
-        },
-        #[cfg(feature = "catalog")]
-        SourceHandler {
-            source_type: "catalog",
-            handler: invoke_graph_catalog_tool,
-        },
-        #[cfg(feature = "external-adapter")]
-        SourceHandler {
-            source_type: "external-adapter",
-            handler: invoke_graph_external_adapter,
-        },
-        #[cfg(feature = "http")]
-        SourceHandler {
-            source_type: "http",
-            handler: invoke_graph_http,
-        },
-        #[cfg(feature = "mcp")]
-        SourceHandler {
-            source_type: "mcp",
-            handler: invoke_graph_mcp,
-        },
-        #[cfg(feature = "thread-outbox-provider")]
-        SourceHandler {
-            source_type: "thread-outbox-provider",
-            handler: invoke_graph_thread_outbox_provider,
-        },
-    ]
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SkillRunGraphAdapter {
-    sources: SourceAdapterRegistry,
-}
-
-impl Default for SkillRunGraphAdapter {
-    fn default() -> Self {
-        Self {
-            sources: SourceAdapterRegistry::builtins(),
-        }
-    }
-}
-
-impl crate::adapter::SkillAdapter for SkillRunGraphAdapter {
-    fn adapter_type(&self) -> &'static str {
-        "skill-run-graph"
-    }
-
-    fn invoke(&self, request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-        self.sources.invoke(request)
-    }
-}
-
-#[cfg(feature = "cli-tool")]
-fn invoke_graph_cli_tool(request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    let credential_observation = request.credential_delivery.public_observation().cloned();
-    let mut output = CliToolAdapter.invoke(request)?;
-    if let Some(observation) = &credential_observation {
-        output.record_credential_observation(observation)?;
-    }
-    Ok(output)
-}
-
-#[cfg(feature = "catalog")]
-fn invoke_graph_catalog_tool(request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    crate::adapters::catalog::CatalogAdapter::default().invoke(request)
-}
-
-#[cfg(feature = "external-adapter")]
-fn invoke_graph_external_adapter(request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    crate::adapters::external_adapter::ExternalAdapterSkillAdapter::default().invoke(request)
-}
-
-#[cfg(feature = "http")]
-fn invoke_graph_http(request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    crate::adapters::http::HttpSkillAdapter.invoke(request)
-}
-
-#[cfg(feature = "mcp")]
-fn invoke_graph_mcp(request: SkillInvocation) -> Result<SkillOutput, RuntimeError> {
-    crate::adapter::SkillAdapter::invoke(&crate::adapters::mcp::McpAdapter::default(), request)
-}
-
-#[cfg(feature = "thread-outbox-provider")]
-fn invoke_graph_thread_outbox_provider(
-    request: SkillInvocation,
-) -> Result<SkillOutput, RuntimeError> {
-    crate::adapters::thread_outbox_provider::ThreadOutboxProviderSkillAdapter::default()
-        .invoke(request)
 }
 
 #[derive(Default)]
@@ -558,6 +560,10 @@ struct InlineResolver {
     #[cfg_attr(not(feature = "agent"), allow(dead_code))]
     credential_delivery: CredentialDelivery,
     #[cfg_attr(not(feature = "agent"), allow(dead_code))]
+    effects: RuntimeEffectRegistry,
+    #[cfg_attr(not(feature = "agent"), allow(dead_code))]
+    observed_at: String,
+    #[cfg_attr(not(feature = "agent"), allow(dead_code))]
     policy: crate::execution::orchestrator::ManagedAgentPolicy,
 }
 
@@ -565,7 +571,9 @@ impl InlineResolver {
     #[cfg(feature = "agent")]
     fn try_resolve(&self, request: &ResolutionRequest) -> Result<Option<JsonValue>, RuntimeError> {
         use crate::adapters::agent::AgentResolver;
-        use crate::adapters::agent_resolver::AnthropicAgentResolver;
+        use crate::adapters::agent_resolver::{
+            AnthropicAgentResolver, AnthropicAgentResolverOptions,
+        };
         use crate::http::ReqwestHttpTransport;
 
         let Some(max_rounds) = self.policy.max_rounds() else {
@@ -588,16 +596,27 @@ impl InlineResolver {
             .map_err(|error| fail(format!("managed agent transport error: {error}")))?;
         let resolver = AnthropicAgentResolver::new(
             transport,
-            config.api_key,
-            config.model,
-            self.env.clone(),
-            self.skill_directory.clone(),
-            self.credential_delivery.clone(),
-            max_rounds,
+            AnthropicAgentResolverOptions {
+                api_key: config.api_key,
+                model: config.model,
+                env: self.env.clone(),
+                skill_directory: self.skill_directory.clone(),
+                credential_delivery: self.credential_delivery.clone(),
+                effects: self.effects.clone(),
+                observed_at: self.observed_at.clone(),
+                max_rounds,
+            },
         );
+        let request_id = resolution_request_id(request).to_owned();
+        let step_id = match request {
+            ResolutionRequest::AgentAct { invocation, .. } => {
+                invocation.envelope.skill.as_ref().to_owned()
+            }
+            _ => "managed-agent".to_owned(),
+        };
         let resolution = resolver
             .resolve(request.clone())
-            .map_err(|error| fail(error.sanitized_message().to_owned()))?;
+            .map_err(|error| RuntimeError::managed_agent_resolution(step_id, request_id, error))?;
         Ok(Some(resolution.response.payload))
     }
 
@@ -608,13 +627,13 @@ impl InlineResolver {
 }
 
 struct SkillRunGraphHost {
-    answers: JsonObject,
+    answers: ResolutionAnswers,
     pending: Vec<(String, JsonValue)>,
     inline: Option<InlineResolver>,
 }
 
 impl SkillRunGraphHost {
-    fn new(answers: JsonObject) -> Self {
+    fn new(answers: ResolutionAnswers) -> Self {
         Self {
             answers,
             pending: Vec::new(),
@@ -622,7 +641,7 @@ impl SkillRunGraphHost {
         }
     }
 
-    fn with_inline(answers: JsonObject, inline: InlineResolver) -> Self {
+    fn with_inline(answers: ResolutionAnswers, inline: InlineResolver) -> Self {
         Self {
             answers,
             pending: Vec::new(),
@@ -649,7 +668,11 @@ impl Host for SkillRunGraphHost {
         let request_id = resolution_request_id(&request).to_owned();
         if let Some(answer) = self.answers.get(&request_id) {
             return Ok(Some(ResolutionResponse {
-                actor: ResolutionResponseActor::Agent,
+                actor: if self.answers.is_human_approval(&request_id) {
+                    ResolutionResponseActor::Human
+                } else {
+                    ResolutionResponseActor::Agent
+                },
                 payload: answer.clone(),
             }));
         }
@@ -657,21 +680,24 @@ impl Host for SkillRunGraphHost {
         // rather than host-driving, so a graph turn (agent step -> governed action
         // step) completes in one pass. No provider configured -> falls through to
         // the host as before.
-        if matches!(request, ResolutionRequest::AgentAct { .. }) {
-            if let Some(inline) = &self.inline {
-                if let Some(payload) = inline.try_resolve(&request)? {
-                    return Ok(Some(ResolutionResponse {
-                        actor: ResolutionResponseActor::Agent,
-                        payload,
-                    }));
-                }
-            }
+        if matches!(request, ResolutionRequest::AgentAct { .. })
+            && let Some(inline) = &self.inline
+            && let Some(payload) = inline.try_resolve(&request)?
+        {
+            return Ok(Some(ResolutionResponse {
+                actor: ResolutionResponseActor::Agent,
+                payload,
+            }));
         }
         let request_value = serde_json::to_value(&request)
             .and_then(serde_json::from_value)
             .map_err(|source| RuntimeError::json("serializing graph resolution request", source))?;
         self.pending.push((request_id, request_value));
         Ok(None)
+    }
+
+    fn log(&mut self, _message: String) -> Result<(), RuntimeError> {
+        Ok(())
     }
 }
 
@@ -685,7 +711,10 @@ fn resolution_request_id(request: &ResolutionRequest) -> &str {
 
 fn graph_run_id(
     request: &SkillRunRequest,
+    manifest: &SkillRunnerManifest,
     runner: &SkillRunnerDefinition,
+    package_digest: &str,
+    execution_closure_digest: Option<&str>,
 ) -> Result<String, SkillRunError> {
     match (&request.run_id, &request.answers_path) {
         (Some(run_id), Some(_)) => Ok(run_id.clone()),
@@ -695,15 +724,15 @@ fn graph_run_id(
         (None, Some(_)) => Err(invalid(
             "skill continuation requires both run_id and answers",
         )),
-        (None, None) => {
-            let input_bytes = serde_json::to_vec(&request.inputs).unwrap_or_default();
-            let digest = sha256_hex(&input_bytes);
-            Ok(format!(
-                "run_{}_{}",
-                identifier_segment(&runner.name),
-                digest.chars().take(12).collect::<String>()
-            ))
-        }
+        (None, None) => generated_run_id(
+            &runner.name,
+            manifest,
+            runner,
+            None,
+            &request.inputs,
+            package_digest,
+            execution_closure_digest,
+        ),
     }
 }
 
@@ -714,6 +743,9 @@ fn write_graph_receipts(
     run: &GraphRun,
 ) -> Result<(), SkillRunError> {
     for step in &run.steps {
+        for receipt in &step.nested_receipts {
+            write_skill_receipt(request, workspace, receipts, receipt)?;
+        }
         write_skill_receipt(request, workspace, receipts, &step.receipt)?;
     }
     write_skill_receipt(request, workspace, receipts, &run.receipt)
@@ -726,7 +758,7 @@ fn write_graph_receipts(
 /// inputs. The graph's per-step receipts remain as the execution trace; this
 /// standalone domain receipt is what the turn presents and what chains by
 /// lineage. Transport (the http step, status, token) never enters it.
-// rust-style-allow: long-function - assembling the domain-act receipt is one frame
+// Function rationale: assembling the domain-act receipt is one frame
 // build/mint/seal sequence; splitting it would separate the authority mint from the
 // frame it seals into.
 pub(crate) fn graph_domain_act_receipt(
@@ -745,12 +777,13 @@ pub(crate) fn graph_domain_act_receipt(
     };
     // Reason: the agent voice step's structured output (e.g. {line: "..."}).
     let reason_source = step_output(act.reason_step.as_deref())
-        .map(|step| JsonValue::Object(step.outputs.clone()))
+        .map(|step| JsonValue::Object(step.contract.clone()))
         .unwrap_or(JsonValue::Null);
-    // Effect: the action step's real /v1 response body.
+    // Effect: the action step's declared contract. Adapter transport is not a
+    // second semantic surface and is discarded after receipt sealing.
     let governed_effect = step_output(act.effect_step.as_deref())
-        .filter(|step| step.output.succeeded())
-        .and_then(|step| serde_json::from_str::<JsonValue>(step.output.stdout.trim()).ok());
+        .filter(|step| step.outcome.succeeded())
+        .map(|step| JsonValue::Object(step.contract.clone()));
     let authority_grant_refs = graph_credential_grant_refs(run);
     let Some(mut frame) = build_domain_act_frame(
         act,
@@ -796,7 +829,7 @@ pub(crate) fn graph_domain_act_receipt(
     }
     let graph_name = identifier_segment(run_id);
     let verification_metadata = step_output(act.reason_step.as_deref())
-        .map(|step| step.output.metadata.clone())
+        .map(|step| step.outcome.metadata.clone())
         .unwrap_or_default();
     let receipt = domain_act_receipt(DomainActReceiptRequest {
         graph_name: &graph_name,
@@ -819,7 +852,7 @@ pub(crate) fn graph_domain_act_receipt(
 /// carried by `requested_scope_from`. The child term and subset proof are computed
 /// and verified by the core mint primitive, so the runtime never trusts a pre-built
 /// proof here and a request exceeding the charter fails the turn loudly.
-// rust-style-allow: long-function - minting is one linear resolve-charter,
+// Function rationale: minting is one linear resolve-charter,
 // build-request, mint-and-prove sequence on the trust boundary; splitting it would
 // separate the charter from the proof that bounds it.
 pub(crate) fn mint_charter_attenuation(
@@ -926,6 +959,8 @@ mod tests {
 
     use super::*;
     use crate::adapter::SkillAdapter;
+    #[cfg(feature = "mcp")]
+    use crate::adapters::mcp::{McpAdapter, McpToolCallRequest, McpTransport, McpTransportError};
 
     #[test]
     fn mint_authority_seals_a_subset_proven_child() -> Result<(), SkillRunError> {
@@ -1025,38 +1060,45 @@ mod tests {
         raw.insert("type".to_owned(), JsonValue::String("a2a".to_owned()));
         let invocation = SkillInvocation {
             skill_name: "fixture-a2a".to_owned(),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
+            requirements: Default::default(),
             source: SkillSource {
                 act: None,
                 source_type: SourceKind::A2a,
                 command: None,
+                module: None,
+                javascript_export: None,
+                pages: None,
                 args: Vec::new(),
                 cwd: None,
                 timeout_seconds: None,
                 input_mode: None,
-                sandbox: None,
+                environment: Default::default(),
                 server: None,
-                catalog_ref: None,
                 tool: None,
                 arguments: None,
                 agent_card_url: None,
                 agent_identity: None,
                 agent: None,
                 task: None,
-                hook: None,
                 outputs: None,
                 graph: None,
-                http: None,
+                external_adapter: None,
+                thread_outbox_provider: None,
                 raw,
             },
             inputs: JsonObject::new(),
             resolved_inputs: JsonObject::new(),
             current_context: Vec::new(),
+            provenance: Vec::new(),
             skill_directory: PathBuf::from("."),
             env: BTreeMap::new(),
             credential_delivery: crate::credentials::CredentialDelivery::none(),
         };
 
-        let result = SkillRunGraphAdapter::default().invoke(invocation);
+        let result = SkillSourceAdapter::default().invoke(invocation);
         assert!(
             matches!(
                 &result,
@@ -1066,11 +1108,133 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "agent")]
+    #[test]
+    fn managed_agent_graph_failure_is_typed_sealed_and_visible_in_history()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use crate::LocalReceiptStore;
+        use crate::adapters::agent::{
+            AgentExecutionTelemetry, AgentResolverError, AgentToolExecutionTrace,
+        };
+        use crate::journal::{HistoryFilter, list_local_history};
+        use runx_core::state_machine::{GraphStatus, create_sequential_graph_state};
+        use runx_parser::{parse_graph_yaml, validate_graph};
+
+        let temp = tempfile::tempdir()?;
+        let receipt_dir = temp.path().join("receipts");
+        let graph = validate_graph(parse_graph_yaml(
+            r#"
+name: managed-agent-graph-failure
+steps:
+  - id: compose
+    skill: ./compose
+"#,
+        )?)?;
+        let checkpoint = GraphCheckpoint {
+            graph_name: graph.name.clone(),
+            state: create_sequential_graph_state(
+                graph.name.clone(),
+                &crate::execution::graph::step_definitions(&graph),
+            ),
+            steps: Vec::new(),
+            sync_points: Vec::new(),
+            journal: crate::ExecutionJournal::default(),
+        };
+        let runtime = Runtime::new(
+            SkillSourceAdapter::default(),
+            RuntimeOptions::local_development(std::env::vars().collect()),
+        );
+        let error = AgentResolverError::bounded_failure(
+            "round_budget_exhausted",
+            "Managed agent exceeded 3 tool-call rounds without finalizing.",
+            AgentExecutionTelemetry {
+                rounds: Some(3),
+                model_calls: Some(4),
+                tool_calls: Some(3),
+                tools: Some(vec!["data.read".to_owned()]),
+                tool_executions: Some(vec![AgentToolExecutionTrace {
+                    tool: "data.read".to_owned(),
+                    status: "success".to_owned(),
+                    receipt_id: Some("rct_child".to_owned()),
+                    resolution_kind: None,
+                }]),
+            },
+        );
+        let runtime_error = RuntimeError::managed_agent_resolution(
+            "referenced-agent-runner",
+            "agent_task.compose.output",
+            error,
+        )
+        .at_graph_step("compose");
+        let mut host = SkillRunGraphHost::new(ResolutionAnswers::default());
+        let run = runtime.seal_failed_graph_checkpoint_with_host(
+            graph,
+            checkpoint,
+            "compose",
+            runtime_error,
+            crate::receipts::GraphClosure {
+                disposition: ClosureDisposition::Failed,
+                reason_code: "managed_agent_round_budget_exhausted".to_owned(),
+                summary: "managed agent failed at compose".to_owned(),
+            },
+            &mut host,
+        )?;
+
+        assert_eq!(run.state.status, GraphStatus::Failed);
+        assert_eq!(run.receipt.seal.disposition, ClosureDisposition::Failed);
+        assert_eq!(run.steps.len(), 1);
+        let step = &run.steps[0];
+        assert_eq!(step.receipt.seal.disposition, ClosureDisposition::Failed);
+        let metadata = step
+            .receipt
+            .metadata
+            .as_ref()
+            .ok_or("managed-agent failure metadata missing from child receipt")?;
+        let encoded = serde_json::to_string(metadata)?;
+        assert!(encoded.contains("\"reason_code\":\"round_budget_exhausted\""));
+        assert!(encoded.contains("\"model_calls\":4"));
+        assert!(encoded.contains("\"tool_calls\":3"));
+        assert!(!encoded.contains("prompt"));
+        assert!(!encoded.contains("credential"));
+        assert!(!encoded.contains("raw_output"));
+
+        let request = SkillRunRequest {
+            skill_path: temp.path().join("skill"),
+            receipt_dir: Some(receipt_dir.clone()),
+            run_id: None,
+            answers_path: None,
+            inputs: Default::default(),
+            env: Default::default(),
+            cwd: temp.path().to_path_buf(),
+            managed_agent: Default::default(),
+            local_credential: None,
+        };
+        let workspace = WorkspaceEnv::new(Default::default(), temp.path().to_path_buf())?;
+        let receipts = ReceiptServices::from_env_or_local_development(workspace.env())?;
+        write_graph_receipts(&request, &workspace, &receipts, &run)?;
+        let history = list_local_history(
+            &LocalReceiptStore::new(&receipt_dir),
+            temp.path(),
+            &temp.path().join(".runx"),
+            &HistoryFilter::default(),
+        )?;
+        assert_eq!(history.receipts.len(), 2);
+        assert!(
+            history
+                .receipts
+                .iter()
+                .all(|receipt| receipt.status == "failed")
+        );
+        assert!(history.pending_runs.is_empty());
+        Ok(())
+    }
+
     #[cfg(feature = "cli-tool")]
     #[test]
-    fn graph_cli_tool_receipt_binds_credential_observation_and_redacts_secret_delivery()
+    fn graph_cli_tool_uses_structured_credential_redaction()
     -> Result<(), Box<dyn std::error::Error>> {
-        let secret = "credential-secret-must-not-cross-cli-boundary";
+        const MARKER: &str = "cli-credential-redaction-sentinel";
+        let secret = "cli-credential-redaction-sentinel-\"quoted\\slash\ncontrol";
         let delivery = crate::credentials::CredentialDelivery::from_local_descriptor(
             "twitter",
             "oauth1_user",
@@ -1079,53 +1243,79 @@ mod tests {
             vec!["twitter:read".to_owned()],
             secret,
         )?;
+        let encoded = serde_json::to_string(&JsonValue::Object(JsonObject::from([
+            (secret.to_owned(), JsonValue::String(secret.to_owned())),
+            (
+                "nested".to_owned(),
+                JsonValue::Array(vec![JsonValue::String(secret.to_owned())]),
+            ),
+        ])))?;
         let invocation = SkillInvocation {
             skill_name: "credential-observation".to_owned(),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
+            requirements: Default::default(),
             source: SkillSource {
                 act: None,
                 source_type: SourceKind::CliTool,
                 command: Some("/bin/sh".to_owned()),
-                args: vec!["-c".to_owned(), "printf '%s' \"$TWITTER_TOKEN\"".to_owned()],
+                module: None,
+                javascript_export: None,
+                pages: None,
+                args: vec![
+                    "-c".to_owned(),
+                    "test -n \"$TWITTER_TOKEN\" && printf '%s' \"$1\"".to_owned(),
+                    "runx-credential-redaction".to_owned(),
+                    encoded,
+                ],
                 cwd: None,
                 timeout_seconds: Some(5),
                 input_mode: None,
-                sandbox: None,
+                environment: Default::default(),
                 server: None,
-                catalog_ref: None,
                 tool: None,
                 arguments: None,
                 agent_card_url: None,
                 agent_identity: None,
                 agent: None,
                 task: None,
-                hook: None,
                 outputs: None,
                 graph: None,
-                http: None,
+                external_adapter: None,
+                thread_outbox_provider: None,
                 raw: JsonObject::new(),
             },
             inputs: JsonObject::new(),
             resolved_inputs: JsonObject::new(),
             current_context: Vec::new(),
+            provenance: Vec::new(),
             skill_directory: std::env::current_dir()?,
             env: std::env::vars().collect(),
             credential_delivery: delivery,
         };
 
-        let output = invoke_graph_cli_tool(invocation)?;
+        let output = SkillSourceAdapter::default().invoke(invocation)?;
 
         assert!(output.succeeded());
-        assert_eq!(output.stdout, "[redacted-credential]");
+        assert!(!serde_json::to_string(&output.value)?.contains(MARKER));
+        let projection = crate::execution::output_projection::project_step_claim(JsonObject::new());
+        let value = serde_json::to_string(&output.value)?;
+        assert!(projection.outputs.is_empty());
+        assert!(value.contains("[redacted-credential]"));
+        assert!(!value.contains(MARKER));
+        assert!(!format!("{output:?}").contains(MARKER));
         let metadata = serde_json::to_string(&output.metadata)?;
         assert!(metadata.contains("credential_delivery_observations"));
         assert!(metadata.contains("runx:credential:local:"));
-        assert!(!metadata.contains(secret));
+        assert!(!metadata.contains(MARKER));
 
         let receipt = crate::receipts::step_receipt(
             "credential_graph",
             "credential_cli",
             1,
             &output,
+            &JsonObject::new(),
             "2026-07-15T00:00:00Z",
         )?;
         assert!(
@@ -1136,6 +1326,157 @@ mod tests {
                     reference.reference_type == runx_contracts::ReferenceType::Credential
                 })
         );
+        assert!(!serde_json::to_string(&receipt)?.contains(MARKER));
+        Ok(())
+    }
+
+    #[cfg(feature = "mcp")]
+    #[test]
+    fn graph_mcp_uses_structured_credential_redaction() -> Result<(), Box<dyn std::error::Error>> {
+        assert_mcp_credential_redaction(StructuredCredentialTransport, "structured-result")
+    }
+
+    #[cfg(feature = "mcp")]
+    #[test]
+    fn graph_mcp_text_json_uses_structured_credential_redaction()
+    -> Result<(), Box<dyn std::error::Error>> {
+        assert_mcp_credential_redaction(JsonTextCredentialTransport, "text-json-result")
+    }
+
+    #[cfg(feature = "mcp")]
+    const MCP_SECRET: &str = "mcp-credential-redaction-sentinel-\"quoted\\slash\ncontrol";
+    #[cfg(feature = "mcp")]
+    const MCP_MARKER: &str = "mcp-credential-redaction-sentinel";
+
+    #[cfg(feature = "mcp")]
+    #[derive(Clone, Debug)]
+    struct StructuredCredentialTransport;
+
+    #[cfg(feature = "mcp")]
+    impl McpTransport for StructuredCredentialTransport {
+        fn call_tool(&self, _request: McpToolCallRequest) -> Result<JsonValue, McpTransportError> {
+            Ok(mcp_secret_document())
+        }
+    }
+
+    #[cfg(feature = "mcp")]
+    #[derive(Clone, Debug)]
+    struct JsonTextCredentialTransport;
+
+    #[cfg(feature = "mcp")]
+    impl McpTransport for JsonTextCredentialTransport {
+        fn call_tool(&self, _request: McpToolCallRequest) -> Result<JsonValue, McpTransportError> {
+            let text = serde_json::to_string(&mcp_secret_document())
+                .map_err(|_| McpTransportError::failed("fixture serialization failed"))?;
+            Ok(JsonValue::Object(JsonObject::from([(
+                "content".to_owned(),
+                JsonValue::Array(vec![JsonValue::Object(JsonObject::from([
+                    ("type".to_owned(), JsonValue::String("text".to_owned())),
+                    ("text".to_owned(), JsonValue::String(text)),
+                ]))]),
+            )])))
+        }
+    }
+
+    #[cfg(feature = "mcp")]
+    fn mcp_secret_document() -> JsonValue {
+        JsonValue::Object(JsonObject::from([(
+            "structuredContent".to_owned(),
+            JsonValue::Object(JsonObject::from([
+                (
+                    MCP_SECRET.to_owned(),
+                    JsonValue::String(MCP_SECRET.to_owned()),
+                ),
+                (
+                    "nested".to_owned(),
+                    JsonValue::Array(vec![JsonValue::String(MCP_SECRET.to_owned())]),
+                ),
+            ])),
+        )]))
+    }
+
+    #[cfg(feature = "mcp")]
+    fn assert_mcp_credential_redaction<T: McpTransport>(
+        transport: T,
+        step_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let delivery = crate::credentials::CredentialDelivery::from_local_descriptor(
+            "example",
+            "api_key",
+            "EXAMPLE_TOKEN",
+            "ref:example:primary",
+            vec!["example:read".to_owned()],
+            MCP_SECRET,
+        )?;
+        let invocation = SkillInvocation {
+            skill_name: "mcp-structured-redaction".to_owned(),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
+            requirements: Default::default(),
+            source: SkillSource {
+                act: None,
+                source_type: SourceKind::Mcp,
+                command: None,
+                module: None,
+                javascript_export: None,
+                pages: None,
+                args: Vec::new(),
+                cwd: None,
+                timeout_seconds: Some(5),
+                input_mode: None,
+                environment: Default::default(),
+                server: Some(runx_parser::SkillMcpServer {
+                    command: std::env::current_exe()?.to_string_lossy().into_owned(),
+                    args: Vec::new(),
+                    cwd: None,
+                }),
+                tool: Some("reflect".to_owned()),
+                arguments: None,
+                agent_card_url: None,
+                agent_identity: None,
+                agent: None,
+                task: None,
+                outputs: None,
+                graph: None,
+                external_adapter: None,
+                thread_outbox_provider: None,
+                raw: JsonObject::new(),
+            },
+            inputs: JsonObject::new(),
+            resolved_inputs: JsonObject::new(),
+            current_context: Vec::new(),
+            provenance: Vec::new(),
+            skill_directory: std::env::current_dir()?,
+            env: std::env::vars().collect(),
+            credential_delivery: delivery,
+        };
+
+        let output = McpAdapter::new(transport).invoke(invocation)?;
+        assert!(output.succeeded());
+        assert!(!format!("{:?}", output.value).contains(MCP_MARKER));
+        let projection = crate::execution::output_projection::project_step_claim(JsonObject::new());
+        let value = serde_json::to_string(&output.value)?;
+        assert!(projection.outputs.is_empty());
+        assert!(value.contains("[redacted-credential]"));
+        assert!(
+            output
+                .value
+                .as_object()
+                .is_some_and(|value| !value.is_empty())
+        );
+        assert!(!value.contains(MCP_MARKER));
+        assert!(!format!("{output:?}").contains(MCP_MARKER));
+
+        let receipt = crate::receipts::step_receipt(
+            "mcp-redaction",
+            step_id,
+            1,
+            &output,
+            &JsonObject::new(),
+            "2026-07-22T00:00:00Z",
+        )?;
+        assert!(!serde_json::to_string(&receipt)?.contains(MCP_MARKER));
         Ok(())
     }
 
@@ -1149,38 +1490,45 @@ mod tests {
         );
         let invocation = SkillInvocation {
             skill_name: "fixture-external".to_owned(),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
+            requirements: Default::default(),
             source: SkillSource {
                 act: None,
                 source_type: SourceKind::ExternalAdapter,
                 command: None,
+                module: None,
+                javascript_export: None,
+                pages: None,
                 args: Vec::new(),
                 cwd: None,
                 timeout_seconds: None,
                 input_mode: None,
-                sandbox: None,
+                environment: Default::default(),
                 server: None,
-                catalog_ref: None,
                 tool: None,
                 arguments: None,
                 agent_card_url: None,
                 agent_identity: None,
                 agent: None,
                 task: None,
-                hook: None,
                 outputs: None,
                 graph: None,
-                http: None,
+                external_adapter: None,
+                thread_outbox_provider: None,
                 raw,
             },
             inputs: JsonObject::new(),
             resolved_inputs: JsonObject::new(),
             current_context: Vec::new(),
+            provenance: Vec::new(),
             skill_directory: PathBuf::from("."),
             env: BTreeMap::new(),
             credential_delivery: crate::credentials::CredentialDelivery::none(),
         };
 
-        let result = SkillRunGraphAdapter::default().invoke(invocation);
+        let result = SkillSourceAdapter::default().invoke(invocation);
         assert!(
             matches!(&result, Err(RuntimeError::SkillFailed { .. })),
             "external-adapter source should route to the external adapter and fail on the \
@@ -1198,38 +1546,45 @@ mod tests {
         );
         let invocation = SkillInvocation {
             skill_name: "fixture-thread-outbox-provider".to_owned(),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
+            requirements: Default::default(),
             source: SkillSource {
                 act: None,
                 source_type: SourceKind::ThreadOutboxProvider,
                 command: None,
+                module: None,
+                javascript_export: None,
+                pages: None,
                 args: Vec::new(),
                 cwd: None,
                 timeout_seconds: None,
                 input_mode: None,
-                sandbox: None,
+                environment: Default::default(),
                 server: None,
-                catalog_ref: None,
                 tool: None,
                 arguments: None,
                 agent_card_url: None,
                 agent_identity: None,
                 agent: None,
                 task: None,
-                hook: None,
                 outputs: None,
                 graph: None,
-                http: None,
+                external_adapter: None,
+                thread_outbox_provider: None,
                 raw,
             },
             inputs: JsonObject::new(),
             resolved_inputs: JsonObject::new(),
             current_context: Vec::new(),
+            provenance: Vec::new(),
             skill_directory: PathBuf::from("."),
             env: BTreeMap::new(),
             credential_delivery: crate::credentials::CredentialDelivery::none(),
         };
 
-        let result = SkillRunGraphAdapter::default().invoke(invocation);
+        let result = SkillSourceAdapter::default().invoke(invocation);
         assert!(
             matches!(&result, Err(RuntimeError::SkillFailed { .. })),
             "thread-outbox-provider source should route to the Rust provider front and fail on \

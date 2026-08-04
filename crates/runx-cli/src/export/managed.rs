@@ -7,6 +7,34 @@ use super::{
     ExportError, GeneratedFile, Target, display_path,
 };
 
+pub(super) fn validate_write_targets(
+    target: Target,
+    files: &[GeneratedFile],
+    export_root: &Path,
+    full_export: bool,
+) -> Result<(), ExportError> {
+    for file in files {
+        if !file.path.exists() {
+            continue;
+        }
+        let existing = read_to_string(&file.path)?;
+        let existing_source = managed_source(&existing, target);
+        let generated_source = managed_source(&file.contents, target);
+        let owned_by_this_export = existing_source == generated_source
+            || (full_export
+                && existing_source.is_some_and(|source| {
+                    source_belongs_to_export_root(Path::new(source), export_root)
+                }));
+        if !owned_by_this_export {
+            return Err(ExportError::InvalidArgs(format!(
+                "refusing to overwrite {} because it is not managed by this export",
+                display_path(&file.path)
+            )));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn write_files(files: &[GeneratedFile]) -> Result<(), ExportError> {
     for file in files {
         let parent = file.path.parent().ok_or_else(|| ExportError::Io {
@@ -29,6 +57,7 @@ pub(super) fn prune_managed_files(
     target: Target,
     skill_dir: &Path,
     files: &[GeneratedFile],
+    export_root: &Path,
 ) -> Result<Vec<String>, ExportError> {
     let wanted = files
         .iter()
@@ -58,6 +87,12 @@ pub(super) fn prune_managed_files(
         if !contents.contains(target.marker()) {
             continue;
         }
+        let Some(source) = managed_source(&contents, target) else {
+            continue;
+        };
+        if !source_belongs_to_export_root(Path::new(source), export_root) {
+            continue;
+        }
         fs::remove_file(&skill_file).map_err(|source| ExportError::Io {
             context: format!("removing {}", display_path(&skill_file)),
             source,
@@ -67,6 +102,20 @@ pub(super) fn prune_managed_files(
     }
     pruned.sort();
     Ok(pruned)
+}
+
+fn managed_source(contents: &str, target: Target) -> Option<&str> {
+    let prefix = format!("<!-- {} source=", target.marker());
+    let suffix = " - generated, do not edit -->";
+    contents.lines().find_map(|line| {
+        line.strip_prefix(&prefix)
+            .and_then(|value| value.strip_suffix(suffix))
+    })
+}
+
+fn source_belongs_to_export_root(source: &Path, export_root: &Path) -> bool {
+    (export_root.join("SKILL.md").is_file() && source == export_root)
+        || (export_root.join("skills").is_dir() && source.starts_with(export_root.join("skills")))
 }
 
 pub(super) fn merge_codex_rules(path: &Path, runx_bin: &Path) -> Result<PathBuf, ExportError> {

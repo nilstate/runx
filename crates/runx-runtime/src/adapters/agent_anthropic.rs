@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - the Anthropic adapter keeps request shaping,
+// Module rationale: the Anthropic adapter keeps request shaping,
 // tool-use parsing, and provider error mapping in one reviewed HTTP boundary.
 //! Anthropic provider [`ModelCaller`] for the managed-agent loop.
 //!
@@ -13,7 +13,7 @@
 use runx_contracts::JsonValue;
 use serde_json::{Value as WireValue, json};
 
-use super::agent_loop::{AgentToolUse, AgentTurn, ModelCaller};
+use super::agent_loop::{AgentToolUse, AgentTurn, ModelCaller, UNRECOGNIZED_MODEL_TOOL};
 use crate::RuntimeError;
 use crate::credentials::SecretString;
 use crate::http::{HttpMethod, RuntimeHttpHeader, RuntimeHttpRequest, RuntimeHttpTransport};
@@ -88,7 +88,10 @@ impl<T> AnthropicModelCaller<T> {
         self.tools
             .iter()
             .find(|tool| wire_tool_name(&tool.name) == wire)
-            .map_or_else(|| wire.to_owned(), |tool| tool.name.clone())
+            .map_or_else(
+                || UNRECOGNIZED_MODEL_TOOL.to_owned(),
+                |tool| tool.name.clone(),
+            )
     }
 }
 
@@ -238,6 +241,10 @@ mod tests {
             Ok(RuntimeHttpResponse {
                 status: self.status,
                 body: self.body.clone(),
+                headers: Vec::new(),
+                body_digest: runx_contracts::sha256_prefixed(self.body.as_bytes()),
+                body_bytes: self.body.len(),
+                truncated: false,
             })
         }
     }
@@ -247,7 +254,11 @@ mod tests {
             stub,
             SecretString::new("key"),
             "claude".to_owned(),
-            Vec::new(),
+            vec![AgentToolDefinition {
+                name: "pay".to_owned(),
+                description: "Pay the bounded amount.".to_owned(),
+                input_schema: JsonValue::Object(Default::default()),
+            }],
         )
     }
 
@@ -315,6 +326,35 @@ mod tests {
             body.contains("\"frantic_post\"") && !body.contains("frantic.post"),
             "tool must be offered flattened, never dotted; got: {body}"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn unoffered_wire_tool_name_is_replaced_before_leaving_provider_boundary()
+    -> Result<(), RuntimeError> {
+        const SENSITIVE_MARKER: &str = "customer_secret_as_tool_name";
+        let stub = StubTransport {
+            body: format!(
+                r#"{{"content":[{{"type":"tool_use","id":"tu_1","name":"{SENSITIVE_MARKER}","input":{{}}}}]}}"#
+            ),
+            status: 200,
+            requests: RefCell::new(Vec::new()),
+        };
+        let model = AnthropicModelCaller::new(
+            &stub,
+            SecretString::new("key"),
+            "claude".to_owned(),
+            vec![AgentToolDefinition {
+                name: "frantic.post".to_owned(),
+                description: "post".to_owned(),
+                input_schema: JsonValue::Object(Default::default()),
+            }],
+        );
+
+        let uses = model.next_tool_uses(&[AgentTurn::User("go".to_owned())])?;
+
+        assert_eq!(uses[0].name, UNRECOGNIZED_MODEL_TOOL);
+        assert!(!uses[0].name.contains(SENSITIVE_MARKER));
         Ok(())
     }
 

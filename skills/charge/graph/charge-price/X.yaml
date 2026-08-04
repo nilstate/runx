@@ -1,132 +1,33 @@
 skill: charge-price
-version: "0.1.0"
+version: 0.3.1
 catalog:
-  kind: skill
+  kind: graph
   audience: operator
   visibility: internal
   role: graph-stage
   part_of:
     - runx/charge
-harness:
-  cases:
-    - name: charge-price-classifies-operation
-      runner: price
-      inputs:
-        mcp_tool_call:
-          tool: search.paid
-          arguments:
-            query: runx
-        provider_policy:
-          price_minor: 125
-          currency: USD
-          accepted_settlement_families:
-            - mock
-          counterparty: provider:demo
-        realm: test
-        idempotency_seed: paid-search-001
-      caller:
-        answers:
-          agent_task.charge-price.output:
-            charge_price:
-              price_id: charge_price_demo_001
-              amount_minor: 125
-              currency: USD
-              settlement_families:
-                - mock
-              counterparty: provider:demo
-              operation: search.paid
-              expires_at: 2026-05-20T01:00:00Z
-            requested_payment_authority:
-              term_id: authority-term:payment:charge-price-demo-001
-              principal_ref:
-                type: host
-                uri: principal:provider:test
-              resource_ref:
-                type: surface
-                uri: provider:demo
-              resource_family: effect
-              verbs:
-                - estimate
-                - verify
-              bounds:
-                effect_limits:
-                  - family: payment
-                    unit: USD
-                    max_per_call_units: 125
-                    channels:
-                      - mock
-                    realm: test
-                    peer: provider:demo
-                    operation: search.paid
-                    preflight_required: true
-                    idempotency_required: true
-                    recovery_required: true
-                    receipt_before_success: true
-              conditions: []
-              approvals: []
-              capabilities: []
-              issued_by_ref:
-                type: host
-                uri: authority:payment:provider-test
-            price_evidence:
-              source_refs:
-                - policy:provider-demo
-                - tool-call:search.paid
-              redactions: []
-            policy_metadata:
-              provider_realm: test
-              direction: provider_charge
-            open_questions: []
-      expect:
-        status: sealed
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
-          reason_code: charge_price_closed
 runners:
   price:
     default: true
-    type: agent-task
-    agent: operator
-    task: charge-price
-    outputs:
-      charge_price: object
-      requested_payment_authority: object
-      price_evidence: object
-      policy_metadata: object
-      open_questions: array
-    artifacts:
-      wrap_as: charge_price_packet
-      packet: runx.payment.charge_price.v1
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: price
-        resource_family: effect
-        verbs:
-          - estimate
-        mutates_rail: false
-        receives_rail_secret_material: false
-        receipt_before_forward_required: true
+    type: graph
     inputs:
       mcp_tool_call:
-        type: object
+        type: json
+        packet: runx.payment.tool_call.v1
         required: true
         description: Inbound MCP operation request.
       provider_policy:
-        type: object
+        type: json
+        packet: runx.payment.charge_policy.v1
         required: true
-        description: Provider pricing policy and settlement family allowlist.
-      parent_payment_authority:
-        type: object
-        required: false
-        description: Parent payment authority term or authority reference.
-      realm:
-        type: string
-        required: false
-        description: Provider authority realm.
-      idempotency_seed:
-        type: string
-        required: false
-        description: Stable seed for challenge idempotency.
+        description: Provider-owned price and settlement-family policy.
+    graph:
+      name: charge-price
+      result_from: [price]
+      steps:
+        - id: price
+          tool: payment.charge_price
+          inputs:
+            mcp_tool_call: $input.mcp_tool_call
+            provider_policy: $input.provider_policy

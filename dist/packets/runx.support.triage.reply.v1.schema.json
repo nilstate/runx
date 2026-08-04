@@ -21,15 +21,113 @@
       "type": "number"
     },
     "draft_email": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "proposed": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "recipient_hint": {
+          "type": "string"
+        },
+        "subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "proposed",
+        "subject",
+        "body"
+      ],
       "type": "object"
     },
     "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "matched_signals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "missing_context": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "private_data_required": {
+          "type": "boolean"
+        },
+        "send_side_effects": {
+          "const": "none"
+        },
+        "source": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_summary": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "taxonomy_coverage": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "source",
+        "source_summary",
+        "matched_signals",
+        "missing_context",
+        "taxonomy_coverage",
+        "private_data_required",
+        "send_side_effects"
+      ],
       "type": "object"
     },
     "recommended_path": {
       "type": "string"
     },
     "send_gate": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "send_customer_email",
+            "no_customer_send_proposed"
+          ],
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "const": "requires_human_approval"
+        }
+      },
+      "required": [
+        "status",
+        "action",
+        "rationale"
+      ],
       "type": "object"
     },
     "severity": {

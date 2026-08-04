@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url";
 
 // Single source of truth for the runx CLI release version across every CLI
 // channel. A cli-vX.Y.Z tag is the CLI distribution version only. It stamps the
-// npm selector/native packages and the `runx-cli` crate so `runx --version`
-// stays truthful, but it must never stamp or publish internal library crates.
+// npm selector/native packages, the `runx-cli` crate, and the runtime's
+// execution-closure release identity so both displayed and bound versions stay
+// truthful. Internal library crate versions remain independent and unpublished.
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
@@ -23,11 +24,13 @@ interface Finding {
 const packageJsonPath = path.join(workspaceRoot, "packages", "cli", "package.json");
 const cargoLockPath = path.join(workspaceRoot, "crates", "Cargo.lock");
 const cargoCliPackagePath = path.join(workspaceRoot, "crates", "runx-cli", "Cargo.toml");
+const runtimeSourcePath = path.join(workspaceRoot, "crates", "runx-runtime", "src", "lib.rs");
 const options = parseArgs(process.argv.slice(2));
 const findings: Finding[] = [];
 
 stampPackageJson(packageJsonPath, options, findings);
 stampCargoPackage(cargoCliPackagePath, options, findings);
+stampRustConstant(runtimeSourcePath, "EXECUTION_RUNTIME_RELEASE", options, findings);
 stampCargoLock(cargoLockPath, ["runx-cli"], options, findings);
 
 if (findings.length > 0) {
@@ -37,7 +40,12 @@ if (findings.length > 0) {
 emit({
   status: options.check ? "matched" : "stamped",
   version: options.version,
-  files: [relative(packageJsonPath), relative(cargoCliPackagePath), relative(cargoLockPath)],
+  files: [
+    relative(packageJsonPath),
+    relative(cargoCliPackagePath),
+    relative(runtimeSourcePath),
+    relative(cargoLockPath),
+  ],
 });
 
 function stampPackageJson(filePath: string, opts: Options, output: Finding[]): void {
@@ -79,6 +87,28 @@ function stampCargoPackage(filePath: string, opts: Options, output: Finding[]): 
     return;
   }
   writeFileSync(filePath, raw.replace(/^version = "[^"]*"/mu, `version = "${opts.version}"`));
+}
+
+function stampRustConstant(
+  filePath: string,
+  name: string,
+  opts: Options,
+  output: Finding[],
+): void {
+  const raw = readFileSync(filePath, "utf8");
+  const pattern = new RegExp(`(pub const ${escapeRegExp(name)}: &str = ")([^"]+)(";)$`, "mu");
+  const match = raw.match(pattern);
+  if (!match) {
+    output.push({ file: relative(filePath), message: `could not find Rust constant ${name}` });
+    return;
+  }
+  if (opts.check) {
+    if (match[2] !== opts.version) {
+      output.push({ file: relative(filePath), message: `${name} is ${match[2]}, expected ${opts.version}` });
+    }
+    return;
+  }
+  writeFileSync(filePath, raw.replace(pattern, `$1${opts.version}$3`));
 }
 
 function stampCargoLock(filePath: string, packageNames: readonly string[], opts: Options, output: Finding[]): void {

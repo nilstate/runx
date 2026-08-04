@@ -7,8 +7,15 @@ import { fileURLToPath } from "node:url";
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "doctor");
 const check = process.argv.includes("--check");
-const runx = process.env.RUNX_DEV_RUST_CLI_BIN
+const runx = process.env.RUNX_RUST_CLI_BIN
   ?? path.join(workspaceRoot, "crates", "target", "debug", process.platform === "win32" ? "runx.exe" : "runx");
+const managedAgentEnvNames = [
+  "RUNX_AGENT_PROVIDER",
+  "RUNX_AGENT_MODEL",
+  "RUNX_AGENT_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "OPENAI_API_KEY",
+] as const;
 
 interface DoctorFixtureCase {
   readonly name: string;
@@ -46,6 +53,7 @@ source:
     expectedExitCode: 1,
     files: [
       file("tools/demo/echo/manifest.json", `${JSON.stringify({
+        schema: "runx.tool.manifest.v1",
         name: "demo.echo",
         description: "Echo fixture.",
         source: {
@@ -62,6 +70,15 @@ source:
     name: "skill-fixture-missing",
     expectedExitCode: 1,
     files: [
+      file("skills/uncovered/SKILL.md", `---
+name: uncovered
+description: Doctor fixture with an execution profile and no harness proof.
+---
+
+# Uncovered
+
+Exercise the missing-harness diagnostic for a valid skill package.
+`),
       file("skills/uncovered/X.yaml", `skill: uncovered
 runners:
   default:
@@ -119,9 +136,17 @@ async function runDoctorFixture(fixtureCase: DoctorFixtureCase): Promise<unknown
   if (!existsSync(workspacePath)) {
     await mkdir(workspacePath, { recursive: true });
   }
+  const env = {
+    ...process.env,
+    RUNX_CWD: workspacePath,
+    RUNX_HOME: path.join(workspaceRoot, "tmp", "doctor-fixtures", fixtureCase.name, "runx-home"),
+  };
+  for (const envName of managedAgentEnvNames) {
+    delete env[envName];
+  }
   const result = spawnSync(runx, ["doctor", "--json"], {
     cwd: workspacePath,
-    env: { ...process.env, RUNX_CWD: workspacePath },
+    env,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
   });

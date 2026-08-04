@@ -28,5 +28,25 @@ window.YTD.tweets.part0 = [
       "retweet_count": "3",
       "entities": { "urls": [{ "expanded_url": "https://example.com/release" }] }
     }
+  },
+  {
+    "tweet": {
+      "id_str": "2001",
+      "full_text": "RT @BetaList: Douple: Double dates for couples https://t.co/example1",
+      "created_at": "Wed Jul 09 08:00:00 +0000 2014",
+      "favorite_count": "0",
+      "retweet_count": "0",
+      "entities": { "urls": [] }
+    }
+  },
+  {
+    "tweet": {
+      "id_str": "2002",
+      "full_text": "RT @BetaList: PageHero: Hassle-free visual testing https://t.co/example2",
+      "created_at": "Thu Aug 14 11:30:00 +0000 2014",
+      "favorite_count": "0",
+      "retweet_count": "0",
+      "entities": { "urls": [] }
+    }
   }
 ]

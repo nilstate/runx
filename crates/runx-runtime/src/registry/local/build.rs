@@ -1,16 +1,13 @@
-// rust-style-allow: large-file because local registry ingestion keeps skill
-// parsing, binding metadata, and registry-version projection together for the
-// current TS-sunset parity slice.
+// Module rationale: local registry ingestion keeps package
+// validation, binding metadata, and registry-version projection in one atomic
+// build boundary.
 use runx_contracts::maturity::MaturityTier;
 use runx_contracts::{JsonObject, JsonValue, sha256_hex};
-use runx_parser::{
-    SkillRunnerManifest, ValidatedSkill, parse_runner_manifest_yaml, parse_skill_markdown,
-    validate_runner_manifest, validate_skill,
-};
 use serde::Deserialize;
 
-use super::super::package_files::{normalize_registry_package_files, registry_package_digest};
-use super::super::scopes::required_scopes_from_skill_and_runner;
+use super::super::package_files::{
+    normalize_registry_package_files, registry_package_digest, validate_registry_skill_package,
+};
 use super::super::types::{
     RegistryAttestation, RegistryPackageFile, RegistryPublisher, RegistrySkillVersion,
     RegistrySourceMetadata, TrustTier,
@@ -23,62 +20,95 @@ use crate::registry::local::trust::{
 use crate::registry::local::util::{
     missing_field, now_iso8601, required_string, validate_publisher, validate_source_metadata,
 };
+use crate::registry::package_metadata::project_registry_package_metadata;
 
-pub fn build_registry_skill_version(
+pub(super) fn build_registry_skill_version(
     markdown: &str,
     options: &IngestSkillOptions,
 ) -> Result<RegistrySkillVersion, LocalRegistryError> {
-    let raw = parse_skill_markdown(markdown)?;
-    let skill = validate_skill(raw)?;
-    let digest = sha256_hex(markdown.as_bytes());
-    let binding = build_binding_artifact(&skill, options.profile_document.as_deref())?;
     let package_files = normalize_package_files(options.package_files.clone())?;
-    let package_digest = registry_package_digest(&package_files);
-    let catalog = registry_catalog(binding.manifest.as_ref());
+    let package = validate_registry_skill_package(
+        markdown,
+        options.profile_document.as_deref(),
+        &package_files,
+    )?;
+    let skill = &package.skill;
+    let manifest = package.root_manifest();
+    let RegistryPackageDigests {
+        digest,
+        profile_digest,
+        package_digest,
+    } = registry_package_digests(markdown, options, &package_files);
+    let metadata = project_registry_package_metadata(skill, manifest);
     let defaults = registry_version_defaults(
         &digest,
-        binding.digest.as_deref(),
+        profile_digest.as_deref(),
         package_digest.as_deref(),
         options,
     );
-    let manifest = binding.manifest.as_ref();
     let skill_id = build_skill_id(&defaults.owner, &skill.name)?;
     Ok(RegistrySkillVersion {
         skill_id,
         owner: defaults.owner,
-        name: skill.name.clone(),
-        description: skill.description.clone(),
-        category: skill.runx_category.clone(),
-        source_category: skill.category.clone(),
+        name: metadata.name,
+        description: metadata.description,
+        category: metadata.category,
+        source_category: metadata.source_category,
         version: defaults.version,
         digest,
         signed_manifest: None,
         markdown: markdown.to_owned(),
         profile_document: options.profile_document.clone(),
-        profile_digest: binding.digest,
+        profile_digest,
         package_files,
         package_digest,
-        runner_names: binding.runner_names,
-        source_type: skill.source.source_type.as_str().to_owned(),
+        runner_names: metadata.runner_names,
+        source_type: metadata.source_type,
         trust_tier: defaults.trust_tier,
-        // Alpha is the floor at creation; maturity is recomputed from harness
-        // signals at the publish and harness-seal events, never on read.
-        maturity: MaturityTier::Alpha,
-        catalog_kind: Some(catalog.kind.as_str().to_owned()),
-        catalog_audience: Some(catalog.audience.as_str().to_owned()),
-        catalog_visibility: Some(catalog.visibility.as_str().to_owned()),
+        maturity: initial_registry_maturity(),
+        catalog_kind: Some(metadata.catalog_kind),
+        catalog_audience: Some(metadata.catalog_audience),
+        catalog_visibility: Some(metadata.catalog_visibility),
         source_metadata: defaults.source_metadata,
         attestations: defaults.attestations,
-        required_scopes: registry_required_scopes(&skill, manifest)?,
-        runtime: registry_runtime(&skill, manifest),
-        auth: skill.auth.clone(),
-        risk: registry_risk(&skill),
-        runx: skill.runx.clone(),
-        tags: registry_tags(&skill, manifest),
+        required_scopes: metadata.required_scopes,
+        runtime: metadata.runtime,
+        auth: metadata.auth,
+        risk: metadata.risk,
+        runx: metadata.runx,
+        tags: metadata.tags,
+        harness_cases: metadata.harness_cases,
         publisher: defaults.publisher,
         created_at: defaults.created_at,
         updated_at: now_iso8601(),
     })
+}
+
+fn initial_registry_maturity() -> MaturityTier {
+    // Alpha is the creation floor. Publish and harness-seal events recompute
+    // maturity from evidence; reads never mutate it.
+    MaturityTier::Alpha
+}
+
+struct RegistryPackageDigests {
+    digest: String,
+    profile_digest: Option<String>,
+    package_digest: Option<String>,
+}
+
+fn registry_package_digests(
+    markdown: &str,
+    options: &IngestSkillOptions,
+    package_files: &[RegistryPackageFile],
+) -> RegistryPackageDigests {
+    RegistryPackageDigests {
+        digest: sha256_hex(markdown.as_bytes()),
+        profile_digest: options
+            .profile_document
+            .as_ref()
+            .map(|document| sha256_hex(document.as_bytes())),
+        package_digest: registry_package_digest(package_files),
+    }
 }
 
 struct RegistryVersionDefaults {
@@ -128,87 +158,21 @@ fn registry_version_defaults(
     }
 }
 
-pub(super) fn registry_catalog(
-    manifest: Option<&SkillRunnerManifest>,
-) -> runx_parser::CatalogMetadata {
-    manifest
-        .and_then(|manifest| manifest.catalog.clone())
-        .unwrap_or(runx_parser::CatalogMetadata {
-            kind: runx_parser::CatalogKind::Skill,
-            audience: runx_parser::CatalogAudience::Public,
-            visibility: runx_parser::CatalogVisibility::Public,
-            role: runx_parser::CatalogRole::Context,
-            canonical_skill: None,
-            provider: None,
-            runtime_path: None,
-            part_of: Vec::new(),
-            execution: None,
-            completion: None,
-            requires_adapter: None,
-            approval: None,
-        })
-}
-
-pub(super) fn registry_required_scopes(
-    skill: &ValidatedSkill,
-    manifest: Option<&SkillRunnerManifest>,
-) -> Result<Vec<String>, LocalRegistryError> {
-    required_scopes_from_skill_and_runner(skill, manifest).map_err(|error| {
-        LocalRegistryError::InvalidSkillManifest {
-            field: error.field,
-            message: error.message,
-        }
-    })
-}
-
-pub(super) fn registry_runtime(
-    skill: &ValidatedSkill,
-    manifest: Option<&SkillRunnerManifest>,
-) -> Option<JsonValue> {
-    skill
-        .runtime
-        .clone()
-        .or_else(|| record_field(skill.runx.as_ref(), "runtime"))
-        .or_else(|| extract_runner_runtime(manifest))
-}
-
-pub(super) fn registry_risk(skill: &ValidatedSkill) -> Option<JsonValue> {
-    skill
-        .risk
-        .clone()
-        .or_else(|| record_field(skill.runx.as_ref(), "risk"))
-}
-
-pub(super) fn registry_tags(
-    skill: &ValidatedSkill,
-    manifest: Option<&SkillRunnerManifest>,
-) -> Vec<String> {
-    unique(
-        extract_tags(skill)
-            .into_iter()
-            .chain(skill.runx_category.clone())
-            .chain(extract_runner_tags(manifest))
-            .collect(),
-    )
-}
-
-// rust-style-allow: long-function - normalization validates the package digest,
+// Function rationale: normalization validates the package digest,
 // manifest, and registry row in one pass over the submitted version payload.
-pub fn normalize_registry_skill_version(
+pub(super) fn normalize_registry_skill_version(
     payload: RegistrySkillVersionPayload,
 ) -> Result<RegistrySkillVersion, LocalRegistryError> {
     let governance = normalize_registry_version_governance(&payload)?;
     let package_files = normalize_package_files(payload.package_files.unwrap_or_default())?;
     let computed_package_digest = registry_package_digest(&package_files);
-    if let (Some(declared), Some(computed)) = (&payload.package_digest, &computed_package_digest) {
-        if declared != computed {
-            return Err(LocalRegistryError::InvalidVersionPayload {
-                field: "registry_version.package_digest".to_owned(),
-                message: format!(
-                    "declared digest {declared} does not match package files {computed}"
-                ),
-            });
-        }
+    if let (Some(declared), Some(computed)) = (&payload.package_digest, &computed_package_digest)
+        && declared != computed
+    {
+        return Err(LocalRegistryError::InvalidVersionPayload {
+            field: "registry_version.package_digest".to_owned(),
+            message: format!("declared digest {declared} does not match package files {computed}"),
+        });
     }
     if payload.package_digest.is_some() && computed_package_digest.is_none() {
         return Err(LocalRegistryError::InvalidVersionPayload {
@@ -217,9 +181,17 @@ pub fn normalize_registry_skill_version(
         });
     }
     let markdown = required_string(payload.markdown, "registry_version.markdown")?;
-    let derived_categories = derive_categories_from_markdown(&markdown);
-    let category = payload.category.or(derived_categories.runx_category);
-    let source_category = payload.source_category.or(derived_categories.category);
+    let package = validate_registry_skill_package(
+        &markdown,
+        payload.profile_document.as_deref(),
+        &package_files,
+    )?;
+    let category = payload
+        .category
+        .or_else(|| package.skill.runx_category.clone());
+    let source_category = payload
+        .source_category
+        .or_else(|| package.skill.category.clone());
 
     Ok(RegistrySkillVersion {
         skill_id: required_string(payload.skill_id, "registry_version.skill_id")?,
@@ -252,31 +224,11 @@ pub fn normalize_registry_skill_version(
         risk: payload.risk,
         runx: payload.runx,
         tags: payload.tags.unwrap_or_default(),
+        harness_cases: payload.harness_cases.unwrap_or_default(),
         publisher: governance.publisher,
         updated_at: governance.updated_at,
         created_at: governance.created_at,
     })
-}
-
-struct DerivedCategories {
-    category: Option<String>,
-    runx_category: Option<String>,
-}
-
-fn derive_categories_from_markdown(markdown: &str) -> DerivedCategories {
-    let Some(skill) = parse_skill_markdown(markdown)
-        .ok()
-        .and_then(|raw| validate_skill(raw).ok())
-    else {
-        return DerivedCategories {
-            category: None,
-            runx_category: None,
-        };
-    };
-    DerivedCategories {
-        category: skill.category,
-        runx_category: skill.runx_category,
-    }
 }
 
 struct NormalizedRegistryVersionGovernance {
@@ -373,7 +325,7 @@ pub(super) fn normalize_registry_catalog(
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct RegistrySkillVersionPayload {
+pub(super) struct RegistrySkillVersionPayload {
     skill_id: Option<String>,
     owner: Option<String>,
     name: Option<String>,
@@ -403,45 +355,10 @@ pub struct RegistrySkillVersionPayload {
     risk: Option<JsonValue>,
     runx: Option<JsonObject>,
     tags: Option<Vec<String>>,
+    harness_cases: Option<Vec<super::super::RegistryHarnessCaseMetadata>>,
     publisher: Option<RegistryPublisher>,
     created_at: Option<String>,
     updated_at: Option<String>,
-}
-
-struct BindingArtifact {
-    digest: Option<String>,
-    runner_names: Vec<String>,
-    manifest: Option<SkillRunnerManifest>,
-}
-
-fn build_binding_artifact(
-    skill: &ValidatedSkill,
-    profile_document: Option<&str>,
-) -> Result<BindingArtifact, LocalRegistryError> {
-    let Some(profile_document) = profile_document else {
-        return Ok(BindingArtifact {
-            digest: None,
-            runner_names: Vec::new(),
-            manifest: None,
-        });
-    };
-    let manifest = validate_runner_manifest(parse_runner_manifest_yaml(profile_document)?)?;
-    if let Some(manifest_skill) = &manifest.skill {
-        if manifest_skill != &skill.name {
-            return Err(LocalRegistryError::InvalidVersionPayload {
-                field: "profile_document.skill".to_owned(),
-                message: format!(
-                    "runner manifest skill '{manifest_skill}' does not match skill '{}'",
-                    skill.name
-                ),
-            });
-        }
-    }
-    Ok(BindingArtifact {
-        digest: Some(sha256_hex(profile_document.as_bytes())),
-        runner_names: manifest.runners.keys().cloned().collect(),
-        manifest: Some(manifest),
-    })
 }
 
 pub(super) fn default_registry_version_seed(
@@ -491,71 +408,4 @@ pub(super) fn derive_registry_trust_tier(
     trust_tier: Option<&TrustTier>,
 ) -> TrustTier {
     trust_tier.cloned().unwrap_or(TrustTier::Community)
-}
-
-pub(super) fn extract_runner_runtime(manifest: Option<&SkillRunnerManifest>) -> Option<JsonValue> {
-    let manifest = manifest?;
-    let runners = manifest
-        .runners
-        .values()
-        .filter(|runner| runner.runtime.is_some())
-        .map(|runner| JsonValue::String(runner.name.clone()))
-        .collect::<Vec<_>>();
-    if runners.is_empty() {
-        None
-    } else {
-        Some(JsonValue::Object(
-            [("runners".to_owned(), JsonValue::Array(runners))].into(),
-        ))
-    }
-}
-
-pub(super) fn extract_runner_tags(manifest: Option<&SkillRunnerManifest>) -> Vec<String> {
-    let Some(manifest) = manifest else {
-        return Vec::new();
-    };
-    unique(
-        manifest
-            .runners
-            .values()
-            .flat_map(|runner| record_array_field_from_object(runner.runx.as_ref(), "tags"))
-            .collect(),
-    )
-}
-
-pub(super) fn extract_tags(skill: &ValidatedSkill) -> Vec<String> {
-    unique(record_array_field_from_object(skill.runx.as_ref(), "tags"))
-}
-
-pub(super) fn record_array_field_from_object(
-    value: Option<&JsonObject>,
-    field: &str,
-) -> Vec<String> {
-    let Some(record) = value else {
-        return Vec::new();
-    };
-    let Some(JsonValue::Array(values)) = record.get(field) else {
-        return Vec::new();
-    };
-    values
-        .iter()
-        .filter_map(|value| match value {
-            JsonValue::String(value) if !value.is_empty() => Some(value.clone()),
-            _ => None,
-        })
-        .collect()
-}
-
-pub(super) fn record_field(value: Option<&JsonObject>, field: &str) -> Option<JsonValue> {
-    value.and_then(|record| record.get(field).cloned())
-}
-
-pub(super) fn unique(values: Vec<String>) -> Vec<String> {
-    let mut unique_values = Vec::new();
-    for value in values {
-        if !unique_values.contains(&value) {
-            unique_values.push(value);
-        }
-    }
-    unique_values
 }

@@ -24,5 +24,5 @@ pub(super) fn run_spend_ledger_key(
     )
 }
 
-// rust-style-allow: long-function because period spend reservation enforces the
+// Function rationale: period spend reservation enforces the
 // per-period cap through a single sequence of cap, ledger, and tally checks

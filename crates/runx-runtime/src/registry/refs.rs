@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::http::RuntimeHttpTransport;
+
 use super::http::{RegistryClient, RegistryClientError};
 use super::types::ResolvedRegistryRef;
 
@@ -44,7 +46,7 @@ pub fn parse_registry_ref(value: &str) -> ParsedRegistryRef {
     }
 }
 
-pub fn resolve_remote_registry_ref<T: super::http::Transport>(
+pub fn resolve_remote_registry_ref<T: RuntimeHttpTransport>(
     client: &RegistryClient<T>,
     registry_ref: &str,
     version_override: Option<&str>,

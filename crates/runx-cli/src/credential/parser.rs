@@ -25,6 +25,7 @@ fn parse_set(args: &[OsString]) -> Result<CredentialPlan, String> {
     let provider = positional(args, 2, "runx credential set requires <provider>")?;
     let mut profile = None;
     let mut auth_mode = "api_key".to_owned();
+    let mut audience = None;
     let mut from_stdin = false;
     let mut json = false;
     let mut index = 3;
@@ -39,6 +40,7 @@ fn parse_set(args: &[OsString]) -> Result<CredentialPlan, String> {
         match flag {
             "--profile" => profile = Some(flag_value(args, &mut index, flag, inline)?),
             "--auth-mode" => auth_mode = flag_value(args, &mut index, flag, inline)?,
+            "--audience" => audience = Some(flag_value(args, &mut index, flag, inline)?),
             "--from-stdin" => {
                 reject_inline(flag, inline)?;
                 from_stdin = true;
@@ -59,6 +61,7 @@ fn parse_set(args: &[OsString]) -> Result<CredentialPlan, String> {
             profile: profile.unwrap_or_else(|| provider.clone()),
             provider,
             auth_mode,
+            audience,
             from_stdin,
         },
         json,

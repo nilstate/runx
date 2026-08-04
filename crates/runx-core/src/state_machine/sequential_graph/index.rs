@@ -8,6 +8,7 @@ use super::super::types::{
 pub struct SequentialGraphStepIndex {
     positions: BTreeMap<String, usize>,
     context_positions: Vec<Vec<ContextSourcePosition>>,
+    fanout_positions: BTreeMap<String, Vec<usize>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,9 +39,19 @@ impl SequentialGraphStepIndex {
                     .collect()
             })
             .collect();
+        let mut fanout_positions: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for (index, step) in steps.iter().enumerate() {
+            if let Some(group_id) = step.fanout_group.as_deref().filter(|id| !id.is_empty()) {
+                fanout_positions
+                    .entry(group_id.to_owned())
+                    .or_default()
+                    .push(index);
+            }
+        }
         Self {
             positions,
             context_positions,
+            fanout_positions,
         }
     }
 
@@ -53,6 +64,10 @@ impl SequentialGraphStepIndex {
             .get(step_id)
             .and_then(|index| state.steps.get(*index))
             .filter(|step| step.step_id == step_id)
+    }
+
+    pub(super) fn position(&self, step_id: &str) -> Option<usize> {
+        self.positions.get(step_id).copied()
     }
 
     pub(super) fn state_at<'a>(
@@ -75,6 +90,11 @@ impl SequentialGraphStepIndex {
         self.context_positions
             .get(definition_index)
             .map(Vec::as_slice)
+    }
+
+    #[must_use]
+    pub fn fanout_positions(&self, group_id: &str) -> Option<&[usize]> {
+        self.fanout_positions.get(group_id).map(Vec::as_slice)
     }
 }
 

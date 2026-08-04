@@ -4,7 +4,7 @@ use crate::cli_args::{os_arg, split_flag};
 
 use super::{ExportPlan, Target};
 
-// rust-style-allow: long-function because this parser mirrors the flat native
+// Function rationale: this parser mirrors the flat native
 // router grammar and keeps all export flags in one auditable pass.
 pub fn parse_export_plan(args: &[OsString]) -> Result<ExportPlan, String> {
     let target = match os_arg(args, 1, "export")? {

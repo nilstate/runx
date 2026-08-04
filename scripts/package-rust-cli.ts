@@ -11,6 +11,7 @@ const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 interface Options {
   readonly check: boolean;
   readonly binary: string;
+  readonly worker: string;
   readonly outDir: string;
   readonly platform: string | null;
   readonly signatureManifest: string | null;
@@ -21,15 +22,10 @@ interface PlatformSpec {
   readonly os: "darwin" | "linux" | "win32";
   readonly cpu: "arm64" | "x64";
   readonly binaryName: "runx" | "runx.exe";
+  readonly workerName: "runx-js-worker" | "runx-js-worker.exe";
 }
 
-const supportedPlatforms: readonly PlatformSpec[] = [
-  { key: "darwin-arm64", os: "darwin", cpu: "arm64", binaryName: "runx" },
-  { key: "darwin-x64", os: "darwin", cpu: "x64", binaryName: "runx" },
-  { key: "linux-arm64", os: "linux", cpu: "arm64", binaryName: "runx" },
-  { key: "linux-x64", os: "linux", cpu: "x64", binaryName: "runx" },
-  { key: "win32-x64", os: "win32", cpu: "x64", binaryName: "runx.exe" },
-];
+const supportedPlatforms = loadSupportedPlatforms();
 
 const options = parseArgs(process.argv.slice(2));
 const packageRoot = path.join(workspaceRoot, "packages", "cli");
@@ -47,6 +43,7 @@ const manifest = JSON.parse(readFileSync(path.join(packageRoot, "package.json"),
 const platform = platformSpec(options.platform ?? platformKey(process.platform, process.arch));
 const nativePackage = nativePackageName(manifest.name, platform.key);
 const binaryPath = resolveCandidatePath(options.binary);
+const workerPath = resolveCandidatePath(options.worker);
 const outDir = path.resolve(workspaceRoot, options.outDir);
 const stagingRoot = options.check
   ? path.join(os.tmpdir(), `runx-rust-cli-package-${process.pid}`)
@@ -66,11 +63,17 @@ mkdirSync(path.join(nativeRoot, "bin"), { recursive: true });
 mkdirSync(path.join(nativeRoot, "native"), { recursive: true });
 
 assertExecutable(binaryPath);
+assertExecutable(workerPath);
 const stagedBinaryName = platform.binaryName;
 const stagedBinary = path.join(nativeRoot, "bin", stagedBinaryName);
 copyFileSync(binaryPath, stagedBinary);
 if (platform.os !== "win32") {
   chmodSync(stagedBinary, 0o755);
+}
+const stagedWorker = path.join(nativeRoot, "bin", platform.workerName);
+copyFileSync(workerPath, stagedWorker);
+if (platform.os !== "win32") {
+  chmodSync(stagedWorker, 0o755);
 }
 copyFileSync(path.join(packageRoot, "LICENSE"), path.join(selectorRoot, "LICENSE"));
 copyFileSync(path.join(packageRoot, "LICENSE"), path.join(nativeRoot, "LICENSE"));
@@ -82,6 +85,7 @@ copyFileSync(
 );
 
 const binaryDigest = sha256(readFileSync(stagedBinary));
+const workerDigest = sha256(readFileSync(stagedWorker));
 const signatureManifest = options.signatureManifest
   ? readSignatureManifest(path.resolve(workspaceRoot, options.signatureManifest), {
     packageName: nativePackage,
@@ -89,6 +93,8 @@ const signatureManifest = options.signatureManifest
     platform: platform.key,
     binary: `bin/${stagedBinaryName}`,
     sha256: binaryDigest,
+    worker: `bin/${platform.workerName}`,
+    workerSha256: workerDigest,
   })
   : null;
 writeFileSync(
@@ -100,6 +106,8 @@ writeFileSync(
     platform: platform.key,
     binary: `bin/${stagedBinaryName}`,
     sha256: binaryDigest,
+    worker: `bin/${platform.workerName}`,
+    worker_sha256: workerDigest,
   }, null, 2)}\n`,
 );
 if (signatureManifest) {
@@ -159,6 +167,7 @@ writeFileSync(
         selectorPackage: manifest.name,
         platform: platform.key,
         binary: `bin/${stagedBinaryName}`,
+        worker: `bin/${platform.workerName}`,
       },
     },
     files: [
@@ -183,7 +192,7 @@ for (const forbidden of ["bin/runx.js", "dist/index.js", "src/index.ts", "tools/
 }
 
 const nativeFiles = packFiles(nativeRoot);
-for (const required of [`bin/${stagedBinaryName}`, "native/checksums.json", ...(signatureManifest ? ["native/signatures.json"] : []), "package.json", "LICENSE"]) {
+for (const required of [`bin/${stagedBinaryName}`, `bin/${platform.workerName}`, "native/checksums.json", ...(signatureManifest ? ["native/signatures.json"] : []), "package.json", "LICENSE"]) {
   if (!nativeFiles.has(required)) {
     throw new Error(`native CLI package is missing ${required}`);
   }
@@ -207,6 +216,8 @@ console.log(JSON.stringify({
   platform: platform.key,
   binary: path.relative(workspaceRoot, binaryPath),
   sha256: binaryDigest,
+  worker: path.relative(workspaceRoot, workerPath),
+  worker_sha256: workerDigest,
   signature_manifest: signatureManifest ? "native/signatures.json" : null,
   selector_artifact_dir: options.check ? null : path.relative(workspaceRoot, selectorRoot),
   native_artifact_dir: options.check ? null : path.relative(workspaceRoot, nativeRoot),
@@ -215,6 +226,7 @@ console.log(JSON.stringify({
 function parseArgs(argv: readonly string[]): Options {
   let check = false;
   let binary = "target/debug/runx";
+  let worker = "target/debug/runx-js-worker";
   let outDir = ".runx/rust-cli-artifacts";
   let platform: string | null = null;
   let signatureManifest: string | null = null;
@@ -227,6 +239,11 @@ function parseArgs(argv: readonly string[]): Options {
     }
     if (arg === "--binary") {
       binary = argv[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+    if (arg === "--worker") {
+      worker = argv[index + 1] ?? "";
       index += 1;
       continue;
     }
@@ -255,6 +272,9 @@ function parseArgs(argv: readonly string[]): Options {
   if (!binary) {
     throw new Error("--binary requires a path");
   }
+  if (!worker) {
+    throw new Error("--worker requires a path");
+  }
   if (!outDir) {
     throw new Error("--out-dir requires a path");
   }
@@ -265,7 +285,7 @@ function parseArgs(argv: readonly string[]): Options {
     throw new Error("--platform requires a value");
   }
 
-  return { check, binary, outDir, platform, signatureManifest };
+  return { check, binary, worker, outDir, platform, signatureManifest };
 }
 
 function assertExecutable(filePath: string): void {
@@ -284,7 +304,12 @@ function resolveCandidatePath(input: string): string {
     return requested;
   }
   const normalized = input.split(path.sep).join("/");
-  if (normalized === "target/debug/runx" || normalized === "target/debug/runx.exe") {
+  if ([
+    "target/debug/runx",
+    "target/debug/runx.exe",
+    "target/debug/runx-js-worker",
+    "target/debug/runx-js-worker.exe",
+  ].includes(normalized)) {
     const cargoWorkspaceCandidate = path.join(workspaceRoot, "crates", normalized);
     if (existsPath(cargoWorkspaceCandidate)) {
       return cargoWorkspaceCandidate;
@@ -303,12 +328,59 @@ function existsPath(filePath: string): boolean {
 }
 
 function platformKey(platform: NodeJS.Platform, arch: string): string {
-  if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
-  if (platform === "darwin" && arch === "x64") return "darwin-x64";
-  if (platform === "linux" && arch === "arm64") return "linux-arm64";
-  if (platform === "linux" && arch === "x64") return "linux-x64";
-  if (platform === "win32" && arch === "x64") return "win32-x64";
+  const match = supportedPlatforms.find((entry) => entry.os === platform && entry.cpu === arch);
+  if (match) return match.key;
   throw new Error(`unsupported Rust CLI package platform: ${platform}/${arch}`);
+}
+
+function loadSupportedPlatforms(): readonly PlatformSpec[] {
+  const topology = JSON.parse(
+    readFileSync(path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json"), "utf8"),
+  ) as {
+    readonly schema?: string;
+    readonly nativePackages?: Record<string, {
+      readonly os?: PlatformSpec["os"];
+      readonly cpu?: PlatformSpec["cpu"];
+      readonly binary?: string;
+      readonly worker?: string;
+    }>;
+  };
+  if (topology.schema !== "runx.rust_cli_selector_topology.v1" || !topology.nativePackages) {
+    throw new Error("Rust CLI selector topology is missing or unsupported");
+  }
+  return Object.entries(topology.nativePackages).map(([key, entry]) => {
+    if (!isPlatformOs(entry.os) || !isPlatformCpu(entry.cpu) || !entry.binary || !entry.worker) {
+      throw new Error(`Rust CLI selector topology entry ${key} is incomplete`);
+    }
+    const binaryName = path.posix.basename(entry.binary);
+    const workerName = path.posix.basename(entry.worker);
+    if (!isBinaryName(binaryName) || !isWorkerName(workerName)) {
+      throw new Error(`Rust CLI selector topology entry ${key} has invalid executable paths`);
+    }
+    return {
+      key,
+      os: entry.os,
+      cpu: entry.cpu,
+      binaryName,
+      workerName,
+    };
+  });
+}
+
+function isPlatformOs(value: unknown): value is PlatformSpec["os"] {
+  return value === "darwin" || value === "linux" || value === "win32";
+}
+
+function isPlatformCpu(value: unknown): value is PlatformSpec["cpu"] {
+  return value === "arm64" || value === "x64";
+}
+
+function isBinaryName(value: string): value is PlatformSpec["binaryName"] {
+  return value === "runx" || value === "runx.exe";
+}
+
+function isWorkerName(value: string): value is PlatformSpec["workerName"] {
+  return value === "runx-js-worker" || value === "runx-js-worker.exe";
 }
 
 function platformSpec(key: string): PlatformSpec {
@@ -355,6 +427,8 @@ function readSignatureManifest(
     readonly platform: string;
     readonly binary: string;
     readonly sha256: string;
+    readonly worker: string;
+    readonly workerSha256: string;
   },
 ): unknown {
   const manifest = JSON.parse(readFileSync(filePath, "utf8")) as {
@@ -364,6 +438,8 @@ function readSignatureManifest(
     readonly platform?: string;
     readonly binary?: string;
     readonly sha256?: string;
+    readonly worker?: string;
+    readonly worker_sha256?: string;
     readonly signatures?: readonly unknown[];
   };
   if (manifest.schema !== "runx.rust_cli_artifact_signatures.v1") {
@@ -383,6 +459,12 @@ function readSignatureManifest(
   }
   if (manifest.sha256 !== expected.sha256) {
     throw new Error("signature manifest sha256 does not match the staged binary");
+  }
+  if (manifest.worker !== expected.worker) {
+    throw new Error(`signature manifest worker ${manifest.worker ?? "<missing>"} does not match ${expected.worker}`);
+  }
+  if (manifest.worker_sha256 !== expected.workerSha256) {
+    throw new Error("signature manifest worker_sha256 does not match the staged worker");
   }
   if (!Array.isArray(manifest.signatures) || manifest.signatures.length === 0) {
     throw new Error("signature manifest must include at least one signature entry");
@@ -409,5 +491,5 @@ function sha256(bytes: Buffer): string {
 }
 
 function printUsage(): void {
-  console.log("Usage: pnpm exec tsx scripts/package-rust-cli.ts [--check] [--binary target/debug/runx] [--out-dir .runx/rust-cli-artifacts] [--platform darwin-arm64|darwin-x64|linux-arm64|linux-x64|win32-x64] [--signature-manifest native/signatures.json]");
+  console.log("Usage: pnpm exec tsx scripts/package-rust-cli.ts [--check] [--binary target/debug/runx] [--worker target/debug/runx-js-worker] [--out-dir .runx/rust-cli-artifacts] [--platform darwin-arm64|darwin-x64|linux-arm64|linux-x64|win32-x64] [--signature-manifest native/signatures.json]");
 }

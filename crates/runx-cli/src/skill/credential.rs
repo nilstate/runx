@@ -36,6 +36,9 @@ pub(super) fn inspect_context(context: &SkillCredentialContext) -> JsonValue {
             output.insert("profile".to_owned(), JsonValue::String(profile.clone()));
         }
         if let Some(descriptor) = resolved.descriptor.as_ref() {
+            if let Some(audience) = descriptor.audience.as_ref() {
+                output.insert("audience".to_owned(), JsonValue::String(audience.clone()));
+            }
             output.insert(
                 "auth_mode".to_owned(),
                 JsonValue::String(descriptor.auth_mode.clone()),

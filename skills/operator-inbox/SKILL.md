@@ -16,6 +16,14 @@ status, dispositions, replay suppression, reopen rules, and scan coverage. Every
 read and write is composed through `data-store`; the skill does not call Slack,
 SQLite, Postgres, or another provider directly.
 
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `data-store#append_event`
+- `data-store#list_stream_heads`
+- `data-store#read_events`
+
 ## What this skill does
 
 Use `local://runx/operator-inbox/default` unless the operator selects another
@@ -107,8 +115,10 @@ a newer external reply in the same thread appends a reopened `open` snapshot.
 
 ## Inputs
 
-All runners require `data_source_ref`. Write runners also take the target id,
-`expected_version`, and `observed_at`, plus exactly the normalized payload for
-their operation: `scan` and `messages`, `message` and `triage`, `disposition`,
-or an imported `action`. Reads take `action_id` or `query_digest`; list runners
-take bounded `limit` and optional cursor or filter fields.
+All runners require `data_source_ref`. Write runners take `expected_version`
+and `observed_at`, plus exactly the normalized payload for their operation:
+`scan` and `messages`, `message` and `triage`, `disposition`, or an imported
+`action`. Action writes derive the stream id from the normalized thread
+locator; callers never supply a second, drift-prone identity. Reads take
+`action_id` or `query_digest`; list runners take bounded `limit` and optional
+cursor or filter fields.

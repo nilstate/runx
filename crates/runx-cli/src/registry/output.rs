@@ -1,7 +1,7 @@
 use runx_runtime::registry::{InstallStatus, RegistrySkillResolution, TrustTier};
 
-use super::remote_publish::HostedSkillPublishResult;
 use super::{RegistryCliError, RegistryCliOutput, internal_error};
+use runx_runtime::registry::HostedSkillPublishResult;
 
 #[derive(serde::Serialize)]
 pub(super) struct RegistryEnvelope<T> {
@@ -32,6 +32,9 @@ pub(super) enum RegistryPayload {
         r#ref: String,
         install: Box<runx_runtime::registry::InstallLocalSkillResult>,
         receipt_metadata: runx_contracts::JsonObject,
+    },
+    Package {
+        package: Box<runx_runtime::registry::RegistryPublishPackageParts>,
     },
     Publish {
         publish: PublishPayload,

@@ -13,8 +13,9 @@ import {
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixtureRoot = path.join(workspaceRoot, "fixtures", "contracts");
+const sdkFixtureRoot = path.join(workspaceRoot, "fixtures", "sdk-rust");
 const actAssignmentRoot = path.join(fixtureRoot, "act-assignment");
-const asterControlRoot = path.join(fixtureRoot, "aster-control");
+const governanceControlRoot = path.join(fixtureRoot, "governance-control");
 const executionRoot = path.join(fixtureRoot, "execution");
 
 interface ContractFixture {
@@ -66,9 +67,9 @@ type ExecutionFixtureKind =
   | "outcome_state"
   | "receipt_outcome"
   | "receipt_surface_ref";
-type AsterControlFixtureKind = "aster_control_set";
-type ContractFixtureKind = HostFixtureKind | ExecutionFixtureKind | AsterControlFixtureKind;
-type ContractScope = "act-assignment" | "aster-control" | "execution" | "host-protocol";
+type GovernanceControlFixtureKind = "governance_control_set";
+type ContractFixtureKind = HostFixtureKind | ExecutionFixtureKind | GovernanceControlFixtureKind;
+type ContractScope = "act-assignment" | "governance-control" | "execution" | "host-protocol";
 
 const selectedScope = scopeArg();
 const check = process.argv.includes("--check");
@@ -76,7 +77,7 @@ const check = process.argv.includes("--check");
 if (
   selectedScope !== undefined
   && selectedScope !== "act-assignment"
-  && selectedScope !== "aster-control"
+  && selectedScope !== "governance-control"
   && selectedScope !== "execution"
   && selectedScope !== "host-protocol"
 ) {
@@ -86,14 +87,21 @@ if (
 if (selectedScope === undefined || selectedScope === "act-assignment") {
   await writeFixtures(buildActAssignmentFixtures(), actAssignmentRoot);
 }
-if (selectedScope === undefined || selectedScope === "aster-control") {
-  await writeFixtures(buildAsterControlFixtures(), asterControlRoot);
+if (selectedScope === undefined || selectedScope === "governance-control") {
+  await writeFixtures(buildGovernanceControlFixtures(), governanceControlRoot);
 }
 if (selectedScope === undefined || selectedScope === "execution") {
   await writeFixtures(buildExecutionFixtures(), executionRoot);
 }
 if (selectedScope === undefined || selectedScope === "host-protocol") {
-  await writeFixtures(buildHostProtocolFixtures(), path.join(fixtureRoot, "host-protocol"));
+  const fixtures = buildHostProtocolFixtures();
+  await writeFixtures(fixtures, path.join(fixtureRoot, "host-protocol"));
+  await writeFixtures(
+    fixtures.filter(({ name }) =>
+      ["inspect-host-state-needs-agent", "result-host-run-completed"].includes(name),
+    ),
+    path.join(sdkFixtureRoot, "host-protocol"),
+  );
 }
 
 async function writeFixtures(fixtures: readonly ContractFixture[], directory: string): Promise<void> {
@@ -418,8 +426,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function buildAsterControlFixtures(): readonly ContractFixture[] {
-  const targetRef = reference("target", "runx:target:aster-site");
+function buildGovernanceControlFixtures(): readonly ContractFixture[] {
+  const targetRef = reference("target", "runx:target:public-site");
   const opportunityRef = reference("opportunity", "runx:opportunity:docs-gap");
   const selectionCycleRef = reference("selection_cycle", "runx:selection_cycle:cycle_1");
   const selectionRef = reference("selection", "runx:selection:sel_1");
@@ -442,9 +450,9 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
 
   return [{
     name: "public-feed-proof",
-    scope: "aster-control",
-    description: "Aster control fixture covering target, opportunity, selection, reflection, and feed-entry proof bindings.",
-    fixture_kind: "aster_control_set",
+    scope: "governance-control",
+    description: "Governance control fixture covering target, opportunity, selection, reflection, and feed-entry proof bindings.",
+    fixture_kind: "governance_control_set",
     expected: {
       feed_entry: {
         act_refs: [actRef],
@@ -461,7 +469,7 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
         selection_ref: selectionRef,
         summary: "The public entry cites a sealed receipt, contained act, decision, verification, and redaction policy.",
         target_ref: targetRef,
-        title: "Aster published a proof-bound entry",
+        title: "Runx published a proof-bound entry",
         verification_refs: [verificationRef],
       },
       opportunity: {
@@ -527,7 +535,7 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
       skill_binding: {
         active: true,
         allowed_act_forms: ["observation"],
-        authority_refs: [reference("grant", "runx:grant:aster_publication")],
+        authority_refs: [reference("grant", "runx:grant:public_evidence")],
         binding_id: "binding_1",
         created_at: "2026-05-18T00:00:00Z",
         harness_template_ref: reference("harness", "runx:harness_template:public_feed"),
@@ -538,7 +546,7 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
         updated_at: "2026-05-18T00:01:00Z",
       },
       target: {
-        authority_refs: [reference("grant", "runx:grant:aster_publication")],
+        authority_refs: [reference("grant", "runx:grant:public_evidence")],
         cooldown: {
           state: "none",
         },
@@ -548,7 +556,7 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
         schema: "runx.target.v1",
         target_id: "target_1",
         target_ref: targetRef,
-        title: "Aster public proof surface",
+        title: "Runx public proof surface",
         updated_at: "2026-05-18T00:01:00Z",
         verification_recipe_refs: [reference("verification", "runx:verification_recipe:public_feed")],
       },
@@ -573,11 +581,11 @@ function buildAsterControlFixtures(): readonly ContractFixture[] {
         opportunity_ref: opportunityRef,
         proof_strength: "strong",
         rationale: "The entry improves public proof without broadening authority.",
-        rubric_refs: [reference("external_url", "https://aster.runx.ai/thesis")],
+        rubric_refs: [reference("external_url", "https://runx.ai/docs")],
         schema: "runx.thesis_assessment.v1",
         score: 91,
         target_ref: targetRef,
-        thesis_ref: reference("external_url", "https://aster.runx.ai/thesis"),
+        thesis_ref: reference("external_url", "https://runx.ai/docs"),
       },
     },
   }];
@@ -716,7 +724,7 @@ function hostResultFixtures(): readonly ContractFixture[] {
       status: "denied",
       skillName: "review-receipt",
       receiptId: "rx_denied",
-      reasons: ["sandbox denied"],
+      reasons: ["authority denied"],
       events: [event("admitted")],
     }),
   ];
@@ -802,7 +810,7 @@ function approvalResolutionRequest(): Readonly<Record<string, unknown>> {
     gate: {
       id: "workspace-write",
       reason: "Allow workspace write",
-      type: "sandbox",
+      type: "mutation",
       summary: {
         path: "docs/guide.md",
       },
@@ -825,7 +833,12 @@ function agentActResolutionRequest(): Readonly<Record<string, unknown>> {
         historical_context: [],
         inputs: {},
         instructions: "Summarize receipt",
+        instructions_sha256: sha256Prefixed("Summarize receipt"),
         provenance: [],
+        requirements: {
+          declaration: {},
+          execution_boundary: { kind: "remote_provider" },
+        },
         run_id: "run_1",
         skill: "review-receipt",
         step_id: "step_1",
@@ -856,9 +869,9 @@ function terminalState(status: string, verificationStatus: string): Readonly<Rec
     runnerProvider: "runx",
     approval: {
       gateId: "workspace-write",
-      gateType: "sandbox",
+      gateType: "mutation",
       decision: status === "denied" ? "denied" : "approved",
-      reason: status === "denied" ? "sandbox denied" : undefined,
+      reason: status === "denied" ? "authority denied" : undefined,
     },
     lineage: lineage(),
   };

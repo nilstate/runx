@@ -1,8 +1,7 @@
-// rust-style-allow: large-file because native list discovery intentionally keeps
+// Module rationale: native list discovery intentionally keeps
 // tool, skill, graph, packet, and overlay projection in one audited cutover
 // surface until the TypeScript list command is fully retired.
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 pub use runx_contracts::{
@@ -12,7 +11,7 @@ pub use runx_contracts::{
 use serde::Deserialize;
 
 use crate::RuntimeError;
-use crate::filesystem::{find_files_named, read_dir_sorted, read_to_string};
+use crate::filesystem::{read_dir_sorted, read_to_string};
 use crate::path_util::{count_yaml_files, display_path, lexical_normalize, project_path};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,8 +31,15 @@ pub fn default_list_options(root: PathBuf) -> RunxListOptions {
 pub fn list_authoring_primitives(
     options: &RunxListOptions,
 ) -> Result<RunxListReport, RuntimeError> {
+    list_authoring_primitives_with_effects(options, &crate::RuntimeEffectRegistry::default())
+}
+
+pub fn list_authoring_primitives_with_effects(
+    options: &RunxListOptions,
+    effects: &crate::RuntimeEffectRegistry,
+) -> Result<RunxListReport, RuntimeError> {
     let root = lexical_normalize(&options.root);
-    let mut items = discover_list_items(&root, options.requested_kind)?;
+    let mut items = discover_list_items(&root, options.requested_kind, effects)?;
     sort_list_items(&mut items);
     Ok(RunxListReport {
         schema: RunxListSchema::V1,
@@ -46,13 +52,14 @@ pub fn list_authoring_primitives(
 fn discover_list_items(
     root: &Path,
     requested_kind: RunxListRequestedKind,
+    effects: &crate::RuntimeEffectRegistry,
 ) -> Result<Vec<RunxListItem>, RuntimeError> {
     let mut items = Vec::new();
     if matches!(
         requested_kind,
         RunxListRequestedKind::All | RunxListRequestedKind::Tools
     ) {
-        items.extend(discover_tool_list_items(root)?);
+        items.extend(discover_tool_list_items(root, effects)?);
     }
     if matches!(
         requested_kind,
@@ -86,9 +93,16 @@ fn discover_list_items(
     Ok(items)
 }
 
-fn discover_tool_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeError> {
+fn discover_tool_list_items(
+    root: &Path,
+    effects: &crate::RuntimeEffectRegistry,
+) -> Result<Vec<RunxListItem>, RuntimeError> {
     let tools_root = root.join("tools");
-    let mut items = Vec::new();
+    let mut items = crate::tool_catalogs::native::list_items(effects);
+    let native_names = items
+        .iter()
+        .map(|item| item.name.clone())
+        .collect::<BTreeSet<_>>();
     for namespace_entry in read_dir_sorted(&tools_root)? {
         if !namespace_entry.is_dir {
             continue;
@@ -103,6 +117,7 @@ fn discover_tool_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeErr
             }
             let relative_path = project_path(root, &manifest_path);
             match read_validated_tool_manifest(&manifest_path) {
+                Ok(tool) if native_names.contains(&tool.name) => {}
                 Ok(tool) => items.push(RunxListItem {
                     kind: RunxListItemKind::Tool,
                     name: tool.name,
@@ -134,9 +149,7 @@ fn discover_tool_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeErr
 }
 
 fn read_validated_tool_manifest(manifest_path: &Path) -> Result<runx_parser::ValidatedTool, ()> {
-    let source = fs::read_to_string(manifest_path).map_err(|_| ())?;
-    let raw = runx_parser::parse_tool_manifest_json(&source).map_err(|_| ())?;
-    runx_parser::validate_tool_manifest(raw).map_err(|_| ())
+    crate::tool_catalogs::manifest::read(manifest_path).map_err(|_| ())
 }
 
 fn tool_emits(artifacts: &runx_parser::SkillArtifactContract) -> Vec<RunxListEmit> {
@@ -165,54 +178,14 @@ fn tool_emits(artifacts: &runx_parser::SkillArtifactContract) -> Vec<RunxListEmi
 
 fn discover_skill_and_graph_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeError> {
     let mut items = Vec::new();
-    for profile_path in discover_skill_profile_paths(root)? {
-        let skill_dir = profile_path.parent().map_or(root, |parent| parent);
-        let fallback_name = fallback_skill_name(root, skill_dir);
-        let relative_path = project_path(root, &profile_path);
-        match read_validated_runner_manifest(&profile_path) {
-            Ok(manifest) => {
-                let graph_steps = manifest
-                    .runners
-                    .values()
-                    .filter_map(|runner| {
-                        runner
-                            .source
-                            .graph
-                            .as_ref()
-                            .map(|graph| graph.steps.len() as u64)
-                    })
-                    .collect::<Vec<_>>();
-                let is_graph = !graph_steps.is_empty();
-                let scopes = skill_scopes(&manifest);
-                let emits = skill_emits(&manifest);
-                items.push(RunxListItem {
-                    kind: if is_graph {
-                        RunxListItemKind::Graph
-                    } else {
-                        RunxListItemKind::Skill
-                    },
-                    name: manifest.skill.unwrap_or(fallback_name),
-                    source: RunxListSource::Local,
-                    path: relative_path,
-                    status: RunxListStatus::Ok,
-                    diagnostics: None,
-                    scopes,
-                    emits,
-                    fixtures: Some(count_yaml_files(&skill_dir.join("fixtures"))?),
-                    harness_cases: Some(
-                        manifest
-                            .harness
-                            .as_ref()
-                            .map_or(0, |harness| harness.cases.len() as u64),
-                    ),
-                    steps: is_graph.then(|| graph_steps.iter().sum()),
-                    wraps: None,
-                });
-            }
-            Err(()) => items.push(invalid_item(
+    for skill_dir in crate::skill_package::discover_workspace_skill_package_dirs(root)? {
+        let fallback_name = fallback_skill_name(root, &skill_dir);
+        match crate::load_validated_skill_package(&skill_dir) {
+            Ok(loaded) => items.extend(skill_list_items(root, &fallback_name, &loaded)),
+            Err(_) => items.push(invalid_item(
                 RunxListItemKind::Skill,
                 fallback_name,
-                relative_path,
+                project_path(root, &skill_dir.join("SKILL.md")),
                 "runx.skill.profile.invalid",
             )),
         }
@@ -220,27 +193,65 @@ fn discover_skill_and_graph_list_items(root: &Path) -> Result<Vec<RunxListItem>,
     Ok(items)
 }
 
-fn skill_scopes(manifest: &runx_parser::SkillRunnerManifest) -> Option<Vec<String>> {
-    let mut scopes = BTreeSet::new();
-    for runner in manifest.runners.values() {
-        if let Some(values) = runner
-            .raw
-            .get("scopes")
-            .and_then(runx_contracts::JsonValue::as_array)
-        {
-            scopes.extend(
-                values
-                    .iter()
-                    .filter_map(runx_contracts::JsonValue::as_str)
-                    .map(str::to_owned),
-            );
-        }
-        if let Some(graph) = &runner.source.graph {
-            for step in &graph.steps {
-                scopes.extend(step.scopes.iter().cloned());
+fn skill_list_items(
+    root: &Path,
+    fallback_name: &str,
+    loaded: &crate::skill_package::LoadedSkillPackage,
+) -> Vec<RunxListItem> {
+    loaded
+        .package
+        .profiles
+        .iter()
+        .map(|(profile_relative, manifest)| {
+            let profile_path = loaded.package_root.join(profile_relative);
+            let graph_steps = manifest
+                .runners
+                .values()
+                .filter_map(|runner| {
+                    runner
+                        .source
+                        .graph
+                        .as_ref()
+                        .map(|graph| graph.steps.len() as u64)
+                })
+                .collect::<Vec<_>>();
+            let is_graph = !graph_steps.is_empty();
+            RunxListItem {
+                kind: if is_graph {
+                    RunxListItemKind::Graph
+                } else {
+                    RunxListItemKind::Skill
+                },
+                name: manifest
+                    .skill
+                    .clone()
+                    .unwrap_or_else(|| fallback_name.to_owned()),
+                source: RunxListSource::Local,
+                path: project_path(root, &profile_path),
+                status: RunxListStatus::Ok,
+                diagnostics: None,
+                scopes: skill_scopes(manifest),
+                emits: skill_emits(manifest),
+                fixtures: Some(loaded.package.harness_fixtures.len() as u64),
+                harness_cases: Some(
+                    manifest
+                        .harness
+                        .as_ref()
+                        .map_or(0, |harness| harness.cases.len() as u64),
+                ),
+                steps: is_graph.then(|| graph_steps.iter().sum()),
+                wraps: None,
             }
-        }
-    }
+        })
+        .collect()
+}
+
+fn skill_scopes(manifest: &runx_parser::SkillRunnerManifest) -> Option<Vec<String>> {
+    let scopes = manifest
+        .runners
+        .values()
+        .flat_map(runx_parser::SkillRunnerDefinition::declared_scopes)
+        .collect::<BTreeSet<_>>();
     (!scopes.is_empty()).then(|| scopes.into_iter().collect())
 }
 
@@ -257,7 +268,11 @@ fn skill_emits(manifest: &runx_parser::SkillRunnerManifest) -> Option<Vec<RunxLi
         if let Some(graph) = &runner.source.graph {
             for step in &graph.steps {
                 if let Some(artifacts) = step.artifacts.as_ref() {
-                    emits.extend(json_artifact_emits(artifacts));
+                    emits.extend(
+                        tool_emits(artifacts)
+                            .into_iter()
+                            .map(|emit| (emit.name, emit.packet)),
+                    );
                 }
             }
         }
@@ -270,47 +285,7 @@ fn skill_emits(manifest: &runx_parser::SkillRunnerManifest) -> Option<Vec<RunxLi
     })
 }
 
-fn json_artifact_emits(artifacts: &runx_contracts::JsonObject) -> Vec<(String, Option<String>)> {
-    if let Some(named) = artifacts
-        .get("named_emits")
-        .and_then(runx_contracts::JsonValue::as_object)
-    {
-        let packets = artifacts
-            .get("packets")
-            .and_then(runx_contracts::JsonValue::as_object);
-        return named
-            .keys()
-            .map(|name| {
-                let packet = packets
-                    .and_then(|packets| packets.get(name))
-                    .and_then(runx_contracts::JsonValue::as_str)
-                    .map(str::to_owned);
-                (name.clone(), packet)
-            })
-            .collect();
-    }
-    artifacts
-        .get("wrap_as")
-        .and_then(runx_contracts::JsonValue::as_str)
-        .map(|name| {
-            let packet = artifacts
-                .get("packet")
-                .and_then(runx_contracts::JsonValue::as_str)
-                .map(str::to_owned);
-            vec![(name.to_owned(), packet)]
-        })
-        .unwrap_or_default()
-}
-
-fn read_validated_runner_manifest(
-    profile_path: &Path,
-) -> Result<runx_parser::SkillRunnerManifest, ()> {
-    let source = fs::read_to_string(profile_path).map_err(|_| ())?;
-    let raw = runx_parser::parse_runner_manifest_yaml(&source).map_err(|_| ())?;
-    runx_parser::validate_runner_manifest(raw).map_err(|_| ())
-}
-
-// rust-style-allow: long-function because packet discovery keeps glob expansion,
+// Function rationale: packet discovery keeps glob expansion,
 // schema-id extraction, and duplicate-id diagnostics in one deterministic pass.
 fn discover_packet_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeError> {
     let package_json_path = root.join("package.json");
@@ -332,7 +307,7 @@ fn discover_packet_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeE
     };
 
     let mut items = Vec::new();
-    let mut seen = BTreeMap::<String, String>::new();
+    let mut catalog = crate::packet_schemas::PacketSchemaCatalog::default();
     for packet_glob in package_json
         .runx
         .as_ref()
@@ -351,8 +326,17 @@ fn discover_packet_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeE
         }
         for file_path in files {
             let relative_path = project_path(root, &file_path);
-            let source = match fs::read_to_string(&file_path) {
-                Ok(source) => source,
+            let schema = match crate::packet_schemas::read_packet_schema(&file_path) {
+                Ok(Some(schema)) => schema,
+                Ok(None) => {
+                    items.push(invalid_item(
+                        RunxListItemKind::Packet,
+                        relative_path.clone(),
+                        relative_path,
+                        "runx.packet.id.mismatch",
+                    ));
+                    continue;
+                }
                 Err(_) => {
                     items.push(invalid_item(
                         RunxListItemKind::Packet,
@@ -363,39 +347,16 @@ fn discover_packet_list_items(root: &Path) -> Result<Vec<RunxListItem>, RuntimeE
                     continue;
                 }
             };
-            let schema = match serde_json::from_str::<PacketSchema>(&source) {
-                Ok(schema) => schema,
-                _ => {
-                    items.push(invalid_item(
-                        RunxListItemKind::Packet,
-                        relative_path.clone(),
-                        relative_path,
-                        "runx.packet.schema.invalid",
-                    ));
-                    continue;
-                }
-            };
-            let Some(packet_id) = packet_id(&schema) else {
+            let packet_id = schema.schema.packet_id.clone();
+            if catalog.insert(schema).is_err() {
                 items.push(invalid_item(
                     RunxListItemKind::Packet,
-                    relative_path.clone(),
+                    packet_id,
                     relative_path,
-                    "runx.packet.id.mismatch",
+                    "runx.packet.id.collision",
                 ));
                 continue;
-            };
-            if let Some(existing_source) = seen.get(&packet_id) {
-                if existing_source != &source {
-                    items.push(invalid_item(
-                        RunxListItemKind::Packet,
-                        packet_id,
-                        relative_path,
-                        "runx.packet.id.collision",
-                    ));
-                    continue;
-                }
             }
-            seen.insert(packet_id.clone(), source);
             items.push(RunxListItem {
                 kind: RunxListItemKind::Packet,
                 name: packet_id,
@@ -483,22 +444,6 @@ struct PackageRunxConfig {
     packets: Vec<String>,
 }
 
-#[derive(Deserialize)]
-struct PacketSchema {
-    #[serde(rename = "x-runx-packet-id")]
-    packet_id: Option<String>,
-    #[serde(rename = "$id")]
-    schema_id: Option<String>,
-}
-
-fn packet_id(schema: &PacketSchema) -> Option<String> {
-    schema
-        .packet_id
-        .as_deref()
-        .or(schema.schema_id.as_deref())
-        .map(str::to_owned)
-}
-
 fn expand_local_glob(root: &Path, glob: &str) -> Result<Vec<PathBuf>, RuntimeError> {
     if !glob.contains('*') {
         let path = root.join(glob);
@@ -519,17 +464,6 @@ fn expand_local_glob(root: &Path, glob: &str) -> Result<Vec<PathBuf>, RuntimeErr
         .collect::<Vec<_>>();
     files.sort();
     Ok(files)
-}
-
-fn discover_skill_profile_paths(root: &Path) -> Result<Vec<PathBuf>, RuntimeError> {
-    let mut paths = Vec::new();
-    let root_profile = root.join("X.yaml");
-    if root_profile.exists() {
-        paths.push(root_profile);
-    }
-    paths.extend(find_files_named(&root.join("skills"), "X.yaml")?);
-    paths.sort();
-    Ok(paths)
 }
 
 fn fallback_skill_name(root: &Path, skill_dir: &Path) -> String {
@@ -586,6 +520,8 @@ fn kind_order(kind: RunxListItemKind) -> u8 {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
 
     #[test]

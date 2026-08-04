@@ -7,6 +7,7 @@
 //! them.
 use serde::{Deserialize, Serialize};
 
+use crate::ExecutionBoundaryObservation;
 use crate::schema::{NonEmptyString, RunxSchema};
 
 /// The kind of authority a grant or request carries.
@@ -140,8 +141,6 @@ pub struct AuthorityProofRequested {
     pub target_repo: Option<NonEmptyString>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_locator: Option<NonEmptyString>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox_profile: Option<NonEmptyString>,
 }
 
 /// The credential-material posture recorded in an authority proof.
@@ -169,61 +168,6 @@ pub struct AuthorityProofCredentialMaterial {
     pub grant_reference: Option<CredentialGrantReference>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub material_ref_hash: Option<NonEmptyString>,
-}
-
-/// The network posture inside a sandbox declaration.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct AuthorityProofSandboxNetwork {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub declared: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enforcement: Option<NonEmptyString>,
-}
-
-/// The filesystem posture inside a sandbox declaration.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct AuthorityProofSandboxFilesystem {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enforcement: Option<NonEmptyString>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub readonly_paths: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub writable_paths_enforced: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub private_tmp: Option<bool>,
-}
-
-/// The runtime enforcer posture inside a sandbox declaration.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct AuthorityProofSandboxRuntime {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enforcer: Option<NonEmptyString>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<NonEmptyString>,
-}
-
-/// The sandbox posture recorded in an authority proof.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
-#[serde(rename_all = "snake_case", deny_unknown_fields)]
-pub struct AuthorityProofSandbox {
-    pub profile: NonEmptyString,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cwd_policy: Option<NonEmptyString>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub require_enforcement: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub network: Option<AuthorityProofSandboxNetwork>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub filesystem: Option<AuthorityProofSandboxFilesystem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub runtime: Option<AuthorityProofSandboxRuntime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub approval_required: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub approval_approved: Option<bool>,
 }
 
 /// The decision an approval gate reached, recorded in an authority proof.
@@ -263,8 +207,7 @@ pub struct AuthorityProof {
     pub requested: AuthorityProofRequested,
     pub scope_admission: ScopeAdmission,
     pub credential_material: AuthorityProofCredentialMaterial,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sandbox: Option<AuthorityProofSandbox>,
+    pub execution_boundary: ExecutionBoundaryObservation,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approval_gate: Option<AuthorityProofApprovalDecision>,
     pub redaction: AuthorityProofRedaction,

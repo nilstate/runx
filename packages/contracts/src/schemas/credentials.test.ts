@@ -31,7 +31,7 @@ const validCredentialEnvelope: CredentialEnvelopeContract = {
     grant_id: "grant_1",
     scope_family: "github_repo",
     authority_kind: "constructive",
-    target_repo: "runxhq/aster",
+    target_repo: "runxhq/runx",
   },
   material_ref: "local:github:grant_1",
 };
@@ -47,8 +47,7 @@ const validAuthorityProof: AuthorityProofContract = {
     mutating: false,
     scope_family: "github_repo",
     authority_kind: "constructive",
-    target_repo: "runxhq/aster",
-    sandbox_profile: "readonly",
+    target_repo: "runxhq/runx",
   },
   scope_admission: validScopeAdmission,
   credential_material: {
@@ -61,27 +60,10 @@ const validAuthorityProof: AuthorityProofContract = {
     material_ref_hash: "sha256-ref",
     scope_family: "github_repo",
     authority_kind: "constructive",
-    target_repo: "runxhq/aster",
+    target_repo: "runxhq/runx",
   },
-  sandbox: {
-    profile: "readonly",
-    cwd_policy: "skill-directory",
-    require_enforcement: false,
-    network: {
-      declared: false,
-      enforcement: "not-enforced-local",
-    },
-    filesystem: {
-      enforcement: "not-enforced-local",
-      readonly_paths: true,
-      writable_paths_enforced: false,
-      private_tmp: false,
-    },
-    runtime: {
-      enforcer: "declared-policy-only",
-    },
-    approval_required: false,
-    approval_approved: false,
+  execution_boundary: {
+    kind: "remote_provider",
   },
   redaction: {
     status: "applied",

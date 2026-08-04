@@ -1,151 +1,79 @@
 ---
 name: charge
-description: Govern one inbound provider-side paid tool call through price, challenge, credential verification, receipt sealing, and receipt-gated forwarding.
+description: Prepare a provider-side paid-call challenge and exact credential-verification handoff; forwarding requires a real settlement adapter.
 runx:
   category: payments
 ---
 
 # Charge
 
-Govern one inbound paid tool call that runx exposes to another agent.
+`charge` is the canonical seller-side planner for a paid tool call. It binds one
+requested operation to provider pricing policy, emits a replay-safe payment
+challenge, validates an opaque returned credential reference against that exact
+challenge, and prepares the verifier and forwarding handoff.
 
-This skill is the public provider-side charge verb. It prices an inbound MCP
-operation, emits a payment challenge, verifies the returned credential under the
-priced authority, seals the charge receipt, and forwards the upstream operation
-only after the sealed receipt exists. It is the seller-side mirror of `spend`.
+The current public skill stops before provider settlement. It does not verify a
+rail credential itself, seal provider settlement evidence, or forward the paid
+operation. Its truthful result is `provider_status: not_called`,
+`receipt_status: not_sealed`, and `forwarding_status: not_forwarded`. A real
+settlement-family adapter must complete those actions before the service can be
+released.
 
-The settlement family is a runtime path, not a separate catalog skill. Mock, MPP,
-and Stripe paths share the same authority story: price first, challenge with
-idempotency, verify against the exact challenge, seal before forward, and never
-print raw credential material into the receipt.
+## When to use it
 
-## What this skill does
+Use `charge` when Runx is acting as the provider of a paid operation and needs a
+deterministic price/challenge/verifier plan. Use `spend` on the buyer side and
+`refund` to reverse a previously sealed provider charge. Do not use this skill
+as evidence that a caller paid merely because it returned a credential ref.
 
-1. **Price the inbound operation.** Use `charge-price` to bind the tool call to
-   provider policy, amount, currency, counterparty, accepted families, expiry,
-   and requested payment authority.
-2. **Issue a challenge.** Use `charge-challenge` to produce the
-   `effect_required` signal and idempotency packet that the caller must satisfy.
-3. **Verify the returned credential.** Use `charge-verify` to bind the credential
-   to the exact price, challenge, family, counterparty, amount, and idempotency
-   key.
-4. **Seal before forwarding.** Seal the charge receipt with the verification
-   evidence before the provider forwards the paid operation.
-5. **Forward only under proof.** Forwarding is modeled as a separate step gated
-   by `charge_seal.data.sealed == true`.
+## How it works
 
-It does not calculate outbound spend, issue refunds, resolve disputes, or accept
-raw merchant credentials as output.
+1. `charge-price` validates the structured tool call and provider policy, then
+   binds amount, currency, counterparty, operation, accepted settlement family,
+   expiry, and requested authority.
+2. `charge-challenge` turns that price into a deterministic, replay-safe
+   challenge whose idempotency binding requires receipt-before-forward.
+3. `charge-verify` validates the *reference and handoff shape* for the returned
+   credential and a single-use verifier capability. It does not manufacture a
+   successful provider verification.
+4. Native `payment.charge_plan` assembles the exact price, challenge, and
+   verifier request into the adapter handoff.
+5. A future or configured provider rail must verify settlement, seal evidence,
+   and authorize forwarding under the same bindings.
 
-## When to use this skill
+The public runners select `mock`, `mpp`, or `stripe` policy families. There is
+no seller-side x402 runner here; buyer-side x402 support in `spend` does not
+implicitly create a provider charge contract.
 
-- A runx-hosted provider is about to expose a paid MCP operation to a caller.
-- A paid provider harness needs to prove receipt-before-forward behavior across
-  mock, MPP, or Stripe settlement families.
-- A dispute or audit workflow needs a sealed seller-side charge receipt linked
-  to the original price, challenge, verification, and forwarded result.
+## Inputs and result
 
-## When not to use this skill
+- `mcp_tool_call` identifies the exact paid operation and bounded arguments.
+- `provider_policy` supplies the price and accepted family; there is no default
+  price.
+- `returned_credential` names the settlement family and one opaque reference,
+  never raw rail material.
+- `verify_capability_ref` is the bounded single-use verification capability.
+- `idempotency_seed` stabilizes the challenge and replay decision.
 
-- To spend money as the buyer. Use `spend`.
-- To reverse a prior charge. Use `refund`.
-- To issue a challenge without a provider pricing policy.
-- To verify a credential for a different amount, counterparty, challenge,
-  operation, or settlement family.
-- To forward the paid tool call before the charge receipt is sealed.
+The plan contains price, requested authority, challenge, idempotency packet,
+credential binding, and exact provider-verifier handoff. It explicitly records
+that settlement, receipt sealing, and forwarding remain outstanding.
 
-## Procedure
+## Stop conditions
 
-1. Validate `mcp_tool_call`, `provider_policy`, `returned_credential`,
-   `verify_capability_ref`, and idempotency material.
-2. Select the settlement family from provider policy and returned credential. If
-   the family is missing or unsupported, return `needs_agent`.
-3. Run `charge-price`. Stop when amount, currency, operation, counterparty,
-   settlement family, or price evidence is ambiguous.
-4. Run `charge-challenge`. The challenge must carry a stable idempotency key and
-   require receipt-before-forward.
-5. Run `charge-verify`. The returned credential must match the challenge and
-   priced authority exactly.
-6. Seal the charge receipt. The receipt must include price evidence, challenge
-   id, verification result, settlement proof ref, idempotency key, redactions,
-   and receipt ref.
-7. Forward the upstream operation only when the seal step records `sealed: true`.
-8. If any step is ambiguous, return `needs_agent` or `escalated`; do not forward
-   the paid call.
+- Stop when provider policy, price, operation, counterparty, family, or stable
+  idempotency material is missing or ambiguous.
+- Refuse family, amount, currency, challenge, or counterparty drift.
+- Refuse raw credentials, unrestricted verifier tokens, or caller-authored
+  “verified” flags.
+- Treat replay as unresolved unless the same sealed provider result can be
+  proven under the same idempotency binding.
+- Never forward the paid call or report settlement from a local plan.
 
-## Runtime paths
+## Example
 
-| Path | Use when | Required proof/evidence | Secret handling |
-|---|---|---|---|
-| `mock` | Deterministic local provider-charge fixtures. | Mock proof ref, challenge id, idempotency key, sealed charge receipt ref. | No real credentials; still redact fixture credential material. |
-| `mpp` | Provider policy accepts MPP settlement. | MPP credential ref, settlement proof ref, challenge id, idempotency key. | Output refs only; do not expose rail session material. |
-| `stripe` | Provider policy accepts Stripe-side charge credentials. | Stripe credential/proof ref, provider event or charge ref when present, challenge id, idempotency key. | Never emit Stripe secret keys, webhook secrets, card data, PANs, or unrestricted tokens. |
-
-There is no x402 provider-side charge runner in this skill. Current x402 support
-is buyer-side `spend` unless a separate product decision adds seller-side x402
-charge semantics.
-
-## Edge cases and stop conditions
-
-- **No provider policy:** return `needs_agent`; no default price exists.
-- **Family mismatch:** return `escalated` when challenge, policy, and returned
-  credential name different settlement families.
-- **Credential replay:** return `escalated` unless the idempotency policy proves
-  the prior verification is equivalent and sealed.
-- **Verification accepted but receipt missing:** do not forward; return
-  `escalated` with a seal-required finding.
-- **Forward step requested early:** refuse; forwarding is gated by sealed
-  receipt evidence.
-- **Raw credential material in output:** redact and record the redaction; if it
-  cannot be safely represented, return `escalated`.
-
-## Output schema (`charge_execution`)
-
-```yaml
-decision: sealed | denied | needs_agent | escalated
-runtime_path: mock | mpp | stripe
-charge_price_packet:
-  charge_price: object
-  requested_payment_authority: object
-charge_challenge_packet:
-  effect_required_signal: object
-  charge_challenge: object
-  idempotency: object
-charge_verification_packet:
-  verification_result: object
-  settlement_proof: object
-  sealed_receipt_ref: string | null
-  redactions: [string]
-charge_seal:
-  sealed: boolean
-  receipt_ref: string
-forwarded_result:
-  forwarded: boolean
-  result_ref: string | null
-open_questions: [string]
-```
-
-A forwarded result requires a sealed charge receipt. A verified credential
-without a sealed receipt is not enough.
-
-## Worked example
-
-A caller asks for `search.paid`. Provider policy prices the call at `1.25 USD`,
-accepts `stripe`, and requires receipt-before-forward. `charge` emits a
-challenge, verifies the returned Stripe credential against that exact challenge,
-seals `receipt:charge:stripe:paid-search-001`, then forwards the operation. The
-result is `decision: sealed`.
-
-If the returned credential is for `mpp` while the challenge accepted `stripe`,
-the skill returns `decision: escalated`; it does not reinterpret the credential
-or forward the request.
-
-## Inputs
-
-- `mcp_tool_call` (required): inbound MCP operation request.
-- `provider_policy` (required): provider price and settlement family policy.
-- `returned_credential` (required): caller-returned payment credential.
-- `parent_payment_authority` (optional): parent payment authority term or ref.
-- `verify_capability_ref` (required): single-use verification capability
-  reference.
-- `idempotency_seed` (optional): stable challenge idempotency seed.
+A provider prices `search.paid` at `125 USD` minor units and accepts Stripe. The
+skill can produce the exact Stripe challenge and verifier request bound to that
+operation. If the caller returns an MPP reference or a different amount, the
+plan stops. Even a matching Stripe reference remains unpaid until the Stripe
+adapter verifies it, seals evidence, and releases the call.

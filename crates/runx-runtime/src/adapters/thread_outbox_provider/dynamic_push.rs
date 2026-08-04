@@ -50,6 +50,7 @@ pub(super) fn skipped_dynamic_push_outcome(
         redacted_stderr: String::new(),
         process_exit_code: Some(0),
         duration_ms: 0,
+        execution_boundary: None,
     })
 }
 

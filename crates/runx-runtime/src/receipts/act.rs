@@ -54,16 +54,16 @@ impl RuntimeAct {
                 purpose: format!("Run graph step {step_id}").into(),
                 legitimacy: "Runtime graph execution was admitted by the local harness".into(),
                 success_criteria: vec![SuccessCriterion {
-                    criterion_id: "process_exit".into(),
-                    statement: "cli-tool exits successfully".into(),
+                    criterion_id: "step_outcome".into(),
+                    statement: "runtime step completes successfully".into(),
                     required: true,
                 }],
                 constraints: Vec::new(),
                 derived_from: Vec::new(),
             },
             summary: format!("Executed graph step {step_id}").into(),
-            criterion_id: "process_exit".into(),
-            reason_code: "process_exit".into(),
+            criterion_id: "step_outcome".into(),
+            reason_code: "step_outcome".into(),
             verified_bindings: Vec::new(),
         }
     }

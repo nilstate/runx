@@ -1,6 +1,0 @@
-# Pin the toolchain so release builds are reproducible and CI does not drift
-# with floating `stable`. Bump deliberately. Must stay >= workspace.rust-version
-# (1.85, for edition 2024).
-[toolchain]
-channel = "1.95.0"
-components = ["rustfmt", "clippy"]

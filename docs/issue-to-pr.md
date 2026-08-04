@@ -177,7 +177,7 @@ that the workspace is on the intended issue branch, that the selected scafld
 binary can run in that workspace, that `--runx-bin`, `RUNX_BIN`, a local
 `crates/target/{debug,release}/runx`, or `runx` on `PATH` points at an
 executable native CLI, and that provider publication has explicit token env
-available to the sandbox. It returns JSON with blocked checks and the exact
+available to the provider process. It returns JSON with blocked checks and the exact
 dogfood command to run next.
 
 Live create/observe requires an explicit proving-ground repo allowlist. Pass
@@ -266,23 +266,3 @@ Use the checked-in thread fixtures when building repo-local wrappers:
 - `fixtures/issue-to-pr/dogfood-answers.json` is an empty caller-answer file
   for dogfood commands that should fail closed before real provider context is
   supplied.
-
-## Aster Live Handoff
-
-Aster should consume this as a runx proving-ground lane, not as OSS policy.
-
-Mapping:
-
-- Aster `issue-triage` decides whether a public issue deserves reply, plan, or
-  build.
-- Aster `fix-pr` and `docs-pr` prepare repo-local policy: target repo, branch,
-  authoring model, labels, and publication gate.
-- The normalized source issue becomes the `thread` input for `issue-to-pr`.
-- Hydrated provider context becomes artifact refs and verification evidence and should
-  already be redacted by the adapter.
-- `issue-to-pr` owns scafld lifecycle, draft PR packaging, receipts, and generic
-  GitHub thread updates.
-- Aster keeps the rolling work-issue status comment and generated-PR policy.
-
-The live merge gate remains human. Aster may observe the merged PR and publish
-the final source-thread outcome, but it should not merge generated changes.

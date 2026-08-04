@@ -4,10 +4,12 @@
 // result. The network leg lives on the adapter side of the external-adapter
 // boundary. If the endpoint is unreachable (e.g. running the bare harness without
 // the fixture server), it falls back to resolving the request without calling it,
-// so the example stays runnable offline. The protocol frame is handled by the
-// shared adapter kit.
+// so the example stays runnable offline. The extension SDK owns the protocol frame.
 import { readFileSync } from "node:fs";
-import { runAdapter } from "../adapter-kit/adapter.mjs";
+import {
+  defineExternalAdapter,
+  materializeExternalAdapterInputs,
+} from "@runxhq/extension-sdk";
 
 function resolveOperation(spec, operationId) {
   for (const [path, methods] of Object.entries(spec.paths || {})) {
@@ -46,38 +48,44 @@ function resolveRequest(operation, inputs) {
   return { path, query };
 }
 
-runAdapter(async ({ inputs }) => {
-  const spec = JSON.parse(readFileSync(new URL("./openapi.json", import.meta.url)));
-  const wanted = inputs.operation_id || inputs.operationId;
-  const operation = resolveOperation(spec, wanted);
-  const { path, query } = resolveRequest(operation, inputs);
+const adapter = defineExternalAdapter({
+  adapterId: "adapter.example.openapi",
+  async invoke({ invocation }) {
+    const inputs = materializeExternalAdapterInputs(invocation);
+    const spec = JSON.parse(readFileSync(new URL("./openapi.json", import.meta.url)));
+    const wanted = inputs.operation_id || inputs.operationId;
+    const operation = resolveOperation(spec, wanted);
+    const { path, query } = resolveRequest(operation, inputs);
 
-  const base =
-    process.env.RUNX_OPENAPI_BASE_URL ||
-    (spec.servers && spec.servers[0] && spec.servers[0].url) ||
-    "";
-  const resolvedUrl = base + path + (query.length ? `?${query.join("&")}` : "");
-  const method = operation.method.toUpperCase();
-  const resolved = {
-    ok: true,
-    spec_title: spec.info && spec.info.title,
-    operation_id: wanted,
-    method,
-    resolved_url: resolvedUrl,
-  };
+    const base =
+      process.env.RUNX_OPENAPI_BASE_URL ||
+      (spec.servers && spec.servers[0] && spec.servers[0].url) ||
+      "";
+    const resolvedUrl = base + path + (query.length ? `?${query.join("&")}` : "");
+    const method = operation.method.toUpperCase();
+    const resolved = {
+      ok: true,
+      spec_title: spec.info && spec.info.title,
+      operation_id: wanted,
+      method,
+      resolved_url: resolvedUrl,
+    };
 
-  try {
-    const response = await fetch(resolvedUrl, { method });
-    const text = await response.text();
-    let body;
     try {
-      body = JSON.parse(text);
-    } catch {
-      body = text;
+      const response = await fetch(resolvedUrl, { method });
+      const text = await response.text();
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
+      }
+      return { ...resolved, executed: true, status_code: response.status, response: body };
+    } catch (error) {
+      const reason = error && error.message ? error.message : String(error);
+      return { ...resolved, executed: false, unreachable: reason };
     }
-    return { ...resolved, executed: true, status_code: response.status, response: body };
-  } catch (error) {
-    const reason = error && error.message ? error.message : String(error);
-    return { ...resolved, executed: false, unreachable: reason };
-  }
+  },
 });
+
+await adapter.main();

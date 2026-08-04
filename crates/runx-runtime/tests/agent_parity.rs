@@ -30,6 +30,10 @@ fn agent_task_invocation_id_and_envelope_shape() -> Result<(), Box<dyn std::erro
         "RUNX_TOOL_ROOTS".to_owned(),
         "/tmp/runx-tools:/opt/runx-tools".to_owned(),
     );
+    env.insert(
+        runx_runtime::RUNX_RUN_ID_ENV.to_owned(),
+        "run_agent-parity".to_owned(),
+    );
 
     let output = AgentAdapter::agent_task(config(), &resolver).invoke(SkillInvocation {
         env,
@@ -61,20 +65,30 @@ fn agent_task_invocation_id_and_envelope_shape() -> Result<(), Box<dyn std::erro
     assert_eq!(invocation.agent.as_deref(), Some("assistant"));
     assert_eq!(invocation.task.as_deref(), Some("draft release notes"));
 
-    assert_eq!(invocation.envelope.run_id, "rx_pending");
+    assert_eq!(invocation.envelope.run_id, "run_agent-parity");
     assert_eq!(invocation.envelope.skill, "fixture.step");
     assert!(!invocation.envelope.instructions.is_empty());
     assert!(invocation.envelope.allowed_tools.is_empty());
     assert!(invocation.envelope.current_context.is_empty());
     assert!(invocation.envelope.historical_context.is_empty());
     assert!(invocation.envelope.provenance.is_empty());
-    assert!(!invocation.envelope.trust_boundary.is_empty());
+    assert!(
+        invocation
+            .envelope
+            .trust_boundary
+            .contains("caller-mediated resolution is the default")
+    );
     let execution_location = invocation
         .envelope
         .execution_location
         .as_ref()
         .ok_or_else(|| std::io::Error::other("missing execution location"))?;
-    assert_eq!(execution_location.skill_directory.as_ref(), "/tmp/skill");
+    assert!(
+        execution_location
+            .skill_directory
+            .as_ref()
+            .ends_with("fixtures/skills/agent-task")
+    );
     let tool_roots = execution_location
         .tool_roots
         .as_ref()
@@ -173,6 +187,7 @@ Write one direct operator response.
 fn agent_declared_text_field_success() -> Result<(), Box<dyn std::error::Error>> {
     let telemetry = AgentExecutionTelemetry {
         rounds: Some(2),
+        model_calls: Some(2),
         tool_calls: Some(1),
         tools: Some(vec!["fs.read".to_owned()]),
         tool_executions: Some(vec![AgentToolExecutionTrace {
@@ -206,9 +221,14 @@ fn agent_declared_text_field_success() -> Result<(), Box<dyn std::error::Error>>
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout, r#"{"summary":"plain final answer"}"#);
-    assert_eq!(output.stderr, "");
-    assert_eq!(output.exit_code, Some(0));
+    assert_eq!(
+        output.value,
+        JsonValue::Object(BTreeMap::from([(
+            "summary".to_owned(),
+            JsonValue::String("plain final answer".to_owned()),
+        )]))
+    );
+    assert_eq!(output.exit_code(), None);
     let agent_runner = object_field(&output.metadata, "agent_runner")?;
     assert_eq!(agent_runner.get("skill"), Some(&string("fixture.agent")));
     assert_eq!(agent_runner.get("route"), Some(&string("native")));
@@ -241,7 +261,7 @@ fn agent_task_structured_json_payload_success() -> Result<(), Box<dyn std::error
         ]
         .into(),
     );
-    let resolver = RecordingResolver::success(payload, None);
+    let resolver = RecordingResolver::success(payload.clone(), None);
     let outputs = [
         ("title".to_owned(), JsonValue::String("string".to_owned())),
         ("ready".to_owned(), JsonValue::String("boolean".to_owned())),
@@ -261,7 +281,7 @@ fn agent_task_structured_json_payload_success() -> Result<(), Box<dyn std::error
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Success);
-    assert_eq!(output.stdout, r#"{"ready":true,"title":"Release"}"#);
+    assert_eq!(output.value, payload);
     let requests = resolver.requests.borrow();
     let ResolutionRequest::AgentAct { invocation, .. } = &requests[0] else {
         return Err(std::io::Error::other("missing agent_act request").into());
@@ -298,15 +318,79 @@ fn provider_error_failure_sanitizes_stderr_and_metadata() -> Result<(), Box<dyn 
     ))?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
-    assert_eq!(output.stdout, "");
-    assert_eq!(output.stderr, "Managed agent provider request failed.");
-    assert_eq!(output.exit_code, None);
+    assert_eq!(output.value, JsonValue::Null);
+    assert_eq!(
+        output.failure_message().as_deref(),
+        Some("Managed agent provider request failed.")
+    );
+    assert_eq!(output.exit_code(), None);
     assert!(!format!("{output:?}").contains("sk-secret-value"));
     let agent_hook = object_field(&output.metadata, "agent_hook")?;
     assert_eq!(agent_hook.get("status"), Some(&string("failure")));
     assert_eq!(agent_hook.get("route"), Some(&string("native")));
     assert_eq!(agent_hook.get("provider"), Some(&string("openai")));
     assert_eq!(agent_hook.get("model"), Some(&string("gpt-test")));
+    Ok(())
+}
+
+#[test]
+fn bounded_failure_projects_reason_and_telemetry_without_raw_content()
+-> Result<(), Box<dyn std::error::Error>> {
+    let resolver = RecordingResolver::bounded_failure(
+        "round_budget_exhausted",
+        "Managed agent exceeded 3 tool-call rounds without finalizing.",
+        AgentExecutionTelemetry {
+            rounds: Some(3),
+            model_calls: Some(3),
+            tool_calls: Some(3),
+            tools: Some(vec!["fs.read".to_owned()]),
+            tool_executions: Some(vec![AgentToolExecutionTrace {
+                tool: "fs.read".to_owned(),
+                status: "success".to_owned(),
+                receipt_id: None,
+                resolution_kind: None,
+            }]),
+        },
+    );
+
+    let output = AgentAdapter::agent(config(), &resolver).invoke(invocation(
+        runx_parser::SourceKind::Agent,
+        "fixture.budget-failure",
+        source(
+            runx_parser::SourceKind::Agent,
+            Some("assistant"),
+            Some("private task"),
+            Some(BTreeMap::from([(
+                "result".to_owned(),
+                JsonValue::String("string".to_owned()),
+            )])),
+        ),
+        JsonObject::new(),
+    ))?;
+
+    assert_eq!(output.status, InvocationStatus::Failure);
+    assert_eq!(
+        output.failure_message().as_deref(),
+        Some("Managed agent exceeded 3 tool-call rounds without finalizing.")
+    );
+    let agent_runner = object_field(&output.metadata, "agent_runner")?;
+    assert_eq!(
+        agent_runner.get("reason_code"),
+        Some(&string("round_budget_exhausted"))
+    );
+    assert_eq!(
+        agent_runner.get("rounds"),
+        Some(&JsonValue::Number(JsonNumber::U64(3)))
+    );
+    assert_eq!(
+        agent_runner.get("model_calls"),
+        Some(&JsonValue::Number(JsonNumber::U64(3)))
+    );
+    assert_eq!(
+        agent_runner.get("tool_calls"),
+        Some(&JsonValue::Number(JsonNumber::U64(3)))
+    );
+    assert!(!format!("{output:?}").contains("private task"));
     Ok(())
 }
 
@@ -340,28 +424,32 @@ fn harness_replay_runs_agent_skill_fixture() -> Result<(), Box<dyn std::error::E
     let resolver = RecordingResolver::success(JsonValue::String("agent replayed".to_owned()), None);
     let temp = tempfile::tempdir()?;
     let skill_dir = temp.path().join("skill");
-    std::fs::create_dir_all(&skill_dir)?;
-    std::fs::write(
-        skill_dir.join("SKILL.md"),
+    crate::support::write_test_skill_package(
+        &skill_dir,
         r#"---
 name: fixture-agent
 description: Fixture agent skill.
-source:
-  type: agent
-  agent: assistant
-  task: summarize
-inputs:
-  topic:
-    type: string
-    required: true
 ---
 Summarize the topic.
 "#,
+        r#"skill: fixture-agent
+runners:
+  fixture-agent:
+    default: true
+    type: agent
+    agent: assistant
+    task: summarize
+    outputs:
+      summary: string
+    inputs:
+      topic:
+        type: string
+        required: true
+"#,
     )?;
     let fixture_path = temp.path().join("harness.yaml");
-    // Agent skills replay from the caller's recorded answer, keyed by the agent
-    // act request id `agent.<skill>.output`, rather than from a live adapter
-    // resolver; a recorded answer with no refusing closure seals the run.
+    // Agent runners replay from the caller's recorded answer, keyed by the
+    // stable package runner id rather than from a live adapter resolver.
     std::fs::write(
         &fixture_path,
         r#"
@@ -390,14 +478,14 @@ expect:
         .skill_output
         .ok_or_else(|| std::io::Error::other("missing replay skill output"))?;
     assert_eq!(output.status, InvocationStatus::Success);
-    assert!(output.stdout.contains("agent replayed"));
+    assert!(output.rendered_value().contains("agent replayed"));
     Ok(())
 }
 
 fn fixture_runtime_options() -> RuntimeOptions {
     RuntimeOptions {
         created_at: FIXTURE_CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
+        ..RuntimeOptions::local_development(std::env::vars().collect())
     }
 }
 
@@ -420,6 +508,21 @@ impl RecordingResolver {
             result: Err(AgentResolverError::provider_error(message)),
         }
     }
+
+    fn bounded_failure(
+        reason_code: &str,
+        message: &str,
+        telemetry: AgentExecutionTelemetry,
+    ) -> Self {
+        Self {
+            requests: RefCell::new(Vec::new()),
+            result: Err(AgentResolverError::bounded_failure(
+                reason_code,
+                message,
+                telemetry,
+            )),
+        }
+    }
 }
 
 impl AgentResolver for &RecordingResolver {
@@ -435,13 +538,21 @@ fn invocation(
     source: SkillSource,
     inputs: JsonObject,
 ) -> SkillInvocation {
+    let skill_directory = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("fixtures/skills/agent-task");
     let mut request = SkillInvocation {
         skill_name: skill_name.to_owned(),
+        step_id: None,
+        requirements: Default::default(),
+        artifacts: None,
+        allowed_tools: None,
         source,
         inputs,
         resolved_inputs: JsonObject::new(),
         current_context: Vec::new(),
-        skill_directory: "/tmp/skill".into(),
+        provenance: Vec::new(),
+        skill_directory,
         env: BTreeMap::new(),
         credential_delivery: runx_runtime::CredentialDelivery::none(),
     };
@@ -459,23 +570,25 @@ fn source(
         act: None,
         source_type,
         command: None,
+        module: None,
+        javascript_export: None,
+        pages: None,
         args: Vec::new(),
         cwd: None,
         timeout_seconds: None,
         input_mode: None,
-        sandbox: None,
+        environment: Default::default(),
         server: None,
-        catalog_ref: None,
         tool: None,
         arguments: None,
         agent_card_url: None,
         agent_identity: None,
         agent: agent.map(str::to_owned),
         task: task.map(str::to_owned),
-        hook: None,
         outputs,
         graph: None,
-        http: None,
+        external_adapter: None,
+        thread_outbox_provider: None,
         raw: JsonObject::new(),
     }
 }

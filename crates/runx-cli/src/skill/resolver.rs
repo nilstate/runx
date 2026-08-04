@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - skill resolution centralizes local, official, installed, and registry paths.
+// Module rationale: skill resolution centralizes local, official, installed, and registry paths.
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -40,6 +40,7 @@ pub(crate) struct ResolvedSkillRef {
     pub(crate) version: Option<String>,
     pub(crate) digest: Option<String>,
     pub(crate) profile_digest: Option<String>,
+    pub(crate) package_digest: Option<String>,
     pub(crate) registry_source: Option<String>,
     pub(crate) registry_source_fingerprint: Option<String>,
     pub(crate) trust_state: Option<RegistryTrustState>,
@@ -189,7 +190,7 @@ fn resolve_registry_skill(
     )
 }
 
-// rust-style-allow: long-function - registry materialization is kept atomic around trust, cache, and digest checks.
+// Function rationale: registry materialization is kept atomic around trust, cache, and digest checks.
 fn materialize_trusted_registry_skill(
     request: RegistryMaterializationRequest<'_>,
     options: SkillResolverOptions<'_>,
@@ -272,6 +273,10 @@ fn materialize_trusted_registry_skill(
         version: identity.version,
         digest: Some(install.digest),
         profile_digest: install.profile_digest,
+        // Registry package-file digests cover only auxiliary registry files.
+        // Execution package digests cover the complete validated package and
+        // are bound separately by `runx skill --package-digest`.
+        package_digest: None,
         registry_source: Some(source_description),
         registry_source_fingerprint: Some(source_fingerprint),
         trust_state: Some(RegistryTrustState::Trusted),
@@ -464,7 +469,7 @@ fn restore_runner_manifest_from_profile_state(skill_dir: &Path) -> Result<(), St
     })
 }
 
-// rust-style-allow: long-function - asset sync preserves packaged official-skill cache invariants in one pass.
+// Function rationale: asset sync preserves packaged official-skill cache invariants in one pass.
 fn sync_packaged_official_skill_assets(
     target_skill_dir: &Path,
     skill_id: &str,
@@ -609,6 +614,7 @@ fn local_resolved(kind: SkillRefKind, runnable_path: PathBuf) -> ResolvedSkillRe
         version: None,
         digest: None,
         profile_digest: None,
+        package_digest: None,
         registry_source: None,
         registry_source_fingerprint: None,
         trust_state: None,

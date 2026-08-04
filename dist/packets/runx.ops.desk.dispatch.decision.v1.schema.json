@@ -13,16 +13,114 @@
       "type": "string"
     },
     "dispatch": {
-      "type": "object"
+      "additionalProperties": false,
+      "properties": {
+        "consequence": {
+          "type": "string"
+        },
+        "member": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "needed_scope": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "skill": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "task": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "verification": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_effect": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expected_receipt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "readback": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_receipt",
+            "readback"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "member",
+        "skill",
+        "task",
+        "needed_scope",
+        "consequence",
+        "verification"
+      ],
+      "type": "object",
+      "description": "Dispatch payload when decision is dispatch."
     },
     "escalation": {
-      "type": "object"
+      "additionalProperties": false,
+      "properties": {
+        "approval_prompt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ask": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "to": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "trigger": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "to",
+        "trigger",
+        "ask",
+        "approval_prompt"
+      ],
+      "type": "object",
+      "description": "Escalation payload when decision is escalate."
     },
     "reason": {
       "type": "string"
     },
     "resolution": {
-      "type": "object"
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "type": "object",
+      "description": "Resolution payload when decision is done."
     }
   },
   "additionalProperties": false

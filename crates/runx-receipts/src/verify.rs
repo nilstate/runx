@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - receipt verification keeps structural and proof checks co-located for offline audit.
+// Module rationale: receipt verification keeps structural and proof checks co-located for offline audit.
 use std::collections::BTreeSet;
 
 use runx_contracts::{
@@ -189,14 +189,14 @@ impl Verifier {
     fn check_decisions(&mut self, decisions: &[Decision], acts: &[ReceiptAct]) {
         let act_ids = act_ids(acts);
         for (index, decision) in decisions.iter().enumerate() {
-            if let Some(act_id) = &decision.selected_act_id {
-                if !act_ids.contains(act_id.as_str()) {
-                    self.push(
-                        ReceiptFindingCode::DecisionSelectedActMissing,
-                        format!("decisions[{index}].selected_act_id"),
-                        "selected act id must refer to an act in the receipt",
-                    );
-                }
+            if let Some(act_id) = &decision.selected_act_id
+                && !act_ids.contains(act_id.as_str())
+            {
+                self.push(
+                    ReceiptFindingCode::DecisionSelectedActMissing,
+                    format!("decisions[{index}].selected_act_id"),
+                    "selected act id must refer to an act in the receipt",
+                );
             }
         }
     }

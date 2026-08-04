@@ -1,75 +1,25 @@
 ---
 name: weather-forecast
-description: Normalize provider weather evidence into an action-safe forecast packet with provenance, uncertainty, and stop conditions for downstream agents.
-runx:
-  category: data
+description: Normalize supplied provider weather evidence into a provenance-bound forecast packet with uncertainty and stop conditions. Use when a downstream planning workflow needs provider-neutral weather context; do not use it to fetch forecasts, make life-safety decisions, or perform downstream actions.
 ---
 
 # Weather Forecast
 
-Turn weather provider evidence into a bounded forecast packet.
+Interpret supplied weather evidence, then let the deterministic finalizer bind the result to that evidence.
 
-This is the canonical weather verb. It does not fetch provider data itself; it
-normalizes evidence from a branded provider skill such as `nws-weather-forecast`
-or from caller-supplied forecast material. It is context-only and read-only. Any
-downstream action, alert, trip change, or production mutation needs its own
-authority gate and receipt.
-
-## What this skill does
-
-`weather-forecast` reads provider evidence, extracts the forecast that matters
-for the requested horizon and purpose, states uncertainty, and names what the
-agent may and may not do with it. It keeps volatile forecast prose separate from
-stable provider metadata and returns `needs_more_evidence` when the evidence is
-missing, stale, out of area, or insufficient for the requested decision.
-
-## When to use this skill
-
-- A workflow has weather evidence and needs a concise packet for planning.
-- A downstream travel, event, operations, or content skill needs weather context
-  without direct provider coupling.
-- A branded provider skill returned raw metadata or forecast JSON that should be
-  interpreted before use.
-- A receipt must prove which forecast evidence was consumed by the agent.
-
-## When not to use this skill
-
-- To fetch provider data directly. Use a branded provider skill such as
-  `nws-weather-forecast`.
-- For emergency, medical, aviation, maritime, evacuation, or life-safety
-  decisions.
-- To fabricate a forecast for an unsupported location or stale evidence.
-- To send alerts, move schedules, notify customers, or change operations without
-  the downstream action skill and its gate.
+This skill is read-only. It does not fetch forecasts, send alerts, change schedules, or mutate provider state. Use `nws-weather-forecast`, `open-meteo-weather-forecast`, or another provider skill to obtain evidence first.
 
 ## Procedure
 
-1. Identify the location, horizon, purpose, provider, and observation time.
-2. Confirm the provider evidence is fresh enough for the purpose. If no
-   timestamp or generated time is available, mark uncertainty clearly.
-3. Extract the relevant periods, hazards, confidence notes, and source metadata.
-4. State operational implications only within the requested purpose. Do not
-   create advice outside the evidence.
-5. Preserve provider refs, URLs, timestamps, and receipt refs in the packet.
-6. Return `needs_input` for missing location, horizon, or purpose; return
-   `needs_more_evidence` for stale, unsupported, or ambiguous evidence.
-7. Refuse life-safety or regulated decisions and point the user to official
-   channels.
+1. Identify the requested location, horizon, purpose, and freshness requirement.
+2. Read only `forecast_evidence`. Do not add provider references, timestamps, or forecast periods that are absent from it.
+3. Assess whether the evidence is fresh and complete enough for the stated purpose. Return `needs_more_evidence` when it is stale, ambiguous, unsupported, or too thin.
+4. Summarize relevant periods, uncertainty, hazards, and planning implications without claiming a downstream action occurred.
+5. Return `refused` for emergency, evacuation, aviation, maritime, medical, or other life-safety use.
 
-## Edge cases and stop conditions
+The finalizer enforces the requested location and horizon, context-only authority, provider identity, provenance references, generation timestamp, and period-name fidelity. A draft that invents any of those fails instead of sealing a forecast packet.
 
-- **No provider evidence:** return `needs_more_evidence`.
-- **Unsupported geography:** return `needs_input` with the supported provider
-  coverage. NWS, for example, is United States focused.
-- **Stale forecast:** return `needs_more_evidence` unless the user only needs a
-  historical note.
-- **Conflicting provider data:** preserve both sources and return
-  `needs_more_evidence` for high-stakes uses.
-- **Life-safety use:** return `refused`; do not provide emergency guidance.
-- **Downstream mutation requested:** stop at context and require the action
-  skill that owns the relevant authority gate.
-
-## Output schema
+## Output
 
 ```yaml
 decision: ready | needs_input | needs_more_evidence | refused
@@ -88,28 +38,18 @@ provider_evidence:
 safety_notes: array
 stop_conditions: array
 receipt_notes:
-  authority: "context-only"
+  authority: context-only
   mutation: false
 ```
 
-## Worked example
+For `ready`, the supplied evidence must include `provider`, `generated_at`, `periods`, and at least one `source_ref` or `receipt_ref`. Missing `forecast_evidence` stops before agent interpretation. A missing optional horizon remains an empty string; the agent must not invent one.
 
-Input: `nws-weather-forecast` returns a sealed forecast for `LWX/97,71`, and the
-user asks whether an outdoor product demo tomorrow needs a backup plan.
+## Agent task contracts
 
-Output: `decision: ready`; the packet summarizes the relevant forecast periods,
-flags rain or wind risk if present, cites the NWS source refs, and says the
-agent may recommend a backup plan but may not reschedule or notify attendees
-without a separate action gate.
+### `weather-forecast-interpret`
 
-## Inputs
-
-- `location` (required): place, coordinates, gridpoint, or provider location
-  label.
-- `forecast_evidence` (required): raw provider response, forecast periods,
-  source refs, receipt refs, or a sealed branded skill output.
-- `horizon` (optional): time range to interpret.
-- `purpose` (optional): planning context, such as event, travel, field work, or
-  content.
-- `freshness_requirement` (optional): maximum acceptable age or timestamp
-  policy.
+Interpret only the supplied forecast evidence and return forecast_draft using the documented
+output fields. Preserve the requested location and horizon, provider, generated_at, source_refs,
+receipt_refs, and relevant period names. Summaries, hazards, uncertainty, and stop conditions
+require analyst judgment, but do not invent evidence. Return needs_more_evidence when freshness
+or coverage is insufficient. Return refused for life-safety use.

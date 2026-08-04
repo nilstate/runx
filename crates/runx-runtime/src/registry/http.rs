@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+use serde_json::json;
 use url::Url;
 
 use super::payload::{parse_acquire, parse_read, parse_search};
@@ -7,11 +7,10 @@ use super::types::{
     AcquiredRegistrySkill, RegistrySearchResult, RegistrySkillDetail, ResolvedRegistryRef,
 };
 
-use crate::http::strip_one_trailing_slash;
-pub use crate::http::{
+use crate::http::{
     HttpMethod, ReqwestHttpTransport as DefaultRuntimeHttpTransport, RuntimeHttpError,
-    RuntimeHttpHeader, RuntimeHttpRequest as HttpRequest, RuntimeHttpResponse as HttpResponse,
-    RuntimeHttpTransport as Transport,
+    RuntimeHttpHeader, RuntimeHttpRequest as HttpRequest, RuntimeHttpTransport as Transport,
+    strip_one_trailing_slash,
 };
 
 #[derive(Clone, Debug)]
@@ -77,8 +76,7 @@ impl<T: Transport> RegistryClient<T> {
             body: None,
         })?;
         ensure_success(&route, response.status)?;
-        let payload = json_body(&route, &response.body)?;
-        parse_search(&route, &payload)
+        parse_search(&route, &response.body)
     }
 
     pub fn read(
@@ -86,7 +84,7 @@ impl<T: Transport> RegistryClient<T> {
         skill_id: &str,
         version: Option<&str>,
     ) -> Result<Option<RegistrySkillDetail>, RegistryClientError> {
-        let (owner, name) = split_skill_id(skill_id)?;
+        let (owner, name) = validated_skill_id(skill_id)?;
         let suffix = version
             .map(|version| format!("{name}@{version}"))
             .unwrap_or_else(|| name.to_owned());
@@ -105,8 +103,7 @@ impl<T: Transport> RegistryClient<T> {
             return Ok(None);
         }
         ensure_success(&route, response.status)?;
-        let payload = json_body(&route, &response.body)?;
-        parse_read(&route, &payload).map(Some)
+        parse_read(&route, &response.body).map(Some)
     }
 
     pub fn acquire(
@@ -117,7 +114,7 @@ impl<T: Transport> RegistryClient<T> {
         if options.installation_id.trim().is_empty() {
             return Err(RegistryClientError::MissingInstallationId);
         }
-        let (owner, name) = split_skill_id(skill_id)?;
+        let (owner, name) = validated_skill_id(skill_id)?;
         let route = format!(
             "/v1/skills/{}/{}/acquire",
             encode_segment(owner),
@@ -137,8 +134,7 @@ impl<T: Transport> RegistryClient<T> {
             body: Some(body),
         })?;
         ensure_success(&route, response.status)?;
-        let payload = json_body(&route, &response.body)?;
-        parse_acquire(&route, &payload)
+        parse_acquire(&route, &response.body)
     }
 
     pub fn resolve_ref(
@@ -188,30 +184,9 @@ fn ensure_success(route: &str, status: u16) -> Result<(), RegistryClientError> {
     }
 }
 
-fn json_body(route: &str, body: &str) -> Result<Value, RegistryClientError> {
-    serde_json::from_str(body).map_err(|error| RegistryClientError::InvalidJson {
-        route: route.to_owned(),
-        message: error.to_string(),
-    })
-}
-
-fn split_skill_id(skill_id: &str) -> Result<(&str, &str), RegistryClientError> {
-    let mut parts = skill_id.split('/');
-    let owner = parts.next().unwrap_or_default();
-    let name = parts.next().unwrap_or_default();
-    if owner.is_empty()
-        || name.is_empty()
-        || is_dot_segment(owner)
-        || is_dot_segment(name)
-        || parts.next().is_some()
-    {
-        return Err(RegistryClientError::InvalidSkillId(skill_id.to_owned()));
-    }
-    Ok((owner, name))
-}
-
-fn is_dot_segment(value: &str) -> bool {
-    matches!(value, "." | "..")
+fn validated_skill_id(skill_id: &str) -> Result<(&str, &str), RegistryClientError> {
+    super::local::split_skill_id(skill_id)
+        .map_err(|_| RegistryClientError::InvalidSkillId(skill_id.to_owned()))
 }
 
 fn encode_segment(value: &str) -> String {

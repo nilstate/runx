@@ -1,0 +1,166 @@
+name: skill-lab-builds-thin-skill
+kind: skill
+target: ..
+runner: build
+inputs:
+  objective: Create a bounded decision-note skill without package-local runtime code
+  repo_root: .
+  target_dir: .runx-tmp/skill-lab-fixtures/fixture-decision-note
+  project_context: Keep the package declarative and prove its native harness.
+caller:
+  answers:
+    agent_task.skill-lab-architecture.output:
+      architecture_decision:
+        schema: runx.skill.architecture_decision.v1
+        disposition: build
+        objective: Create a bounded decision-note skill without package-local runtime code.
+        operator_value: Give an operator one reviewable decision from a bounded objective.
+        knowledge_contract:
+          purpose: Explain and perform one evidence-bounded decision.
+          evidence_required:
+            - A bounded decision objective.
+          decision_logic:
+            - Preserve the objective and return one concise recommendation.
+          stop_conditions:
+            - Stop when the objective is absent.
+          recovery:
+            - Resume with a bounded objective.
+        required_behaviors:
+          - id: operating-guide
+            outcome: Teach a cold operator what the decision lane does and where it stops.
+            lane: manual
+          - id: decide
+            outcome: Return one bounded decision note.
+            lane: agent_task
+        native_reuse:
+          inspected_capabilities:
+            - runx.skill.inspect
+            - runx.skill.plan
+            - runx.skill.bind
+            - runx.skill.apply
+          selected_capabilities: []
+          missing_capabilities: []
+        effects:
+          - effect: none
+            authority_scopes: []
+            approval: none
+            provider_boundary: false
+        skill_chain:
+          context_skills: []
+          routes: []
+        resource_budget:
+          max_files: 4
+          max_executable_lines: 0
+          max_fanout: 1
+          max_process_spawns: 0
+          network_allowed: false
+        preservation_obligations:
+          - Keep the package manual useful to a cold operator.
+        deletions: []
+        proof_plan:
+          - name: decision-note-ready
+            kind: harness
+            expected: The objective is preserved and the supplied recommendation is sealed.
+    agent_task.skill-lab-author.output:
+      change_draft:
+        schema: runx.skill.change_draft.v1
+        decision: write
+        summary: Create one thin agent-task skill with a supplied-answer harness.
+        non_goals:
+          - Do not add package-local JavaScript or a provider boundary.
+        writes:
+          - path: SKILL.md
+            contents: |
+              ---
+              name: fixture-decision-note
+              description: Turn one bounded objective into a reviewable decision note.
+              ---
+
+              # Fixture Decision Note
+
+              Use this skill when an operator needs one bounded recommendation
+              from a supplied objective. It preserves the objective, explains
+              one next action, and stops without mutating any external system.
+
+              Supply a concrete objective. If it is missing or too vague to
+              support a recommendation, stop and request the missing boundary.
+              A sealed result is a decision note, not evidence that an external
+              action happened.
+
+              ## Agent task contracts
+
+              ### `fixture-decision-note`
+
+              Return `decision_note` with the objective preserved exactly and
+              one concise recommendation. Do not claim external effects.
+          - path: X.yaml
+            contents: |
+              skill: fixture-decision-note
+              version: "0.1.0"
+
+              catalog:
+                kind: skill
+                audience: builder
+                visibility: internal
+                role: context
+                execution: read
+                completion: runtime_receipt
+                requires_adapter: false
+                approval: none
+
+              harness:
+                cases:
+                  - name: fixture-decision-note-ready
+                    runner: note
+                    inputs:
+                      objective: Choose the bounded next action.
+                    caller:
+                      answers:
+                        agent_task.fixture-decision-note.output:
+                          decision_note:
+                            objective: Choose the bounded next action.
+                            recommendation: Inspect the supplied evidence first.
+                    expect:
+                      status: sealed
+                      receipt:
+                        schema: runx.receipt.v1
+
+              runners:
+                note:
+                  default: true
+                  type: agent-task
+                  agent: analyst
+                  task: fixture-decision-note
+                  inputs:
+                    objective:
+                      type: string
+                      required: true
+                      description: Bounded decision objective.
+                  outputs:
+                    decision_note: object
+        deletes: []
+        expected_outputs:
+          - name: decision_note
+            value_type: object
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  steps:
+    - inspect
+    - architect
+    - plan
+    - author
+    - bind
+    - apply
+  step_outputs:
+    apply:
+      subset:
+        apply_result:
+          data:
+            schema: runx.skill.apply_result.v1
+            verdict: validated_and_applied
+metadata:
+  public_skill: skill-lab
+  source_case: build-thin-skill
+  source: skills-fixture

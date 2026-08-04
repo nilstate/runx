@@ -1,15 +1,15 @@
 use super::{
-    AdmissionDecision, LocalAdmissionOptions, LocalAdmissionSkill, SandboxAdmissionOptions,
+    AdmissionDecision, LocalAdmissionOptions, LocalAdmissionSkill,
     credential_grant::{credential_grant_requirement, find_matching_grant},
-    interpreter::detect_inline_interpreter,
-    sandbox::admit_sandbox,
+    interpreter::strict_cli_tool_inline_code_denial,
 };
 
-const DEFAULT_ALLOWED_SOURCE_TYPES: [&str; 8] = [
+const DEFAULT_ALLOWED_SOURCE_TYPES: [&str; 9] = [
     "agent",
     "agent-task",
     "approval",
     "cli-tool",
+    "javascript",
     "mcp",
     "a2a",
     "catalog",
@@ -79,43 +79,21 @@ fn collect_local_source_reasons(
     options: &LocalAdmissionOptions,
     reasons: &mut Vec<String>,
 ) {
-    if !matches!(skill.source.source_type.as_str(), "cli-tool" | "mcp") {
+    if !matches!(
+        skill.source.source_type.as_str(),
+        "cli-tool" | "javascript" | "mcp"
+    ) {
         return;
     }
 
-    let sandbox_options = SandboxAdmissionOptions {
-        approved_escalation: options.approved_sandbox_escalation,
-        skip_escalation: options.skip_sandbox_escalation,
-    };
-    match admit_sandbox(skill.source.sandbox.as_ref(), &sandbox_options) {
-        super::SandboxAdmissionDecision::Allow { .. } => {}
-        super::SandboxAdmissionDecision::ApprovalRequired {
-            reasons: sandbox_reasons,
-        }
-        | super::SandboxAdmissionDecision::Deny {
-            reasons: sandbox_reasons,
-        } => {
-            reasons.extend(sandbox_reasons);
-        }
-    }
-
-    if options
-        .execution_policy
-        .as_ref()
-        .and_then(|policy| policy.strict_cli_tool_inline_code)
-        .unwrap_or(false)
+    if skill.source.source_type == "cli-tool"
+        && let Some(reason) = strict_cli_tool_inline_code_denial(
+            skill.source.command.as_deref(),
+            skill.source.args.as_deref().unwrap_or_default(),
+            options.execution_policy.as_ref(),
+        )
     {
-        collect_inline_code_reason(skill, reasons);
-    }
-}
-
-fn collect_inline_code_reason(skill: &LocalAdmissionSkill, reasons: &mut Vec<String>) {
-    let args = skill.source.args.as_deref().unwrap_or_default();
-    if let Some(interpreter) = detect_inline_interpreter(skill.source.command.as_deref(), args) {
-        reasons.push(format!(
-            "cli-tool source '{}' uses inline code via '{}', which is rejected by strict workspace policy; move the program into a checked-in script and invoke that file instead",
-            interpreter.command, interpreter.trigger
-        ));
+        reasons.push(reason);
     }
 }
 
@@ -157,4 +135,38 @@ fn allowed_source_types(options: &LocalAdmissionOptions) -> Vec<&str> {
         || DEFAULT_ALLOWED_SOURCE_TYPES.to_vec(),
         |source_types| source_types.iter().map(String::as_str).collect(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::policy::{LocalAdmissionSource, LocalExecutionPolicy};
+
+    #[test]
+    fn javascript_is_a_default_local_source() {
+        let allowed = admit_local_skill(
+            &javascript_skill(),
+            &LocalAdmissionOptions {
+                execution_policy: Some(LocalExecutionPolicy {
+                    strict_cli_tool_inline_code: Some(true),
+                }),
+                ..LocalAdmissionOptions::default()
+            },
+        );
+        assert!(matches!(allowed, AdmissionDecision::Allow { .. }));
+    }
+
+    fn javascript_skill() -> LocalAdmissionSkill {
+        LocalAdmissionSkill {
+            name: "domain-module".to_owned(),
+            source: LocalAdmissionSource {
+                source_type: "javascript".to_owned(),
+                command: None,
+                args: None,
+                timeout_seconds: Some(30),
+            },
+            auth: None,
+            runtime: None,
+        }
+    }
 }

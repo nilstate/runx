@@ -1,4 +1,4 @@
-name: brand-voice-packet
+name: brand-voice-binds-rules-and-safe-claims
 kind: skill
 target: ..
 runner: voice
@@ -7,61 +7,50 @@ inputs:
   channel: homepage
   audience: advanced software builders
   source_material:
-    - one governed core, many fronts
-    - receipts prove what authority was used
-    - rejected: vague AI automation claims
+    - kind: approved
+      label: product contract
+      content: Runx receipts bind operator actions to explicit authority evidence.
+    - kind: rejected
+      label: rejected launch copy
+      content: Autonomous everything with no review.
 caller:
   answers:
-    agent_task.brand-voice.output:
-      decision: ready
-      brand: runx
-      applicability:
-        channels:
-          - homepage
-        audience: advanced software builders
-        boundaries:
-          - Do not claim hosted production readiness without the cloud sealing bridge.
-      brand_voice:
-        voice_principles:
-          - Lead with governed action and proof.
-          - Prefer concrete surfaces over abstract trust language.
-        vocabulary:
-          use:
-            - governed
-            - receipt
-            - authority
-            - sealed
-          avoid:
-            - magic
-            - autonomous everything
-        cadence:
-          - concise engineering sentences
-          - concrete nouns before value claims
-        claim_rules:
-          safe:
-            - runx seals receipts for governed runs
-          requires_proof:
-            - hosted production trust claims
-          forbidden:
-            - fully autonomous production mutation without gates
-        channel_adjustments:
-          - Homepage copy can be sharper, but claims still need receipts.
-      evidence:
-        approved_sources:
-          - caller.source_material
-        inferred_from:
-          - rejected vague automation claims
-      redactions: []
-      stop_conditions:
-        - Use a publish gate before external copy ships.
-      receipt_notes:
-        authority: context-only
-        mutation: false
+    agent_task.brand-voice-synthesize.output:
+      brand_voice_draft:
+        decision: ready
+        brand: runx
+        applicability:
+          channels: [homepage]
+          audience: advanced software builders
+          boundaries: [Do not extend claims beyond admitted evidence.]
+        brand_voice:
+          voice_principles: [Lead with governed action and proof.]
+          vocabulary:
+            use: [receipt, authority, evidence]
+            avoid: [magic, autonomous everything]
+          cadence: [Concise engineering sentences.]
+          claim_rules:
+            safe: [Runx receipts bind operator actions to authority evidence.]
+            requires_proof: [Hosted production readiness.]
+            forbidden: [Autonomous everything with no review.]
+          channel_adjustments: [Homepage copy can be concise but still evidence-bound.]
+        evidence_bindings:
+          - rule: Lead with governed action and proof.
+            source_refs: [source:1]
+          - rule: Runx receipts bind operator actions to authority evidence.
+            source_refs: [source:1]
+        redactions: []
+        stop_conditions: [Require new evidence before adding a new factual claim.]
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
-metadata:
-  public_skill: brand-voice
-  source_case: brand-voice-packet
-  source: skills-fixture
+  steps: [index, digest, synthesize, finalize]
+  step_outputs:
+    finalize:
+      subset:
+        brand_voice_packet:
+          data:
+            decision: ready
+            receipt_notes: { authority: context-only, mutation: false }
+            validation: { status: pass }
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: brand-voice, source_case: bound-voice, source: skills-fixture }

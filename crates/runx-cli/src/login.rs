@@ -1,4 +1,4 @@
-// rust-style-allow: large-file - public API login keeps parse, HTTP exchange,
+// Module rationale: public API login keeps parse, HTTP exchange,
 // encrypted-token storage, and focused tests together while the public auth API
 // is still small.
 use std::collections::BTreeMap;
@@ -9,10 +9,10 @@ use std::process::{Command, ExitCode};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use runx_runtime::registry::{
-    HttpMethod, HttpRequest, RuntimeHttpError, RuntimeHttpHeader, Transport,
+use runx_runtime::{
+    HostedApiOperationError, HostedLoginCompleteResponse, HostedLoginStartResponse,
+    RuntimeHttpError, RuntimeHttpTransport as Transport, WorkspaceEnv,
 };
-use serde::Deserialize;
 
 use crate::cli_args::{flag_value, os_arg, split_flag};
 
@@ -32,7 +32,7 @@ pub struct LoginPlan {
 pub enum LoginCliError {
     UnknownFlag(String),
     TransportInit(RuntimeHttpError),
-    Http(LoginHttpError),
+    Http(HostedApiOperationError),
     MissingSigninUrl,
     LoginTimedOut,
     MissingToken,
@@ -94,14 +94,14 @@ impl fmt::Display for LoginCliError {
 
 impl std::error::Error for LoginCliError {}
 
-impl From<crate::public_api::ApiEnvironmentError> for LoginCliError {
-    fn from(error: crate::public_api::ApiEnvironmentError) -> Self {
+impl From<runx_runtime::HostedApiError> for LoginCliError {
+    fn from(error: runx_runtime::HostedApiError) -> Self {
         Self::Environment(error.to_string())
     }
 }
 
-impl From<LoginHttpError> for LoginCliError {
-    fn from(error: LoginHttpError) -> Self {
+impl From<HostedApiOperationError> for LoginCliError {
+    fn from(error: HostedApiOperationError) -> Self {
         Self::Http(error)
     }
 }
@@ -112,88 +112,6 @@ impl From<serde_json::Error> for LoginCliError {
     }
 }
 
-#[derive(Debug)]
-pub enum LoginHttpError {
-    RuntimeHttp(RuntimeHttpError),
-    HttpStatus { status: u16, body: String },
-    InvalidJson(String),
-    RunxApi { code: String, detail: String },
-}
-
-impl fmt::Display for LoginHttpError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::RuntimeHttp(error) => write!(formatter, "{error}"),
-            Self::HttpStatus { status, body } => {
-                write!(formatter, "runx-api login returned HTTP {status}: {body}")
-            }
-            Self::InvalidJson(message) => {
-                write!(formatter, "runx-api login returned invalid JSON: {message}")
-            }
-            Self::RunxApi { code, detail } => {
-                write!(
-                    formatter,
-                    "runx-api login returned error [{code}]: {detail}"
-                )
-            }
-        }
-    }
-}
-
-impl std::error::Error for LoginHttpError {}
-
-impl From<RuntimeHttpError> for LoginHttpError {
-    fn from(error: RuntimeHttpError) -> Self {
-        Self::RuntimeHttp(error)
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-struct LoginStartResponse {
-    status: String,
-    session_id: String,
-    login_token: String,
-    #[serde(default)]
-    authorization_url: Option<String>,
-    #[serde(default)]
-    poll_after_ms: Option<u64>,
-}
-
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
-struct LoginStartRequest<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    provider: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purpose: Option<&'a str>,
-}
-
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
-struct LoginCompleteRequest<'a> {
-    login_token: &'a str,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-struct LoginCompleteResponse {
-    status: String,
-    session_id: String,
-    #[serde(default)]
-    principal_id: Option<String>,
-    #[serde(default)]
-    credential_id: Option<String>,
-    #[serde(default)]
-    token: Option<String>,
-    #[serde(default)]
-    poll_after_ms: Option<u64>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-struct ProviderTokenLoginResponse {
-    status: String,
-    principal_id: String,
-    credential_id: String,
-    token: String,
-}
-
 #[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
 struct LoginResult {
     status: &'static str,
@@ -201,7 +119,7 @@ struct LoginResult {
     credential_id: String,
 }
 
-// rust-style-allow: long-function -- login flag parsing stays in one linear pass
+// Function rationale: login flag parsing stays in one linear pass
 // so every accepted spelling and value rule is visible together.
 pub fn parse_login_plan(args: &[OsString]) -> Result<LoginPlan, String> {
     let mut api_base_url = None;
@@ -267,17 +185,8 @@ pub fn parse_login_plan(args: &[OsString]) -> Result<LoginPlan, String> {
     })
 }
 
-pub fn run_native_login(plan: LoginPlan) -> ExitCode {
-    let cwd = match std::env::current_dir() {
-        Ok(cwd) => cwd,
-        Err(error) => {
-            let _ignored = crate::cli_io::write_stderr(&format!(
-                "runx login: failed to resolve cwd: {error}\n"
-            ));
-            return ExitCode::from(1);
-        }
-    };
-    match run_login_command(&plan, &crate::history::env_map(), &cwd) {
+pub fn run_native_login(plan: LoginPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    match run_login_command(&plan, workspace.env(), workspace.cwd()) {
         Ok(output) => crate::cli_io::write_stdout_code(&output, 0),
         Err(error) => {
             if plan.json {
@@ -297,7 +206,7 @@ pub fn run_login_command(
     env: &BTreeMap<String, String>,
     cwd: &Path,
 ) -> Result<String, LoginCliError> {
-    let transport = crate::public_api::transport(allow_local_api(plan, env))
+    let transport = runx_runtime::hosted_api_transport(allow_local_api(plan, env))
         .map_err(LoginCliError::TransportInit)?;
     if plan.from_gh {
         validate_from_gh_provider(plan)?;
@@ -315,13 +224,13 @@ fn run_provider_token_login_with_transport<T: Transport>(
     github_token: &str,
 ) -> Result<String, LoginCliError> {
     validate_from_gh_provider(plan)?;
-    let environment = crate::public_api::ApiEnvironment::resolve_unauthenticated(
+    let environment = runx_runtime::HostedApiEnvironment::resolve_unauthenticated(
         plan.api_base_url.as_deref(),
         env,
         cwd,
     )?;
     let base_url = environment.base_url();
-    let completed = exchange_provider_token(
+    let completed = runx_runtime::exchange_hosted_provider_token(
         transport,
         base_url,
         plan.provider.as_deref().unwrap_or("github"),
@@ -335,7 +244,7 @@ fn run_provider_token_login_with_transport<T: Transport>(
     if principal_id.is_empty() {
         return Err(LoginCliError::MissingPrincipal);
     }
-    crate::public_api::store_authenticated_environment(
+    runx_runtime::store_authenticated_hosted_environment(
         env,
         cwd,
         base_url,
@@ -385,13 +294,13 @@ fn run_login_command_with_transport<T: Transport>(
     transport: &T,
     sleep: impl Fn(Duration),
 ) -> Result<String, LoginCliError> {
-    let environment = crate::public_api::ApiEnvironment::resolve_unauthenticated(
+    let environment = runx_runtime::HostedApiEnvironment::resolve_unauthenticated(
         plan.api_base_url.as_deref(),
         env,
         cwd,
     )?;
     let base_url = environment.base_url();
-    let started = start_login_session(
+    let started = runx_runtime::start_hosted_login(
         transport,
         base_url,
         plan.provider.as_deref(),
@@ -418,7 +327,7 @@ fn run_login_command_with_transport<T: Transport>(
         .as_deref()
         .filter(|value| !value.trim().is_empty())
         .ok_or(LoginCliError::MissingPrincipal)?;
-    crate::public_api::store_authenticated_environment(env, cwd, base_url, principal_id, token)?;
+    runx_runtime::store_authenticated_hosted_environment(env, cwd, base_url, principal_id, token)?;
     render_login_result(
         plan.json,
         &LoginResult {
@@ -432,13 +341,13 @@ fn run_login_command_with_transport<T: Transport>(
 fn wait_for_login_completion<T: Transport>(
     transport: &T,
     base_url: &str,
-    started: &LoginStartResponse,
+    started: &HostedLoginStartResponse,
     sleep: &impl Fn(Duration),
-) -> Result<LoginCompleteResponse, LoginCliError> {
+) -> Result<HostedLoginCompleteResponse, LoginCliError> {
     let deadline = Instant::now() + Duration::from_secs(DEFAULT_LOGIN_TIMEOUT_SECONDS);
     let mut poll_after = Duration::from_millis(started.poll_after_ms.unwrap_or(1000));
     loop {
-        let completed = complete_login_session(
+        let completed = runx_runtime::complete_hosted_login(
             transport,
             base_url,
             &started.session_id,
@@ -458,95 +367,7 @@ fn wait_for_login_completion<T: Transport>(
 }
 
 fn allow_local_api(plan: &LoginPlan, env: &BTreeMap<String, String>) -> bool {
-    crate::public_api::private_network_allowed(plan.allow_local_api, env)
-}
-
-fn start_login_session<T: Transport>(
-    transport: &T,
-    base_url: &str,
-    provider: Option<&str>,
-    purpose: Option<&str>,
-) -> Result<LoginStartResponse, LoginHttpError> {
-    let request = LoginStartRequest {
-        provider: provider.map(str::trim).filter(|value| !value.is_empty()),
-        purpose: purpose.map(str::trim).filter(|value| !value.is_empty()),
-    };
-    let response = transport.send(HttpRequest {
-        method: HttpMethod::Post,
-        url: format!("{}/v1/login/sessions", base_url.trim_end_matches('/')),
-        headers: vec![RuntimeHttpHeader::new("content-type", "application/json")],
-        body: Some(
-            serde_json::to_string(&request)
-                .map_err(|error| LoginHttpError::InvalidJson(error.to_string()))?,
-        ),
-    })?;
-    json_response(response.status, &response.body)
-}
-
-fn complete_login_session<T: Transport>(
-    transport: &T,
-    base_url: &str,
-    session_id: &str,
-    login_token: &str,
-) -> Result<LoginCompleteResponse, LoginHttpError> {
-    let body = serde_json::to_string(&LoginCompleteRequest { login_token })
-        .map_err(|error| LoginHttpError::InvalidJson(error.to_string()))?;
-    let response = transport.send(HttpRequest {
-        method: HttpMethod::Post,
-        url: format!(
-            "{}/v1/login/sessions/{}/complete",
-            base_url.trim_end_matches('/'),
-            session_id
-        ),
-        headers: vec![RuntimeHttpHeader::new("content-type", "application/json")],
-        body: Some(body),
-    })?;
-    json_response(response.status, &response.body)
-}
-
-fn exchange_provider_token<T: Transport>(
-    transport: &T,
-    base_url: &str,
-    provider: &str,
-    purpose: Option<&str>,
-    github_token: &str,
-) -> Result<ProviderTokenLoginResponse, LoginHttpError> {
-    let request = LoginStartRequest {
-        provider: Some(provider),
-        purpose: purpose.map(str::trim).filter(|value| !value.is_empty()),
-    };
-    let response = transport.send(HttpRequest {
-        method: HttpMethod::Post,
-        url: format!("{}/v1/login/provider-token", base_url.trim_end_matches('/')),
-        headers: vec![
-            RuntimeHttpHeader::new("content-type", "application/json"),
-            RuntimeHttpHeader::new("authorization", format!("Bearer {github_token}")),
-        ],
-        body: Some(
-            serde_json::to_string(&request)
-                .map_err(|error| LoginHttpError::InvalidJson(error.to_string()))?,
-        ),
-    })?;
-    json_response(response.status, &response.body)
-}
-
-fn json_response<T: for<'de> Deserialize<'de>>(
-    status: u16,
-    body: &str,
-) -> Result<T, LoginHttpError> {
-    if !(200..=299).contains(&status) {
-        if let Some(error) = crate::public_api::parse_error(body) {
-            return Err(LoginHttpError::RunxApi {
-                code: error.code,
-                detail: error.detail,
-            });
-        }
-        return Err(LoginHttpError::HttpStatus {
-            status,
-            body: body.to_owned(),
-        });
-    }
-    serde_json::from_str(body).map_err(|error| LoginHttpError::InvalidJson(error.to_string()))
+    runx_runtime::hosted_private_network_allowed(plan.allow_local_api, env)
 }
 
 fn render_login_result(json: bool, result: &LoginResult) -> Result<String, LoginCliError> {

@@ -15,6 +15,11 @@ pub(crate) fn now_iso8601() -> String {
     format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{millis:03}Z")
 }
 
+pub(crate) fn iso8601_from_unix_seconds(seconds: i64) -> String {
+    let (year, month, day, hour, minute, second) = civil_from_unix_seconds(seconds);
+    format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z")
+}
+
 fn civil_from_unix_seconds(seconds: i64) -> (i32, u32, u32, u32, u32, u32) {
     let days = seconds.div_euclid(86_400);
     let day_seconds = seconds.rem_euclid(86_400);

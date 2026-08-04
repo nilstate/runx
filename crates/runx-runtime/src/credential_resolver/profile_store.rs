@@ -7,6 +7,7 @@ use crate::config::{
     RunxCredentialProfile, load_runx_config_file, remove_local_credential_secret,
     resolve_runx_home_dir, store_local_credential_secret, write_runx_config_file,
 };
+use crate::credentials::credential_audience_host;
 use crate::services::WorkspaceEnv;
 
 use super::{CredentialBindingsFile, CredentialProfileSummary, SkillCredentialError};
@@ -18,6 +19,7 @@ pub fn set_local_credential_profile(
     name: &str,
     provider: &str,
     auth_mode: &str,
+    audience: Option<&str>,
     secret: &str,
 ) -> Result<CredentialProfileSummary, SkillCredentialError> {
     let name = required(name, SkillCredentialError::EmptyProfileName)?;
@@ -26,20 +28,29 @@ pub fn set_local_credential_profile(
     if secret.trim().is_empty() {
         return Err(SkillCredentialError::EmptySecret);
     }
+    let requested_audience = audience
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            credential_audience_host(value)?;
+            Ok::<_, SkillCredentialError>(value.to_owned())
+        })
+        .transpose()?;
     let config_dir = resolve_runx_home_dir(workspace.env(), workspace.cwd());
     let config_path = config_dir.join("config.json");
     let mut config = load_runx_config_file(&config_path)?;
     let credentials = config.credentials.get_or_insert_with(Default::default);
-    let prior_ref = credentials
-        .profiles
-        .get(name)
-        .map(|profile| profile.secret_ref.clone());
+    let prior = credentials.profiles.get(name);
+    let prior_ref = prior.map(|profile| profile.secret_ref.clone());
+    let audience =
+        requested_audience.or_else(|| prior.and_then(|profile| profile.audience.clone()));
     let secret_ref = store_local_credential_secret(&config_dir, secret)?;
     credentials.profiles.insert(
         name.to_owned(),
         RunxCredentialProfile {
             provider: provider.to_owned(),
             auth_mode: auth_mode.to_owned(),
+            audience: audience.clone(),
             secret_ref,
         },
     );
@@ -54,6 +65,7 @@ pub fn set_local_credential_profile(
         name: name.to_owned(),
         provider: provider.to_owned(),
         auth_mode: auth_mode.to_owned(),
+        audience,
         is_default: true,
     })
 }
@@ -72,6 +84,7 @@ pub fn list_local_credential_profiles(
             name,
             provider: profile.provider,
             auth_mode: profile.auth_mode,
+            audience: profile.audience,
         })
         .collect())
 }

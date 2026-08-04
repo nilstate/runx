@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because the runtime HTTP transport keeps
+// Module rationale: the runtime HTTP transport keeps
 // reqwest wiring, SSRF guards, response limits, and security-focused unit tests
 // in one review unit.
 mod types;
@@ -12,20 +12,25 @@ use std::net::SocketAddr;
 #[cfg(any(feature = "async-http", test))]
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 #[cfg(feature = "async-http")]
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 #[cfg(feature = "async-http")]
 use std::time::Duration;
 
 #[cfg(any(feature = "async-http", test))]
 use url::Url;
 
+#[cfg(feature = "async-http")]
+pub(crate) use self::types::sensitive_header_name;
 pub use self::types::{
     HttpMethod, ReqwestHttpTransport, RuntimeHttpHeader, RuntimeHttpRequest, RuntimeHttpResponse,
     RuntimeHttpTransport,
 };
 
+/// Standard decoded response-body bound for runtime-owned HTTP. Callers may
+/// select a lower bound for a narrower operation, but must not invent a second
+/// generic ceiling.
 #[cfg(feature = "async-http")]
-const MAX_HTTP_RESPONSE_BYTES: usize = 1024 * 1024;
+pub(crate) const STANDARD_HTTP_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
 #[cfg(feature = "async-http")]
 const DEFAULT_HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 #[cfg(feature = "async-http")]
@@ -39,109 +44,120 @@ const DEFAULT_SAFE_READ_RETRY_DELAY: Duration = Duration::from_millis(100);
 #[cfg(feature = "async-http")]
 const MAX_SAFE_READ_RETRY_DELAY: Duration = Duration::from_secs(2);
 #[cfg(feature = "async-http")]
-static HTTP_CLIENT_RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
-
-/// The default browser User-Agent the governed fetch transport presents (current
-/// stable Chrome). Overridable per run with `RUNX_HTTP_USER_AGENT`, opt-out with
-/// `RUNX_HTTP_BROWSER=0`. This is header/UA-level emulation only: it clears basic bot
-/// scoring (a missing UA, no browser headers), NOT TLS (JA3/JA4) or HTTP/2
-/// fingerprinting, which would need a Chrome-impersonating TLS stack and is
-/// deliberately out of scope. Sites on a JS/managed challenge, or that fingerprint the
-/// rustls handshake, are expected to still block us; we surface that as a non-2xx
-/// rather than escalate.
-#[allow(dead_code)] // consumed by the feature-gated http adapter and the transport tests
-pub const DEFAULT_BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
-
-/// The Chrome navigation header set, applied as client default headers so a per-request
-/// (manifest/caller) header of the same name still overrides it. The User-Agent is set
-/// via the builder's `.user_agent()` and Accept-Encoding is owned by the gzip/brotli/...
-/// decoders, so neither is here. reqwest's HeaderMap is hash-ordered and will not
-/// reproduce Chrome's header order on the wire: values match Chrome, order does not,
-/// which is the honest ceiling for header-level emulation.
+static HTTP_CLIENT_RUNTIME: RetryableCell<tokio::runtime::Runtime> = RetryableCell::new();
 #[cfg(feature = "async-http")]
-fn chrome_default_headers() -> reqwest::header::HeaderMap {
-    use reqwest::header::{HeaderMap, HeaderValue};
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "sec-ch-ua",
-        HeaderValue::from_static(
-            "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not/A)Brand\";v=\"24\"",
-        ),
-    );
-    headers.insert("sec-ch-ua-mobile", HeaderValue::from_static("?0"));
-    headers.insert(
-        "sec-ch-ua-platform",
-        HeaderValue::from_static("\"Windows\""),
-    );
-    headers.insert("upgrade-insecure-requests", HeaderValue::from_static("1"));
-    headers.insert(
-        "accept",
-        HeaderValue::from_static(
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        ),
-    );
-    headers.insert("sec-fetch-site", HeaderValue::from_static("none"));
-    headers.insert("sec-fetch-mode", HeaderValue::from_static("navigate"));
-    headers.insert("sec-fetch-user", HeaderValue::from_static("?1"));
-    headers.insert("sec-fetch-dest", HeaderValue::from_static("document"));
-    headers.insert(
-        "accept-language",
-        HeaderValue::from_static("en-US,en;q=0.9"),
-    );
-    headers.insert("priority", HeaderValue::from_static("u=0, i"));
-    headers
+const HTTP_CLIENT_PROFILE_COUNT: usize = 3;
+#[cfg(feature = "async-http")]
+static HTTP_CLIENTS: [RetryableCell<reqwest::Client>; HTTP_CLIENT_PROFILE_COUNT] =
+    [const { RetryableCell::new() }; HTTP_CLIENT_PROFILE_COUNT];
+
+#[cfg(feature = "async-http")]
+struct RetryableCell<T> {
+    value: OnceLock<T>,
+    initialize: Mutex<()>,
+}
+
+#[cfg(feature = "async-http")]
+impl<T> RetryableCell<T> {
+    const fn new() -> Self {
+        Self {
+            value: OnceLock::new(),
+            initialize: Mutex::new(()),
+        }
+    }
+
+    fn get_or_try_init<E>(&self, initialize: impl FnOnce() -> Result<T, E>) -> Result<&T, E> {
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let _guard = self
+            .initialize
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let value = initialize()?;
+        Ok(self.value.get_or_init(|| value))
+    }
+}
+
+#[cfg(feature = "async-http")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(usize)]
+enum TransportProfile {
+    PublicStandard = 0,
+    PrivateStandard = 1,
+    PublicPatient = 2,
+}
+
+#[cfg(feature = "async-http")]
+#[derive(Clone, Copy)]
+struct TransportConfig {
+    request_timeout: Duration,
+    connect_timeout: Duration,
+    allow_private_networks: bool,
+}
+
+#[cfg(feature = "async-http")]
+impl TransportProfile {
+    const fn config(self) -> TransportConfig {
+        match self {
+            Self::PublicStandard => TransportConfig {
+                request_timeout: DEFAULT_HTTP_REQUEST_TIMEOUT,
+                connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
+                allow_private_networks: false,
+            },
+            Self::PrivateStandard => TransportConfig {
+                request_timeout: DEFAULT_HTTP_REQUEST_TIMEOUT,
+                connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
+                allow_private_networks: true,
+            },
+            Self::PublicPatient => TransportConfig {
+                request_timeout: MANAGED_AGENT_REQUEST_TIMEOUT,
+                connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
+                allow_private_networks: false,
+            },
+        }
+    }
+
+    fn cache(self) -> &'static RetryableCell<reqwest::Client> {
+        &HTTP_CLIENTS[self as usize]
+    }
 }
 
 #[cfg(feature = "async-http")]
 impl ReqwestHttpTransport {
     pub fn new() -> Result<Self, RuntimeHttpError> {
-        Self::with_timeouts_and_private_networks(
-            DEFAULT_HTTP_REQUEST_TIMEOUT,
-            DEFAULT_HTTP_CONNECT_TIMEOUT,
-            false,
-            None,
-        )
+        Self::from_profile(TransportProfile::PublicStandard)
     }
 
-    fn with_timeouts_and_private_networks(
+    fn from_profile(profile: TransportProfile) -> Result<Self, RuntimeHttpError> {
+        let config = profile.config();
+        let client = profile
+            .cache()
+            .get_or_try_init(|| build_http_client(config))
+            .map_err(|message| RuntimeHttpError::Transport { message })?
+            .clone();
+        Ok(Self {
+            client,
+            allow_private_networks: config.allow_private_networks,
+            request_timeout: config.request_timeout,
+        })
+    }
+
+    #[cfg(test)]
+    fn uncached(
         request_timeout: Duration,
         connect_timeout: Duration,
         allow_private_networks: bool,
-        browser_user_agent: Option<String>,
     ) -> Result<Self, RuntimeHttpError> {
-        // reqwest is built with `rustls-no-provider`, so the process needs a
-        // default crypto provider before a TLS client can be constructed.
-        // Install ring once; an Err means another transport already set it.
-        let _ = rustls::crypto::ring::default_provider().install_default();
-        // Decode like a browser (the decoders also advertise the matching
-        // Accept-Encoding) and let ALPN negotiate HTTP/2; a no-compression,
-        // http1-only client is a bot tell. The response cap measures DECODED
-        // bytes (read_limited_response_body), so a decompression bomb stays bounded.
-        let mut builder = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .timeout(request_timeout)
-            .connect_timeout(connect_timeout)
-            .gzip(true)
-            .brotli(true)
-            .deflate(true)
-            .zstd(true);
-        // The browser profile is a default-header layer: a per-request
-        // (manifest/caller) header of the same name still overrides it. The UA goes
-        // through the dedicated builder method so a caller UA header overrides it
-        // without duplicating. None = the plain client (internal/API callers).
-        if let Some(user_agent) = browser_user_agent {
-            builder = builder
-                .user_agent(user_agent)
-                .default_headers(chrome_default_headers());
-        }
-        if !allow_private_networks {
-            builder = builder.dns_resolver(GuardedDnsResolver::new(TokioDnsResolver));
-        }
-        let client = builder
-            .build()
-            .map_err(|error| RuntimeHttpError::Transport {
-                message: transport_error_message(&error),
-            })?;
+        let client = build_http_client(TransportConfig {
+            request_timeout,
+            connect_timeout,
+            allow_private_networks,
+        })
+        .map_err(|message| RuntimeHttpError::Transport { message })?;
         Ok(Self {
             client,
             allow_private_networks,
@@ -151,15 +167,10 @@ impl ReqwestHttpTransport {
 
     /// Build a transport that may reach private or loopback networks. This is the
     /// explicit, opt-in escape from the default SSRF/private-network block; callers
-    /// must require an operator-declared opt-in (e.g. an `http` source's
-    /// `allowPrivateNetwork`) before choosing it, never as a default.
+    /// must require an operator-declared opt-in before choosing it, never as a
+    /// default.
     pub fn with_private_network_access() -> Result<Self, RuntimeHttpError> {
-        Self::with_timeouts_and_private_networks(
-            DEFAULT_HTTP_REQUEST_TIMEOUT,
-            DEFAULT_HTTP_CONNECT_TIMEOUT,
-            true,
-            None,
-        )
+        Self::from_profile(TransportProfile::PrivateStandard)
     }
 
     /// Build the model-provider transport for managed-agent calls. These calls can
@@ -167,29 +178,7 @@ impl ReqwestHttpTransport {
     /// provider thinks and emits tool use, but they still keep the same public-DNS
     /// guard and short connect timeout.
     pub fn for_managed_agent() -> Result<Self, RuntimeHttpError> {
-        Self::with_timeouts_and_private_networks(
-            MANAGED_AGENT_REQUEST_TIMEOUT,
-            DEFAULT_HTTP_CONNECT_TIMEOUT,
-            false,
-            None,
-        )
-    }
-
-    /// Build the open-web fetch transport: the optional browser profile (a
-    /// `Some(user_agent)` enables it; `None` is the plain client) plus the
-    /// private-network flag. The `http` skill adapter uses this; `new()` and
-    /// `with_private_network_access()` stay plain for internal/API callers (the
-    /// agent transport, the registry) where a browser profile does not belong.
-    pub fn with_options(
-        allow_private_networks: bool,
-        browser_user_agent: Option<String>,
-    ) -> Result<Self, RuntimeHttpError> {
-        Self::with_timeouts_and_private_networks(
-            DEFAULT_HTTP_REQUEST_TIMEOUT,
-            DEFAULT_HTTP_CONNECT_TIMEOUT,
-            allow_private_networks,
-            browser_user_agent,
-        )
+        Self::from_profile(TransportProfile::PublicPatient)
     }
 
     #[cfg(test)]
@@ -202,13 +191,87 @@ impl ReqwestHttpTransport {
         request_timeout: Duration,
         connect_timeout: Duration,
     ) -> Result<Self, RuntimeHttpError> {
-        Self::with_timeouts_and_private_networks(request_timeout, connect_timeout, true, None)
+        Self::uncached(request_timeout, connect_timeout, true)
     }
+}
+
+#[cfg(feature = "async-http")]
+fn build_http_client(config: TransportConfig) -> Result<reqwest::Client, String> {
+    // reqwest is built with `rustls-no-provider`, so the process needs a
+    // default crypto provider before a TLS client can be constructed.
+    // Install ring once; an Err means another transport already set it.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    // Decode like a browser (the decoders also advertise the matching
+    // Accept-Encoding) and let ALPN negotiate HTTP/2; a no-compression,
+    // http1-only client is a bot tell. The response cap measures DECODED
+    // bytes (read_limited_response_body), so a decompression bomb stays bounded.
+    let builder = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(config.request_timeout)
+        .connect_timeout(config.connect_timeout)
+        .gzip(true)
+        .brotli(true)
+        .deflate(true)
+        .zstd(true);
+    let builder = if config.allow_private_networks {
+        builder
+    } else {
+        builder.dns_resolver(GuardedDnsResolver::new(TokioDnsResolver))
+    };
+    builder
+        .build()
+        .map_err(|error| transport_error_message(&error))
 }
 
 #[cfg(feature = "async-http")]
 impl RuntimeHttpTransport for ReqwestHttpTransport {
     fn send(&self, request: RuntimeHttpRequest) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send_with_limit(request, STANDARD_HTTP_RESPONSE_BYTES, false, false)
+    }
+
+    fn send_limited(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send_with_limit(request, response_limit, false, false)
+    }
+
+    fn send_idempotent(
+        &self,
+        request: RuntimeHttpRequest,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send_with_limit(request, STANDARD_HTTP_RESPONSE_BYTES, false, true)
+    }
+
+    fn send_idempotent_limited(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send_with_limit(request, response_limit, false, true)
+    }
+}
+
+#[cfg(feature = "async-http")]
+impl ReqwestHttpTransport {
+    /// Send one governed request with a caller-selected response cap. The body is
+    /// returned truncated at the cap instead of allocating beyond it.
+    pub fn send_bounded(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
+        self.send_with_limit(request, response_limit, true, false)
+    }
+
+    fn send_with_limit(
+        &self,
+        request: RuntimeHttpRequest,
+        response_limit: usize,
+        truncate: bool,
+        retry_as_idempotent: bool,
+    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
         validate_http_url(&request.url, self.allow_private_networks)?;
         let client = self.client.clone();
         let request_timeout = self.request_timeout;
@@ -216,7 +279,14 @@ impl RuntimeHttpTransport for ReqwestHttpTransport {
         block_on_http(async move {
             tokio::time::timeout(
                 request_timeout,
-                send_reqwest_with_safe_read_retries(client, request, headers),
+                send_reqwest_with_safe_read_retries(
+                    client,
+                    request,
+                    headers,
+                    response_limit,
+                    truncate,
+                    retry_as_idempotent,
+                ),
             )
             .await
             .map_err(|_| RuntimeHttpError::Transport {
@@ -258,6 +328,9 @@ async fn send_reqwest_with_safe_read_retries(
     client: reqwest::Client,
     request: RuntimeHttpRequest,
     headers: reqwest::header::HeaderMap,
+    response_limit: usize,
+    truncate: bool,
+    retry_as_idempotent: bool,
 ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
     let mut attempt = 1_usize;
     loop {
@@ -274,7 +347,7 @@ async fn send_reqwest_with_safe_read_retries(
                 message: transport_error_message(&error),
             })?;
         let status = response.status().as_u16();
-        if request.method == HttpMethod::Get
+        if (request.method == HttpMethod::Get || retry_as_idempotent)
             && retryable_read_status(status)
             && attempt < MAX_SAFE_READ_ATTEMPTS
         {
@@ -284,9 +357,35 @@ async fn send_reqwest_with_safe_read_retries(
             attempt += 1;
             continue;
         }
-        let body = read_limited_response_body(response, MAX_HTTP_RESPONSE_BYTES).await?;
-        return Ok(RuntimeHttpResponse { status, body });
+        let response_headers = safe_response_headers(&response);
+        let (body, truncated) =
+            read_limited_response_body(response, response_limit, truncate).await?;
+        let body_bytes = body.len();
+        let body_digest = runx_contracts::sha256_prefixed(&body);
+        return Ok(RuntimeHttpResponse {
+            status,
+            body: String::from_utf8_lossy(&body).into_owned(),
+            headers: response_headers,
+            body_digest,
+            body_bytes,
+            truncated,
+        });
     }
+}
+
+#[cfg(feature = "async-http")]
+fn safe_response_headers(response: &reqwest::Response) -> Vec<RuntimeHttpHeader> {
+    response
+        .headers()
+        .iter()
+        .filter(|(name, _)| !types::sensitive_header_name(name.as_str()))
+        .filter_map(|(name, value)| {
+            value
+                .to_str()
+                .ok()
+                .map(|value| RuntimeHttpHeader::new(name.as_str(), value))
+        })
+        .collect()
 }
 
 #[cfg(feature = "async-http")]
@@ -430,57 +529,6 @@ impl fmt::Display for EmptyDnsResolutionError {
 #[cfg(feature = "async-http")]
 impl StdError for EmptyDnsResolutionError {}
 
-#[derive(Clone, Debug)]
-#[cfg(any(feature = "async-http", test))]
-#[allow(dead_code)]
-pub struct RuntimeHttpClient<T = ReqwestHttpTransport> {
-    base_url: String,
-    transport: T,
-}
-
-#[cfg(any(feature = "async-http", test))]
-#[allow(dead_code)]
-impl<T: RuntimeHttpTransport> RuntimeHttpClient<T> {
-    pub fn with_transport(
-        base_url: impl AsRef<str>,
-        transport: T,
-    ) -> Result<Self, RuntimeHttpError> {
-        let base_url = strip_one_trailing_slash(base_url.as_ref());
-        validate_http_url(&base_url, false)?;
-        Ok(Self {
-            base_url,
-            transport,
-        })
-    }
-
-    pub fn route_url(&self, route: &str) -> Result<String, RuntimeHttpError> {
-        let normalized_route = route.trim_start_matches('/');
-        let url = format!("{}/{}", self.base_url, normalized_route);
-        validate_http_url(&url, false)?;
-        Ok(url)
-    }
-
-    pub fn request(
-        &self,
-        method: HttpMethod,
-        route: &str,
-    ) -> Result<RuntimeHttpRequest, RuntimeHttpError> {
-        Ok(RuntimeHttpRequest {
-            method,
-            url: self.route_url(route)?,
-            headers: Vec::new(),
-            body: None,
-        })
-    }
-
-    pub fn send(
-        &self,
-        request: RuntimeHttpRequest,
-    ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
-        self.transport.send(request)
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeHttpError {
     #[error("invalid runtime HTTP url: {0}")]
@@ -528,7 +576,6 @@ fn validate_header(header: &RuntimeHttpHeader) -> Result<(), RuntimeHttpError> {
 }
 
 #[cfg(any(feature = "async-http", test))]
-#[allow(dead_code)]
 fn validate_http_url(value: &str, allow_private_networks: bool) -> Result<(), RuntimeHttpError> {
     let url = Url::parse(value)?;
     match url.scheme() {
@@ -562,12 +609,12 @@ fn validate_public_host(url: &Url, allow_private_networks: bool) -> Result<(), R
         .strip_prefix('[')
         .and_then(|value| value.strip_suffix(']'))
         .unwrap_or(&normalized);
-    if let Ok(ip) = ip_host.parse::<IpAddr>() {
-        if is_private_network_ip(ip) {
-            return Err(RuntimeHttpError::PrivateNetworkUrl {
-                host: host.to_owned(),
-            });
-        }
+    if let Ok(ip) = ip_host.parse::<IpAddr>()
+        && is_private_network_ip(ip)
+    {
+        return Err(RuntimeHttpError::PrivateNetworkUrl {
+            host: host.to_owned(),
+        });
     }
     Ok(())
 }
@@ -658,8 +705,10 @@ fn six_to_four_embedded_ipv4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
 async fn read_limited_response_body(
     mut response: reqwest::Response,
     limit: usize,
-) -> Result<String, RuntimeHttpError> {
-    if declared_response_length(&response)?.is_some_and(|length| length > limit as u64) {
+    truncate: bool,
+) -> Result<(Vec<u8>, bool), RuntimeHttpError> {
+    if declared_response_length(&response)?.is_some_and(|length| length > limit as u64) && !truncate
+    {
         return Err(RuntimeHttpError::ResponseBodyTooLarge { limit });
     }
     let mut body = Vec::new();
@@ -672,11 +721,16 @@ async fn read_limited_response_body(
             })?
     {
         if body.len().saturating_add(chunk.len()) > limit {
-            return Err(RuntimeHttpError::ResponseBodyTooLarge { limit });
+            if !truncate {
+                return Err(RuntimeHttpError::ResponseBodyTooLarge { limit });
+            }
+            let remaining = limit.saturating_sub(body.len());
+            body.extend_from_slice(&chunk[..remaining]);
+            return Ok((body, true));
         }
         body.extend_from_slice(&chunk);
     }
-    Ok(String::from_utf8_lossy(&body).into_owned())
+    Ok((body, false))
 }
 
 #[cfg(feature = "async-http")]
@@ -721,19 +775,16 @@ where
 
 #[cfg(feature = "async-http")]
 fn http_runtime() -> Result<&'static tokio::runtime::Runtime, RuntimeHttpError> {
-    match HTTP_CLIENT_RUNTIME.get_or_init(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
-            .thread_name("runx-http")
-            .enable_all()
-            .build()
-            .map_err(|error| error.to_string())
-    }) {
-        Ok(runtime) => Ok(runtime),
-        Err(message) => Err(RuntimeHttpError::AsyncRuntimeUnavailable {
-            message: message.clone(),
-        }),
-    }
+    HTTP_CLIENT_RUNTIME
+        .get_or_try_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .thread_name("runx-http")
+                .enable_all()
+                .build()
+                .map_err(|error| error.to_string())
+        })
+        .map_err(|message| RuntimeHttpError::AsyncRuntimeUnavailable { message })
 }
 
 #[cfg(feature = "async-http")]
@@ -760,7 +811,6 @@ fn is_header_token_byte(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
     use std::io;
     #[cfg(feature = "async-http")]
     use std::io::{Read, Write};
@@ -772,34 +822,15 @@ mod tests {
     use std::time::Duration;
 
     #[cfg(feature = "async-http")]
+    use super::RuntimeHttpTransport;
+    #[cfg(feature = "async-http")]
     use super::{
-        GuardedDnsResolver, MAX_HTTP_RESPONSE_BYTES, ReqwestHttpTransport, block_on_http,
-        http_runtime,
+        GuardedDnsResolver, ReqwestHttpTransport, STANDARD_HTTP_RESPONSE_BYTES, TransportProfile,
+        block_on_http, http_runtime,
     };
-    use super::{
-        HttpMethod, RuntimeHttpClient, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest,
-        RuntimeHttpResponse, RuntimeHttpTransport,
-    };
+    use super::{HttpMethod, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest};
     #[cfg(feature = "async-http")]
     use reqwest::dns::Resolve as _;
-
-    #[derive(Default)]
-    struct MockTransport {
-        requests: RefCell<Vec<RuntimeHttpRequest>>,
-    }
-
-    impl RuntimeHttpTransport for &MockTransport {
-        fn send(
-            &self,
-            request: RuntimeHttpRequest,
-        ) -> Result<RuntimeHttpResponse, RuntimeHttpError> {
-            self.requests.borrow_mut().push(request);
-            Ok(RuntimeHttpResponse {
-                status: 204,
-                body: String::new(),
-            })
-        }
-    }
 
     #[cfg(feature = "async-http")]
     #[derive(Clone, Debug)]
@@ -827,27 +858,6 @@ mod tests {
     }
 
     #[test]
-    fn client_normalizes_base_url_and_routes_requests() -> Result<(), RuntimeHttpTestError> {
-        let transport = MockTransport::default();
-        let client = RuntimeHttpClient::with_transport("https://api.example/", &transport)?;
-
-        let mut request = client.request(HttpMethod::Delete, "/v1/grants/grant_1")?;
-        request
-            .headers
-            .push(RuntimeHttpHeader::new("accept", "application/json"));
-        request.body = Some("{\"ok\":true}".to_owned());
-        let response = client.send(request)?;
-
-        assert_eq!(response.status, 204);
-        let sent = transport.requests.borrow();
-        assert_eq!(sent[0].method, HttpMethod::Delete);
-        assert_eq!(sent[0].url, "https://api.example/v1/grants/grant_1");
-        assert_eq!(sent[0].headers[0].name, "accept");
-        assert_eq!(sent[0].body.as_deref(), Some("{\"ok\":true}"));
-        Ok(())
-    }
-
-    #[test]
     fn debug_output_redacts_sensitive_header_values() {
         let request = RuntimeHttpRequest {
             method: HttpMethod::Get,
@@ -866,13 +876,15 @@ mod tests {
         assert!(!debug.contains("SECRET_BODY"));
         assert!(debug.contains("[redacted]"));
         assert!(debug.contains("application/json"));
+        assert!(super::types::sensitive_header_name("set-cookie"));
+        assert!(super::types::sensitive_header_name("cookie"));
     }
 
     #[test]
     fn invalid_base_urls_fail_closed() {
-        assert!(RuntimeHttpClient::with_transport("not a url", &MockTransport::default()).is_err());
+        assert!(super::validate_http_url("not a url", false).is_err());
         assert!(matches!(
-            RuntimeHttpClient::with_transport("file:///tmp/runx.sock", &MockTransport::default()),
+            super::validate_http_url("file:///tmp/runx.sock", false),
             Err(RuntimeHttpError::UnsupportedUrlScheme { .. })
         ));
     }
@@ -903,7 +915,7 @@ mod tests {
         ] {
             assert!(
                 matches!(
-                    RuntimeHttpClient::with_transport(value, &MockTransport::default()),
+                    super::validate_http_url(value, false),
                     Err(RuntimeHttpError::PrivateNetworkUrl { .. })
                 ),
                 "{value} should be rejected as private"
@@ -913,9 +925,9 @@ mod tests {
 
     #[test]
     fn public_base_urls_are_allowed() -> Result<(), RuntimeHttpTestError> {
-        RuntimeHttpClient::with_transport("https://api.example", &MockTransport::default())?;
-        RuntimeHttpClient::with_transport("http://8.8.8.8", &MockTransport::default())?;
-        RuntimeHttpClient::with_transport("http://[64:ff9b::808:808]", &MockTransport::default())?;
+        super::validate_http_url("https://api.example", false)?;
+        super::validate_http_url("http://8.8.8.8", false)?;
+        super::validate_http_url("http://[64:ff9b::808:808]", false)?;
         Ok(())
     }
 
@@ -925,6 +937,56 @@ mod tests {
         let first = http_runtime()?;
         let second = http_runtime()?;
         assert!(std::ptr::eq(first, second));
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "async-http")]
+    fn retryable_cell_does_not_memoize_transient_initialization_failure() {
+        let attempts = std::cell::Cell::new(0);
+        let cell = super::RetryableCell::new();
+        let first: Result<&u8, &str> = cell.get_or_try_init(|| {
+            attempts.set(attempts.get() + 1);
+            Err("transient")
+        });
+        let second: Result<&u8, &str> = cell.get_or_try_init(|| {
+            attempts.set(attempts.get() + 1);
+            Ok(7)
+        });
+        let third: Result<&u8, &str> = cell.get_or_try_init(|| {
+            attempts.set(attempts.get() + 1);
+            Ok(8)
+        });
+
+        assert_eq!(first, Err("transient"));
+        assert_eq!(second, Ok(&7));
+        assert_eq!(third, Ok(&7));
+        assert_eq!(attempts.get(), 2);
+    }
+
+    #[test]
+    #[cfg(feature = "async-http")]
+    fn canonical_http_profiles_populate_distinct_policy_cache_slots()
+    -> Result<(), RuntimeHttpTestError> {
+        let _public_first = ReqwestHttpTransport::new()?;
+        let _public_second = ReqwestHttpTransport::new()?;
+        let _private_first = ReqwestHttpTransport::with_private_network_access()?;
+        let _private_second = ReqwestHttpTransport::with_private_network_access()?;
+        let _managed_first = ReqwestHttpTransport::for_managed_agent()?;
+        let _managed_second = ReqwestHttpTransport::for_managed_agent()?;
+
+        let (Some(public), Some(private), Some(patient)) = (
+            TransportProfile::PublicStandard.cache().value.get(),
+            TransportProfile::PrivateStandard.cache().value.get(),
+            TransportProfile::PublicPatient.cache().value.get(),
+        ) else {
+            return Err(RuntimeHttpError::Transport {
+                message: "canonical HTTP profile client was not cached".to_owned(),
+            }
+            .into());
+        };
+        assert!(!std::ptr::eq(public, private));
+        assert!(!std::ptr::eq(public, patient));
         Ok(())
     }
 
@@ -1094,6 +1156,49 @@ mod tests {
 
     #[test]
     #[cfg(feature = "async-http")]
+    fn reqwest_transport_retries_declared_idempotent_posts() -> Result<(), RuntimeHttpTestError> {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let server = std::thread::spawn(move || -> Result<Vec<String>, std::io::Error> {
+            let mut requests = Vec::new();
+            for attempt in 1..=3 {
+                let (mut stream, _) = listener.accept()?;
+                let mut buffer = [0_u8; 1024];
+                let bytes_read = stream.read(&mut buffer)?;
+                requests.push(String::from_utf8_lossy(&buffer[..bytes_read]).into_owned());
+                if attempt < 3 {
+                    stream.write_all(
+                        b"HTTP/1.1 503 Service Unavailable\r\nRetry-After: 0\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    )?;
+                } else {
+                    stream.write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                    )?;
+                }
+            }
+            Ok(requests)
+        });
+
+        let transport = ReqwestHttpTransport::with_private_network_access_for_tests()?;
+        let response = transport.send_idempotent(RuntimeHttpRequest {
+            method: HttpMethod::Post,
+            url: format!("http://{address}/query"),
+            headers: vec![RuntimeHttpHeader::new("content-type", "application/json")],
+            body: Some("{}".to_owned()),
+        })?;
+        let requests = server
+            .join()
+            .map_err(|_| RuntimeHttpTestError::ServerThread)??;
+
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body, "ok");
+        assert_eq!(requests.len(), 3);
+        assert!(requests.iter().all(|request| request.starts_with("POST ")));
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "async-http")]
     fn reqwest_transport_rejects_header_injection() -> Result<(), RuntimeHttpTestError> {
         let transport = ReqwestHttpTransport::new()?;
         let error = transport
@@ -1143,7 +1248,7 @@ mod tests {
             let _ = stream.read(&mut buffer)?;
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-                MAX_HTTP_RESPONSE_BYTES + 1
+                STANDARD_HTTP_RESPONSE_BYTES + 1
             );
             stream.write_all(response.as_bytes())?;
             Ok(())
@@ -1165,7 +1270,7 @@ mod tests {
         assert!(matches!(
             error,
             Some(RuntimeHttpError::ResponseBodyTooLarge { limit })
-                if limit == MAX_HTTP_RESPONSE_BYTES
+                if limit == STANDARD_HTTP_RESPONSE_BYTES
         ));
         Ok(())
     }
@@ -1180,7 +1285,7 @@ mod tests {
             let mut buffer = [0_u8; 1024];
             let _ = stream.read(&mut buffer)?;
             stream.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")?;
-            let _ = stream.write_all(&vec![b'a'; MAX_HTTP_RESPONSE_BYTES + 1]);
+            let _ = stream.write_all(&vec![b'a'; STANDARD_HTTP_RESPONSE_BYTES + 1]);
             Ok(())
         });
 
@@ -1200,8 +1305,57 @@ mod tests {
         assert!(matches!(
             error,
             Some(RuntimeHttpError::ResponseBodyTooLarge { limit })
-                if limit == MAX_HTTP_RESPONSE_BYTES
+                if limit == STANDARD_HTTP_RESPONSE_BYTES
         ));
+        Ok(())
+    }
+
+    #[cfg(feature = "async-http")]
+    #[test]
+    fn bounded_transport_truncates_and_filters_response_secrets() -> Result<(), RuntimeHttpTestError>
+    {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let address = listener.local_addr()?;
+        let server = std::thread::spawn(move || -> Result<(), std::io::Error> {
+            let (mut stream, _) = listener.accept()?;
+            let mut buffer = [0_u8; 1024];
+            let _ = stream.read(&mut buffer)?;
+            stream.write_all(
+                b"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nSet-Cookie: secret=value\r\n\r\nabcdef",
+            )?;
+            Ok(())
+        });
+
+        let transport = ReqwestHttpTransport::with_private_network_access_for_tests()?;
+        let response = transport.send_bounded(
+            RuntimeHttpRequest {
+                method: HttpMethod::Get,
+                url: format!("http://{address}/bounded"),
+                headers: Vec::new(),
+                body: None,
+            },
+            3,
+        )?;
+        server
+            .join()
+            .map_err(|_| RuntimeHttpTestError::ServerThread)??;
+
+        assert_eq!(response.body, "abc");
+        assert_eq!(response.body_bytes, 3);
+        assert_eq!(
+            response.body_digest,
+            runx_contracts::sha256_prefixed(b"abc")
+        );
+        assert!(response.truncated);
+        assert!(response.headers.iter().any(|header| {
+            header.name.eq_ignore_ascii_case("content-type") && header.value == "text/plain"
+        }));
+        assert!(
+            response
+                .headers
+                .iter()
+                .all(|header| !header.name.eq_ignore_ascii_case("set-cookie"))
+        );
         Ok(())
     }
 
@@ -1241,89 +1395,6 @@ mod tests {
             .map_err(|_| RuntimeHttpTestError::ServerThread)??;
 
         assert!(matches!(error, Some(RuntimeHttpError::Transport { .. })));
-        Ok(())
-    }
-
-    #[cfg(feature = "async-http")]
-    #[test]
-    fn browser_profile_sends_chrome_ua_and_client_hints() -> Result<(), RuntimeHttpTestError> {
-        let listener = TcpListener::bind("127.0.0.1:0")?;
-        let address = listener.local_addr()?;
-        let server = std::thread::spawn(move || -> Result<String, std::io::Error> {
-            let (mut stream, _) = listener.accept()?;
-            let mut buffer = [0_u8; 4096];
-            let bytes_read = stream.read(&mut buffer)?;
-            stream.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")?;
-            Ok(String::from_utf8_lossy(&buffer[..bytes_read]).into_owned())
-        });
-
-        // with_options(private = true) so the loopback test server is reachable.
-        let transport = ReqwestHttpTransport::with_options(
-            true,
-            Some(super::DEFAULT_BROWSER_USER_AGENT.to_owned()),
-        )?;
-        transport.send(RuntimeHttpRequest {
-            method: HttpMethod::Get,
-            url: format!("http://{address}/probe"),
-            headers: Vec::new(),
-            body: None,
-        })?;
-        let request = server
-            .join()
-            .map_err(|_| RuntimeHttpTestError::ServerThread)??;
-
-        let lower = request.to_ascii_lowercase();
-        assert!(
-            lower.contains("chrome/143"),
-            "browser UA should be sent: {request}"
-        );
-        assert!(
-            lower.contains("sec-ch-ua"),
-            "client-hint headers should be sent: {request}"
-        );
-        assert!(
-            lower.contains("sec-fetch-mode"),
-            "fetch-metadata headers should be sent: {request}"
-        );
-        Ok(())
-    }
-
-    #[cfg(feature = "async-http")]
-    #[test]
-    fn caller_header_overrides_browser_default() -> Result<(), RuntimeHttpTestError> {
-        let listener = TcpListener::bind("127.0.0.1:0")?;
-        let address = listener.local_addr()?;
-        let server = std::thread::spawn(move || -> Result<String, std::io::Error> {
-            let (mut stream, _) = listener.accept()?;
-            let mut buffer = [0_u8; 4096];
-            let bytes_read = stream.read(&mut buffer)?;
-            stream.write_all(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")?;
-            Ok(String::from_utf8_lossy(&buffer[..bytes_read]).into_owned())
-        });
-
-        let transport = ReqwestHttpTransport::with_options(
-            true,
-            Some(super::DEFAULT_BROWSER_USER_AGENT.to_owned()),
-        )?;
-        transport.send(RuntimeHttpRequest {
-            method: HttpMethod::Get,
-            url: format!("http://{address}/probe"),
-            headers: vec![RuntimeHttpHeader::new("accept", "application/json")],
-            body: None,
-        })?;
-        let request = server
-            .join()
-            .map_err(|_| RuntimeHttpTestError::ServerThread)??;
-
-        let lower = request.to_ascii_lowercase();
-        assert!(
-            lower.contains("accept: application/json"),
-            "caller Accept should be present: {request}"
-        );
-        assert!(
-            !lower.contains("text/html"),
-            "browser default Accept should be overridden, not duplicated: {request}"
-        );
         Ok(())
     }
 }

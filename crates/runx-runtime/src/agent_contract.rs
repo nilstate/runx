@@ -5,38 +5,27 @@
 //! Successful evidence is carried as structured output metadata for the generic
 //! receipt sealer to bind into the signed act and seal.
 
-use runx_contracts::{
-    JsonObject, JsonValue, OutputField, ResolutionRequest, output_contract_digest,
-    validate_output_value,
-};
+use runx_contracts::{JsonObject, JsonValue, ResolutionRequest};
 use runx_parser::SkillArtifactContract;
 use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::RuntimeError;
-use crate::adapter::CONTRACT_VERIFICATION_METADATA;
 use crate::agent_invocation::agent_profile_metadata;
+use crate::output_contract::verified_output_metadata_with_artifacts;
 
 #[cfg(test)]
 pub(crate) fn verified_agent_metadata(
     request: &ResolutionRequest,
     payload: &JsonValue,
 ) -> Result<JsonObject, RuntimeError> {
-    verified_agent_metadata_with_artifacts(
-        request,
-        payload,
-        None,
-        None,
-        Path::new("."),
-        &BTreeMap::new(),
-    )
+    verified_agent_metadata_with_artifacts(request, payload, None, Path::new("."), &BTreeMap::new())
 }
 
 pub(crate) fn verified_agent_metadata_with_artifacts(
     request: &ResolutionRequest,
     payload: &JsonValue,
-    typed_artifacts: Option<&SkillArtifactContract>,
-    inline_artifacts: Option<&JsonObject>,
+    artifacts: Option<&SkillArtifactContract>,
     skill_directory: &Path,
     env: &BTreeMap<String, String>,
 ) -> Result<JsonObject, RuntimeError> {
@@ -46,53 +35,36 @@ pub(crate) fn verified_agent_metadata_with_artifacts(
             message: "agent result verification requires an agent-act request".to_owned(),
         });
     };
-    let contract_payload = output_contract_payload(payload, invocation.envelope.output.as_ref());
-    validate_output_value(invocation.envelope.output.as_ref(), &contract_payload).map_err(
-        |error| RuntimeError::SkillFailed {
-            skill_name: invocation.envelope.skill.as_ref().to_owned(),
-            message: format!("agent output contract violation at {error}"),
-        },
-    )?;
-    let output_contract_sha256 = output_contract_digest(invocation.envelope.output.as_ref())
-        .map_err(|source| RuntimeError::json("hashing agent output contract", source))?;
-    let packet_schemas = crate::packet_validation::verify_declared_packets(
+    let contract_payload = agent_output_contract_payload(payload);
+    let open_output = BTreeMap::new();
+    let output = invocation.envelope.output.as_ref().unwrap_or(&open_output);
+    let mut metadata = verified_output_metadata_with_artifacts(
+        invocation.envelope.skill.as_ref(),
         &contract_payload,
-        typed_artifacts,
-        inline_artifacts,
+        Some(output),
+        artifacts,
         skill_directory,
         env,
     )?;
-
-    let mut verification = JsonObject::new();
-    verification.insert(
-        "output_contract_sha256".to_owned(),
-        JsonValue::String(output_contract_sha256),
-    );
+    let verification = match metadata.get_mut(crate::adapter::CONTRACT_VERIFICATION_METADATA) {
+        Some(JsonValue::Object(verification)) => verification,
+        _ => {
+            return Err(RuntimeError::ReceiptInvalid {
+                message: "agent output verification produced no contract metadata".to_owned(),
+            });
+        }
+    };
     if let Some(profile) = &invocation.envelope.voice_profile {
         verification.insert(
             "voice_profile_sha256".to_owned(),
             JsonValue::String(profile.sha256.as_ref().to_owned()),
         );
     }
-    if !packet_schemas.is_empty() {
-        verification.insert(
-            "packet_schemas".to_owned(),
-            JsonValue::Object(packet_schemas),
-        );
-    }
-
-    let mut metadata = agent_profile_metadata(request);
-    metadata.insert(
-        CONTRACT_VERIFICATION_METADATA.to_owned(),
-        JsonValue::Object(verification),
-    );
+    metadata.extend(agent_profile_metadata(request));
     Ok(metadata)
 }
 
-fn output_contract_payload(
-    payload: &JsonValue,
-    output: Option<&BTreeMap<String, OutputField>>,
-) -> JsonValue {
+pub(crate) fn agent_output_contract_payload(payload: &JsonValue) -> JsonValue {
     let JsonValue::Object(fields) = payload else {
         return payload.clone();
     };
@@ -100,16 +72,6 @@ fn output_contract_payload(
     // `closure` is Runx control metadata consumed by the receipt disposition
     // parser. It is validated by that protocol and is not a skill output.
     declared.remove("closure");
-    if declared.len() == 1 {
-        for envelope in ["output", "outputs", "payload"] {
-            if output.is_some_and(|fields| fields.contains_key(envelope)) {
-                continue;
-            }
-            if let Some(JsonValue::Object(inner)) = declared.get(envelope) {
-                return JsonValue::Object(inner.clone());
-            }
-        }
-    }
     JsonValue::Object(declared)
 }
 
@@ -130,8 +92,13 @@ mod tests {
             "run_id": "run_1",
             "skill": "slack-notify",
             "instructions": "Plan a notification",
+            "instructions_sha256": "sha256:d264e5fb6c699b5793b06863a0c2d1e77beb6f01e8a7263da65a3986c3836c26",
             "inputs": {},
             "allowed_tools": [],
+            "requirements": {
+                "declaration": {},
+                "execution_boundary": { "kind": "remote_provider" }
+            },
             "current_context": [],
             "historical_context": [],
             "provenance": [],
@@ -183,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn provider_output_envelope_is_validated_as_the_declared_payload()
+    fn transport_output_envelope_is_not_guessed_as_the_declared_payload()
     -> Result<(), Box<dyn std::error::Error>> {
         let answer = JsonValue::Object(
             [(
@@ -198,7 +165,7 @@ mod tests {
             .collect(),
         );
 
-        assert!(verified_agent_metadata(&request()?, &answer).is_ok());
+        assert!(verified_agent_metadata(&request()?, &answer).is_err());
         Ok(())
     }
 

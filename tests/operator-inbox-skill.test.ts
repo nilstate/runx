@@ -1,11 +1,17 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
-const PLAN_RUNNER = path.resolve("skills/operator-inbox/graph/plan/run.mjs");
+import {
+  finalize,
+  prepare,
+  prepareSubjects,
+} from "../skills/operator-inbox/graph/plan/plan.mjs";
+
 const SKILL_PATH = path.resolve("skills/operator-inbox");
 const QUERY_DIGEST = `sha256:${"0".repeat(64)}`;
 
@@ -107,7 +113,7 @@ describe("operator-inbox skill", () => {
       },
     });
 
-    const tooMany = runStageRaw(PLAN_RUNNER, {
+    expect(() => plan({
       operation: "scan_page",
       expected_version: 0,
       observed_at: "2026-07-14T09:05:00.000Z",
@@ -124,13 +130,11 @@ describe("operator-inbox skill", () => {
         authorId: "george",
         preview: "Bounded",
       })),
-    });
-    expect(tooMany.status).not.toBe(0);
-    expect(tooMany.stderr).toContain("at most 20");
+    })).toThrow("at most 20");
   });
 
   it("rejects operator-authored action observations", () => {
-    const result = runStageRaw(PLAN_RUNNER, {
+    expect(() => plan({
       operation: "action_observation",
       expected_version: 0,
       observed_at: "2026-07-14T09:05:00.000Z",
@@ -141,15 +145,14 @@ describe("operator-inbox skill", () => {
         authorId: "operator-1",
         preview: "I handled this",
       }),
-    });
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("operator-authored messages");
+    })).toThrow("operator-authored messages");
   });
 
   it("composes graph writes through the default local SQLite data source", () => {
     const workspace = mkdtempSync(path.join(os.tmpdir(), "runx-operator-inbox-"));
     try {
-      const result = spawnSync(nativeRunxBinaryForTest(), ["harness", SKILL_PATH, "--json"], {
+      const journey = path.join(SKILL_PATH, "fixtures", "action-lifecycle.yaml");
+      const result = spawnSync(nativeRunxBinaryForTest(), ["harness", journey, "--json"], {
         cwd: workspace,
         encoding: "utf8",
         env: {
@@ -161,9 +164,12 @@ describe("operator-inbox skill", () => {
         },
       });
       expect(result.status, result.stderr).toBe(0);
-      expect(JSON.parse(result.stdout)).toMatchObject({ status: "passed", case_count: 1 });
-      const dataDir = path.join(workspace, ".runx", "data", "local-sources");
-      expect(readdirSync(dataDir).some((entry) => entry.endsWith(".sqlite"))).toBe(true);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        schema: "runx.receipt.v1",
+        seal: { disposition: "closed" },
+      });
+      const dataDir = path.join(workspace, ".runx", "data");
+      expect(readdirSync(dataDir)).toContain("operator-inbox-action-lifecycle.sqlite");
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }
@@ -186,24 +192,23 @@ function triage() {
 }
 
 function plan(inputs: Record<string, unknown>): Transition {
-  return (runStage(PLAN_RUNNER, inputs) as { transition: Transition }).transition;
+  const subjects = prepareSubjects(inputs);
+  const draft = prepare({
+    ...inputs,
+    action_id_digest: sha256(subjects.action_id_subject),
+  });
+  return finalize({
+    ...draft,
+    idempotency_digest: sha256(draft.idempotency_binding.subject),
+  }).transition as Transition;
+}
+
+function sha256(value: string): string {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 function actionFrom(transition: Transition): Record<string, unknown> {
   return ((transition.event.payload as { action: Record<string, unknown> }).action);
-}
-
-function runStage(stage: string, inputs: Record<string, unknown>): unknown {
-  const result = runStageRaw(stage, inputs);
-  expect(result.status, result.stderr).toBe(0);
-  return JSON.parse(result.stdout);
-}
-
-function runStageRaw(stage: string, inputs: Record<string, unknown>) {
-  return spawnSync(process.execPath, [stage], {
-    encoding: "utf8",
-    env: { ...process.env, RUNX_INPUTS_JSON: JSON.stringify(inputs) },
-  });
 }
 
 function message({
@@ -235,7 +240,7 @@ function message({
 }
 
 function nativeRunxBinaryForTest(): string {
-  const configured = process.env.RUNX_DEV_RUST_CLI_BIN;
+  const configured = process.env.RUNX_RUST_CLI_BIN;
   if (configured) return configured;
   const candidate = path.resolve("crates/target/debug/runx");
   return existsSync(candidate) ? candidate : "runx";

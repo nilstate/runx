@@ -6,15 +6,12 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use runx_contracts::{JsonObject, JsonValue};
-use runx_parser::{SkillSandbox, SkillSource};
+use runx_parser::SkillSource;
 use runx_runtime::RUNX_CWD_ENV;
 use runx_runtime::adapter::{InvocationStatus, SkillAdapter, SkillInvocation};
 use runx_runtime::adapters::cli_tool::CliToolAdapter;
 use runx_runtime::credentials::CredentialDelivery;
 use serde::Deserialize;
-
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV: &str = "RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY";
-const RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE: &str = "local";
 
 #[derive(Deserialize)]
 struct FixtureSuite {
@@ -31,15 +28,8 @@ struct FixtureCase {
     input_mode: Option<runx_parser::InputMode>,
     large_input_bytes: Option<usize>,
     timeout_seconds: u64,
-    sandbox: FixtureSandbox,
     inputs: JsonObject,
     expected: FixtureExpected,
-}
-
-#[derive(Deserialize)]
-struct FixtureSandbox {
-    profile: runx_core::policy::SandboxProfile,
-    cwd_policy: Option<runx_core::policy::CwdPolicy>,
 }
 
 #[derive(Deserialize)]
@@ -63,37 +53,48 @@ fn rust_matches_skill_author_runtime_fixtures() -> Result<(), Box<dyn std::error
         let started = Instant::now();
         let output = CliToolAdapter.invoke(SkillInvocation {
             skill_name: format!("skill-author-runtime.{}", fixture.id),
+            step_id: None,
+            artifacts: None,
+            allowed_tools: None,
             source: fixture_source(&fixture, &probe_path)?,
             inputs: fixture_inputs(&fixture),
             resolved_inputs: JsonObject::new(),
             current_context: Vec::new(),
+            provenance: Vec::new(),
             skill_directory: skill_directory.clone(),
             env: fixture_env(&fixture_root, temp_dir.path())?,
+            requirements: Default::default(),
             credential_delivery: CredentialDelivery::none(),
         })?;
         let duration_ms = started.elapsed().as_millis();
 
         assert_eq!(
-            normalized_status(output.status),
+            normalized_status(&output.status),
             fixture.expected.status,
             "{} status",
             fixture.id
         );
         if let Some(expected) = fixture.expected.stderr_contains.as_ref() {
             assert!(
-                output.stderr.contains(expected),
+                output
+                    .process_stderr()
+                    .is_some_and(|stderr| stderr.contains(expected)),
                 "{} stderr should contain {expected:?}",
                 fixture.id
             );
         } else {
-            assert_eq!(output.stderr, "", "{} stderr", fixture.id);
+            assert_eq!(output.process_stderr(), Some(""), "{} stderr", fixture.id);
         }
         if let Some(expected) = fixture.expected.stdout_json {
-            let actual: JsonValue = serde_json::from_str(&output.stdout)?;
-            assert_eq!(actual, expected, "{} stdout_json", fixture.id);
+            assert_eq!(output.value, expected, "{} stdout_json", fixture.id);
         }
         if let Some(expected) = fixture.expected.stdout_bytes {
-            assert_eq!(output.stdout.len(), expected, "{} stdout_bytes", fixture.id);
+            assert_eq!(
+                output.rendered_value().len(),
+                expected,
+                "{} stdout_bytes",
+                fixture.id
+            );
         }
         if let Some(max_duration_ms) = fixture.expected.max_duration_ms {
             assert!(
@@ -120,34 +121,25 @@ fn fixture_source(
         act: None,
         source_type: runx_parser::SourceKind::CliTool,
         command: Some("node".to_owned()),
+        module: None,
+        javascript_export: None,
+        pages: None,
         args: vec![path_string(probe_path)?, fixture.mode.clone()],
         cwd: fixture.cwd.clone(),
         timeout_seconds: Some(fixture.timeout_seconds),
         input_mode: fixture.input_mode,
-        sandbox: Some(SkillSandbox {
-            profile: fixture.sandbox.profile.clone(),
-            cwd_policy: fixture.sandbox.cwd_policy.clone(),
-            env_allowlist: None,
-            network: None,
-            writable_paths: Vec::new(),
-            require_enforcement: None,
-            approved_escalation: Some(
-                fixture.sandbox.profile == runx_core::policy::SandboxProfile::UnrestrictedLocalDev,
-            ),
-            raw: JsonObject::new(),
-        }),
         server: None,
-        catalog_ref: None,
         tool: None,
         arguments: None,
         agent_card_url: None,
         agent_identity: None,
         agent: None,
         task: None,
-        hook: None,
         outputs: None,
         graph: None,
-        http: None,
+        external_adapter: None,
+        thread_outbox_provider: None,
+        environment: Default::default(),
         raw: JsonObject::new(),
     })
 }
@@ -170,14 +162,10 @@ fn fixture_env(
     }
     env.insert(RUNX_CWD_ENV.to_owned(), path_string(fixture_root)?);
     env.insert("TMPDIR".to_owned(), path_string(temp_dir)?);
-    env.insert(
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_ENV.to_owned(),
-        RUNX_SANDBOX_ALLOW_DECLARED_POLICY_ONLY_VALUE.to_owned(),
-    );
     Ok(env)
 }
 
-fn normalized_status(status: InvocationStatus) -> &'static str {
+fn normalized_status(status: &InvocationStatus) -> &'static str {
     match status {
         InvocationStatus::Success => "sealed",
         InvocationStatus::Failure => "failure",

@@ -92,6 +92,7 @@ fn refundable_charge(phase: EffectFinalityPhase) -> RefundableCharge {
         rail: "mpp-tempo".to_owned(),
         phase,
         amount_minor: 125,
+        refunded_minor: 0,
         currency: "USD".to_owned(),
         payer_ref: "did:pkh:eip155:42431:0x1111111111111111111111111111111111111111".to_owned(),
         proof_ref:

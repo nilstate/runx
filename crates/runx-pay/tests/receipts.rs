@@ -5,7 +5,7 @@ use runx_pay::supervisor::{
     payment_supervisor_evidence_reference,
 };
 use runx_runtime::receipts::step_receipt;
-use runx_runtime::{InvocationStatus, SkillOutput, insert_effect_verification_ref};
+use runx_runtime::{InvocationOutput, insert_effect_verification_ref};
 
 const CREATED_AT: &str = "2026-05-18T00:00:00Z";
 
@@ -37,16 +37,34 @@ fn payment_rail_receipts_carry_supervisor_evidence_refs() -> Result<(), Box<dyn 
         &mut metadata,
         payment_supervisor_evidence_reference(&evidence),
     )?;
-    let output = SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: r#"{"effect_evidence_packet":{"data":{"rail_result":{"status":"fulfilled","rail":"mock","amount_minor":125,"currency":"USD"},"rail_proof":{"proof_ref":"receipt-proof:mock:demo-search-001","idempotency_key":"payment:demo-search-001"},"credential_envelope":{"form":"paid_tool_credential","credential_ref":"credential:mock:demo-search-001"}}}}"#.to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 10,
-        metadata,
-    };
+    let output_value = serde_json::from_value(serde_json::json!({
+        "effect_evidence_packet": {
+            "data": {
+                "rail_result": {
+                    "status": "fulfilled",
+                    "rail": "mock",
+                    "amount_minor": 125,
+                    "currency": "USD"
+                },
+                "rail_proof": {
+                    "proof_ref": "receipt-proof:mock:demo-search-001",
+                    "idempotency_key": "payment:demo-search-001"
+                },
+                "credential_envelope": {
+                    "form": "paid_tool_credential",
+                    "credential_ref": "credential:mock:demo-search-001"
+                }
+            }
+        }
+    }))?;
+    let output = InvocationOutput::runtime_success(output_value, 10, metadata);
 
-    let receipt = step_receipt("payment_execute", "fulfill", 1, &output, CREATED_AT)?;
+    let claim = output
+        .value
+        .as_object()
+        .cloned()
+        .ok_or("payment output must be an object")?;
+    let receipt = step_receipt("payment_execute", "fulfill", 1, &output, &claim, CREATED_AT)?;
     let act = &receipt.acts[0];
 
     let verification_refs: Vec<_> = act

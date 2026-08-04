@@ -13,8 +13,8 @@ function workspacePath(relativePath: string): string {
 
 export const workspaceAliases: readonly WorkspaceAlias[] = [
   {
-    find: /^@runxhq\/authoring$/,
-    replacement: workspacePath("packages/authoring/src/index.ts"),
+    find: /^@runxhq\/extension-sdk$/,
+    replacement: workspacePath("packages/extension-sdk/src/index.ts"),
   },
   {
     find: /^@runxhq\/contracts$/,

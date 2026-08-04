@@ -102,3 +102,36 @@ runners:
     );
     Ok(())
 }
+
+#[test]
+fn credential_delivery_cannot_be_redeclared_as_non_secret_environment() -> Result<(), String> {
+    let error = match validate(
+        r#"
+skill: support
+credentials:
+  nitrosend:
+    provider: nitrosend
+    auth:
+      api_key:
+        delivery:
+          env: NITROSEND_API_KEY
+runners:
+  queue:
+    default: true
+    type: cli-tool
+    command: support
+    credential: nitrosend
+    environment:
+      required: [NITROSEND_API_KEY]
+"#,
+    ) {
+        Ok(_) => return Err("credential/environment collision unexpectedly passed".to_owned()),
+        Err(error) => error,
+    };
+    assert!(
+        error.contains(
+            "cannot redeclare credential delivery environment variable NITROSEND_API_KEY"
+        )
+    );
+    Ok(())
+}

@@ -18,17 +18,23 @@ Do not add candidate or placeholder directories here. A binding is eligible only
 after the upstream repository has a merged, pinned `SKILL.md` that starts with
 YAML frontmatter and a `name` matching `bindings/<owner>/<skill>`.
 
-Publishing materializes a pinned registry package into `dist/` from the
-upstream `SKILL.md` plus the local binding artifact. The generated package is
-an immutable registry artifact, not the source document.
+Overlay produces an exact, digest-bound `binding.json` and `X.yaml` bundle from
+the pinned upstream manual. Apply that bundle through the repository's normal
+authoring lane, then publish the validated package through the native registry
+command. No generated `dist/` mirror is a source of truth.
 
 Example:
 
 ```bash
-node scripts/materialize-upstream-skill-binding.mjs \
-  bindings/nilstate/icey-server-operator/binding.json \
-  --output-dir dist/upstream-bindings/nilstate/icey-server-operator
+runx skill ./skills/overlay generate --json \
+  --input skill_path=vendor/acme/SKILL.md \
+  --input-json upstream='{"host":"github.com","owner":"acme","repo":"project","path":"SKILL.md","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","blob_sha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","source_of_truth":true,"html_url":"https://github.com/acme/project/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/SKILL.md","raw_url":"https://raw.githubusercontent.com/acme/project/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/SKILL.md"}' \
+  --input-json registry='{"owner":"acme","trust_tier":"community","version":"upstream-aaaaaaaa"}'
 ```
+
+If the run yields `needs_agent`, continue with the exact `runx resume` command
+from the envelope. The resulting files remain a proposal until the owning
+authoring lane applies them.
 
 Validate the checked-in binding catalog:
 

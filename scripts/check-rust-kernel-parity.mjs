@@ -15,7 +15,6 @@ const commands = apiOnly
       () => run("cargo", ["clippy", "--manifest-path", "crates/Cargo.toml", "--workspace", "--all-targets", "--", "-D", "warnings"]),
       () => run("cargo", ["test", "--manifest-path", "crates/Cargo.toml", "--workspace"]),
       () => run("node", ["scripts/check-rust-crate-graph.mjs"]),
-      () => run("node", ["scripts/check-rust-core-style.mjs"]),
       // Keep these strings contiguous for scafld source checks:
       // cargo deny
       // cargo public-api

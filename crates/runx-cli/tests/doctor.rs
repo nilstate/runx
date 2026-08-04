@@ -68,13 +68,11 @@ fn doctor_authority_json_redacts_secret_values_and_reports_state_path()
     let output = authority_doctor_command()
         .args(["doctor", "authority", "--json"])
         .env("RUNX_RECEIPT_SIGN_KID", "kid_prod")
-        .env("RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64", "super-secret-seed")
-        .env("RUNX_RECEIPT_SIGN_ISSUER_TYPE", "hosted")
-        .env("RUNX_RECEIPT_VERIFY_KID", "kid_prod")
         .env(
-            "RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64",
-            "public-key-material",
+            "RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64",
+            "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
         )
+        .env("RUNX_RECEIPT_SIGN_ISSUER_TYPE", "hosted")
         .env(
             "RUNX_EFFECT_STATE_PATH",
             "/Users/kam/private/effect-state.json",
@@ -82,7 +80,11 @@ fn doctor_authority_json_redacts_secret_values_and_reports_state_path()
         .env("RUNX_PROVIDER_PERMISSION_GRANT_ID", "grant_prod")
         .env(
             "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES",
-            "repo.read repo.write",
+            r#"["repo.read","repo.write"]"#,
+        )
+        .env(
+            "RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF",
+            "runx:principal:operator:test",
         )
         .output()?;
 
@@ -92,10 +94,78 @@ fn doctor_authority_json_redacts_secret_values_and_reports_state_path()
     assert_eq!(report["summary"]["infos"], 4);
     let rendered = serde_json::to_string(&report)?;
     assert!(rendered.contains("kid_prod"));
-    assert!(!rendered.contains("super-secret-seed"));
+    assert!(rendered.contains("signing_identity"));
+    assert!(!rendered.contains("QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI="));
     assert!(rendered.contains("/Users/kam/private/effect-state.json"));
     assert!(!rendered.contains("repo.read"));
     assert!(!rendered.contains("grant_prod"));
+    Ok(())
+}
+
+#[test]
+fn doctor_authority_rejects_malformed_provider_scope_transport()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = authority_doctor_command()
+        .args(["doctor", "authority", "--json"])
+        .env("RUNX_PROVIDER_PERMISSION_GRANT_ID", "grant_prod")
+        .env(
+            "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES",
+            "repo.read,repo.write",
+        )
+        .env(
+            "RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF",
+            "runx:principal:operator:test",
+        )
+        .output()?;
+
+    assert!(output.status.success());
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    let diagnostic = report["diagnostics"]
+        .as_array()
+        .and_then(|diagnostics| {
+            diagnostics
+                .iter()
+                .find(|diagnostic| diagnostic["id"] == "runx.authority.provider_grant")
+        })
+        .ok_or("provider grant diagnostic missing")?;
+    assert_eq!(diagnostic["severity"], "warning");
+    assert_eq!(diagnostic["evidence"]["malformed_scopes"], true);
+    assert!(
+        diagnostic["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("JSON array"))
+    );
+    Ok(())
+}
+
+#[test]
+fn doctor_authority_reports_connect_grant_discovery_without_exposing_token()
+-> Result<(), Box<dyn std::error::Error>> {
+    let output = authority_doctor_command()
+        .args(["doctor", "authority", "--json"])
+        .env("RUNX_PUBLIC_API_BASE_URL", "https://api.runx.test")
+        .env("RUNX_PUBLIC_API_TOKEN", "rxk-secret-token")
+        .output()?;
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8(output.stderr)?, "");
+    let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
+    let provider = report["diagnostics"]
+        .as_array()
+        .and_then(|diagnostics| {
+            diagnostics
+                .iter()
+                .find(|diagnostic| diagnostic["id"] == "runx.authority.provider_grant")
+        })
+        .ok_or_else(|| std::io::Error::other("provider grant diagnostic is missing"))?;
+    assert_eq!(provider["severity"], "info");
+    assert_eq!(provider["evidence"]["connect_discovery"], true);
+    assert!(
+        provider["message"]
+            .as_str()
+            .is_some_and(|message| { message.contains("unique active provider/scope grant") })
+    );
+    assert!(!serde_json::to_string(&report)?.contains("rxk-secret-token"));
     Ok(())
 }
 
@@ -293,6 +363,7 @@ const AUTHORITY_ENV_NAMES: &[&str] = &[
     "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON",
     "RUNX_PROVIDER_PERMISSION_GRANT_ID",
     "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES",
+    "RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF",
 ];
 
 const REGISTRY_ENV_NAMES: &[&str] = &[

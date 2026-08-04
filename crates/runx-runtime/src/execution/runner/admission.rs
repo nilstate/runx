@@ -1,0 +1,267 @@
+// Admission owns authority, effect replay, approval, and provider-effect
+// preconditions before a step may dispatch.
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use runx_contracts::{AuthorityVerb, JsonObject, Receipt};
+use runx_parser::GraphStep;
+
+use crate::RuntimeError;
+use crate::adapter::InvocationOutput;
+use crate::effects::{
+    EffectAdmission, EffectOutputRequest, EffectReceiptRequest, EffectReplay,
+    EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest, ResolvedEffectTarget,
+    RuntimeEffectError, RuntimeEffectRegistry,
+};
+
+pub(super) fn find_effect_replay(
+    step: &GraphStep,
+    target: ResolvedEffectTarget<'_>,
+    inputs: &JsonObject,
+    env: &BTreeMap<String, String>,
+    graph_dir: &Path,
+    effects: &RuntimeEffectRegistry,
+) -> Result<Option<EffectReplay>, RuntimeError> {
+    effects
+        .find_replay(EffectStepRequest {
+            step,
+            target,
+            inputs,
+            env,
+            graph_dir,
+        })
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn recover_pending_effects(
+    step: &GraphStep,
+    target: ResolvedEffectTarget<'_>,
+    inputs: &JsonObject,
+    env: &BTreeMap<String, String>,
+    graph_dir: &Path,
+    effects: &RuntimeEffectRegistry,
+) -> Result<(), RuntimeError> {
+    effects
+        .recover_pending(EffectStepRequest {
+            step,
+            target,
+            inputs,
+            env,
+            graph_dir,
+        })
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn enforce_step_authority_admission(
+    step: &GraphStep,
+    target: ResolvedEffectTarget<'_>,
+    inputs: &JsonObject,
+    env: &BTreeMap<String, String>,
+    graph_dir: &Path,
+    effects: &RuntimeEffectRegistry,
+) -> Result<Option<StepAuthorityContext>, RuntimeError> {
+    effects
+        .admit(EffectStepRequest {
+            step,
+            target,
+            inputs,
+            env,
+            graph_dir,
+        })
+        .map(|admission| admission.map(StepAuthorityContext::new))
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn resolve_effect_approval(
+    request: EffectStepRequest<'_>,
+    authority: Option<StepAuthorityContext>,
+    host: &mut dyn crate::Host,
+    effects: &RuntimeEffectRegistry,
+) -> Result<Option<StepAuthorityContext>, RuntimeError> {
+    let Some(authority) = authority else {
+        return Ok(None);
+    };
+    let step = request.step;
+    effects
+        .resolve_approval(request, authority.admission, host)
+        .map(|admission| Some(StepAuthorityContext::new(admission)))
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn prepare_effect_output_before_gate(
+    step: &GraphStep,
+    authority: Option<&StepAuthorityContext>,
+    claim: &JsonObject,
+    output: &mut InvocationOutput,
+    effects: &RuntimeEffectRegistry,
+) -> Result<(), RuntimeError> {
+    let Some(authority) = authority else {
+        return Ok(());
+    };
+    effects
+        .prepare_output(EffectOutputRequest {
+            step,
+            admission: &authority.admission,
+            claim,
+            output,
+        })
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn finalize_effect_output_before_success(
+    context: EffectReceiptContext<'_>,
+) -> Result<(), RuntimeError> {
+    let Some(authority) = context.authority else {
+        return Ok(());
+    };
+    let effects = context.effects;
+    let step = context.step;
+    effects
+        .finalize_output(effect_receipt_request(context, authority))
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn persist_effect_state_for_step(
+    context: EffectReceiptContext<'_>,
+) -> Result<(), RuntimeError> {
+    let Some(authority) = context.authority else {
+        return Ok(());
+    };
+    let effects = context.effects;
+    let step = context.step;
+    effects
+        .persist(effect_receipt_request(context, authority))
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn prepare_replay_output(
+    step: &GraphStep,
+    replay: &EffectReplay,
+    output: &mut InvocationOutput,
+    effects: &RuntimeEffectRegistry,
+) -> Result<(), RuntimeError> {
+    effects
+        .prepare_replay_output(EffectReplayOutputRequest {
+            step,
+            replay,
+            output,
+        })
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn validate_replayed_effect(
+    step: &GraphStep,
+    replay: &EffectReplay,
+    receipt: &runx_contracts::Receipt,
+    output: &InvocationOutput,
+    claim: &JsonObject,
+    effects: &RuntimeEffectRegistry,
+) -> Result<(), RuntimeError> {
+    effects
+        .validate_replay(EffectReplayReceiptRequest {
+            step,
+            replay,
+            receipt,
+            output,
+            claim,
+        })
+        .map_err(|source| runtime_effect_error(step, source))
+}
+
+pub(super) fn authority_denied(
+    step: &GraphStep,
+    verb: AuthorityVerb,
+    reason: String,
+) -> RuntimeError {
+    RuntimeError::AuthorityDenied {
+        verb,
+        step_id: step.id.clone(),
+        reason,
+    }
+}
+
+pub(super) struct EffectReceiptContext<'a> {
+    pub(super) step: &'a GraphStep,
+    pub(super) graph_dir: &'a Path,
+    pub(super) authority: Option<&'a StepAuthorityContext>,
+    pub(super) claim: &'a JsonObject,
+    pub(super) output: &'a mut InvocationOutput,
+    pub(super) receipt: &'a Receipt,
+    pub(super) env: &'a BTreeMap<String, String>,
+    pub(super) signature_policy: crate::receipts::RuntimeReceiptSignaturePolicy<'a>,
+    pub(super) effects: &'a RuntimeEffectRegistry,
+}
+
+fn effect_receipt_request<'a>(
+    context: EffectReceiptContext<'a>,
+    authority: &'a StepAuthorityContext,
+) -> EffectReceiptRequest<'a> {
+    EffectReceiptRequest {
+        step: context.step,
+        graph_dir: context.graph_dir,
+        admission: &authority.admission,
+        claim: context.claim,
+        output: context.output,
+        receipt: context.receipt,
+        env: context.env,
+        signature_policy: context.signature_policy,
+    }
+}
+
+fn runtime_effect_error(step: &GraphStep, source: RuntimeEffectError) -> RuntimeError {
+    match source {
+        RuntimeEffectError::ApprovalPending { message, .. } => RuntimeError::GraphBlocked {
+            step_id: step.id.clone(),
+            reason: message,
+        },
+        RuntimeEffectError::Denied { verb, message, .. } => authority_denied(step, verb, message),
+        RuntimeEffectError::Failed {
+            operation, message, ..
+        } if operation.contains("state") => RuntimeError::effect_state(operation, message),
+        other => RuntimeError::ReceiptInvalid {
+            message: other.to_string(),
+        },
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct StepAuthorityContext {
+    admission: EffectAdmission,
+}
+
+impl StepAuthorityContext {
+    fn new(admission: EffectAdmission) -> Self {
+        Self { admission }
+    }
+
+    pub(super) fn admission_witness(&self) -> &runx_core::state_machine::AuthorityAdmissionWitness {
+        self.admission.witness()
+    }
+
+    #[cfg(feature = "catalog")]
+    pub(super) fn admission(&self) -> &EffectAdmission {
+        &self.admission
+    }
+
+    pub(super) fn authority_grant_refs(
+        &self,
+        effects: &RuntimeEffectRegistry,
+    ) -> Result<Vec<runx_contracts::Reference>, RuntimeError> {
+        effects
+            .authority_grant_refs(&self.admission)
+            .map_err(|source| RuntimeError::ReceiptInvalid {
+                message: source.to_string(),
+            })
+    }
+
+    pub(super) fn authority_scope_refs(
+        &self,
+        effects: &RuntimeEffectRegistry,
+    ) -> Result<Vec<runx_contracts::Reference>, RuntimeError> {
+        effects
+            .authority_scope_refs(&self.admission)
+            .map_err(|source| RuntimeError::ReceiptInvalid {
+                message: source.to_string(),
+            })
+    }
+}

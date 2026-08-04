@@ -19,6 +19,8 @@ pub enum ApprovalError {
         actor: ResolutionResponseActor,
         payload_type: &'static str,
     },
+    #[error("approval response must come from a host-attested human, got {actor:?}")]
+    HumanApprovalRequired { actor: ResolutionResponseActor },
     #[error("approval gate serialization failed while {context}: {source}")]
     Json {
         context: String,
@@ -174,14 +176,16 @@ struct CachedApproval {
 
 impl CachedApproval {
     // The single choke point for an approval decision. The boolean stays the
-    // decision: a bare `true`/`false` (the human lane) is byte-identical to
-    // before, and an agent decision may also arrive as
-    // `{ "approved": bool, "reason"?: string }` so its justification rides onto
-    // the receipt. Every other shape (including an object whose `approved` is
-    // not strictly a boolean) is rejected fail-closed via NonBooleanPayload.
+    // decision: a bare `true`/`false` or
+    // `{ "approved": bool, "reason"?: string }` from the host-attested human
+    // lane is accepted. Agent provenance and every other shape (including an
+    // object whose `approved` is not strictly a boolean) fail closed.
     fn from_response(response: ResolutionResponse) -> Result<Self, ApprovalError> {
         let payload_type = payload_type(&response.payload);
         let actor = response.actor;
+        if actor != ResolutionResponseActor::Human {
+            return Err(ApprovalError::HumanApprovalRequired { actor });
+        }
         let reject = || ApprovalError::NonBooleanPayload {
             actor: actor.clone(),
             payload_type,

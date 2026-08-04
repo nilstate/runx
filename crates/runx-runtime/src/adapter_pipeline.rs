@@ -6,44 +6,9 @@
 ))]
 use std::time::Instant;
 
-use runx_contracts::JsonObject;
+use runx_contracts::{JsonObject, JsonValue};
 
-use crate::adapter::{InvocationStatus, SkillInvocation, SkillOutput};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct AdapterInvocationPlan {
-    adapter_type: &'static str,
-    skill_name: String,
-    source_type: String,
-}
-
-impl AdapterInvocationPlan {
-    pub(crate) fn from_invocation(
-        adapter_type: &'static str,
-        invocation: &SkillInvocation,
-    ) -> Self {
-        Self {
-            adapter_type,
-            skill_name: invocation.skill_name.clone(),
-            source_type: invocation.source.source_type.as_str().to_owned(),
-        }
-    }
-
-    #[cfg(any(feature = "cli-tool", feature = "external-adapter"))]
-    pub(crate) fn adapter_type(&self) -> &'static str {
-        self.adapter_type
-    }
-
-    #[cfg(feature = "external-adapter")]
-    pub(crate) fn skill_name(&self) -> &str {
-        &self.skill_name
-    }
-
-    #[cfg(feature = "external-adapter")]
-    pub(crate) fn source_type(&self) -> &str {
-        &self.source_type
-    }
-}
+use crate::adapter::{InvocationOutput, InvocationStatus};
 
 #[derive(Clone, Debug)]
 #[cfg(feature = "mcp")]
@@ -53,7 +18,7 @@ pub(crate) struct AdapterExecutionContext {
 
 #[cfg(feature = "mcp")]
 impl AdapterExecutionContext {
-    pub(crate) fn start(_plan: AdapterInvocationPlan) -> Self {
+    pub(crate) fn start() -> Self {
         Self {
             started: Instant::now(),
         }
@@ -65,18 +30,6 @@ impl AdapterExecutionContext {
 
     pub(crate) fn projection(&self) -> AdapterProjection {
         AdapterProjection::from_duration_ms(self.duration_ms())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct AdapterCapture {
-    pub(crate) stdout: String,
-    pub(crate) stderr: String,
-}
-
-impl AdapterCapture {
-    pub(crate) fn new(stdout: String, stderr: String) -> Self {
-        Self { stdout, stderr }
     }
 }
 
@@ -95,21 +48,43 @@ impl AdapterProjection {
         Self::from_duration_ms(duration_ms(started))
     }
 
-    pub(crate) fn output(
+    pub(crate) fn runtime_output(
         &self,
         status: InvocationStatus,
-        capture: AdapterCapture,
+        value: JsonValue,
+        failure: Option<String>,
+        metadata: JsonObject,
+    ) -> InvocationOutput {
+        match status {
+            InvocationStatus::Success => {
+                InvocationOutput::runtime_success(value, self.duration_ms, metadata)
+            }
+            InvocationStatus::Failure => InvocationOutput::runtime_failure(
+                value,
+                failure.unwrap_or_else(|| "runtime invocation failed".to_owned()),
+                self.duration_ms,
+                metadata,
+            ),
+        }
+    }
+
+    #[cfg(any(feature = "cli-tool", feature = "external-adapter"))]
+    pub(crate) fn process_output(
+        &self,
+        status: InvocationStatus,
+        stdout: String,
+        stderr: String,
         exit_code: Option<i32>,
         metadata: JsonObject,
-    ) -> SkillOutput {
-        SkillOutput {
+    ) -> InvocationOutput {
+        InvocationOutput::process(
             status,
-            stdout: capture.stdout,
-            stderr: capture.stderr,
+            stdout,
+            stderr,
             exit_code,
-            duration_ms: self.duration_ms,
+            self.duration_ms,
             metadata,
-        }
+        )
     }
 
     #[cfg(any(
@@ -118,11 +93,11 @@ impl AdapterProjection {
         feature = "catalog",
         feature = "mcp"
     ))]
-    pub(crate) fn failure(self, message: String, metadata: JsonObject) -> SkillOutput {
-        self.output(
+    pub(crate) fn failure(self, message: String, metadata: JsonObject) -> InvocationOutput {
+        self.runtime_output(
             InvocationStatus::Failure,
-            AdapterCapture::new(String::new(), message),
-            None,
+            JsonValue::Null,
+            Some(message),
             metadata,
         )
     }

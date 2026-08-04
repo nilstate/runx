@@ -1,5 +1,5 @@
 export function sanitizePublicMarkdown(value) {
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     return undefined;
   }
   return String(value)

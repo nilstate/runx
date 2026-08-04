@@ -1,6 +1,6 @@
 // Renders the README graph images from a sealed business-ops graph receipt
 // tree in a local receipt store. The images are generated evidence, not
-// illustration: every skill name, receipt digest, approval actor, and closure
+// illustration: every skill name, receipt digest, prepared-context binding, and closure
 // in the output is read from signed receipts. Rerun after a real run to keep
 // the README in lockstep with what the runtime actually does.
 //
@@ -70,12 +70,10 @@ const evidenceRefs = children
   .flatMap((r) => r.acts ?? [])
   .flatMap((act) => act.criterion_bindings ?? [])
   .flatMap((binding) => binding.evidence_refs ?? []);
-const approvalDecision = evidenceRefs.find(
-  (ref) => ref.type === 'decision' && ref.uri.includes('operator_context_approval'),
+const preparedContext = evidenceRefs.find(
+  (ref) => ref.type === 'artifact' && ref.uri.includes('operator_context:'),
 );
-const approvalActor = approvalDecision
-  ? Object.fromEntries(approvalDecision.locator.split(';').map((pair) => pair.split('='))).actor
-  : null;
+const preparedContextDigest = preparedContext?.locator ?? preparedContext?.uri.split('operator_context:').at(-1);
 
 const [router, ...lanes] = children;
 const sealedDate = (root.seal?.closed_at ?? '').slice(0, 10);
@@ -179,7 +177,7 @@ const render = (theme) => {
 
   <text class="mono ink" x="64" y="${MID_Y - 27}">$ runx skill business-ops</text>
   <text class="mono muted" x="64" y="${MID_Y - 5}">signal: prepare API v2</text>
-  <text class="mono amber" x="64" y="${MID_Y + 21}">approved · actor=${esc(approvalActor ?? 'unknown')}</text>
+  <text class="mono amber" x="64" y="${MID_Y + 21}">context bound · ${esc(shortId(preparedContextDigest ?? 'unknown'))}</text>
 
   <path d="M${ORIGIN_X} ${MID_Y} H${INTERCHANGE_X}" stroke="${t.trunk}" stroke-opacity="${t.glowOpacity}" stroke-width="7" fill="none"/>
   <path d="M${ORIGIN_X} ${MID_Y} H${INTERCHANGE_X}" stroke="${t.trunk}" stroke-opacity=".85" stroke-width="2.4" fill="none"/>

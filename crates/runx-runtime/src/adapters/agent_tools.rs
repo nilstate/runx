@@ -1,11 +1,11 @@
 //! Recursive tool executor for the managed-agent loop.
 //!
 //! When the model chooses a tool, the agent invokes it through the governed
-//! runtime. This reuses the catalog adapter's single resolve-and-invoke path
-//! (`resolve_and_invoke_local_tool`) so the agent's tool calls go through the same
-//! resolution, sandbox, credential delivery, and receipt machinery as any other
-//! local tool. There is no parallel execution route.
+//! runtime. This reuses the canonical native-or-local dispatcher, so agent
+//! tool calls get the same resolution, authority, credential
+//! delivery, and artifact projection as graph tool steps.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -14,10 +14,11 @@ use runx_contracts::JsonValue;
 use runx_core::policy::admit_agent_tool_ref;
 
 use super::agent_loop::ToolExecutor;
-use super::catalog::{LocalToolRequest, resolve_and_invoke_local_tool};
 use crate::RuntimeError;
-use crate::adapter::SkillOutput;
+use crate::adapter::InvocationOutput;
 use crate::credentials::CredentialDelivery;
+use crate::effects::RuntimeEffectRegistry;
+use crate::tool_catalogs::dispatch::{ToolDispatchRequest, dispatch_tool};
 
 const MANAGED_AGENT_SKILL: &str = "managed-agent";
 
@@ -28,7 +29,12 @@ pub struct RuntimeToolExecutor {
     env: BTreeMap<String, String>,
     skill_directory: PathBuf,
     credential_delivery: CredentialDelivery,
+    effects: RuntimeEffectRegistry,
+    observed_at: String,
     allowed_tools: BTreeSet<String>,
+    scopes: Vec<String>,
+    javascript: crate::adapters::javascript::JavaScriptAdapter,
+    local_artifacts: crate::services::LocalArtifactService,
 }
 
 impl RuntimeToolExecutor {
@@ -37,19 +43,37 @@ impl RuntimeToolExecutor {
         env: BTreeMap<String, String>,
         skill_directory: PathBuf,
         credential_delivery: CredentialDelivery,
+        effects: RuntimeEffectRegistry,
+        observed_at: impl Into<String>,
         allowed_tools: impl IntoIterator<Item = String>,
+        scopes: Vec<String>,
     ) -> Self {
         Self {
             env,
             skill_directory,
             credential_delivery,
+            effects,
+            observed_at: observed_at.into(),
             allowed_tools: allowed_tools.into_iter().collect(),
+            scopes,
+            javascript: crate::adapters::javascript::JavaScriptAdapter::default(),
+            local_artifacts: crate::services::LocalArtifactService::default(),
         }
+    }
+
+    #[must_use]
+    pub fn javascript_session_stats(&self) -> crate::adapters::javascript::JavaScriptSessionStats {
+        self.javascript.session_stats()
     }
 }
 
 impl ToolExecutor for RuntimeToolExecutor {
-    fn execute(&self, tool: &str, input: &JsonValue) -> Result<SkillOutput, RuntimeError> {
+    fn admitted_tool_name(&self, tool: &str) -> Option<String> {
+        (admit_agent_tool_ref(tool).allowed && self.allowed_tools.contains(tool))
+            .then(|| tool.to_owned())
+    }
+
+    fn execute(&self, tool: &str, input: &JsonValue) -> Result<InvocationOutput, RuntimeError> {
         let admission = admit_agent_tool_ref(tool);
         if !admission.allowed {
             return Err(RuntimeError::SkillFailed {
@@ -69,29 +93,62 @@ impl ToolExecutor for RuntimeToolExecutor {
         // The model supplies the tool arguments already resolved, so pass them as
         // both inputs and resolved_inputs.
         let inputs = input.as_object().cloned().unwrap_or_default();
-        let request = LocalToolRequest {
-            tool_ref: tool,
-            inputs: &inputs,
-            resolved_inputs: &inputs,
+        let request = ToolDispatchRequest {
+            tool_ref: Cow::Borrowed(tool),
+            inputs: Cow::Owned(inputs.clone()),
+            resolved_inputs: Cow::Owned(inputs),
+            scopes: &self.scopes,
             env: &self.env,
             skill_directory: &self.skill_directory,
             credential_delivery: &self.credential_delivery,
+            local_artifacts: &self.local_artifacts,
+            javascript: &self.javascript,
             skill_name: tool,
             allow_explicit_manifest_path: false,
+            effect_admission: None,
         };
-        match resolve_and_invoke_local_tool(&request, Instant::now())? {
-            Some(output) => Ok(output),
-            None => Err(RuntimeError::SkillFailed {
-                skill_name: MANAGED_AGENT_SKILL.to_owned(),
-                message: format!("managed agent tool '{tool}' did not resolve to a local tool"),
-            }),
-        }
+        dispatch_tool(request, &self.effects, &self.observed_at, Instant::now())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::process::Command;
+
     use super::*;
+    use crate::adapter::InvocationStatus;
+    use crate::receipts::paths::RUNX_CWD_ENV;
+
+    #[test]
+    fn allowlisted_native_tool_uses_the_catalog_execution_path()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = tempfile::tempdir()?;
+        let status = Command::new("git")
+            .args(["init", "-b", "main"])
+            .current_dir(workspace.path())
+            .status()?;
+        assert!(status.success());
+        let executor = RuntimeToolExecutor::new(
+            BTreeMap::from([(
+                RUNX_CWD_ENV.to_owned(),
+                workspace.path().to_string_lossy().into_owned(),
+            )]),
+            workspace.path().to_path_buf(),
+            CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            "2026-01-01T00:00:00Z",
+            ["git.status".to_owned()],
+            vec!["git.read".to_owned()],
+        );
+
+        let output = executor.execute("git.status", &JsonValue::Object(Default::default()))?;
+
+        assert_eq!(output.status, InvocationStatus::Success);
+        let value = serde_json::to_string(&output.value)?;
+        assert!(value.contains("\"git_status\""));
+        assert!(value.contains("\"clean\":true"));
+        Ok(())
+    }
 
     #[test]
     fn unresolved_tool_is_an_error() {
@@ -101,7 +158,10 @@ mod tests {
             BTreeMap::new(),
             PathBuf::from("."),
             CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            "2026-01-01T00:00:00Z",
             ["definitely-not-a-real-tool".to_owned()],
+            Vec::new(),
         );
         let result = executor.execute("definitely-not-a-real-tool", &JsonValue::Null);
         assert!(
@@ -116,7 +176,10 @@ mod tests {
             BTreeMap::new(),
             PathBuf::from("."),
             CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            "2026-01-01T00:00:00Z",
             ["fs.read".to_owned()],
+            Vec::new(),
         );
         let result = executor.execute("git.status", &JsonValue::Null);
         assert!(
@@ -131,7 +194,10 @@ mod tests {
             BTreeMap::new(),
             PathBuf::from("."),
             CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            "2026-01-01T00:00:00Z",
             ["/tmp/manifest.json".to_owned()],
+            Vec::new(),
         );
         let result = executor.execute("/tmp/manifest.json", &JsonValue::Null);
         assert!(

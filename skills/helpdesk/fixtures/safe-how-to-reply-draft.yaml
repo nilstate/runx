@@ -14,6 +14,21 @@ inputs:
     support_signature: ExampleDesk Support
 expect:
   status: sealed
+  output:
+    subset:
+      classification: how_to
+      severity: low
+      recommended_path: reply_draft
+      draft_email:
+        proposed: true
+        recipient_hint: customer_email_present
+        subject: "Re: How do I verify my sending domain?"
+      send_gate:
+        action: send_customer_email
+        status: requires_human_approval
+      evidence:
+        private_data_required: false
+        send_side_effects: none
   receipt:
     schema: runx.receipt.v1
     state: sealed

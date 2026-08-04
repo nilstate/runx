@@ -48,7 +48,7 @@
           "type": "string"
         },
         "materialized_package_is_registry_artifact": {
-          "type": "boolean"
+          "const": true
         },
         "owner": {
           "type": "string"
@@ -173,7 +173,7 @@
           "type": "string"
         },
         "source_of_truth": {
-          "type": "boolean"
+          "const": true
         }
       },
       "required": [

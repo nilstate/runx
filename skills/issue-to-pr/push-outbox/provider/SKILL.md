@@ -1,14 +1,9 @@
 ---
 name: issue-to-pr-push-outbox-provider
-version: 0.1.0
+version: 0.1.1
 description: Internal GitHub provider boundary for a prepared issue-to-PR outbox push.
 runx:
   category: code
-source:
-  type: thread-outbox-provider
-  thread_outbox_provider:
-    operation: push
-    manifest_path: manifest.json
 ---
 # Issue-to-PR Outbox Provider
 

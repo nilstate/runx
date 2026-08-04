@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::RunxExportLoadError;
+use super::discovery::{canonicalize, display_path};
 
 pub(super) fn resolve_skill_ref(
     root: &Path,
@@ -108,15 +109,4 @@ fn versioned_skill_dirs(root: &Path) -> Result<Vec<PathBuf>, RunxExportLoadError
     }
     dirs.sort();
     Ok(dirs)
-}
-
-fn canonicalize(path: &Path, context: &str) -> Result<PathBuf, RunxExportLoadError> {
-    fs::canonicalize(path).map_err(|source| RunxExportLoadError::Io {
-        context: format!("{context} {}", display_path(path)),
-        source,
-    })
-}
-
-fn display_path(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
 }

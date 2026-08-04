@@ -87,8 +87,6 @@ matter:
   build advances.
 - `scafld_bin`: explicit scafld executable path. Defaults to `SCAFLD_BIN` or
   `scafld` on PATH.
-- `scafld_min_version`: optional minimum accepted scafld version; defaults to
-  `2.4.0`.
 
 ## Structured Output
 

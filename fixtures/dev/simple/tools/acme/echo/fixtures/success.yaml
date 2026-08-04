@@ -3,8 +3,8 @@ lane: deterministic
 target:
   kind: tool
   ref: acme.echo
-env:
-  GREETING: hello
+inputs:
+  message: hello
 expect:
   status: success
   output:

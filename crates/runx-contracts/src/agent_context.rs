@@ -6,9 +6,9 @@
 //! Identity is the legacy bare `runx.ai/spec` `$id` (no `x-runx-schema`).
 use serde::{Deserialize, Serialize};
 
-use crate::JsonObject;
 use crate::output::OutputField;
 use crate::schema::{NonEmptyString, RunxSchema};
+use crate::{AgentExecutionRequirements, JsonObject};
 use std::collections::BTreeMap;
 
 /// The artifact context entry version. Committed as `const: "1"`.
@@ -106,9 +106,15 @@ pub struct AgentContextEnvelope {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub step_id: Option<NonEmptyString>,
     pub skill: NonEmptyString,
+    /// Digest of the exact owning `SKILL.md` bytes carried in `instructions`.
+    pub instructions_sha256: NonEmptyString,
     pub instructions: NonEmptyString,
     pub inputs: JsonObject,
     pub allowed_tools: Vec<NonEmptyString>,
+    /// Exact non-secret execution requirements selected from the owning
+    /// manifest, plus environment-name availability. Secret values never enter
+    /// the agent context.
+    pub requirements: AgentExecutionRequirements,
     pub current_context: Vec<ContextEntry>,
     pub historical_context: Vec<ContextEntry>,
     pub provenance: Vec<ProvenanceEntry>,

@@ -1,1 +1,1 @@
-export function sanitizePublicMarkdown(value: string | undefined): string | undefined;
+export function sanitizePublicMarkdown(value: unknown): string | undefined;

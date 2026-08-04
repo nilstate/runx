@@ -3,73 +3,100 @@
   "$id": "https://schemas.runx.ai/runx/notify/v1.json",
   "x-runx-packet-id": "runx.notify.v1",
   "type": "object",
-  "properties": {
-    "decision": {
-      "type": "string",
-      "enum": ["ready", "needs_review", "blocked"]
-    },
-    "principal": { "type": "string", "minLength": 1 },
-    "channel": {
-      "type": "object",
-      "properties": {
-        "ref": { "type": "string", "minLength": 1 },
-        "name": { "type": "string", "minLength": 1 },
-        "kind": {
-          "type": "string",
-          "enum": ["internal", "external", "shared"]
-        }
-      },
-      "required": ["ref", "name", "kind"],
-      "additionalProperties": false
-    },
-    "content": {
-      "type": "object",
-      "properties": {
-        "ref": { "type": "string", "minLength": 1 },
-        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-        "length_chars": { "type": "integer", "minimum": 0 },
-        "mentions": {
-          "type": "array",
-          "items": { "type": "string" },
-          "uniqueItems": true
-        }
-      },
-      "required": ["ref", "digest", "length_chars", "mentions"],
-      "additionalProperties": false
-    },
-    "send_class": {
-      "type": "string",
-      "enum": ["direct", "broadcast"]
-    },
-    "gates": {
-      "type": "object",
-      "properties": {
-        "preflight_required": { "type": "boolean" },
-        "approval_required": { "type": "boolean" },
-        "approval_ref": { "type": "string" }
-      },
-      "required": ["preflight_required", "approval_required", "approval_ref"],
-      "additionalProperties": false
-    },
-    "blockers": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "provider_actions": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    }
-  },
   "required": [
+    "schema",
     "decision",
+    "provider",
     "principal",
     "channel",
-    "content",
-    "send_class",
-    "gates",
-    "blockers",
-    "provider_actions"
+    "content_ref",
+    "content_digest",
+    "send_plan",
+    "provider_status",
+    "delivery_status",
+    "downstream_handoff",
+    "validation"
+  ],
+  "properties": {
+    "schema": { "const": "runx.notify.v1" },
+    "decision": {
+      "type": "string",
+      "enum": ["ready_for_provider", "blocked"]
+    },
+    "provider": { "const": "slack" },
+    "principal": { "type": "string" },
+    "channel": { "type": "string" },
+    "content_ref": { "type": "string" },
+    "content_digest": {
+      "type": "string",
+      "pattern": "^(?:|sha256:[0-9a-f]{64})$"
+    },
+    "send_plan": {
+      "type": "object",
+      "required": ["decision"],
+      "properties": {
+        "decision": { "type": "string", "enum": ["ready", "needs_input", "denied", "refused"] },
+        "principal": { "type": "object", "additionalProperties": true },
+        "provider": { "type": "object", "additionalProperties": true },
+        "channel": { "type": "string" },
+        "audience": { "type": "object", "additionalProperties": true },
+        "content": { "type": "object", "additionalProperties": true },
+        "gates": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "provider_status": { "const": "not_called" },
+    "delivery_status": { "const": "not_sent" },
+    "downstream_handoff": {
+      "type": "object",
+      "properties": {
+        "skill": { "const": "slack-notify" },
+        "runner": { "const": "deliver" },
+        "state": { "const": "ready_for_approval" }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "required": ["status", "findings"],
+      "properties": {
+        "status": { "type": "string", "enum": ["pass", "fail"] },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string", "minLength": 1 },
+              "message": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "ready_for_provider" } } },
+      "then": {
+        "properties": {
+          "principal": { "minLength": 1 },
+          "channel": { "minLength": 1 },
+          "content_ref": { "minLength": 1 },
+          "content_digest": { "pattern": "^sha256:[0-9a-f]{64}$" },
+          "downstream_handoff": { "required": ["skill", "runner", "state"] },
+          "validation": { "properties": { "status": { "const": "pass" } } }
+        }
+      },
+      "else": {
+        "properties": {
+          "downstream_handoff": { "maxProperties": 0 },
+          "validation": { "properties": { "status": { "const": "fail" } } }
+        }
+      }
+    }
   ],
   "additionalProperties": false
 }

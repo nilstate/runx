@@ -28,9 +28,9 @@ runners:
         type: array
       operator_plan:
         type: object
+    scopes:
+      - repo:read
     runx:
-      scopes:
-        - repo:read
       tags:
         - cpp
         - operator
@@ -43,9 +43,6 @@ runners:
           path: SKILL.md
           commit: ee9aa1cc05055c2490537e762c81c9f28451f578
           blob_sha: a1e1de7b5ea8b32c164d61fecc3c7ae4401b4c97
-      sandbox:
-        profile: readonly
-        cwd_policy: workspace
     artifacts:
       named_emits:
         operator_plan: operator_plan

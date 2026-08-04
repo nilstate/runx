@@ -1,107 +1,56 @@
 ---
 name: work-plan
-description: Decompose a build objective into governed runx execution steps.
-runx:
-  category: authoring
+description: Compile a bounded objective or issue-intake change set into a dependency-safe Runx execution plan, with deterministic checks for evidence preservation, mutation boundaries, catalog references, and skill-package ownership. Use before multi-step or cross-surface work; this skill plans but does not execute.
 ---
 
 # Work Plan
 
-Turn a build or automation objective into a bounded governed work plan.
+Turn one objective into a plan that downstream runners can consume without reinterpreting the source request.
 
-For cross-repo or cross-surface work, the output must be a phased
-`workspace_change_plan`, not just a loose list of steps. The shared plan is the
-thing that keeps repo-local workers aligned when one issue fans out into
-multiple mutation surfaces.
+## Procedure
 
-When the objective originates from an existing thread, treat that thread
-as provider-backed thread. GitHub issues, chat threads, support
-tickets, and local agent sessions are adapter examples, not core nouns. The
-plan should preserve the generic `thread_locator` and any supplied
-`thread`.
+1. Start from `objective`. When `change_set` is supplied by `issue-intake`, preserve it exactly; do not rewrite its target surfaces, invariants, success criteria, or commencement decision.
+2. Classify the plan as `workspace_change` or `skill_package`. Skill-package authoring belongs to `skill-lab`; do not route it through a generic repo-change step.
+3. Split work at authority, mutation, dependency, and review boundaries. Keep steps coarse enough to produce a meaningful artifact.
+4. Declare ordered phases and repo change requests. Parallel work must have no dependency or shared mutation target.
+5. Declare orchestration steps with exact skill references, scopes, mutation flags, inputs, and prior-step context references.
+6. Return `blocked` when a question must be answered before mutation. Never turn uncertainty into an executable plan.
+7. Native catalog inspection supplies the actual installed skill set. The
+   domain validator then verifies source preservation, ordered DAGs, mutation
+   declarations, context references, catalog ownership, and the `skill-lab`
+   boundary. Invalid candidates are withheld and returned as a blocked packet.
 
-The central insight: split at governance boundaries, not cognitive boundaries.
-A skill keeps its full context window. If two actions need the same context
-but different scopes, they are two invocations of the same skill with
-different scopes — not two separate skills. The graph defines where authority
-changes, where mutation happens, and where a gate needs to approve. That is
-where steps break.
-
-Work backward from the deliverable. Name the concrete artifact the objective
-produces (spec, patch, PR, docs site, report). Then identify where authority
-narrows: read-only analysis, write-access mutation, approval gates, review
-boundaries. Each narrowing is a step boundary. Each step gets only the scopes
-it needs — no step inherits from a prior step, each derives from the graph
-grant independently.
-
-Determine data dependencies between steps. A step that consumes output from
-a prior step must come after it. Steps with no data dependency are candidates
-for fanout. Do not parallelize steps that share mutation targets.
-
-If the objective is ambiguous or required context is missing, surface open
-questions explicitly rather than guessing. Open questions should name what
-is missing, why it matters, and who can answer it.
-
-Prefer fewer steps with clear scope boundaries. Three well-scoped steps
-beat seven single-purpose fragments. Every step should have a clear entry
-condition, action, and exit artifact.
-
+This skill does not approve or execute mutations. A `mutating: true` field describes authority a future step will need.
 
 ## Output
 
-- `change_set`: the parent change artifact inherited from intake or constructed
-  for the objective when intake did not already produce one. It should preserve
-  the shared objective, target surfaces, invariants, and success criteria.
-- `harness_context`: when supplied, the same `runx.receipt.v1` packet with state
-  advanced to `planning_ready` or `blocked`. Preserve source events, dedupe,
-  and triage fields rather than reconstructing them from prose.
-- `objective_summary`: one sentence capturing the deliverable.
-- `workspace_change_plan`: phased plan for the whole change set. It must
-  contain:
-  - `plan_id`
-  - `change_set_id`
-  - `objective_summary`
-  - `shared_invariants`
-  - `success_criteria`
-  - `phases`: ordered array. Each phase:
-    - `id`
-    - `name`
-    - `depends_on`: prior phase ids
-    - `parallelizable`: boolean
-    - `repo_change_requests`: ordered array. Each request:
-      - `repo`
-      - `task_id`
-      - `objective`
-      - `depends_on`: sibling repo change request ids this request waits on
-      - `shared_context_refs`: references into the parent change set or prior
-        phase outputs
-      - `validation_commands`
-      - `mutating`
-  - `integration_checks`: cross-repo checks that must pass before the overall
-    change set is considered done
-  - `open_questions`
-- `orchestration_steps`: canonical execution view of the plan as an ordered array.
-  Each step:
-  - `id`: kebab-case identifier
-  - `skill`: skill name or path
-  - `scopes`: scope strings this step requires
-  - `mutating`: boolean
-  - `inputs`: static input map
-  - `context_from`: `step_id.output_field` data dependency references
-  - `description`: what this step does and produces
-- `required_skills`: skill names needed. Flag which exist vs need creation.
-- `open_questions`: missing context that must be answered before mutation.
+```yaml
+decision: ready | blocked
+plan_kind: workspace_change | skill_package
+change_set: object
+objective_summary: string
+workspace_change_plan: object
+orchestration_steps: array
+required_skills: array
+open_questions: array
+evidence: object
+validation:
+  status: pass | hold
+  findings: array
+```
 
-## Inputs
+`workspace_change_plan` contains `plan_id`, `change_set_id`, `objective_summary`, shared invariants, success criteria, ordered phases, integration checks, and open questions. Each phase contains ordered repo change requests with dependencies, validation commands, and mutation declarations.
 
-- `objective` (required): the build or skill objective to decompose.
-- `project_context` (optional): repo, product, or user context that
-  constrains the decomposition.
-- `change_set` (optional): parent change artifact from `issue-intake` or a
-  workspace supervisor. Prefer this when present.
-- `harness_context` (optional): portable issue control-plane packet from intake.
-  Preserve it as state, not as a prose handoff.
-- `thread_locator` (optional): canonical locator for the bounded thread the
-  plan is serving.
-- `thread` (optional): portable thread when the objective is
-  grounded in an existing issue, chat, ticket, or other adapter surface.
+Inputs are `objective`, optional `project_context`, `thread_locator`, `thread`, `change_set`, and `harness_context`. `harness_context` is passed through from the caller; the agent does not reconstruct or advance it.
+
+## Agent task contracts
+
+### `work-plan-draft`
+
+Return work_plan_draft with decision, plan_kind, change_set, objective_summary,
+workspace_change_plan, orchestration_steps, required_skills, and open_questions. Preserve a
+supplied change_set exactly. Split at authority, mutation, dependency, and review boundaries; do
+not split for cognitive convenience. Every phase, repo request, and orchestration step needs an
+id, ordered dependencies, and an explicit mutation flag. A ready plan has no blocking open
+questions. Use plan_kind skill_package for Runx skill authoring and route that work through
+skill-lab. This runner plans only and never claims downstream execution.

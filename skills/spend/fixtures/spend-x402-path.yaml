@@ -1,7 +1,7 @@
-name: spend-x402-path
+name: spend-plans-x402-without-claiming-settlement
 kind: skill
 target: ..
-runner: x402
+runner: plan
 inputs:
   payment_signal:
     signal_type: effect_required
@@ -12,225 +12,56 @@ inputs:
     counterparty: merchant:demo
     operation: search.paid
   parent_payment_authority:
-    authority_ref: authority:payment:test
-  rail_profile_ref: rail-profile:x402:test
+    term_id: authority-term:payment:quote-demo-001
+    principal_ref:
+      type: host
+      uri: principal:operator:test
+    resource_ref:
+      type: surface
+      uri: merchant:demo
+    resource_family: effect
+    verbs:
+      - prepare
+      - commit
+    bounds:
+      effect_limits:
+        - family: payment
+          unit: USD
+          max_per_call_units: 125
+          max_per_run_units: 125
+          channels:
+            - x402
+          realm: test
+          peer: merchant:demo
+          operation: search.paid
+          idempotency_required: true
+          recovery_required: true
+          receipt_before_success: true
+          single_use_capability: true
+          authorization_form: single_use_capability
+    conditions: []
+    approvals: []
+    capabilities:
+      - effect_single_use_capability
+    issued_by_ref:
+      type: host
+      uri: authority:payment:test
   realm: test
-  idempotency_seed: demo-search-001
-caller:
-  answers:
-    agent_task.pay-quote.output:
-      payment_quote:
-        quote_id: quote_demo_001
-        amount_minor: 125
-        currency: USD
-        rails:
-          - x402
-        counterparty: merchant:demo
-        operation: search.paid
-      requested_payment_authority:
-        term_id: authority-term:payment:quote-demo-001
-        principal_ref:
-          type: host
-          uri: principal:operator:test
-        resource_ref:
-          type: surface
-          uri: merchant:demo
-        resource_family: effect
-        verbs:
-          - prepare
-          - commit
-        bounds:
-          effect_limits:
-            - family: payment
-              unit: USD
-              max_per_call_units: 125
-              channels:
-                - x402
-              realm: test
-        conditions: []
-        approvals: []
-        capabilities: []
-        issued_by_ref:
-          type: host
-          uri: authority:payment:test
-      challenge_evidence:
-        source_refs:
-          - signal:ch_mock_001
-        redactions: []
-      risk_notes: []
-      open_questions: []
-    agent_task.pay-reserve.output:
-      payment_decision:
-        decision_id: decision_payment_demo_001
-        choice: continue
-        inputs:
-          signal_refs: []
-          target_ref: null
-          opportunity_refs: []
-          selection_ref: null
-        proposed_intent:
-          purpose: complete a bounded payment
-          legitimacy: authorized by selected reservation decision
-          success_criteria: []
-          constraints: []
-          derived_from: []
-        selected_act_id: act_fulfill
-        selected_harness_ref: null
-        justification:
-          summary: reservation selected a bounded spend act
-          evidence_refs: []
-        closure: null
-        artifact_refs: []
-      reserved_payment_authority:
-        parent_authority:
-          term_id: authority-term:payment:quote-demo-001
-          principal_ref:
-            type: host
-            uri: principal:operator:test
-          resource_ref:
-            type: surface
-            uri: merchant:demo
-          resource_family: effect
-          verbs:
-            - prepare
-            - commit
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels:
-                  - x402
-                realm: test
-                peer: merchant:demo
-                operation: search.paid
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-                authorization_form: single_use_capability
-          conditions: []
-          approvals: []
-          capabilities:
-            - effect_single_use_capability
-          issued_by_ref:
-            type: host
-            uri: authority:payment:test
-        child_authority:
-          term_id: authority-term:payment:reserve-demo-001
-          principal_ref:
-            type: host
-            uri: principal:operator:test
-          resource_ref:
-            type: surface
-            uri: merchant:demo
-          resource_family: effect
-          verbs:
-            - commit
-          capabilities:
-            - effect_single_use_capability
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels:
-                  - x402
-                realm: test
-                peer: merchant:demo
-                operation: search.paid
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-                authorization_form: single_use_capability
-          conditions: []
-          approvals: []
-          issued_by_ref:
-            type: host
-            uri: authority:payment:test
-        reservation_decision:
-          decision_id: decision_payment_demo_001
-          choice: continue
-          inputs:
-            signal_refs: []
-            target_ref: null
-            opportunity_refs: []
-            selection_ref: null
-          proposed_intent:
-            purpose: complete a bounded payment
-            legitimacy: authorized by selected reservation decision
-            success_criteria: []
-            constraints: []
-            derived_from: []
-          selected_act_id: act_fulfill
-          selected_harness_ref: null
-          justification:
-            summary: reservation selected a bounded spend act
-            evidence_refs: []
-          closure: null
-          artifact_refs: []
-        subset_proof:
-          parent_authority_ref:
-            type: surface
-            uri: merchant:demo
-          comparison_algorithm: runx.payment-authority-subset.v1
-          result: subset
-          compared_terms:
-            - child_term_id: authority-term:payment:reserve-demo-001
-              parent_term_id: authority-term:payment:quote-demo-001
-              relation: subset
-          checked_at: 2026-05-22T00:00:00Z
-        child_harness_ref:
-          type: harness
-          uri: runx:harness:spend-x402_fulfill
-        spend_capability_binding:
-          child_harness_ref:
-            type: harness
-            uri: runx:harness:spend-x402_fulfill
-          act_id: act_fulfill
-          reservation_decision_id: decision_payment_demo_001
-          idempotency_key: payment:demo-search-001
-          amount_minor: 125
-          currency: USD
-          counterparty: merchant:demo
-          rail: x402
-        consumed_spend_capability_refs: []
-      idempotency:
-        key: payment:demo-search-001
-      spend_capability_ref:
-        type: credential
-        uri: capability:payment:demo-search-001
-      approval:
-        required: false
-        status: not_required
-      core_requirements:
-        - payment_authority_subset
-        - reserve_before_rail
-        - receipt_before_success
-      open_questions: []
-    agent_task.pay-fulfill-rail-x402.output:
-      rail_result:
-        status: fulfilled
-        rail: x402
-        amount_minor: 125
-        currency: USD
-      rail_proof:
-        proof_ref: receipt-proof:x402:demo-search-001
-        idempotency_key: payment:demo-search-001
-      credential_envelope:
-        form: paid_tool_credential
-        credential_ref: credential:x402:demo-search-001
-      redactions:
-        - rail_session_material
-      recovery_hint:
-        status: sealed
-  approvals:
-    spend.x402.approval: true
+  idempotency_seed: demo-x402-001
 expect:
   status: sealed
+  steps: [quote]
+  step_outputs:
+    quote:
+      subset:
+        payment_quote_packet:
+          data:
+            payment_quote:
+              amount_minor: 125
+              currency: USD
+              rails: [x402]
+              counterparty: merchant:demo
+              operation: search.paid
   receipt:
     schema: runx.receipt.v1
     state: sealed
@@ -238,5 +69,5 @@ expect:
     reason_code: graph_closed
 metadata:
   public_skill: spend
-  source_case: spend-x402-path
+  source_case: spend-plans-x402-without-claiming-settlement
   source: skills-fixture

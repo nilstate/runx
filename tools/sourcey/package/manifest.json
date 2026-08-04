@@ -56,22 +56,8 @@
   "scopes": [
     "sourcey.verify"
   ],
-  "runx": {
-    "artifacts": {
-      "wrap_as": "sourcey_packet"
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": [
-      "./run.mjs"
-    ]
-  },
-  "output": {
+  "artifacts": {
     "packet": "runx.sourcey.packet.v1",
     "wrap_as": "sourcey_packet"
-  },
-  "source_hash": "sha256:e36f2eaee008b5d04a6d5b799fa21a0e9450f48ddc37e5f7422197340a095151",
-  "schema_hash": "sha256:975669ce4f792acc392b93ec9cc6010cb95a9dacff5dbdcc420e9b64448d8dd4",
-  "toolkit_version": "0.1.4"
+  }
 }

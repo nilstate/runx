@@ -1,36 +1,38 @@
-name: raw-html-template-needs-input
+name: email-candidate-stops-without-authoritative-contract
 kind: skill
 target: ..
-runner: compose-email
+runner: compose-email-candidate
 inputs:
-  objective: Just paste in my own raw HTML email and save it as a template.
-  account_status_json: '{"status":"healthy","account":{"tier":"pro"},"brand":{"setup_complete":true,"company_name":"Acme Co"}}'
-  operator_context: Sections only; redirect raw-HTML asks rather than inventing a raw-HTML format.
+  objective: Paste this raw HTML into a campaign.
+  composition_intent:
+    decision: provider_error
+    provider: nitrosend
+    mode: read
+    operation: compose_campaign_intent
+    tool: nitro_compose_campaign
+    provider_ref: null
+    result: null
+    evidence: null
+    blockers:
+      - Nitrosend did not return a composition contract.
+  operator_context: Never invent a raw-HTML or context fallback.
 caller:
   answers:
-    agent_task.compose-email-plan.output:
-      email_design:
+    agent_task.compose-email-from-contract.output:
+      campaign_candidate:
         decision: needs_input
-        template_intent: none
-        subject: ""
-        preheader: ""
-        sections: []
-        rationale: Nitrosend has no raw-HTML template format; arbitrary HTML belongs inside a text section's content.
-        ordered_tool_calls: []
-        human_actions: []
-        blockers: []
-        needs_input:
-          - Confirm the HTML can be placed inside a single text section, or provide the content so it can be structured into sections.
-        unsupported_requirements:
-          - raw-HTML template format
-        success_checkpoint:
-          milestone: awaiting_section_decision
-          description: The skill stops for input rather than inventing an unsupported raw-HTML template.
+        arguments: {}
+        rationale: No authoritative composition contract was supplied.
+        blockers:
+          - Nitrosend did not return a composition contract.
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
+  output:
+    subset:
+      campaign_candidate:
+        decision: needs_input
+        arguments: {}
 metadata:
   public_skill: nitrosend
-  source_case: raw-html-template-needs-input
+  source_case: email-candidate-stops-without-authoritative-contract
   source: skills-fixture

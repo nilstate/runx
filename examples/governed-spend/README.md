@@ -35,8 +35,8 @@ round-trip.
 
 ```bash
 node ../../scripts/payments-demo.mjs --record --receipt-dir /tmp/runx-payments-demo
-node verify.mjs /tmp/runx-payments-demo/payments-demo-paid.receipt.json
-node verify.mjs /tmp/runx-payments-demo/payments-demo-refusal.receipt.json
+node ../../tools/verify/verify.mjs /tmp/runx-payments-demo/payments-demo-paid.receipt.json
+node ../../tools/verify/verify.mjs /tmp/runx-payments-demo/payments-demo-refusal.receipt.json
 ```
 
 With `ANTHROPIC_API_KEY` and `RUNX_X402_SIGNER` present, the script records an
@@ -291,7 +291,7 @@ The run is accepted only when:
 - If `./x402.sh` is also run, it reports `mode: live` and `operator_keyed: true`,
   and the settlement has a non-mock `tx_hash` / rail reference.
 - Both `x402-settlement.receipt.json` and `x402-refusal.receipt.json` verify with
-  `node examples/governed-spend/verify.mjs` when the Runx receipt demo is run.
+  `node tools/verify/verify.mjs` when the Runx receipt demo is run.
 
 If any of those fail, call it a local mock or conformance failure, not a real x402
 test.

@@ -139,7 +139,7 @@ Do not add domain-specific packet families to core. Add product-owned
 
 Consuming applications define the `proposal_kind` values and `owner_route_id`
 routes that make sense for their product, then translate runx references into
-their own provider UX outside this OSS layer. Aster or hosted surfaces should
+their own provider UX outside this OSS layer. Consuming applications should
 read back the same source-thread refs, evidence refs, human gates, result refs,
 publication refs, receipts, and final outcome fields from the public envelope.
 The hosted approval queue, routing workflow, and provider-specific controls are

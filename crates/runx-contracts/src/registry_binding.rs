@@ -4,8 +4,9 @@
 //!
 //! Identity is the legacy bare `runx.ai/schemas` `$id` (no `x-runx-schema`).
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
-use crate::schema::RunxSchema;
+use crate::schema::{Property, RunxSchema, deserialize_true_bool, object_schema};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 pub enum RegistryBindingSchema {
@@ -48,7 +49,7 @@ pub struct RegistryBindingSkill {
 }
 
 /// The upstream source of truth for a registry binding. Open.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryBindingUpstream {
     pub host: String,
     pub owner: String,
@@ -66,13 +67,35 @@ pub struct RegistryBindingUpstream {
     pub html_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_url: Option<String>,
-    /// Committed as `const: true`; modeled as a boolean (the const bound is not
-    /// expressible by the emitter and is exercised only at the `true` value).
+    #[serde(deserialize_with = "deserialize_true_bool")]
     pub source_of_truth: bool,
 }
 
+impl RunxSchema for RegistryBindingUpstream {
+    fn json_schema() -> Value {
+        object_schema(
+            vec![
+                Property::new("host", String::json_schema(), true),
+                Property::new("owner", String::json_schema(), true),
+                Property::new("repo", String::json_schema(), true),
+                Property::new("path", String::json_schema(), true),
+                Property::new("branch", String::json_schema(), false),
+                Property::new("commit", String::json_schema(), true),
+                Property::new("blob_sha", String::json_schema(), true),
+                Property::new("pr_url", String::json_schema(), false),
+                Property::new("merged_at", String::json_schema(), false),
+                Property::new("html_url", String::json_schema(), false),
+                Property::new("raw_url", String::json_schema(), false),
+                Property::new("source_of_truth", json!({ "const": true }), true),
+            ],
+            false,
+            None,
+        )
+    }
+}
+
 /// The registry placement for a binding. Open.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryBindingRegistry {
     pub owner: String,
     pub trust_tier: RegistryTrustTier,
@@ -82,8 +105,30 @@ pub struct RegistryBindingRegistry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub run_command: Option<String>,
     pub profile_path: String,
-    /// Committed as `const: true`; see [`RegistryBindingUpstream::source_of_truth`].
+    #[serde(deserialize_with = "deserialize_true_bool")]
     pub materialized_package_is_registry_artifact: bool,
+}
+
+impl RunxSchema for RegistryBindingRegistry {
+    fn json_schema() -> Value {
+        object_schema(
+            vec![
+                Property::new("owner", String::json_schema(), true),
+                Property::new("trust_tier", RegistryTrustTier::json_schema(), true),
+                Property::new("version", String::json_schema(), true),
+                Property::new("install_command", String::json_schema(), false),
+                Property::new("run_command", String::json_schema(), false),
+                Property::new("profile_path", String::json_schema(), true),
+                Property::new(
+                    "materialized_package_is_registry_artifact",
+                    json!({ "const": true }),
+                    true,
+                ),
+            ],
+            false,
+            None,
+        )
+    }
 }
 
 /// The harness verification status for a binding. Open.
@@ -106,4 +151,54 @@ pub struct RegistryBinding {
     pub upstream: RegistryBindingUpstream,
     pub registry: RegistryBindingRegistry,
     pub harness: RegistryBindingHarness,
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{Value, json};
+
+    use super::RegistryBinding;
+
+    fn valid_binding() -> Value {
+        json!({
+            "schema": "runx.registry_binding.v1",
+            "state": "registry_bound",
+            "skill": {
+                "id": "runx/sourcey",
+                "name": "sourcey",
+                "description": "Docs skill."
+            },
+            "upstream": {
+                "host": "github.com",
+                "owner": "runxhq",
+                "repo": "runx",
+                "path": "skills/sourcey",
+                "commit": "abc123",
+                "blob_sha": "def456",
+                "source_of_truth": true
+            },
+            "registry": {
+                "owner": "runx",
+                "trust_tier": "first_party",
+                "version": "1.0.0",
+                "profile_path": "X.yaml",
+                "materialized_package_is_registry_artifact": true
+            },
+            "harness": {
+                "status": "harness_verified",
+                "case_count": 1
+            }
+        })
+    }
+
+    #[test]
+    fn registry_binding_rejects_false_ownership_markers() {
+        let mut source_false = valid_binding();
+        source_false["upstream"]["source_of_truth"] = json!(false);
+        assert!(serde_json::from_value::<RegistryBinding>(source_false).is_err());
+
+        let mut artifact_false = valid_binding();
+        artifact_false["registry"]["materialized_package_is_registry_artifact"] = json!(false);
+        assert!(serde_json::from_value::<RegistryBinding>(artifact_false).is_err());
+    }
 }

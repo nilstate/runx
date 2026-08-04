@@ -29,21 +29,20 @@ inputs:
   base: main
 expect:
   status: success
-  outputs:
-    draft_pull_request:
-      matches_packet: runx.outbox.draft_pull_request.v1
-      subset:
-        task_id: task-fixture
-        push_ready: true
-    outbox_entry:
-      matches_packet: runx.outbox.entry.v1
-      subset:
-        entry_id: pull_request:task-fixture
-        kind: pull_request
-        status: proposed
-        metadata:
-          source_thread:
-            required: true
-            publish_mode: reply
-            missing_behavior: fail_closed
-            thread_locator: issue://fixture/123
+  output:
+    subset:
+      draft_pull_request:
+        data:
+          task_id: task-fixture
+          push_ready: true
+      outbox_entry:
+        data:
+          entry_id: pull_request:task-fixture
+          kind: pull_request
+          status: proposed
+          metadata:
+            source_thread:
+              required: true
+              publish_mode: reply
+              missing_behavior: fail_closed
+              thread_locator: issue://fixture/123

@@ -7,13 +7,15 @@ use tempfile::TempDir;
 
 use runx_contracts::{DoctorReport, DoctorReportSchema, DoctorStatus, DoctorSummary, JsonValue};
 use runx_runtime::{
-    DevFixtureResult, DevFixtureStatus, DevLoopOptions, DevReport, DevReportStatus,
-    DevWatchOptions, DevWatchTrigger, discover_fixture_paths, render_dev_result, run_dev_once,
-    should_ignore_dev_watch_path,
+    DevFixtureResult, DevFixtureStatus, DevReport, DevReportStatus, DevWatchOptions,
+    DevWatchTrigger, discover_fixture_paths, render_dev_result, should_ignore_dev_watch_path,
 };
 
+#[cfg(any(feature = "catalog", feature = "cli-tool"))]
+use runx_runtime::{DevLoopOptions, run_dev_once};
+
 #[cfg(feature = "cli-tool")]
-use runx_runtime::dev::types::DevLane;
+use runx_runtime::DevFixtureLane;
 
 #[test]
 fn dev_discovers_direct_unit_fixtures_before_workspace_tool_fixtures()
@@ -28,6 +30,7 @@ fn dev_discovers_direct_unit_fixtures_before_workspace_tool_fixtures()
 }
 
 #[test]
+#[cfg(feature = "catalog")]
 fn dev_runs_deterministic_tool_fixtures_and_skips_excluded_lanes()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = fixture_root()?;
@@ -92,7 +95,12 @@ fn dev_runs_native_repo_integration_skill_with_fixture_cwd()
     let root = fixture_root()?;
     let mut options = DevLoopOptions::new(root.path());
     options.unit_path = Some(root.join("units/native-repo"));
-    options.lane = DevLane::RepoIntegration;
+    options.lane = Some(DevFixtureLane::RepoIntegration);
+    // The dev loop never re-reads process state; the caller admits the
+    // environment. This fixture spawns a real node child, so admit PATH.
+    if let Ok(path) = std::env::var("PATH") {
+        options.env.insert("PATH".to_owned(), path);
+    }
 
     let report = run_dev_once(&options)?;
 
@@ -116,6 +124,7 @@ fn dev_runs_native_repo_integration_skill_with_fixture_cwd()
 }
 
 #[test]
+#[cfg(feature = "catalog")]
 fn dev_marks_workspace_executable_files_executable() -> Result<(), Box<dyn std::error::Error>> {
     let root = fixture_root()?;
     let mut options = DevLoopOptions::new(root.path());
@@ -273,6 +282,7 @@ fn copy_dir_all(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+#[cfg(any(feature = "catalog", feature = "cli-tool"))]
 fn nested_string<'a>(value: Option<&'a JsonValue>, path: &[&str]) -> Option<&'a str> {
     let mut current = value?;
     for segment in path {

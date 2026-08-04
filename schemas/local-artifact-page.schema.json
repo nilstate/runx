@@ -1,0 +1,61 @@
+{
+  "$id": "https://schemas.runx.ai/runx/local-artifact/page/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifact_ref": {
+      "type": "string"
+    },
+    "data": {
+      "type": "string"
+    },
+    "encoding": {
+      "type": "string"
+    },
+    "eof": {
+      "type": "boolean"
+    },
+    "length": {
+      "type": "integer"
+    },
+    "media_type": {
+      "type": "string"
+    },
+    "next_offset": {
+      "type": "integer"
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "range_digest": {
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "const": "runx.local_artifact.page.v1",
+      "type": "string"
+    },
+    "whole_digest": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_ref",
+    "media_type",
+    "offset",
+    "length",
+    "next_offset",
+    "eof",
+    "range_digest",
+    "whole_digest",
+    "encoding"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.local_artifact.page.v1"
+}

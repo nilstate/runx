@@ -1,22 +1,20 @@
 # CLI Feature Parity Matrix
 
-This directory captures the canonical native Rust CLI/runtime surface. The
-matrix is generated from `scripts/generate-cli-feature-parity.ts` and checked
-against `crates/runx-cli/src/router.rs`.
+Rust's `CommandSpec` catalog is the sole source of command syntax and help.
+`tests/cli-feature-parity-contract.ts` reads that catalog directly from
+`runx --help --json`, then binds test-only effect, surface, and oracle
+annotations in memory.
 
-Required exit-code coverage: `"exitCodes": [0, 1, 2, 3, 64]`.
+## Fixture
 
-## Files
-
-- `commands.json`: command, alias, flag, exit-code, output, receipt, and
-  side-effect coverage.
-- `runtime-surfaces.json`: non-help runtime surfaces that must not disappear
-  during a Rust rebuild.
-- `cases/oracle.json`: executable or validation-only oracle cases.
+`harness/echo-skill.yaml` is the only persisted runtime fixture. Command
+metadata and derived parity cases are not checked in, so they cannot drift
+from the native catalog.
 
 ## Parity Rules
 
 - JSON output and receipt behavior are schema-exact.
+- Executable cases assert the exact exit code they exercise.
 - Human output is semantic and may be normalized for timestamps, paths,
   receipt ids, and platform-specific wording.
 - Live providers are replaced by deterministic mocks, fixtures, or local

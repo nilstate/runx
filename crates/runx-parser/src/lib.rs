@@ -1,36 +1,57 @@
 //! Pure Rust parser parity crate for runx skills, graphs, and tools.
 
+pub mod dev_fixture;
 pub mod error;
+pub mod eval;
 pub mod graph;
+pub mod harness_fixture;
 pub mod install;
 mod json_fields;
+pub mod package;
+pub mod packet;
 pub mod runner;
 pub mod skill;
 pub mod tool;
 pub mod yaml;
 
+pub use dev_fixture::{
+    DevExpectedStatus, DevFixture, DevFixtureError, DevFixtureExpectation, DevFixtureGit,
+    DevFixtureGitConfig, DevFixtureLane, DevFixtureTarget, DevFixtureTargetKind,
+    DevFixtureWorkspace, DevOutputExpectation, parse_dev_fixture,
+};
 pub use error::{ParseError, ParseErrorKind, ValidationError, ValidationErrorKind};
+pub use eval::{ParserEvalError, ParserEvalOutput, evaluate_parser_document_str};
 pub use graph::{
     ExecutionGraph, FanoutBranchFailurePolicy, FanoutConflictAction, FanoutConflictGate,
     FanoutGroupPolicy, FanoutSyncStrategy, FanoutThresholdAction, FanoutThresholdGate,
-    GraphContextEdge, GraphGuard, GraphPolicy, GraphRetryPolicy, GraphStep, MintAuthorityDirective,
-    MintScopeSource, RawGraphIr, parse_graph_yaml, validate_graph, validate_graph_document,
+    GraphContextEdge, GraphGuard, GraphPolicy, GraphRetryPolicy, GraphRunTarget, GraphStep,
+    MintAuthorityDirective, MintScopeSource, RawGraphIr, parse_graph_yaml, validate_graph,
+    validate_graph_document,
 };
 pub use install::{
     SkillInstallError, SkillInstallOrigin, ValidatedSkillInstall, validate_skill_install,
+};
+pub use package::{
+    SkillPackageError, SkillPackageSource, ValidatedJavaScriptModule, ValidatedPackageTool,
+    ValidatedSkillPackage, javascript_module_imports, javascript_process_module_imports,
+    resolve_javascript_module_import, validate_skill_package,
+};
+pub use packet::{
+    PACKET_ID_FIELD, PacketSchemaError, ValidatedPacketSchema, parse_packet_schema_document,
 };
 pub use runner::{
     RawRunnerManifestIr, SkillRunnerManifest, parse_runner_manifest_yaml, validate_runner_manifest,
 };
 pub use skill::{
-    ActDeclaration, CatalogApproval, CatalogAudience, CatalogCompletion, CatalogExecution,
-    CatalogKind, CatalogMetadata, CatalogRole, CatalogVisibility, CredentialRequirement,
-    HarnessCallerFixture, HarnessExpectation, InputMode, RawSkillIr, ReceiptExpectation,
-    RunnerHarnessCase, RunnerHarnessManifest, SkillArtifactContract, SkillHttpSource,
-    SkillIdempotencyPolicy, SkillInput, SkillMcpServer, SkillRetryPolicy, SkillRunnerDefinition,
-    SkillSandbox, SkillSource, SourceKind, ValidateSkillMode, ValidateSkillOptions, ValidatedSkill,
-    parse_skill_markdown, validate_skill, validate_skill_artifact_contract, validate_skill_source,
-    validate_skill_with_options,
+    ActDeclaration, ArtifactPageFraming, ArtifactPageSource, CatalogApproval, CatalogAudience,
+    CatalogCompletion, CatalogExecution, CatalogKind, CatalogMetadata, CatalogRole,
+    CatalogVisibility, CredentialRequirement, HarnessCallerFixture, HarnessExpectation, InputMode,
+    RawSkillIr, ReceiptExpectation, RunnerHarnessCase, RunnerHarnessManifest,
+    SkillArtifactContract, SkillExternalAdapterManifest, SkillIdempotencyPolicy, SkillInput,
+    SkillMcpServer, SkillRetryPolicy, SkillRunnerDefinition, SkillSource,
+    SkillThreadOutboxProviderSource, SourceKind, ValidateSkillMode, ValidateSkillOptions,
+    ValidatedSkill, parse_skill_markdown, validate_input_examples, validate_skill,
+    validate_skill_artifact_contract, validate_skill_source, validate_skill_with_options,
 };
 pub use tool::{
     RawToolManifestIr, ValidatedTool, parse_tool_manifest_json, parse_tool_manifest_yaml,

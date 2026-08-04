@@ -1,7 +1,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use runx_contracts::JsonObject;
+
 use crate::RuntimeError;
+
+mod admission;
+mod apply;
+
+use admission::{admit_file_target, admit_text_bundle, missing_parent_directories, snapshot_paths};
+use apply::{apply_admitted_bundle, bundle_report, rollback_paths};
+
+const MAX_BUNDLE_OPERATIONS: usize = 500;
+const MAX_FILESYSTEM_MUTATION_BUNDLE_BYTES: usize = 20 * 1024 * 1024;
 
 #[derive(Clone, Debug)]
 pub(crate) struct DirectoryEntry {
@@ -50,7 +61,10 @@ pub(crate) fn find_files_named(
     let mut files = Vec::new();
     for entry in read_dir_sorted(directory)? {
         if entry.is_dir {
-            if !matches!(entry.name.as_str(), ".git" | "node_modules" | "target") {
+            if !matches!(
+                entry.name.as_str(),
+                ".git" | ".runx" | "node_modules" | "target"
+            ) {
                 files.extend(find_files_named(&entry.path, file_name)?);
             }
         } else if entry.is_file && entry.name == file_name {
@@ -64,4 +78,258 @@ pub(crate) fn find_files_named(
 pub(crate) fn read_to_string(path: &Path) -> Result<String, RuntimeError> {
     fs::read_to_string(path)
         .map_err(|source| RuntimeError::io(format!("reading {}", path.display()), source))
+}
+
+/// Resolve one not-yet-existing file target beneath an existing trusted root.
+///
+/// This is the shared admission boundary for runtime-owned state files and
+/// transactional text writes. It rejects absolute paths, traversal, symlink
+/// components, and directory targets before a caller creates parent folders.
+pub(crate) fn resolve_contained_file_target(
+    operation: &str,
+    root: &Path,
+    requested: &str,
+) -> Result<PathBuf, RuntimeError> {
+    let root = fs::canonicalize(root).map_err(|source| {
+        RuntimeError::io(
+            format!("resolving file target root {}", root.display()),
+            source,
+        )
+    })?;
+    if !root.is_dir() {
+        return Err(invalid_bundle(
+            operation,
+            "file target root must be a directory",
+        ));
+    }
+    admit_file_target(operation, &root, requested).map(|(_, absolute)| absolute)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TextFileWrite {
+    pub(crate) path: String,
+    pub(crate) contents: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct TextBundle {
+    pub(crate) writes: Vec<TextFileWrite>,
+    pub(crate) deletes: Vec<String>,
+}
+
+/// Apply a bounded text bundle beneath one existing workspace root.
+///
+/// All paths and rollback snapshots are admitted before mutation. Writes use a
+/// same-directory temporary file followed by rename; any later failure restores
+/// every touched file from the bounded snapshot. This is the single filesystem
+/// mutation owner used by native file and skill-package tools.
+pub(crate) fn apply_text_bundle(
+    operation: &str,
+    root: &Path,
+    bundle: &TextBundle,
+) -> Result<JsonObject, RuntimeError> {
+    apply_text_bundle_verified(operation, root, bundle, || Ok(())).map(|(report, ())| report)
+}
+
+/// Apply a bundle and keep its rollback snapshot live through caller-owned
+/// verification. A failed postcondition restores the entire admitted bundle,
+/// including auxiliary records written outside the primary target directory.
+pub(crate) fn apply_text_bundle_verified<T>(
+    operation: &str,
+    root: &Path,
+    bundle: &TextBundle,
+    verify: impl FnOnce() -> Result<T, RuntimeError>,
+) -> Result<(JsonObject, T), RuntimeError> {
+    let admitted = admit_text_bundle(operation, root, bundle)?;
+    let snapshots = snapshot_paths(&admitted)?;
+    let created_directories = missing_parent_directories(&admitted)?;
+    let apply_result = apply_admitted_bundle(&admitted).and_then(|()| verify());
+    let verified = match apply_result {
+        Ok(verified) => verified,
+        Err(error) => {
+            let rollback_error = rollback_paths(
+                &admitted.operation,
+                &admitted.root,
+                &snapshots,
+                &created_directories,
+            )
+            .err();
+            return Err(match rollback_error {
+                Some(rollback) => invalid_bundle(
+                    operation,
+                    format!("bundle apply failed ({error}); rollback also failed ({rollback})"),
+                ),
+                None => error,
+            });
+        }
+    };
+    Ok((bundle_report(&admitted, &snapshots), verified))
+}
+
+fn invalid_bundle(operation: &str, message: impl Into<String>) -> RuntimeError {
+    RuntimeError::SkillFailed {
+        skill_name: operation.to_owned(),
+        message: message.into(),
+    }
+}
+
+#[cfg(test)]
+mod bundle_tests {
+    use std::fs;
+
+    use super::{TextBundle, TextFileWrite, apply_text_bundle, apply_text_bundle_verified};
+
+    #[test]
+    fn bounded_bundle_writes_and_deletes_files() -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        fs::write(temp.path().join("old.txt"), "old")?;
+        let report = apply_text_bundle(
+            "fs.apply_bundle",
+            temp.path(),
+            &TextBundle {
+                writes: vec![TextFileWrite {
+                    path: "nested/new.txt".to_owned(),
+                    contents: "new".to_owned(),
+                }],
+                deletes: vec!["old.txt".to_owned()],
+            },
+        )?;
+
+        assert_eq!(
+            fs::read_to_string(temp.path().join("nested/new.txt"))?,
+            "new"
+        );
+        assert!(!temp.path().join("old.txt").exists());
+        assert_eq!(
+            report["write_count"],
+            runx_contracts::JsonValue::Number(runx_contracts::JsonNumber::U64(1))
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bounded_bundle_preserves_existing_file_mode() -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir()?;
+        let script = temp.path().join("run.sh");
+        fs::write(&script, "old")?;
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755))?;
+
+        apply_text_bundle(
+            "fs.apply_bundle",
+            temp.path(),
+            &TextBundle {
+                writes: vec![TextFileWrite {
+                    path: "run.sh".to_owned(),
+                    contents: "new".to_owned(),
+                }],
+                deletes: Vec::new(),
+            },
+        )?;
+
+        assert_eq!(fs::metadata(script)?.permissions().mode() & 0o777, 0o755);
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bounded_bundle_rejects_symlink_escape() -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::symlink;
+
+        let temp = tempfile::tempdir()?;
+        let outside = tempfile::tempdir()?;
+        symlink(outside.path(), temp.path().join("linked"))?;
+        let result = apply_text_bundle(
+            "fs.apply_bundle",
+            temp.path(),
+            &TextBundle {
+                writes: vec![TextFileWrite {
+                    path: "linked/escape.txt".to_owned(),
+                    contents: "blocked".to_owned(),
+                }],
+                deletes: Vec::new(),
+            },
+        );
+
+        assert!(result.is_err());
+        assert!(!outside.path().join("escape.txt").exists());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn skill_authoring_partial_write_rollback_restores_workspace()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir()?;
+        let first = temp.path().join("first.txt");
+        let blocked = temp.path().join("blocked");
+        fs::write(&first, "before")?;
+        fs::create_dir(&blocked)?;
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o555))?;
+
+        let result = apply_text_bundle(
+            "runx.skill.apply",
+            temp.path(),
+            &TextBundle {
+                writes: vec![
+                    TextFileWrite {
+                        path: "first.txt".to_owned(),
+                        contents: "after".to_owned(),
+                    },
+                    TextFileWrite {
+                        path: "blocked/second.txt".to_owned(),
+                        contents: "must fail".to_owned(),
+                    },
+                ],
+                deletes: Vec::new(),
+            },
+        );
+
+        fs::set_permissions(&blocked, fs::Permissions::from_mode(0o755))?;
+        assert!(result.is_err());
+        assert_eq!(fs::read_to_string(first)?, "before");
+        assert!(!blocked.join("second.txt").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn verified_bundle_rolls_back_when_postcondition_fails()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let existing = temp.path().join("existing.txt");
+        fs::write(&existing, "before")?;
+
+        let result = apply_text_bundle_verified(
+            "runx.skill.apply",
+            temp.path(),
+            &TextBundle {
+                writes: vec![
+                    TextFileWrite {
+                        path: "existing.txt".to_owned(),
+                        contents: "after".to_owned(),
+                    },
+                    TextFileWrite {
+                        path: "created.txt".to_owned(),
+                        contents: "created".to_owned(),
+                    },
+                ],
+                deletes: Vec::new(),
+            },
+            || {
+                Err::<(), _>(super::invalid_bundle(
+                    "runx.skill.apply",
+                    "postcondition failed",
+                ))
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(fs::read_to_string(existing)?, "before");
+        assert!(!temp.path().join("created.txt").exists());
+        Ok(())
+    }
 }

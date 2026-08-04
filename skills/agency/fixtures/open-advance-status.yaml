@@ -1,0 +1,68 @@
+name: agency-open-advance-status-journey
+kind: graph
+target: ../harness/open-advance-status.yaml
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://agency/journey-cases":{"adapter":"data.sqlite","database_path":".runx/data/agency-journey.sqlite","resources":{"agency_cases":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+caller:
+  answers:
+    agent_task.ops-desk-advance.output:
+      decision: dispatch
+      reason: The case is open; the smallest useful next move is to draft the doc update within scope.
+      dispatch:
+        member: writer
+        skill: ghostwrite
+        task: Draft the doc update for the drifted API reference.
+        needed_scope:
+          - docs.write
+        consequence: draft
+        verification:
+          expected_receipt: runx.receipt.v1
+          readback: ghostwrite effect for the docs update on case-journey-1
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+    state: sealed
+    disposition: closed
+    reason_code: graph_closed
+    child_receipt_count: 3
+  steps:
+    - open
+    - advance
+    - status
+  step_outputs:
+    open:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            aggregate_id: case-journey-1
+            after_version: 1
+            provider_evidence:
+              adapter: data.sqlite
+              provider: sqlite-event-store
+              storage_class: sqlite
+    advance:
+      subset:
+        data_operation_result:
+          data:
+            operation: append_event
+            aggregate_id: case-journey-1
+            after_version: 2
+    status:
+      subset:
+        reduction:
+          data:
+            case_state:
+              case_id: case-journey-1
+              agency_ref: docs-agency
+              status: working
+              turn: 1
+              last_action: Draft the doc update for the drifted API reference.
+            expected_version: 2
+metadata:
+  public_skill: agency
+  source_case: agency-open-advance-status-journey
+  source: skills-fixture
+  runner_kind: graph
+  graph_shape: durable_open_advance_status

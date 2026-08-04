@@ -12,16 +12,8 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use crate::fingerprint::sha256_prefixed;
-use crate::json::{JsonNumber, JsonObject, JsonValue};
+use crate::json::{JsonObject, JsonValue};
 use crate::schema::{NonEmptyString, RunxSchema};
-
-/// The diagnostic/base fields a step projection always injects into its `outputs`
-/// map for receipts, effect replay, and debugging. They are NOT part of a step's
-/// addressable contract: a graph context edge may bind only to declared outputs and
-/// artifact packets, never to these. This is the single source of truth shared by the
-/// runtime projection/resolver and the parser's parse-time context-edge validation, so
-/// the addressable surface cannot drift between the two layers.
-pub const BASE_OUTPUT_FIELDS: &[&str] = &["raw", "skill_claim", "stdout", "stderr", "status"];
 
 /// A declared output value type.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
@@ -39,7 +31,7 @@ pub enum OutputType {
 /// The expanded form of an output field declaration. Committed with
 /// `additionalProperties: false` and `minProperties: 1` (the latter is a
 /// numeric bound the emitter does not express).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OutputFieldSpec {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
@@ -52,22 +44,69 @@ pub struct OutputFieldSpec {
     pub wrap_as: Option<NonEmptyString>,
     #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
     pub enum_values: Option<Vec<String>>,
+    /// Additional JSON Schema 2020-12 keywords for this output value. The
+    /// scalar type, description, and enum above remain the canonical
+    /// top-level declaration; this object owns nested shape and bounds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<JsonObject>,
 }
 
 /// A single output field declaration: either a bare type name or a typed spec.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
 #[serde(untagged)]
 pub enum OutputField {
     Type(OutputType),
     Spec(OutputFieldSpec),
 }
 
+impl OutputField {
+    /// Whether a successful producer must return this field.
+    ///
+    /// Bare type declarations and expanded declarations without an explicit
+    /// `required` value are required by default.
+    #[must_use]
+    pub const fn is_required(&self) -> bool {
+        match self {
+            Self::Type(_) => true,
+            Self::Spec(spec) => match spec.required {
+                Some(required) => required,
+                None => true,
+            },
+        }
+    }
+}
+
 /// The standalone `output.schema.json` document: a top-level open map of field
 /// name to [`OutputField`], carrying the bare `runx.ai/spec` `$id`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, RunxSchema)]
 #[serde(transparent)]
 #[runx_schema(spec_id = "https://runx.ai/spec/output.schema.json")]
 pub struct Output(pub BTreeMap<String, OutputField>);
+
+/// A malformed output declaration. Syntax and nested schema validity share one
+/// error because callers must reject either defect at the same contract-load
+/// boundary.
+#[derive(Debug, thiserror::Error)]
+pub enum OutputContractParseError {
+    #[error("output declaration is invalid: {0}")]
+    Declaration(#[from] serde_json::Error),
+    #[error("output declaration contains an invalid JSON Schema: {0}")]
+    Schema(String),
+}
+
+/// Parse the canonical output map once for parser, runtime, inspection, and
+/// agent invocation consumers.
+pub fn parse_output_contract(
+    raw: &JsonObject,
+) -> Result<BTreeMap<String, OutputField>, OutputContractParseError> {
+    let value = serde_json::to_value(JsonValue::Object(raw.clone()))?;
+    let output = serde_json::from_value::<Output>(value)?.0;
+    let schema = serde_json::to_value(output_value_schema(Some(&output)))?;
+    jsonschema::draft202012::options()
+        .build(&schema)
+        .map_err(|error| OutputContractParseError::Schema(error.to_string()))?;
+    Ok(output)
+}
 
 /// A deterministic output-contract violation at the native trust boundary.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -116,7 +155,7 @@ pub fn output_value_schema(output: Option<&BTreeMap<String, OutputField>>) -> Js
     let mut required = Vec::new();
     for (name, field) in output {
         properties.insert(name.clone(), output_field_schema(field));
-        if output_field_required(field) {
+        if field.is_required() {
             required.push(JsonValue::String(name.clone()));
         }
     }
@@ -146,33 +185,30 @@ pub fn validate_output_value(
     output: Option<&BTreeMap<String, OutputField>>,
     value: &JsonValue,
 ) -> Result<(), OutputValidationError> {
-    let JsonValue::Object(object) = value else {
-        return Err(OutputValidationError::new("$", "expected object"));
-    };
-    let Some(output) = output.filter(|fields| !fields.is_empty()) else {
+    let schema = serde_json::to_value(output_value_schema(output)).map_err(|error| {
+        OutputValidationError::new(
+            "$",
+            format!("declared output schema could not be serialized: {error}"),
+        )
+    })?;
+    let validator = jsonschema::draft202012::options()
+        .build(&schema)
+        .map_err(|error| {
+            OutputValidationError::new("$", format!("declared output schema is invalid: {error}"))
+        })?;
+    let instance = serde_json::to_value(value).map_err(|error| {
+        OutputValidationError::new(
+            "$",
+            format!("output value could not be serialized: {error}"),
+        )
+    })?;
+    let Some(error) = validator.iter_errors(&instance).next() else {
         return Ok(());
     };
-
-    if let Some(name) = object.keys().find(|name| !output.contains_key(*name)) {
-        return Err(OutputValidationError::new(
-            format!("$.{name}"),
-            "field is not declared by the output contract",
-        ));
-    }
-
-    for (name, field) in output {
-        match object.get(name) {
-            Some(value) => validate_output_field(name, field, value)?,
-            None if output_field_required(field) => {
-                return Err(OutputValidationError::new(
-                    format!("$.{name}"),
-                    "required field is missing",
-                ));
-            }
-            None => {}
-        }
-    }
-    Ok(())
+    Err(OutputValidationError::new(
+        validation_error_path(&error),
+        error.to_string(),
+    ))
 }
 
 fn object_schema() -> JsonValue {
@@ -181,15 +217,11 @@ fn object_schema() -> JsonValue {
     JsonValue::Object(schema)
 }
 
-fn output_field_required(field: &OutputField) -> bool {
-    match field {
-        OutputField::Type(_) => true,
-        OutputField::Spec(spec) => spec.required.unwrap_or(true),
-    }
-}
-
 fn output_field_schema(field: &OutputField) -> JsonValue {
-    let mut schema = JsonObject::new();
+    let mut schema = match field {
+        OutputField::Spec(spec) => spec.schema.clone().unwrap_or_default(),
+        OutputField::Type(_) => JsonObject::new(),
+    };
     match field {
         OutputField::Type(field_type) => {
             schema.insert(
@@ -233,53 +265,23 @@ const fn output_type_name(field_type: &OutputType) -> &'static str {
     }
 }
 
-fn validate_output_field(
-    name: &str,
-    field: &OutputField,
-    value: &JsonValue,
-) -> Result<(), OutputValidationError> {
-    let (field_type, enum_values) = match field {
-        OutputField::Type(field_type) => (Some(field_type), None),
-        OutputField::Spec(spec) => (spec.field_type.as_ref(), spec.enum_values.as_ref()),
-    };
-    if let Some(field_type) = field_type {
-        if !value_matches_type(value, field_type) {
-            return Err(OutputValidationError::new(
-                format!("$.{name}"),
-                format!("expected {}", output_type_name(field_type)),
-            ));
-        }
-    }
-    if let Some(enum_values) = enum_values {
-        let Some(actual) = value.as_str() else {
-            return Err(OutputValidationError::new(
-                format!("$.{name}"),
-                "expected a string enum value",
-            ));
-        };
-        if !enum_values.iter().any(|candidate| candidate == actual) {
-            return Err(OutputValidationError::new(
-                format!("$.{name}"),
-                "value is not in the declared enum",
-            ));
-        }
-    }
-    Ok(())
-}
+fn validation_error_path(error: &jsonschema::ValidationError<'_>) -> String {
+    use jsonschema::error::ValidationErrorKind;
 
-fn value_matches_type(value: &JsonValue, field_type: &OutputType) -> bool {
-    match (field_type, value) {
-        (OutputType::String, JsonValue::String(_))
-        | (OutputType::Number, JsonValue::Number(_))
-        | (OutputType::Boolean, JsonValue::Bool(_))
-        | (OutputType::Array, JsonValue::Array(_))
-        | (OutputType::Object, JsonValue::Object(_))
-        | (OutputType::Null, JsonValue::Null) => true,
-        (OutputType::Integer, JsonValue::Number(JsonNumber::I64(_) | JsonNumber::U64(_))) => true,
-        (OutputType::Integer, JsonValue::Number(JsonNumber::F64(value))) => {
-            value.is_finite() && value.fract() == 0.0
-        }
-        _ => false,
+    let nested = error.instance_path().as_str();
+    let base = if nested.is_empty() {
+        "$".to_owned()
+    } else {
+        format!("$.{}", nested.trim_start_matches('/'))
+    };
+    match error.kind() {
+        ValidationErrorKind::Required { property } => property
+            .as_str()
+            .map_or(base.clone(), |property| format!("{base}.{property}")),
+        ValidationErrorKind::AdditionalProperties { unexpected } => unexpected
+            .first()
+            .map_or(base.clone(), |property| format!("{base}.{property}")),
+        _ => base,
     }
 }
 
@@ -287,7 +289,7 @@ fn value_matches_type(value: &JsonValue, field_type: &OutputType) -> bool {
 mod tests {
     use super::{
         OutputField, OutputFieldSpec, OutputType, output_contract_digest, output_value_schema,
-        validate_output_value,
+        parse_output_contract, validate_output_value,
     };
     use crate::{JsonNumber, JsonValue};
     use std::collections::BTreeMap;
@@ -306,6 +308,7 @@ mod tests {
                     required: Some(false),
                     wrap_as: None,
                     enum_values: Some(vec!["ready".to_owned(), "blocked".to_owned()]),
+                    schema: None,
                 }),
             ),
         ]
@@ -381,6 +384,63 @@ mod tests {
             output_contract_digest(Some(&output))?,
             output_contract_digest(Some(&output))?
         );
+        Ok(())
+    }
+
+    #[test]
+    fn output_schema_and_validator_preserve_nested_contracts()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let output = BTreeMap::from([(
+            "result".to_owned(),
+            OutputField::Spec(OutputFieldSpec {
+                field_type: Some(OutputType::Object),
+                description: None,
+                required: None,
+                wrap_as: None,
+                enum_values: None,
+                schema: Some(serde_json::from_value(serde_json::json!({
+                    "required": ["decision"],
+                    "properties": {
+                        "decision": { "type": "string", "enum": ["ready", "blocked"] }
+                    },
+                    "additionalProperties": false
+                }))?),
+            }),
+        )]);
+        let valid = serde_json::from_value(serde_json::json!({
+            "result": { "decision": "ready" }
+        }))?;
+        let invalid = serde_json::from_value(serde_json::json!({
+            "result": { "decision": "unknown" }
+        }))?;
+
+        assert!(validate_output_value(Some(&output), &valid).is_ok());
+        let Err(error) = validate_output_value(Some(&output), &invalid) else {
+            return Err("nested enum must be enforced".into());
+        };
+        assert_eq!(error.path(), "$.result/decision");
+        let schema = serde_json::to_value(output_value_schema(Some(&output)))?;
+        assert_eq!(
+            schema["properties"]["result"]["required"][0],
+            serde_json::Value::String("decision".to_owned())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn output_contract_parser_rejects_invalid_nested_schema()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let raw = serde_json::from_value(serde_json::json!({
+            "result": {
+                "type": "object",
+                "schema": { "required": "decision" }
+            }
+        }))?;
+
+        let Err(error) = parse_output_contract(&raw) else {
+            return Err("invalid schema must fail at load".into());
+        };
+        assert!(error.to_string().contains("invalid JSON Schema"));
         Ok(())
     }
 }

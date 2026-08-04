@@ -63,12 +63,28 @@ The full DCO text (reproduced here for reference):
 
 ## Development setup
 
-The native Rust CLI needs Rust 1.85 or newer and stays useful without Node, pnpm, tsx, or TypeScript installed. The workspace and the npm wrapper need Node.js 20 or newer and pnpm 10 or newer.
+The native Rust CLI needs Rust 1.97 or newer and stays useful without Node, pnpm, tsx, or TypeScript installed. The workspace and the npm wrapper need Node.js 20 or newer and pnpm 10 or newer.
+
+### macOS Developer Tools permission
+
+On macOS 26, the application that launches a Rust build must be enabled under
+**System Settings → Privacy & Security → Developer Tools**. Enable Terminal for
+Terminal shells, Visual Studio Code for its integrated terminal and Codex, or
+the equivalent host application you use. Add the application with **+** if it
+is not listed, then restart that application so existing processes inherit the
+permission. Apple documents the setting in
+[Control the ability of apps to run software that doesn't meet the system's security policy on Mac](https://support.apple.com/guide/mac-help/mchlc5fb7f9c/mac).
+
+Without this permission, `cargo` or `rustc` can appear to stall after a
+`Compiling ...` line while loading locally built procedural-macro libraries;
+even `codesign` inspection of the generated library may stall. Fix the host
+application's permission. Do not mask the problem by disabling incremental
+compilation, downgrading Rust, changing target directories, or stripping file
+metadata.
 
 From the OSS workspace:
 
 ```bash
-cd oss
 pnpm install
 pnpm build
 pnpm test
@@ -114,10 +130,12 @@ Re-run `pnpm build` after source changes that affect compiled package output.
 
 ## Skill authoring paths
 
-Use `runx new <name>` when you already have the runx CLI available locally and want a standalone skill package:
+Use `runx new <name> --objective <outcome>` when you already have the Runx CLI
+available locally and want a standalone skill package. The command enters Skill
+Lab and leaves the target untouched until the exact package validates:
 
 ```bash
-runx new docs-demo
+runx new docs-demo --objective "Create a bounded documentation decision skill"
 ```
 
 Community skills should be authored as standalone packages; the runx repo itself is the first-party lane for official skills, runtime code, tests, and examples.
@@ -126,7 +144,13 @@ The first runnable example is documented in [docs/getting-started.md](docs/getti
 
 ## Releasing
 
-The CLI ships from a single `cli-vX.Y.Z` tag to every channel (GitHub Release, npm, crates.io, Homebrew, Scoop, winget, AUR, Docker) plus the `runx.ai/install` one-liner. The tag is the only source of truth; release jobs stamp the version, they are never hand-committed. Full pipeline, versioning model, required secrets, and how to cut a release are in [docs/releasing.md](docs/releasing.md).
+The CLI ships from a reviewed `cli-vX.Y.Z` candidate to GitHub Releases, npm,
+GHCR, Homebrew, and Scoop, plus the `runx.ai/install` one-liner. Winget is an
+asynchronous submission and AUR is published only when Runx controls the
+package. CLI versions are committed to the candidate manifests and verified
+again from the tag; CLI tags never publish internal Cargo crates. Full pipeline,
+versioning, channel, and release instructions are in
+[docs/releasing.md](docs/releasing.md).
 
 ## Code of conduct
 

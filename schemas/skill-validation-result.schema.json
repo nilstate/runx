@@ -1,0 +1,195 @@
+{
+  "$id": "https://schemas.runx.ai/runx/skill/validation-result/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "after": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "executable_files": {
+          "type": "integer"
+        },
+        "executable_lines": {
+          "type": "integer"
+        },
+        "files": {
+          "type": "integer"
+        },
+        "generated_lines": {
+          "type": "integer"
+        },
+        "production_lines": {
+          "type": "integer"
+        },
+        "test_lines": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "files",
+        "bytes",
+        "production_lines",
+        "test_lines",
+        "generated_lines",
+        "executable_files",
+        "executable_lines"
+      ],
+      "type": "object"
+    },
+    "base_digest": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "before": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "executable_files": {
+          "type": "integer"
+        },
+        "executable_lines": {
+          "type": "integer"
+        },
+        "files": {
+          "type": "integer"
+        },
+        "generated_lines": {
+          "type": "integer"
+        },
+        "production_lines": {
+          "type": "integer"
+        },
+        "test_lines": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "files",
+        "bytes",
+        "production_lines",
+        "test_lines",
+        "generated_lines",
+        "executable_files",
+        "executable_lines"
+      ],
+      "type": "object"
+    },
+    "candidate_digest": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "passed",
+                "type": "string"
+              },
+              {
+                "const": "skipped",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "delta": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "executable_files": {
+          "type": "integer"
+        },
+        "executable_lines": {
+          "type": "integer"
+        },
+        "files": {
+          "type": "integer"
+        },
+        "generated_lines": {
+          "type": "integer"
+        },
+        "production_lines": {
+          "type": "integer"
+        },
+        "test_lines": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "files",
+        "bytes",
+        "production_lines",
+        "test_lines",
+        "generated_lines",
+        "executable_files",
+        "executable_lines"
+      ],
+      "type": "object"
+    },
+    "plan_digest": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "residual_risks": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "anyOf": [
+        {
+          "const": "runx.skill.validation_result.v1",
+          "type": "string"
+        }
+      ]
+    },
+    "target_dir": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "target_dir",
+    "base_digest",
+    "plan_digest",
+    "candidate_digest",
+    "checks",
+    "before",
+    "after",
+    "delta",
+    "residual_risks"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.skill.validation_result.v1"
+}

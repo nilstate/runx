@@ -1,0 +1,320 @@
+use runx_contracts::{JsonNumber, JsonObject, JsonValue};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
+    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+};
+
+use super::super::capability::{NativeCapability, TypedNativeCapability};
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileReadInput {
+    pub(super) repo_root: String,
+    pub(super) path_scope: String,
+    pub(super) path: String,
+    pub(super) max_bytes: u64,
+}
+
+impl CapabilityInput for FileReadInput {
+    fn defaults() -> JsonObject {
+        JsonObject::from([
+            ("repo_root".to_owned(), JsonValue::String(".".to_owned())),
+            (
+                "path_scope".to_owned(),
+                JsonValue::String("workspace".to_owned()),
+            ),
+            (
+                "max_bytes".to_owned(),
+                JsonValue::Number(JsonNumber::U64(1024 * 1024)),
+            ),
+        ])
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileReadBundleInput {
+    pub(super) repo_root: String,
+    pub(super) path_scope: String,
+    pub(super) paths: Vec<String>,
+    pub(super) max_bytes: u64,
+    pub(super) on_missing: String,
+}
+
+impl CapabilityInput for FileReadBundleInput {
+    fn defaults() -> JsonObject {
+        JsonObject::from([
+            ("repo_root".to_owned(), JsonValue::String(".".to_owned())),
+            (
+                "path_scope".to_owned(),
+                JsonValue::String("workspace".to_owned()),
+            ),
+            (
+                "max_bytes".to_owned(),
+                JsonValue::Number(JsonNumber::U64(8 * 1024 * 1024)),
+            ),
+            (
+                "on_missing".to_owned(),
+                JsonValue::String("error".to_owned()),
+            ),
+        ])
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileWriteInput {
+    pub(super) repo_root: String,
+    pub(super) path: String,
+    pub(super) contents: String,
+}
+
+impl CapabilityInput for FileWriteInput {
+    fn defaults() -> JsonObject {
+        JsonObject::from([("repo_root".to_owned(), JsonValue::String(".".to_owned()))])
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct BundleWrite {
+    pub(super) path: String,
+    pub(super) contents: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileApplyBundleInput {
+    pub(super) repo_root: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) writes: Vec<BundleWrite>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) deletes: Vec<String>,
+}
+
+impl CapabilityInput for FileApplyBundleInput {
+    fn defaults() -> JsonObject {
+        JsonObject::from([("repo_root".to_owned(), JsonValue::String(".".to_owned()))])
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileReadOutput {
+    pub(super) path: String,
+    pub(super) repo_root: String,
+    pub(super) contents: String,
+    pub(super) bytes: u64,
+    pub(super) truncated: bool,
+    pub(super) content_digest: String,
+}
+
+impl CapabilityOutput for FileReadOutput {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileReadBundleOutput {
+    pub(super) repo_root: String,
+    pub(super) file_count: u64,
+    pub(super) total_bytes: u64,
+    pub(super) files: Vec<FileReadOutput>,
+    pub(super) missing: Vec<MissingFile>,
+}
+
+impl CapabilityOutput for FileReadBundleOutput {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct MissingFile {
+    pub(super) path: String,
+    pub(super) reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileWriteOutput {
+    pub(super) path: String,
+    pub(super) repo_root: String,
+    pub(super) bytes_written: u64,
+    pub(super) sha256: String,
+}
+
+impl CapabilityOutput for FileWriteOutput {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct FileApplyBundleOutput {
+    pub(super) repo_root: String,
+    pub(super) write_count: u64,
+    pub(super) delete_count: u64,
+    pub(super) writes: Vec<AppliedWrite>,
+    pub(super) deletes: Vec<AppliedDelete>,
+}
+
+impl CapabilityOutput for FileApplyBundleOutput {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct AppliedWrite {
+    pub(super) path: String,
+    pub(super) bytes_written: u64,
+    pub(super) sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct AppliedDelete {
+    pub(super) path: String,
+    pub(super) status: String,
+}
+
+const READ_FIELDS: &[CapabilityField] = &[
+    root_field(),
+    path_scope_field(),
+    CapabilityField {
+        name: "path",
+        description: "UTF-8 file path relative to the resolved trusted root.",
+    },
+    CapabilityField {
+        name: "max_bytes",
+        description: "Positive capture limit up to eight MiB.",
+    },
+];
+
+const READ_BUNDLE_FIELDS: &[CapabilityField] = &[
+    root_field(),
+    path_scope_field(),
+    CapabilityField {
+        name: "paths",
+        description: "Up to sixteen distinct relative UTF-8 file paths.",
+    },
+    CapabilityField {
+        name: "max_bytes",
+        description: "Positive per-file capture limit up to eight MiB.",
+    },
+    CapabilityField {
+        name: "on_missing",
+        description: "Unavailable-file policy: error or report.",
+    },
+];
+
+const WRITE_FIELDS: &[CapabilityField] = &[
+    root_field(),
+    CapabilityField {
+        name: "path",
+        description: "UTF-8 file path relative to the resolved trusted root.",
+    },
+    CapabilityField {
+        name: "contents",
+        description: "Exact UTF-8 contents to write.",
+    },
+];
+
+const APPLY_FIELDS: &[CapabilityField] = &[
+    root_field(),
+    CapabilityField {
+        name: "writes",
+        description: "Bounded array of relative-path UTF-8 text writes.",
+    },
+    CapabilityField {
+        name: "deletes",
+        description: "Bounded array of relative file paths to delete.",
+    },
+];
+
+const fn root_field() -> CapabilityField {
+    CapabilityField {
+        name: "repo_root",
+        description: "Workspace-relative project root; the runtime owns the workspace boundary.",
+    }
+}
+
+const fn path_scope_field() -> CapabilityField {
+    CapabilityField {
+        name: "path_scope",
+        description: "Trusted root selection: workspace or the owning skill package.",
+    }
+}
+
+static READ: TypedNativeCapability<FileReadInput, FileReadOutput> = TypedNativeCapability::new(
+    CapabilityDefinition {
+        id: "fs.read",
+        owner: "runx-runtime/filesystem",
+        summary: "Read one bounded UTF-8 file through native workspace and symlink containment.",
+        scopes: &["fs.read"],
+        effect: CapabilityEffect::Read,
+        approval: CapabilityApproval::None,
+        artifacts: CapabilityArtifacts::Wrapped {
+            output: "file_read",
+            packet: "runx.fs.file_read.v1",
+        },
+        admission: CapabilityAdmission::RuntimeInvariant(
+            "all workspace reads require canonical path and symlink containment",
+        ),
+        fields: READ_FIELDS,
+    },
+    super::read,
+);
+
+static READ_BUNDLE: TypedNativeCapability<FileReadBundleInput, FileReadBundleOutput> =
+    TypedNativeCapability::new(
+        CapabilityDefinition {
+            id: "fs.read_bundle",
+            owner: "runx-runtime/filesystem",
+            summary: "Read a bounded set of UTF-8 files through one native containment boundary.",
+            scopes: &["fs.read"],
+            effect: CapabilityEffect::Read,
+            approval: CapabilityApproval::None,
+            artifacts: CapabilityArtifacts::Wrapped {
+                output: "file_read_bundle",
+                packet: "runx.fs.file_read_bundle.v1",
+            },
+            admission: CapabilityAdmission::ReusedBy(&["skill-lab", "release"]),
+            fields: READ_BUNDLE_FIELDS,
+        },
+        super::read_bundle,
+    );
+
+static WRITE: TypedNativeCapability<FileWriteInput, FileWriteOutput> = TypedNativeCapability::new(
+    CapabilityDefinition {
+        id: "fs.write",
+        owner: "runx-runtime/filesystem",
+        summary: "Write one bounded UTF-8 file through transactional workspace containment.",
+        scopes: &["fs.write"],
+        effect: CapabilityEffect::Mutate,
+        approval: CapabilityApproval::Policy,
+        artifacts: CapabilityArtifacts::Wrapped {
+            output: "file_write",
+            packet: "runx.fs.file_write.v1",
+        },
+        admission: CapabilityAdmission::RuntimeInvariant(
+            "all workspace mutation requires one transactional containment owner",
+        ),
+        fields: WRITE_FIELDS,
+    },
+    super::write,
+);
+
+static APPLY: TypedNativeCapability<FileApplyBundleInput, FileApplyBundleOutput> =
+    TypedNativeCapability::new(
+        CapabilityDefinition {
+            id: "fs.apply_bundle",
+            owner: "runx-runtime/filesystem",
+            summary: "Apply bounded text writes and deletions transactionally inside one workspace root.",
+            scopes: &["fs.write", "fs.delete"],
+            effect: CapabilityEffect::Mutate,
+            approval: CapabilityApproval::Policy,
+            artifacts: CapabilityArtifacts::Wrapped {
+                output: "file_bundle_apply",
+                packet: "runx.fs.apply_bundle.v1",
+            },
+            admission: CapabilityAdmission::ReusedBy(&["skill-lab", "sourcey"]),
+            fields: APPLY_FIELDS,
+        },
+        super::apply_files,
+    );
+
+pub(in crate::tool_catalogs::native) const CAPABILITIES: &[&dyn NativeCapability] =
+    &[&READ, &READ_BUNDLE, &WRITE, &APPLY];

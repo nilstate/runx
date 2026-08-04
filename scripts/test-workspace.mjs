@@ -33,12 +33,7 @@ async function runVitest(args, extraEnv = {}) {
         // Point every subprocess-backed suite at the single prebuilt binary so the
         // kernel-parity / parser / CLI eval paths never cold-start a debug binary
         // under parallel load.
-        RUNX_KERNEL_EVAL_BIN: rustKernelBin,
-        RUNX_PARSER_EVAL_BIN: rustKernelBin,
         RUNX_RUST_CLI_BIN: rustKernelBin,
-        RUNX_DEV_RUST_CLI_BIN: rustKernelBin,
-        RUNX_KERNEL_EVAL_TIMEOUT_MS: "30000",
-        RUNX_PARSER_EVAL_TIMEOUT_MS: "30000",
         RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "test-workspace-key",
         RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
           process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64 ?? "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
@@ -58,11 +53,25 @@ async function runVitest(args, extraEnv = {}) {
 }
 
 function ensureRustKernelBin() {
-  const result = spawnSync(cargo, ["build", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--bin", "runx"], {
-    cwd: workspaceRoot,
-    stdio: "inherit",
-    env: process.env,
-  });
+  const result = spawnSync(
+    cargo,
+    [
+      "build",
+      "--quiet",
+      "--manifest-path",
+      "crates/Cargo.toml",
+      "-p",
+      "runx-cli",
+      "-p",
+      "runx-js-worker",
+      "--bins",
+    ],
+    {
+      cwd: workspaceRoot,
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }

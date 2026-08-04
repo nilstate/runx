@@ -1,4 +1,4 @@
-// rust-style-allow: large-file because this untracked registry file is under
+// Module rationale: this untracked registry file is under
 // active parallel work; keep the module stable while extracting blockers here.
 use std::fs;
 use std::io;
@@ -37,14 +37,9 @@ pub struct IngestSkillOptions {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CreateRegistrySkillVersionResult {
+struct CreateRegistrySkillVersionResult {
     pub record: RegistrySkillVersion,
     pub created: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct LocalRegistryClient {
-    store: FileRegistryStore,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -68,6 +63,8 @@ pub struct RegistryResolveOptions {
 
 #[derive(Debug, thiserror::Error)]
 pub enum LocalRegistryError {
+    #[error("{0}")]
+    Package(#[from] runx_parser::SkillPackageError),
     #[error("{0}")]
     Parse(#[from] runx_parser::ParseError),
     #[error("{0}")]
@@ -240,28 +237,6 @@ impl FileRegistryStore {
     }
 }
 
-impl LocalRegistryClient {
-    pub fn new(store: FileRegistryStore) -> Self {
-        Self { store }
-    }
-
-    pub fn create_skill_version(
-        &self,
-        markdown: &str,
-        options: IngestSkillOptions,
-    ) -> Result<CreateRegistrySkillVersionResult, LocalRegistryError> {
-        create_registry_skill_version(&self.store, markdown, options)
-    }
-}
-
-pub fn create_file_registry_store(root: impl Into<PathBuf>) -> FileRegistryStore {
-    FileRegistryStore::new(root)
-}
-
-pub fn create_local_registry_client(store: FileRegistryStore) -> LocalRegistryClient {
-    LocalRegistryClient::new(store)
-}
-
 pub fn ingest_skill_markdown(
     store: &FileRegistryStore,
     markdown: &str,
@@ -270,7 +245,7 @@ pub fn ingest_skill_markdown(
     Ok(create_registry_skill_version(store, markdown, options)?.record)
 }
 
-pub fn create_registry_skill_version(
+fn create_registry_skill_version(
     store: &FileRegistryStore,
     markdown: &str,
     options: IngestSkillOptions,
@@ -311,7 +286,7 @@ mod build;
 mod trust;
 mod util;
 
-pub use build::{
+use build::{
     RegistrySkillVersionPayload, build_registry_skill_version, normalize_registry_skill_version,
 };
 use trust::{
@@ -323,11 +298,11 @@ use util::{
 };
 
 pub fn publish_skill_markdown(
-    client: &LocalRegistryClient,
+    store: &FileRegistryStore,
     markdown: &str,
     options: PublishSkillMarkdownOptions,
 ) -> Result<PublishSkillMarkdownResult, LocalRegistryError> {
-    let result = client.create_skill_version(markdown, options.ingest)?;
+    let result = create_registry_skill_version(store, markdown, options.ingest)?;
     let link = runx_link_for_version(&result.record, options.registry_url.as_deref());
     Ok(PublishSkillMarkdownResult {
         status: if result.created {
@@ -348,13 +323,6 @@ pub fn publish_skill_markdown(
         link,
         record: result.record,
     })
-}
-
-pub fn search_registry(
-    store: &FileRegistryStore,
-    query: &str,
-) -> Result<Vec<RegistrySearchResult>, LocalRegistryError> {
-    search_registry_with_options(store, query, RegistrySearchOptions::default())
 }
 
 pub fn search_registry_with_options(

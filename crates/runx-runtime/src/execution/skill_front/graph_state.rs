@@ -4,65 +4,9 @@ use super::{GRAPH_SKILL_STATE_SCHEMA, SkillRunError, identifier_segment, invalid
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use runx_contracts::{JsonObject, JsonValue};
-
 use crate::RuntimeError;
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::services::{ReceiptServices, WorkspaceEnv};
-
-pub(super) fn read_answers(path: &Path) -> Result<JsonObject, SkillRunError> {
-    let raw = fs::read_to_string(path)
-        .map_err(|source| RuntimeError::io(format!("reading {}", path.display()), source))?;
-    let value = serde_json::from_str::<JsonValue>(&raw).map_err(|source| {
-        RuntimeError::json(format!("parsing answers file {}", path.display()), source)
-    })?;
-    let answers = match value {
-        JsonValue::Object(object) => normalize_answers(object)?,
-        _ => return Err(invalid("answers file must be a JSON object")),
-    };
-    Ok(answers)
-}
-
-fn normalize_answers(mut object: JsonObject) -> Result<JsonObject, SkillRunError> {
-    let nested_shape = object.contains_key("answers") || object.contains_key("approvals");
-    if !nested_shape {
-        return Ok(object);
-    }
-    let extra = object
-        .keys()
-        .filter(|key| !matches!(key.as_str(), "answers" | "approvals"))
-        .cloned()
-        .collect::<Vec<_>>();
-    if !extra.is_empty() {
-        return Err(invalid(format!(
-            "answers file mixes top-level keys [{}] with the nested answers/approvals shape",
-            extra.join(", ")
-        )));
-    }
-    let mut answers = match object.remove("answers") {
-        Some(JsonValue::Object(nested)) => nested,
-        Some(_) => return Err(invalid("answers field must be a JSON object")),
-        None => JsonObject::new(),
-    };
-    let approvals = match object.remove("approvals") {
-        Some(JsonValue::Object(approvals)) => approvals,
-        Some(_) => return Err(invalid("approvals field must be a JSON object")),
-        None => JsonObject::new(),
-    };
-    for (gate_id, decision) in approvals {
-        if !matches!(decision, JsonValue::Bool(_)) {
-            return Err(invalid(format!(
-                "approvals.{gate_id} must be a JSON boolean"
-            )));
-        }
-        if answers.insert(gate_id.clone(), decision).is_some() {
-            return Err(invalid(format!(
-                "request {gate_id} is declared in both answers and approvals"
-            )));
-        }
-    }
-    Ok(answers)
-}
 
 fn graph_state_path(
     request: &SkillRunRequest,
@@ -110,6 +54,8 @@ pub(super) fn read_graph_state(
     receipts: &ReceiptServices,
     run_id: &str,
     runner_name: &str,
+    package_digest: &str,
+    execution_closure_digest: &str,
 ) -> Result<GraphSkillRunState, SkillRunError> {
     let path = graph_state_path(request, workspace, receipts, run_id);
     let raw = fs::read_to_string(&path)
@@ -136,6 +82,18 @@ pub(super) fn read_graph_state(
         return Err(invalid(format!(
             "graph state runner_name mismatch for run {run_id}: expected {runner_name}, got {}",
             state.runner_name
+        )));
+    }
+    if state.package_digest != package_digest {
+        return Err(invalid(format!(
+            "graph state package_digest mismatch for run {run_id}: expected {package_digest}, got {}",
+            state.package_digest
+        )));
+    }
+    if state.execution_closure_digest != execution_closure_digest {
+        return Err(invalid(format!(
+            "graph state execution_closure_digest mismatch for run {run_id}: expected {execution_closure_digest}, got {}",
+            state.execution_closure_digest
         )));
     }
     Ok(state)

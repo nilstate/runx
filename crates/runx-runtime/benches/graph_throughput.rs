@@ -1,24 +1,36 @@
 use std::collections::BTreeMap;
+use std::fs;
 use std::hint::black_box;
 
-use criterion::{Criterion, criterion_group, criterion_main};
-use runx_contracts::{JsonObject, JsonValue};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use runx_core::state_machine::{
     FanoutBranchFailurePolicy, FanoutGroupPolicy, FanoutSyncStrategy, GraphStatus,
     SequentialGraphEvent, SequentialGraphPlan, SequentialGraphStepDefinition,
-    SequentialGraphStepIndex, StepAdmissionWitness, apply_sequential_graph_event,
+    SequentialGraphStepIndex, StepAdmissionWitness, apply_sequential_graph_event_owned_indexed,
     create_sequential_graph_state, create_sequential_graph_step_index,
-    plan_sequential_graph_transition_indexed,
+    evaluate_sequential_fanout_sync, plan_sequential_graph_transition_indexed_from,
+    start_sequential_graph_step_indexed, succeed_sequential_graph_step_indexed,
 };
 use runx_runtime::{
-    InvocationStatus, RuntimeOptions, SkillOutput, StepRun,
+    InvocationOutput, RuntimeOptions, StepRun,
     receipts::{graph_receipt_with_signature_policy, step_receipt_with_signature_policy},
 };
 use tempfile::TempDir;
 
+#[path = "graph_throughput/runtime_paths.rs"]
+mod runtime_paths;
+#[path = "graph_throughput/volume_paths.rs"]
+mod volume_paths;
+
 const CREATED_AT: &str = "2026-05-26T00:00:00Z";
+const RECEIPT_STORE_SCALE_SMALL: usize = 16;
+const RECEIPT_STORE_SCALE_LARGE: usize = 128;
 
 fn bench_graph_throughput(c: &mut Criterion) {
+    runtime_paths::register(c);
+    volume_paths::register(c);
+
     c.bench_function("graph_planning", |b| {
         let steps = sequential_steps(192);
         let step_index = create_sequential_graph_step_index(&steps);
@@ -45,21 +57,10 @@ fn bench_graph_throughput(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("context_projection", |b| {
-        let runs = synthetic_prior_runs(128);
-        let edges = indexed_context_edges(128);
-        b.iter(|| project_context(black_box(&runs), black_box(&edges)))
-    });
-
-    c.bench_function("output_projection", |b| {
-        let output = skill_output(r#"{"answer":"ok","score":0.91,"nested":{"value":42}}"#);
-        b.iter(|| project_output(black_box(&output)))
-    });
-
     c.bench_function("graph_receipt_sealing", |b| {
         let options = RuntimeOptions {
             created_at: CREATED_AT.to_owned(),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         };
         let template = synthetic_step_runs(&options, 32);
         b.iter(|| {
@@ -75,31 +76,121 @@ fn bench_graph_throughput(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("receipt_store_append", |b| {
-        let options = RuntimeOptions {
-            created_at: CREATED_AT.to_owned(),
-            ..RuntimeOptions::local_development()
-        };
-        let receipts = synthetic_receipts(&options, 12);
-        b.iter(|| append_receipts(black_box(&receipts)))
-    });
+    register_receipt_store_append(c, "receipt_store_append", 12);
+    register_receipt_store_append(
+        c,
+        "receipt_store_append_scale_small",
+        RECEIPT_STORE_SCALE_SMALL,
+    );
+    register_receipt_store_append(
+        c,
+        "receipt_store_append_scale_large",
+        RECEIPT_STORE_SCALE_LARGE,
+    );
+    register_receipt_store_index(c, "receipt_store_index", 12);
+    register_receipt_store_index(
+        c,
+        "receipt_store_index_scale_small",
+        RECEIPT_STORE_SCALE_SMALL,
+    );
+    register_receipt_store_index(
+        c,
+        "receipt_store_index_scale_large",
+        RECEIPT_STORE_SCALE_LARGE,
+    );
+}
 
-    c.bench_function("receipt_store_index", |b| {
+fn session_metric(stats: runx_runtime::adapters::javascript::JavaScriptSessionStats) -> JsonValue {
+    JsonValue::Object(JsonObject::from([
+        (
+            "spawn_count".to_owned(),
+            JsonValue::Number(JsonNumber::U64(stats.spawned_process_count)),
+        ),
+        (
+            "peak_in_flight".to_owned(),
+            JsonValue::Number(JsonNumber::U64(
+                u64::try_from(stats.peak_in_flight).unwrap_or(u64::MAX),
+            )),
+        ),
+    ]))
+}
+
+fn record_resource_metrics(metrics: &JsonObject) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(path) = std::env::var_os("RUNX_PERF_RESOURCE_METRICS_PATH") else {
+        return Ok(());
+    };
+    fs::write(path, serde_json::to_vec(metrics)?)?;
+    Ok(())
+}
+
+fn record_resource_metric(name: &str, metric: JsonValue) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(path) = std::env::var_os("RUNX_PERF_RESOURCE_METRICS_PATH") else {
+        return Ok(());
+    };
+    let mut metrics = match fs::read(&path) {
+        Ok(bytes) => serde_json::from_slice::<JsonObject>(&bytes)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => JsonObject::new(),
+        Err(error) => return Err(error.into()),
+    };
+    metrics.insert(name.to_owned(), metric);
+    record_resource_metrics(&metrics)
+}
+
+fn register_receipt_store_append(c: &mut Criterion, name: &str, count: usize) {
+    c.bench_function(name, |b| {
         let options = RuntimeOptions {
             created_at: CREATED_AT.to_owned(),
-            ..RuntimeOptions::local_development()
+            ..RuntimeOptions::local_development(std::env::vars().collect())
         };
-        let receipts = synthetic_receipts(&options, 12);
+        let mut receipts = synthetic_receipts(&options, count.saturating_add(1));
+        let pending = receipts.pop();
+        b.iter_batched(
+            || prepare_receipt_append(&receipts),
+            |prepared| match (prepared, pending.as_ref()) {
+                (Ok(fixture), Some(receipt)) => fixture
+                    .store
+                    .write_receipt(black_box(receipt))
+                    .map(|()| black_box(fixture.directory.path().to_path_buf()))
+                    .map_err(|error| error.to_string()),
+                (Err(message), _) => Err(message),
+                (_, None) => Err("receipt append benchmark has no pending receipt".to_owned()),
+            },
+            BatchSize::PerIteration,
+        )
+    });
+}
+
+struct ReceiptAppendFixture {
+    directory: TempDir,
+    store: runx_runtime::LocalReceiptStore,
+}
+
+fn prepare_receipt_append(
+    history: &[runx_contracts::Receipt],
+) -> Result<ReceiptAppendFixture, String> {
+    let directory = TempDir::new().map_err(|source| source.to_string())?;
+    let store = runx_runtime::LocalReceiptStore::new(directory.path().join("receipts"));
+    store
+        .write_receipts(history)
+        .map_err(|error| error.to_string())?;
+    Ok(ReceiptAppendFixture { directory, store })
+}
+
+fn register_receipt_store_index(c: &mut Criterion, name: &str, count: usize) {
+    c.bench_function(name, |b| {
+        let options = RuntimeOptions {
+            created_at: CREATED_AT.to_owned(),
+            ..RuntimeOptions::local_development(std::env::vars().collect())
+        };
+        let receipts = synthetic_receipts(&options, count);
         let temp_dir = TempDir::new().map_err(|source| source.to_string());
         let temp_dir = match temp_dir {
             Ok(temp_dir) => temp_dir,
             Err(message) => return b.iter(|| Err::<usize, String>(message.clone())),
         };
         let store = runx_runtime::LocalReceiptStore::new(temp_dir.path().join("receipts"));
-        for receipt in &receipts {
-            if let Err(error) = store.write_receipt(receipt) {
-                return b.iter(|| Err::<usize, String>(error.to_string()));
-            }
+        if let Err(error) = store.write_receipts(&receipts) {
+            return b.iter(|| Err::<usize, String>(error.to_string()));
         }
         b.iter(|| {
             store
@@ -165,29 +256,51 @@ fn drive_state_machine(
 ) -> usize {
     let mut state = create_sequential_graph_state("throughput_graph", steps);
     let mut completed = 0usize;
+    let mut planning_cursor = 0usize;
     loop {
-        let plan =
-            plan_sequential_graph_transition_indexed(&state, steps, step_index, policies, None);
+        while state.steps.get(planning_cursor).is_some_and(|step| {
+            matches!(
+                step.status,
+                runx_core::state_machine::GraphStepStatus::Succeeded
+                    | runx_core::state_machine::GraphStepStatus::Skipped
+            )
+        }) {
+            planning_cursor += 1;
+        }
+        let plan = plan_sequential_graph_transition_indexed_from(
+            &state,
+            steps,
+            step_index,
+            policies,
+            None,
+            planning_cursor,
+        );
         match plan {
             SequentialGraphPlan::RunStep {
                 step_id, attempt, ..
             } => {
-                state = start_step(state, &step_id);
-                state = succeed_step(state, &step_id, attempt);
+                state = start_step(state, &step_id, step_index);
+                state = succeed_step(state, &step_id, attempt, step_index);
                 completed += 1;
             }
-            SequentialGraphPlan::RunFanout {
-                step_ids, attempts, ..
-            } => {
-                for step_id in step_ids {
-                    let attempt = attempts.get(&step_id).copied().unwrap_or(1);
-                    state = start_step(state, &step_id);
-                    state = succeed_step(state, &step_id, attempt);
+            SequentialGraphPlan::RunFanout { group_id, branches } => {
+                for branch in branches {
+                    state = start_step(state, &branch.step_id, step_index);
+                    state = succeed_step(state, &branch.step_id, branch.attempt, step_index);
                     completed += 1;
+                }
+                if let Some(policy) = policies.get(&group_id) {
+                    black_box(evaluate_sequential_fanout_sync(
+                        &state, steps, step_index, policy, None,
+                    ));
                 }
             }
             SequentialGraphPlan::Complete => {
-                apply_sequential_graph_event(&mut state, &SequentialGraphEvent::Complete);
+                apply_sequential_graph_event_owned_indexed(
+                    &mut state,
+                    SequentialGraphEvent::Complete,
+                    step_index,
+                );
                 return completed + usize::from(state.status == GraphStatus::Succeeded);
             }
             SequentialGraphPlan::Blocked { .. }
@@ -201,14 +314,9 @@ fn drive_state_machine(
 fn start_step(
     mut state: runx_core::state_machine::SequentialGraphState,
     step_id: &str,
+    step_index: &SequentialGraphStepIndex,
 ) -> runx_core::state_machine::SequentialGraphState {
-    apply_sequential_graph_event(
-        &mut state,
-        &SequentialGraphEvent::StartStep {
-            step_id: step_id.to_owned(),
-            at: CREATED_AT.to_owned(),
-        },
-    );
+    start_sequential_graph_step_indexed(&mut state, step_id, CREATED_AT.to_owned(), step_index);
     state
 }
 
@@ -216,77 +324,30 @@ fn succeed_step(
     mut state: runx_core::state_machine::SequentialGraphState,
     step_id: &str,
     attempt: u32,
+    step_index: &SequentialGraphStepIndex,
 ) -> runx_core::state_machine::SequentialGraphState {
     let receipt_id = format!("sha256:{step_id}_{attempt}");
-    apply_sequential_graph_event(
+    succeed_sequential_graph_step_indexed(
         &mut state,
-        &SequentialGraphEvent::StepSucceeded {
-            step_id: step_id.to_owned(),
-            at: CREATED_AT.to_owned(),
-            receipt_id: receipt_id.clone(),
-            admission_witness: Box::new(StepAdmissionWitness::local_runtime(step_id, receipt_id)),
-            outputs: Some(object([(
-                "value",
-                JsonValue::String(format!("{step_id}:{attempt}")),
-            )])),
-        },
+        CREATED_AT.to_owned(),
+        StepAdmissionWitness::local_runtime(step_id, receipt_id),
+        Some(object([(
+            "value",
+            JsonValue::String(format!("{step_id}:{attempt}")),
+        )])),
+        step_index,
     );
     state
-}
-
-fn indexed_context_edges(count: usize) -> Vec<(String, usize)> {
-    (0..count)
-        .map(|index| (format!("input_{index}"), index))
-        .collect()
-}
-
-fn project_context(runs: &[StepRun], edges: &[(String, usize)]) -> usize {
-    let mut projected = 0usize;
-    for (input, from_index) in edges {
-        projected += input.len();
-        if let Some(JsonValue::String(value)) = runs
-            .get(*from_index)
-            .and_then(|run| nested_value(&run.outputs))
-        {
-            projected += value.len();
-        }
-    }
-    projected
-}
-
-fn nested_value(outputs: &JsonObject) -> Option<&JsonValue> {
-    let JsonValue::Object(nested) = outputs.get("nested")? else {
-        return None;
-    };
-    nested.get("value")
-}
-
-fn project_output(output: &SkillOutput) -> JsonObject {
-    let mut object = JsonObject::new();
-    object.insert(
-        "stdout".to_owned(),
-        JsonValue::String(output.stdout.clone()),
-    );
-    object.insert(
-        "stderr".to_owned(),
-        JsonValue::String(output.stderr.clone()),
-    );
-    object.insert("status".to_owned(), JsonValue::String("success".to_owned()));
-    object
-}
-
-fn synthetic_prior_runs(count: usize) -> Vec<StepRun> {
-    let options = RuntimeOptions {
-        created_at: CREATED_AT.to_owned(),
-        ..RuntimeOptions::local_development()
-    };
-    synthetic_step_runs(&options, count)
 }
 
 fn synthetic_step_runs(options: &RuntimeOptions, count: usize) -> Vec<StepRun> {
     (0..count)
         .map(|index| {
             let step_id = format!("step_{index}");
+            let contract = object([(
+                "nested",
+                JsonValue::Object(object([("value", JsonValue::String(index.to_string()))])),
+            )]);
             let output = skill_output(&format!(
                 r#"{{"nested":{{"value":{index}}},"status":"ok"}}"#
             ));
@@ -295,6 +356,7 @@ fn synthetic_step_runs(options: &RuntimeOptions, count: usize) -> Vec<StepRun> {
                 &step_id,
                 1,
                 &output,
+                &contract,
                 CREATED_AT,
                 options.signature_policy(),
             ) {
@@ -307,16 +369,14 @@ fn synthetic_step_runs(options: &RuntimeOptions, count: usize) -> Vec<StepRun> {
                 skill: step_id.clone(),
                 runner: None,
                 fanout_group: None,
-                outputs: object([(
-                    "nested",
-                    JsonValue::Object(object([("value", JsonValue::String(index.to_string()))])),
-                )]),
+                contract,
+                outcome: output.into(),
                 admission_witness: StepAdmissionWitness::local_runtime(
                     &step_id,
                     receipt.id.as_str(),
                 ),
-                output,
                 receipt,
+                nested_receipts: Vec::new(),
             }
         })
         .collect()
@@ -329,26 +389,9 @@ fn synthetic_receipts(options: &RuntimeOptions, count: usize) -> Vec<runx_contra
         .collect()
 }
 
-fn append_receipts(receipts: &[runx_contracts::Receipt]) -> Result<usize, String> {
-    let temp_dir = TempDir::new().map_err(|source| source.to_string())?;
-    let store = runx_runtime::LocalReceiptStore::new(temp_dir.path().join("receipts"));
-    for receipt in receipts {
-        store
-            .write_receipt(receipt)
-            .map_err(|error| error.to_string())?;
-    }
-    Ok(receipts.len())
-}
-
-fn skill_output(stdout: &str) -> SkillOutput {
-    SkillOutput {
-        status: InvocationStatus::Success,
-        stdout: stdout.to_owned(),
-        stderr: String::new(),
-        exit_code: Some(0),
-        duration_ms: 0,
-        metadata: JsonObject::new(),
-    }
+fn skill_output(value: &str) -> InvocationOutput {
+    let value = serde_json::from_str(value).unwrap_or_else(|_| JsonValue::String(value.to_owned()));
+    InvocationOutput::runtime_success(value, 0, JsonObject::new())
 }
 
 fn object(entries: impl IntoIterator<Item = (&'static str, JsonValue)>) -> JsonObject {

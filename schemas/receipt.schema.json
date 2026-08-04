@@ -5877,6 +5877,35 @@
         "enforcement": {
           "additionalProperties": false,
           "properties": {
+            "execution_boundary": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "trusted_host_process",
+                      "type": "string"
+                    },
+                    {
+                      "const": "deterministic_worker",
+                      "type": "string"
+                    },
+                    {
+                      "const": "native_capability",
+                      "type": "string"
+                    },
+                    {
+                      "const": "remote_provider",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
             "profile_hash": {
               "minLength": 1,
               "type": "string"
@@ -7236,6 +7265,8 @@
         },
         "terms": {
           "items": {
+            "$id": "https://schemas.runx.ai/runx/authority/term/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
             "properties": {
               "approvals": {
@@ -7985,10 +8016,6 @@
                         },
                         {
                           "const": "within_budget",
-                          "type": "string"
-                        },
-                        {
-                          "const": "sandbox_enforced",
                           "type": "string"
                         },
                         {
@@ -9172,6 +9199,10 @@
                 "type": "object",
                 "x-runx-schema": "runx.reference.v1"
               },
+              "schema": {
+                "const": "runx.authority_term.v1",
+                "type": "string"
+              },
               "term_id": {
                 "minLength": 1,
                 "type": "string"
@@ -9265,7 +9296,8 @@
               "bounds",
               "issued_by_ref"
             ],
-            "type": "object"
+            "type": "object",
+            "x-runx-schema": "runx.authority_term.v1"
           },
           "type": "array"
         }

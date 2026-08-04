@@ -1,4 +1,4 @@
-name: unseal-plan-approved
+name: vault-unseal-prepares-bounded-request
 kind: skill
 target: ..
 runner: vault-unseal
@@ -6,35 +6,22 @@ inputs:
   secret_ref: vault://drive/service-account
   purpose: Sign one Drive export request for the monthly reports job
   ttl: 10m
-  scope:
-    resource: drive.files
-    action: export
-    path: /reports/*
+  scope: { resource: drive.files, action: export, path: /reports/* }
   principal: svc/report-exporter
-caller:
-  answers:
-    agent_task.vault-unseal.output:
-      unseal_plan:
-        decision: ready_for_approval
-        secret_ref: vault://drive/service-account
-        purpose: Sign one Drive export request for the monthly reports job
-        ttl: 10m
-        scope:
-          resource: drive.files
-          action: export
-          path: /reports/*
-        principal: svc/report-exporter
-        gates:
-          human_approval_required: true
-        blockers: []
-        execution:
-          requires_adapter: true
-          requires_approval: true
 expect:
   status: sealed
-  receipt:
-    schema: runx.receipt.v1
-metadata:
-  public_skill: vault-unseal
-  source_case: unseal-plan-approved
-  source: skills-fixture
+  output:
+    subset:
+      unseal_plan:
+        decision: ready_for_approval
+        ttl_minutes: 10
+        execution:
+          provider_status: not_called
+          handle_issued: false
+          secret_material_exposed: false
+        downstream_handoff:
+          skill: vault-unseal
+          runner: execute
+          state: ready_for_approval
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: vault-unseal, source_case: bounded-plan, source: skills-fixture }

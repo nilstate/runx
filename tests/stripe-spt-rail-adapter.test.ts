@@ -3,19 +3,24 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { parse as parseYaml } from "yaml";
 
 import { validateExternalAdapterManifestContract } from "../packages/contracts/src/index.js";
+import { validateRunnerManifestYaml } from "../scripts/lib/native-parser.mjs";
 
 const stageDir = path.resolve("skills/spend/graph/pay-fulfill-rail");
-const adapterPath = path.join(stageDir, "stripe-spt-fulfill-adapter.mjs");
+const adapterPath = path.join(stageDir, "tools", "stripe-spt-fulfill-adapter.mjs");
 
 describe("stripe-spt rail external adapter", () => {
   it("is wired as the pay-fulfill-rail stripe-spt runner", async () => {
-    const manifest = parseYaml(await readFile(path.join(stageDir, "X.yaml"), "utf8")) as {
+    const manifest = validateRunnerManifestYaml(
+      await readFile(path.join(stageDir, "X.yaml"), "utf8"),
+    ).raw.document as {
       readonly runners: Readonly<Record<string, {
         readonly source?: unknown;
-        readonly runx?: { readonly payment_authority?: unknown };
+        readonly scopes?: readonly string[];
+        readonly runx?: {
+          readonly payment_authority?: unknown;
+        };
       }>>;
     };
     const runner = manifest.runners["stripe-spt"];
@@ -29,6 +34,7 @@ describe("stripe-spt rail external adapter", () => {
       rails: ["stripe-spt"],
       receipt_before_success: true,
     });
+    expect(runner?.scopes).toEqual(["net:http"]);
   });
 
   it("validates the stage-local external-adapter manifest", async () => {
@@ -39,12 +45,7 @@ describe("stripe-spt rail external adapter", () => {
     expect(validateExternalAdapterManifestContract(manifest).schema).toBe(
       "runx.external_adapter.manifest.v1",
     );
-    expect(manifest.transport.args).toEqual(["stripe-spt-fulfill-adapter.mjs"]);
-    expect(manifest.sandbox_intent).toMatchObject({
-      profile: "network",
-      cwd_policy: "skill-directory",
-      network: true,
-    });
+    expect(manifest.transport.args).toEqual(["tools/stripe-spt-fulfill-adapter.mjs"]);
   });
 
   it("executes the Stripe SPT executor with kernel-admission-bound scope", () => {

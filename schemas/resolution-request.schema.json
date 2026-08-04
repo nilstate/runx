@@ -476,6 +476,10 @@
                   "minLength": 1,
                   "type": "string"
                 },
+                "instructions_sha256": {
+                  "minLength": 1,
+                  "type": "string"
+                },
                 "output": {
                   "additionalProperties": {
                     "anyOf": [
@@ -525,6 +529,10 @@
                           },
                           "required": {
                             "type": "boolean"
+                          },
+                          "schema": {
+                            "additionalProperties": {},
+                            "type": "object"
                           },
                           "type": {
                             "anyOf": [
@@ -599,6 +607,126 @@
                   },
                   "type": "array"
                 },
+                "requirements": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "declaration": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "auth": {},
+                        "credential": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "audience": {
+                              "type": "string"
+                            },
+                            "deliveries": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "provider",
+                            "deliveries"
+                          ],
+                          "type": "object"
+                        },
+                        "environment": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "optional": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "required": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "runtime": {},
+                        "scopes": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "environment": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "required",
+                          "available"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "execution_boundary": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "const": "trusted_host_process",
+                              "type": "string"
+                            },
+                            {
+                              "const": "deterministic_worker",
+                              "type": "string"
+                            },
+                            {
+                              "const": "native_capability",
+                              "type": "string"
+                            },
+                            {
+                              "const": "remote_provider",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "declaration",
+                    "execution_boundary"
+                  ],
+                  "type": "object"
+                },
                 "run_id": {
                   "minLength": 1,
                   "type": "string"
@@ -646,9 +774,11 @@
               "required": [
                 "run_id",
                 "skill",
+                "instructions_sha256",
                 "instructions",
                 "inputs",
                 "allowed_tools",
+                "requirements",
                 "current_context",
                 "historical_context",
                 "provenance",

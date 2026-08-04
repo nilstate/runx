@@ -381,3 +381,103 @@ Invalid card icon names are a blocking quality issue. The build report includes
   sandbox subdomain as a completed public docs home.
 - Do not encode open-ended critique or revision behavior. Critique is one
   bounded evaluation pass. Revision is at most one explicit bounded pass.
+
+## Agent task contracts
+
+### `sourcey-discover`
+
+Inspect the target project and produce a bounded discovery_report for Sourcey. Prefer explicit
+input values when supplied. Otherwise infer brand_name, homepage_url, and docs_inputs from real
+project evidence such as package.json, README, existing docs, and specs. Do not invent APIs or
+pages. When config does not already exist, propose a practical docs_inputs object pointing to
+the config or spec path the next step should build from. Treat authored docs source and
+generated site output as separate surfaces. Prefer committed docs source in the config-relative
+docs tree and generated output under <project>/.sourcey/runx-docs unless explicit inputs say
+otherwise. Do not propose writing built HTML back into the docs source tree. If the chosen
+output directory is inside the repo and not gitignored, record that as an operational gap. Treat
+this as a bounded scope/ingest/model pass. Do not author docs, build the site, or propose
+open-ended revision. When project_brief is supplied, treat it as grounded evidence about brand,
+current docs quality, information architecture, and writing direction. Use it to resolve a
+better documentation plan, but do not widen scope beyond the repo evidence and the brief's
+stated priorities. When the brief includes an existing_surface inventory, carry it forward as a
+real coverage requirement instead of treating it as optional context. discovery_report must use
+this canonical shape: {
+  "discovered": {
+    "brand_name": string|null,
+    "homepage_url": string|null,
+    "docs_inputs": object|null
+  }
+} Additional fields are allowed, but brand_name, homepage_url, and docs_inputs must live under discovery_report.discovered.
+
+### `sourcey-author`
+
+Author a bounded Sourcey source bundle from the approved discovery plan. doc_bundle must include
+a files array of { path, contents } entries to write under the target project, plus a summary of
+what was authored. When the project already has a complete Sourcey config and pages, keep the
+bundle minimal. When config or pages are missing, create only the files required to build a
+strong first documentation site grounded in the discovered evidence. If docs_inputs was supplied
+explicitly and discovery did not establish that the referenced config or docs files are missing,
+preserve the existing repo contents and return an empty files array rather than overwriting the
+config with a weaker placeholder bundle. Lack of repository inspection evidence is not evidence
+that the files are absent. Only write source docs, config, assets, and minimal supporting repo
+metadata. Never write generated HTML, search indexes, or OG assets into the source docs tree.
+When the approved plan uses a generated output_dir under the repo root and the repo does not
+already ignore it, include the minimal .gitignore change needed to ignore that build artifact.
+This is one bounded materialize pass, not an open-ended iteration loop. When project_brief is
+supplied, it is the quality bar:
+
+- Use the brief's brand_system to set logo, favicon, colours, and
+  visual direction when the evidence supports it.
+- Use the brief's current_docs_audit and information_architecture to
+  preserve what works and fill only the highest-value gaps.
+- If the brief includes existing_surface.visible_paths, preserve a
+  maintainable equivalent of that visible docs footprint. Do not
+  drop notebook-backed examples, API reference sections, or other
+  current pages just because they were not called out as priority
+  pages.
+- Use the brief's writing_directives to keep terminology, audience,
+  and tone native to the project.
+- Never write docs that call themselves a preview, migration,
+  adoption, scaffold, or vendor-generated artifact unless the repo's
+  own evidence already uses those words.
+- A maintainer should be able to read the result and believe it is
+  their project's docs, not a demo site. The generated site should
+  feel like a fuller, better version of the current docs surface,
+  not a smaller demo.
+- Sourcey card icons must be exact Heroicons v2 outline kebab-case
+  names. Do not invent icon names. Known-good card icons include
+  academic-cap, arrow-path, bell, bolt, book-open, chart-bar,
+  check-circle, cloud-arrow-up, code-bracket, command-line,
+  cpu-chip, cube, document, document-text, exclamation-triangle,
+  globe-alt, key, lifebuoy, light-bulb, lock-closed,
+  magnifying-glass, map, rocket-launch, server-stack,
+  shield-check, sparkles, and wrench-screwdriver.
+
+### `sourcey-critique`
+
+Evaluate the built Sourcey site against the discovered plan and the authored source bundle. Use
+the build_report as the primary evidence packet for rendered output, especially generated_files,
+index_title, index_headings, and index_excerpt. When that evidence is absent or thin, call it
+out as an evidence gap rather than inventing site content. Produce one bounded evaluation_report
+covering grounding, clarity, navigation quality, brand alignment, voice integrity, coverage, and
+obvious gaps. Flag operational mistakes such as generated output living in source control
+without intent or deploy-time authoring assumptions. Explicitly call out any wording that reads
+like a preview, adoption pitch, migration pitch, or tool scaffolding instead of native project
+docs. Treat build_report.icon_validation.status == "invalid" as a blocking quality failure: cite
+invalid_icons and require exact Heroicons v2 outline replacements before passing the run. When
+project_brief includes existing_surface.visible_page_count or visible_paths, compare the built
+site against that inventory and treat coverage regression as a blocking quality failure. Do not
+propose open-ended revision loops here.
+
+### `sourcey-revise`
+
+Apply at most one bounded revision pass using the evaluation_report. revision_bundle must
+include a files array of { path, contents } entries to update under the target project, plus a
+summary of the deltas applied. If the first build is already strong, return an empty files array
+and explain why. Do not open a second critique loop, do not widen scope beyond the discovered
+plan, and do not turn generated site output into committed source. Prioritize fixing brand-fit
+errors, generic vendor framing, shallow IA, and missing maintainer-grade coverage before making
+cosmetic changes. If the brief or evaluation report shows that the current build is smaller than
+the maintainer's existing visible docs surface, spend the revision pass on closing that coverage
+gap first. If evaluation_report or build_report identifies invalid Sourcey card icons, replace
+them with exact Heroicons v2 outline kebab-case names before making lower-priority prose edits.

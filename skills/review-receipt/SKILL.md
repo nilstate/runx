@@ -10,12 +10,13 @@ runx:
 Diagnose what went wrong in a skill or graph execution and propose the
 smallest change that fixes it.
 
-Resolve `receipt_id` through the native `ledger read` runner, then combine that
-receipt's status and verification posture with the supplied failure summary or
-harness output. Identify what was attempted, what succeeded, and where it
-broke. Do not claim the native history projection contains hydrated step output,
-stderr, or receipt bodies; those details must come from the supplied bounded
-failure evidence.
+Resolve `receipt_id` through the native `ledger read` runner, then combine its
+redacted receipt detail with the supplied failure summary or harness output.
+The native detail is authoritative for status, verification, authority, acts,
+decisions, criterion status, references, and seal posture. It deliberately
+excludes hydrated step output, stdout, stderr, credential values, context
+bodies, and local paths; those details must come from supplied bounded failure
+evidence when they are necessary.
 
 Distinguish root cause from symptoms. A graph may report failure at step 4,
 but the root cause may be bad output from step 2 that propagated through
@@ -41,9 +42,15 @@ Classify the failure:
 - **Harness assertion** — fixture expectations did not match actual
   output. Fix: skill logic or stale fixture expectations.
 
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `ledger#read`
+
 ## Agent-mediated suspension is not a failure
 
-A receipt with status `needs_agent` denotes a healthy
+A receipt sealed with reason `needs_agent`, or whose graph status is `deferred`, denotes a healthy
 agent-mediated suspension, not a defect. The runtime yielded to the
 caller for missing agent or human input.
 This is a normal part of graph execution, not one of the failure
@@ -81,7 +88,24 @@ Supply whichever evidence is available:
 
 - `receipt_id`: receipt id to inspect.
 - `receipt_summary`: sanitized receipt or harness summary.
+- `receipt_details`: native redacted receipt projections for deterministic
+  replay only; live runs resolve them from `receipt_id`.
 - `harness_output`: failed harness output or assertion text.
 - `skill_path`: path to the skill being improved.
 - `receipt_rows`: native-projection rows for deterministic replay only; live
   runs resolve `receipt_id` from the configured receipt store.
+
+## Agent task contracts
+
+### `review-receipt`
+
+Diagnose one failure from native redacted receipt detail plus the supplied summary or harness
+output. Treat needs_agent or a deferred receipt as a healthy suspension unless another concrete
+failure signal exists. Ground authority, acts, decisions, criteria, and seal posture in
+receipt_evidence.receipt_details; treat caller summaries as supplemental evidence, never as a
+replacement for native facts. Distinguish input, scope, tool, schema, timeout, policy, review,
+and harness failures. If receipt_id was supplied but native evidence did not match it, return
+blocked unless the supplied harness output alone proves the defect. Return verdict, a concise
+failure_summary, at most three bounded improvement_proposals, and replayable
+next_harness_checks. Each proposal must name target, change, rationale, and risk. Do not write
+files or weaken a refusal.

@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/skill/architecture-decision/v1.json",
+  "x-runx-packet-id": "runx.skill.architecture_decision.v1",
+  "x-runx-generated-from": "schemas/skill-architecture-decision.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "deletions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "disposition": {
+      "anyOf": [
+        {
+          "const": "build",
+          "type": "string"
+        },
+        {
+          "const": "extend_existing",
+          "type": "string"
+        },
+        {
+          "const": "no_skill",
+          "type": "string"
+        },
+        {
+          "const": "needs_core",
+          "type": "string"
+        }
+      ]
+    },
+    "effects": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "anyOf": [
+              {
+                "const": "none",
+                "type": "string"
+              },
+              {
+                "const": "policy",
+                "type": "string"
+              },
+              {
+                "const": "human",
+                "type": "string"
+              }
+            ]
+          },
+          "authority_scopes": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "const": "none",
+                "type": "string"
+              },
+              {
+                "const": "read",
+                "type": "string"
+              },
+              {
+                "const": "draft",
+                "type": "string"
+              },
+              {
+                "const": "mutate",
+                "type": "string"
+              },
+              {
+                "const": "financial",
+                "type": "string"
+              }
+            ]
+          },
+          "provider_boundary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "effect",
+          "authority_scopes",
+          "approval",
+          "provider_boundary"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "knowledge_contract": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_logic": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "evidence_required": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "purpose": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "recovery": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "stop_conditions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "purpose",
+        "evidence_required",
+        "decision_logic",
+        "stop_conditions",
+        "recovery"
+      ],
+      "type": "object"
+    },
+    "native_reuse": {
+      "additionalProperties": false,
+      "properties": {
+        "inspected_capabilities": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "missing_capabilities": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "selected_capabilities": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "inspected_capabilities",
+        "selected_capabilities",
+        "missing_capabilities"
+      ],
+      "type": "object"
+    },
+    "objective": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "operator_value": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "preservation_obligations": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "proof_plan": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "expected": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "const": "contract",
+                "type": "string"
+              },
+              {
+                "const": "harness",
+                "type": "string"
+              },
+              {
+                "const": "regression",
+                "type": "string"
+              },
+              {
+                "const": "security",
+                "type": "string"
+              },
+              {
+                "const": "performance",
+                "type": "string"
+              },
+              {
+                "const": "operator_trial",
+                "type": "string"
+              }
+            ]
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "expected"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "required_behaviors": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "domain_module_justification": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "const": "manual",
+                "type": "string"
+              },
+              {
+                "const": "graph",
+                "type": "string"
+              },
+              {
+                "const": "agent_task",
+                "type": "string"
+              },
+              {
+                "const": "native_capability",
+                "type": "string"
+              },
+              {
+                "const": "domain_module",
+                "type": "string"
+              },
+              {
+                "const": "cli_tool",
+                "type": "string"
+              },
+              {
+                "const": "provider_adapter",
+                "type": "string"
+              }
+            ]
+          },
+          "outcome": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "reuse_ref": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "lane"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "resource_budget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_executable_lines": {
+          "type": "integer"
+        },
+        "max_fanout": {
+          "type": "integer"
+        },
+        "max_files": {
+          "type": "integer"
+        },
+        "max_process_spawns": {
+          "type": "integer"
+        },
+        "network_allowed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "max_files",
+        "max_executable_lines",
+        "max_fanout",
+        "max_process_spawns",
+        "network_allowed"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "anyOf": [
+        {
+          "const": "runx.skill.architecture_decision.v1",
+          "type": "string"
+        }
+      ]
+    },
+    "skill_chain": {
+      "additionalProperties": false,
+      "properties": {
+        "context_skills": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "routes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "context_skills",
+        "routes"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "disposition",
+    "objective",
+    "operator_value",
+    "knowledge_contract",
+    "required_behaviors",
+    "native_reuse",
+    "effects",
+    "skill_chain",
+    "resource_budget",
+    "preservation_obligations",
+    "deletions",
+    "proof_plan"
+  ],
+  "type": "object",
+  "x-runx-schema": "runx.skill.architecture_decision.v1"
+}
