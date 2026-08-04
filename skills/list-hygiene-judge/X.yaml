@@ -123,6 +123,20 @@ harness:
                   recorded_transition: { recorded: false, state: human_review, aggregate_id: "contact:unsubscribed", after_version: 0 }
         receipt: { schema: runx.receipt.v1 }
 
+    - name: reject_negative_engagement_metrics
+      runner: judge
+      inputs:
+        data_source_ref: local://list-hygiene-judge/invalid-metrics
+        resource: contact_consent_events
+        aggregate_id: contact:invalid-metrics
+        expected_version: 0
+        idempotency_key: contact:invalid-metrics:consent:v1
+        engagement_history: { opens_count: 0, clicks_count: 0, hard_bounces: -1, recency_days: 10 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: subscribed, active_unsubscribe_marker: false, evidence_status: read, evidence_version: 0 }
+      expect:
+        status: failure
+
 runners:
   judge:
     default: true
