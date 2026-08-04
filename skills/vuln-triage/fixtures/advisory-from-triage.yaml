@@ -8,26 +8,43 @@ inputs:
     schema: runx.security.vulnerability_scan.v1
     decision: remediate
     target: example/service
+    dependency_inventory:
+      - name: example-lib
+        version: 1.2.3
+        path: package.json
+        direct: true
+        development: false
     advisories:
       - dependency: example-lib
         exact_version: 1.2.3
         advisory_id: GHSA-example-1234
         advisory_url: https://osv.dev/vulnerability/GHSA-example-1234
+        dependency_path: package.json
+        direct: true
+        development: false
         assessment:
           priority: high
           exposure: confirmed
           confidence: high
           evidence_status: verified_exact_cve
           rationale: verified direct dependency
+    escalation_criteria:
+      - advisory_id: GHSA-example-1234
+        trigger: priority_high_or_urgent
+        action: human_remediation_review
     remediation_plan:
       immediate:
         - upgrade example-lib
+    operator_summary:
+      verdict: remediate
+      summary: Prioritize the verified direct dependency finding.
     evidence_binding:
       receipt_ref: runx:receipt:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       evidence_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
     validation:
       status: pass
       findings: []
+    publication_status: not_published
 caller:
   answers:
     agent_task.vuln-triage-advisory.output:

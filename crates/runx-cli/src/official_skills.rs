@@ -52,8 +52,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/contract-drafter",
-        version: "sha-4484cf0dc13b",
-        digest: "a1608d61de01ba1ffd08cf0e11d81e0c30777f4b284b43154bee2d05dbead681",
+        version: "sha-bd10906d6c0f",
+        digest: "ffb2a19d60bfb2d7fbc651f9371969680e0da69a76afcacd49f540c71f0bebe4",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/cve-audit",
@@ -114,6 +114,11 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
         skill_id: "runx/helpdesk",
         version: "sha-fb3557edef3b",
         digest: "466709c95a9863851587e5e0c29662428b89bdc81a58f82da9fac79db5a78fd2",
+    },
+    OfficialSkillLockEntry {
+        skill_id: "mossony/incident-commander",
+        version: "sha-b9f12a5d5af5",
+        digest: "e32d381ce97ed022903982ef42adf6f169621125e99508d4c3102bfda94001ed",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/issue-intake",
@@ -207,7 +212,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/nitrosend",
-        version: "sha-11cb2ee25a16",
+        version: "sha-3ddcfc304170",
         digest: "141402a832c8817a15a488767c74e7bada42ed349690b59b06f655d478eeccb3",
     },
     OfficialSkillLockEntry {
@@ -387,7 +392,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/web-fetch",
-        version: "sha-2b0cd663c2b7",
+        version: "sha-d664c61e19ba",
         digest: "89445885a1de165c3f709e00ef7e42911a8e89f048a3bd734916452dfb56720c",
     },
     OfficialSkillLockEntry {

@@ -16,6 +16,12 @@ a case lease, send a message, call a provider, or close external state. The
 agency driver remains responsible for the expected-version append and for
 binding this run's sealed receipt to the case stream.
 
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `ops-desk#advance`
+
 ## Required context
 
 Supply `case_id`, `driver_id`, `incident_objective`, folded `case_state`, and a

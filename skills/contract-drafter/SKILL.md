@@ -11,10 +11,11 @@ runx:
 
 # Contract Drafter
 
-`contract-drafter` assembles a review draft from a runtime-fetched template,
-explicit parties, and explicit terms. It reads only `template.source_ref` from
-the template input, fetches the template document at run time, renders only
-clause text present in that fetched source, records each supplied value that
+`contract-drafter` assembles a review draft from a source-bound template,
+explicit parties, and explicit terms. It reads only `template.source_ref` plus
+optional `template.source_text` and `template.source_digest` from the template
+input, renders only clause text present in that bound source, records each
+supplied value that
 differs from the template baseline, and emits a proposal for the canonical
 `runx/send-as` planner without executing provider delivery.
 
@@ -26,9 +27,12 @@ adapter. Its boundary is draft plus proposal. Provider delivery belongs to
 ## Inputs
 
 - `template` is a source descriptor with `source_ref`. The runner trusts only
-  that reference, then reads the template source at runtime from `repo:`,
-  `file:`, `https:`, or `http:`. It refuses when the source cannot be resolved,
-  fetched, parsed, or matched back to the fetched template's own `source_ref`.
+  that reference, then reads the template source at runtime from `repo:` or
+  `file:`. For `https:` or `http:` references, pass `template.source_text` from
+  an upstream native `http.read`/`web.fetch` step and optionally
+  `template.source_digest`; the runner refuses on digest mismatch or missing
+  source text. It refuses when the source cannot be resolved, parsed, or matched
+  back to the source reference.
   The source document supplies:
   - `template_id`, `title`, and a `source_ref` matching `template.source_ref`;
   - `required_party_roles` and `required_terms`;
@@ -60,7 +64,7 @@ fall back to a baseline, guess a missing value, or add a clause.
 - `send_as_result`: omitted from the contract draft packet. `contract-drafter`
   emits the proposal only; run canonical `send-as` separately to plan delivery.
 - `validation`: the required fields and placeholders checked, plus explicit
-  runtime template fetch, canonical send-as target, no-invention, and no-send
+  source binding, canonical send-as target, no-invention, and no-send
   boundary assertions.
 
 The sealed receipt uses a review act and binds the generated `draft_ref` as the
@@ -74,8 +78,9 @@ The run refuses closed and omits `draft_doc` and `send_proposal` while emitting
 
 - a required party or `legal_name` is absent;
 - a required term or baseline term is absent;
-- the template source ref cannot be resolved or does not match the template
-  `source_ref`;
+- the template source ref cannot be resolved, external source text is missing,
+  source digest mismatches, or the parsed template source does not match the
+  template `source_ref`;
 - the template has no clauses;
 - a clause id is duplicated;
 - a clause placeholder is unresolved, non-scalar, or outside `parties.*` and
@@ -107,7 +112,7 @@ Required sequence:
 
 ## Harness Cases
 
-- `complete-template-fetches-source-and-emits-canonical-send-as-proposal` fetches the
+- `complete-template-fetches-source-and-emits-canonical-send-as-proposal` reads the
   template from `template.source_ref`, seals a draft with four visible
   deviations, emits a canonical `runx/send-as` proposal, and leaves planning
   plus provider delivery outside `contract-drafter`.

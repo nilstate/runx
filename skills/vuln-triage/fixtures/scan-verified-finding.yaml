@@ -16,11 +16,15 @@ inputs:
       inventory:
         - name: example-lib
           version: 1.2.3
+          path: package.json
+          direct: true
+          development: false
       findings:
         - dependency: example-lib
           exact_version: 1.2.3
           advisory_id: GHSA-example-1234
           advisory_url: https://osv.dev/vulnerability/GHSA-example-1234
+          dependency_path: package.json
           direct: true
           development: false
           summary: Exact-version fixture advisory.

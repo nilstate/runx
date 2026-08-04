@@ -266,7 +266,7 @@ function refusalPacket({ template, validation }) {
 async function loadTemplate(input) {
   const sourceRef = text(input.template_source_ref) || text(input.template?.source_ref);
   if (!sourceRef) throw new Error("template.source_ref is required");
-  const loaded = await readSourceRef(sourceRef);
+  const loaded = readSourceRef(sourceRef, objectOrEmpty(input.template));
   const raw = loaded.raw;
   const template = parseTemplateSource(raw, sourceRef);
   return {
@@ -380,19 +380,21 @@ function normalizeExternalTemplateSection(value) {
   return output;
 }
 
-async function readSourceRef(sourceRef) {
-  if (sourceRef.startsWith("http://") || sourceRef.startsWith("https://")) {
-    const response = await fetch(sourceRef, {
-      headers: {
-        accept: "application/json,text/plain;q=0.9,*/*;q=0.1",
-        "user-agent": "runx-contract-drafter/0.1.4",
-      },
-    });
-    if (!response.ok) throw new Error(`template.source_ref fetch failed: HTTP ${response.status}`);
+function readSourceRef(sourceRef, templateInput) {
+  const sourceText = text(templateInput.source_text);
+  if (sourceText) {
+    const declaredDigest = text(templateInput.source_digest);
+    const actualDigest = sha256(sourceText);
+    if (declaredDigest && declaredDigest !== actualDigest) {
+      throw new Error("template.source_digest does not match template.source_text");
+    }
     return {
-      raw: await response.text(),
+      raw: sourceText,
       resolved_path: sourceRef,
     };
+  }
+  if (sourceRef.startsWith("http://") || sourceRef.startsWith("https://")) {
+    throw new Error("http/https template.source_ref requires template.source_text from an upstream native fetch");
   }
   const path = resolveSourceRef(sourceRef);
   return {

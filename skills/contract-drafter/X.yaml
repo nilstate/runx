@@ -1,5 +1,5 @@
 skill: contract-drafter
-version: "0.1.4"
+version: "0.1.5"
 
 catalog:
   kind: skill
@@ -89,7 +89,7 @@ runners:
     type: cli-tool
     act:
       form: review
-      purpose: Fetch a contract template from its source ref, assemble a review draft, expose baseline departures, and emit a canonical send-as proposal without sending.
+      purpose: Read a contract template from its source ref or caller-bound source text, assemble a review draft, expose baseline departures, and emit a canonical send-as proposal without sending.
       legitimacy: The operator supplied a template source ref, parties, terms, and downstream review context; contract-drafter only prepares the draft/proposal for later send-as execution.
       reason_from: act_reason
       effect_from: draft_ref
@@ -122,7 +122,7 @@ runners:
       template:
         type: object
         required: true
-        description: "Template source descriptor. Only template.source_ref is trusted; the template document is fetched from that ref at runtime."
+        description: "Template source descriptor. repo:/file: source_ref is read locally; http/https source_ref requires caller-bound template.source_text and optional source_digest from an upstream native fetch."
       parties:
         type: object
         required: true
@@ -142,7 +142,7 @@ runners:
       template:
         type: object
         required: true
-        description: "Template source descriptor to validate without permitting a partial draft. Only source_ref is used."
+        description: "Template source descriptor to validate without permitting a partial draft. repo:/file: source_ref is read locally; http/https source_ref requires caller-bound source_text."
       parties:
         type: object
         required: true

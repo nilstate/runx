@@ -4,7 +4,7 @@ target: ..
 runner: sourcey
 inputs: {}
 expect:
-  status: needs_agent
+  status: failure
 metadata:
   public_skill: sourcey
   source_case: sourcey-needs-project-input

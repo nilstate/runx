@@ -34,7 +34,7 @@
     }
   ],
   "deterministic_tests": {
-    "command": "node skills/contract-drafter/test.mjs",
+    "command": "node skills/contract-drafter/contract-drafter.test.mjs",
     "status": "passed",
     "checks": [
       "complete fixture emits draft_doc, four grounded deviations, and a runx/send-as proposal",

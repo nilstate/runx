@@ -173,6 +173,7 @@ describe("@runxhq/contracts", () => {
       event_digest: "sha256:event",
       result_digest: "sha256:result",
       projection_digest: "sha256:projection",
+      projection: {},
       events: [],
       rows: [],
       redactions: [],
@@ -201,6 +202,7 @@ describe("@runxhq/contracts", () => {
       event_digest: "sha256:event",
       result_digest: "sha256:conflict",
       projection_digest: "sha256:projection",
+      projection: {},
       events: [],
       rows: [],
       redactions: [],
@@ -210,6 +212,7 @@ describe("@runxhq/contracts", () => {
           message: "expected version 2, got 4",
         },
       ],
+      provider_evidence: {},
     });
 
     expect(conflict.stop_conditions[0]?.code).toBe("conflict");

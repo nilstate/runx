@@ -8,12 +8,26 @@ inputs:
   channel: brief
   evidence_pack:
     decision: ready
-    research_brief: { objective: Explain the strongest Runx architecture signal. }
+    research_brief:
+      objective: Explain the strongest Runx architecture signal.
+      scope: agent infrastructure
+      summary: Receipts bind actions to authority evidence.
+      open_questions: []
     evidence_log:
       - claim: Receipts bind actions to authority evidence.
         source_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+        content_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        confidence: verified
+        relevance: Supports the governance claim.
+    decision_support: []
+    risks: []
     source_evidence:
       - evidence_digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+        content_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        source_ref: https://example.com/evidence
+        source_kind: fetch
+        provenance: { observed_at: "2026-07-17T00:00:00Z", bytes: 0, truncated: false, status: 200, redirects: [] }
+    index_digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
     validation: { status: pass, findings: [] }
   brand_context:
     decision: ready

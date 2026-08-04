@@ -17,28 +17,21 @@ pub(super) fn extract_content(
     match mode {
         ExtractMode::Text => Ok(JsonValue::String(extract_text(body)?)),
         ExtractMode::Links => Ok(JsonValue::Array(extract_links(body, base_url)?)),
-        ExtractMode::Metadata => Ok(JsonValue::Object(JsonObject::from([
-            (
-                "title".to_owned(),
-                optional_json(first_capture(title_regex()?, body)?),
-            ),
-            (
-                "description".to_owned(),
-                optional_json(meta_description(body)?),
-            ),
-            (
-                "canonical".to_owned(),
-                optional_json(canonical_url(body, base_url)?),
-            ),
-            (
-                "declared_language".to_owned(),
-                optional_json(first_capture(language_regex()?, body)?),
-            ),
-            (
+        ExtractMode::Metadata => {
+            let mut metadata = JsonObject::from([(
                 "content_type".to_owned(),
                 JsonValue::String(content_type.to_owned()),
-            ),
-        ]))),
+            )]);
+            insert_optional(&mut metadata, "title", first_capture(title_regex()?, body)?);
+            insert_optional(&mut metadata, "description", meta_description(body)?);
+            insert_optional(&mut metadata, "canonical", canonical_url(body, base_url)?);
+            insert_optional(
+                &mut metadata,
+                "declared_language",
+                first_capture(language_regex()?, body)?,
+            );
+            Ok(JsonValue::Object(metadata))
+        }
     }
 }
 
@@ -91,8 +84,10 @@ fn first_capture(regex: &Regex, body: &str) -> Result<Option<String>, RuntimeErr
     decode_entities(normalized.trim()).map(Some)
 }
 
-fn optional_json(value: Option<String>) -> JsonValue {
-    value.map_or(JsonValue::Null, JsonValue::String)
+fn insert_optional(metadata: &mut JsonObject, key: &str, value: Option<String>) {
+    if let Some(value) = value {
+        metadata.insert(key.to_owned(), JsonValue::String(value));
+    }
 }
 
 fn decode_entities(value: &str) -> Result<String, RuntimeError> {

@@ -51,7 +51,10 @@ fn payment_contracts_enforce_domain_boundaries() {
 }
 
 fn accepts<T: DeserializeOwned>(value: Value) {
-    serde_json::from_value::<T>(value).expect("valid payment contract");
+    assert!(
+        serde_json::from_value::<T>(value).is_ok(),
+        "valid payment contract"
+    );
 }
 
 fn rejects<T: DeserializeOwned>(value: Value) {
