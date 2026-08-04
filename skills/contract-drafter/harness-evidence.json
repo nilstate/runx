@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v1",
-  "recorded_at": "2026-07-18T15:57:00Z",
+  "recorded_at": "2026-08-04T05:00:00Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "with ephemeral receipt signing env: runx harness ./skills/contract-drafter -R <temporary-receipt-dir> --json",
   "status": "passed",
@@ -8,27 +8,27 @@
   "assertion_error_count": 0,
   "case_results": [
     {
-      "name": "complete-template-fetches-source-and-executes-mock-send",
+      "name": "complete-template-fetches-source-and-composes-canonical-send-as-plan",
       "status": "sealed",
-      "receipt_id": "sha256:18c8945682525c40b5563393d6ffbdbc7105c49763c892050ff470b8cb996ae4",
+      "receipt_id": "sha256:3f4281a35ae7191f1256c5303dd68e5cdf4619f656b58e298b6f94ec07c43e53",
       "act": {
         "form": "review",
-        "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=mock_provider_sent",
+        "summary": "draft_ready template=public-services-review-v1 deviations=4 downstream=runx/send-as status=not_sent",
         "artifact_ref": "runx:contract-draft:8ed974b555fd840f"
       },
       "send_path": {
-        "send_as_runner": "graph/send-as mock_provider_plan",
-        "provider_delivery_performed": true,
-        "readback_verified": true,
-        "mock_transport": true,
-        "hand_fed_agent_answer": false
+        "send_as_runner": "../send-as plan",
+        "canonical_dependency": true,
+        "package_local_send_as": false,
+        "provider_adapter_in_contract_drafter": false,
+        "live_external_send_performed": false
       }
     },
     {
       "name": "missing-required-term-refuses-without-proposal",
       "runner": "refusal_check",
       "status": "failure",
-      "receipt_id": "sha256:ec9191cb7018f134cca97cebf47d2f03393a6aa00e5fe15aa0bae38ad3ae9b96",
+      "receipt_id": "sha256:df91fabec4c191e2b97828a027ecb6b20404b957b2f26bb08eea4f3b8118fffb",
       "result": "refused missing_or_invalid_input with draft_doc=null, deviations=[], and send_proposal=null"
     }
   ],
@@ -37,8 +37,8 @@
     "status": "passed",
     "checks": [
       "complete fixture emits draft_doc, four grounded deviations, and a runx/send-as proposal",
-      "proposal is consumed by the package-local send-as plan projection",
-      "mock provider delivery and readback are executed and bound to draft_ref plus content digest",
+      "proposal targets canonical runx/send-as plan and provider delivery remains outside contract-drafter",
+      "package contains no local send-as namesake and no provider send adapter",
       "repeat execution is byte-for-byte deterministic",
       "missing payment_terms emits no draft and no proposal",
       "refusal_check returns a failure status for hosted stop-case verification"

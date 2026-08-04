@@ -15,16 +15,16 @@
     "governing_law": "Delaware",
     "confidentiality_period": "2 years",
     "send": {
-      "objective": "Execute send-as planning and deterministic mock provider delivery for the review draft in the same sealed graph.",
+      "objective": "Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.",
       "principal": "account:contract-review-demo",
       "provider_context": {
-        "name": "mock-review-queue",
+        "name": "reviewer-queue",
         "account_ref": "provider-account:contract-review-demo",
-        "runtime_path": "mock.review_queue.deliver"
+        "runtime_path": "review_queue.plan"
       },
       "audience": {"type": "repository_review", "ref": "RYDE-PLAY/frantic-86-contract-drafter"},
       "consent_basis": "Public maintainer review of a nonbinding synthetic contract fixture.",
-      "operator_context": "Contract-drafter may execute only the deterministic mock review-queue transport; no live external send is authorized.",
+      "operator_context": "Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.",
       "subject_or_title": "Review the services agreement draft"
     }
   }

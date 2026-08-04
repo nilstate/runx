@@ -183,8 +183,8 @@ function draftPacket({ template, parties, terms, validation }) {
     subject_or_title: text(send.subject_or_title),
     deviation_count: deviations.length,
     gate: {
-      gate_id: "contract-drafter.mock-send.allowed",
-      human_approval_required: false,
+      gate_id: "send-as.provider-delivery.required",
+      human_approval_required: true,
       approved: false,
       send_as_preflight_required: true,
     },
@@ -230,6 +230,9 @@ function draftPacket({ template, parties, terms, validation }) {
       no_invented_terms: true,
       all_deviations_visible: true,
       template_loaded_from_source_ref: true,
+      send_as_canonical_skill: "runx/send-as",
+      send_as_runner: "plan",
+      provider_delivery_outside_contract_drafter: true,
       live_external_send_performed: false,
     },
   };
@@ -256,7 +259,6 @@ function refusalPacket({ template, validation }) {
       no_draft_emitted: true,
       no_proposal_emitted: true,
       template_loaded_from_source_ref: Boolean(validation?.template_fetch?.fetched_at_runtime),
-      provider_delivery_performed: false,
       live_external_send_performed: false,
     },
     template_id: text(template?.template_id) || null,
