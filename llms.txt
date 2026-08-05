@@ -1,0 +1,25 @@
+# runx
+
+> A skill is expertise published as a portable `SKILL.md`: an operating manual that a human can understand and an agent can act from. Skills compose into graphs and real work without bespoke glue code. Runx supplies the boundary: it admits each act under explicit authority, delivers credentials without turning them into prompt material, supervises execution, and seals the result into a verifiable receipt.
+
+## Docs
+
+- [Introduction](README.md)
+- [Getting Started](docs/getting-started.md)
+- [Reference](docs/reference.md)
+- [Publishing](docs/publishing.md)
+- [Releasing](docs/releasing.md)
+- [Operator Console](docs/operator-console.md)
+- [Skill Author Runtime Contract](docs/skill-author-runtime-contract.md)
+- [Skill Catalog](docs/skill-catalog.md)
+- [Security Authority Proof](docs/security-authority-proof.md)
+- [Rust Kernel Architecture](docs/rust-kernel-architecture.md)
+- [How We Test](docs/how-we-test.md)
+
+## Examples
+
+- [Hello World](examples/hello-world)
+- [OpenAPI Tool](examples/openapi-tool)
+- [OpenAPI Graph](examples/openapi-graph)
+- [GitHub MCP Hero](examples/github-mcp-hero)
+- [Governed Spend](examples/governed-spend)
