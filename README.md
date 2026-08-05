@@ -29,6 +29,22 @@ into a verifiable receipt.
 Authority narrows through the chain, so agent work compounds without becoming
 ambient trust.
 
+## what runx is not
+
+Runx is the governed runtime **beneath** agents and orchestration tools — it is
+not another agent framework. There are no agents, prompt chains, model loops,
+or vector stores here, and runx does not compete with LangChain, CrewAI,
+AutoGen, or your orchestration layer. Runx admits each act under explicit
+authority, delivers credentials without turning them into prompt material,
+supervises execution, and seals the result into a verifiable receipt.
+
+The local CLI/runtime (`runx`, the `@runxhq/cli` npm package) is what executes
+skills and seals receipts on your machine. The hosted surfaces are optional
+complements: the registry/catalog at [runx.ai/x](https://runx.ai/x) publishes
+and discovers skills, the harness replays checked-in cases, and connectors are
+credential-bound provider adapters. You can use the local runtime alone; none
+of the hosted surfaces are required to seal your first receipt.
+
 ## quickstart
 
 This README has an agent-readable twin at
@@ -62,6 +78,18 @@ Run a local or catalog skill directly:
 ```bash
 runx skill <skill-ref> [runner] -i key=value --json
 ```
+
+Seal a receipt locally in under five minutes — no account, no hosted surface:
+
+```bash
+npm i -g @runxhq/cli
+git clone --depth 1 https://github.com/runxhq/runx.git
+cd runx
+runx skill ./examples/hello-world -i message="hello, runx" --json
+```
+
+The checked-in `examples/hello-world` skill runs a local command, and the final
+`--json` output includes the sealed receipt (`runx.receipt.v1`).
 
 `business-ops` is one prebuilt skill for routing a business signal end to end:
 
@@ -170,6 +198,11 @@ See [Skill to Graph](docs/skill-to-graph.md) and
 
 ## graphs make acts composable
 
+A runner calls runx through the CLI subprocess (`runx skill <skill-ref> ...`),
+the MCP surface, or the language bindings in `packages/` — there is no HTTP
+server to stand up. One `runx skill` invocation is one governed turn; to chain
+multiple skills in a single run, compose a graph.
+
 Graphs let one governed act consume the typed output of another:
 
 ```yaml
@@ -258,6 +291,11 @@ runx verify --allow-local-development-signatures --json
 Production verification requires a trusted verification key. The receipt is
 not the product by itself; it is where authority, action, evidence, and future
 learning meet in one verifiable object.
+
+The committed contract is
+[`schemas/receipt.schema.json`](schemas/receipt.schema.json); a real sealed
+receipt example lives at
+[`fixtures/receipt-verify/tampered-body/receipt.json`](fixtures/receipt-verify/tampered-body/receipt.json).
 
 ## demos that prove boundaries
 
