@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::insert_source_file;
@@ -12,9 +13,11 @@ pub(super) fn append_declared_packet_schemas(
     loaded: &LoadedSkillPackage,
     env: &BTreeMap<String, String>,
     cwd: &Path,
-    packet_ids: &std::collections::BTreeSet<String>,
+    packet_ids: &BTreeSet<String>,
 ) -> Result<(), RegistryPublishPackageError> {
-    if packet_ids.is_empty() {
+    let mut materialized_packet_ids = packet_ids.clone();
+    materialized_packet_ids.extend(loaded.resolved_input_packet_schemas.keys().cloned());
+    if materialized_packet_ids.is_empty() {
         return Ok(());
     }
     let workspace = crate::resolve_runx_workspace_base(env, cwd);
@@ -39,7 +42,7 @@ pub(super) fn append_declared_packet_schemas(
         .map_err(|error| {
             RegistryPublishPackageError::invalid(format!("packet schema catalog failed: {error}"))
         })?;
-    for packet_id in packet_ids {
+    for packet_id in &materialized_packet_ids {
         let Some(schema) = loaded
             .resolved_input_packet_schemas
             .get(packet_id)
