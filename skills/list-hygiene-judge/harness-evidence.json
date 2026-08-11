@@ -20,6 +20,11 @@
       "status": "sealed"
     }
   ],
+  "fixtures": {
+    "format": "UTF-8 JSON",
+    "runtime_seed": "The non-default harness_judge runner appends each declared bootstrap event to a fresh SQLite-backed data-store before exercising the production decision path.",
+    "binary_sidecars": false
+  },
   "dependency": {
     "requested_legacy_ref": "runx/data-store@0.1.2",
     "requested_legacy_ref_status": "not_found_in_public_registry",
