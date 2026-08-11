@@ -2,7 +2,10 @@
 name: list-hygiene-judge
 description: Judge a consent-state transition from explicit engagement and bounce evidence, record it durably through data-store, and stop safely when evidence is missing, unsubscribed, or stale.
 runx:
-  category: compliance
+  category: growth
+links:
+  source: https://github.com/runxhq/runx/pull/402
+license: MIT
 ---
 
 # List Hygiene Judge
