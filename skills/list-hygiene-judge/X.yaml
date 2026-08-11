@@ -21,7 +21,6 @@ harness:
       runner: harness_judge
       operator_journeys:
         - mode: standalone
-          confusors: [send-as, outreach-sequencer]
           request: Judge whether this inactive subscribed contact should move to re-permission and record the durable consent transition.
           expected_outcome: Read the existing contact projection, record exactly one re-permission transition, and return a sealed readback without sending.
         - mode: composed
