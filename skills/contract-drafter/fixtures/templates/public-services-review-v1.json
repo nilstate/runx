@@ -1,0 +1,27 @@
+{
+  "template_id": "public-services-review-v1",
+  "title": "Services Agreement Review Draft",
+  "source_ref": "repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json",
+  "required_party_roles": ["provider", "customer"],
+  "required_terms": ["effective_date", "services", "fees", "payment_terms", "liability_cap", "governing_law", "confidentiality_period"],
+  "baseline": {
+    "payment_terms": "Net 30",
+    "liability_cap": "Fees paid in the prior 12 months",
+    "governing_law": "California",
+    "confidentiality_period": "3 years"
+  },
+  "term_clauses": {
+    "payment_terms": "fees",
+    "liability_cap": "liability",
+    "governing_law": "governing-law",
+    "confidentiality_period": "confidentiality"
+  },
+  "clauses": [
+    {"id": "parties", "title": "Parties and Effective Date", "body_template": "[[parties.provider.legal_name]] and [[parties.customer.legal_name]] enter this agreement effective [[terms.effective_date]]."},
+    {"id": "services", "title": "Services", "body_template": "[[parties.provider.legal_name]] will provide [[terms.services]]."},
+    {"id": "fees", "title": "Fees and Payment", "body_template": "[[parties.customer.legal_name]] will pay [[terms.fees]] under [[terms.payment_terms]] payment terms."},
+    {"id": "liability", "title": "Limitation of Liability", "body_template": "The aggregate liability cap is [[terms.liability_cap]]."},
+    {"id": "confidentiality", "title": "Confidentiality", "body_template": "Confidentiality obligations survive for [[terms.confidentiality_period]]."},
+    {"id": "governing-law", "title": "Governing Law", "body_template": "The agreement is governed by [[terms.governing_law]]."}
+  ]
+}

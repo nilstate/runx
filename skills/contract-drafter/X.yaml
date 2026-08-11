@@ -1,50 +1,37 @@
 skill: contract-drafter
-version: "0.1.2"
+version: "0.1.7"
 
 catalog:
   kind: graph
-  audience: operator
+  audience: public
   visibility: public
   role: canonical
   execution: plan
-  completion: runtime_receipt
+  completion: plan
   requires_adapter: false
-  approval: none
+  approval: required
 
 harness:
   cases:
-    - name: contract-drafter-complete-draft-seals
-      operator_journeys:
-        - mode: standalone
-          confusors: [ghostwrite, send-as]
-          request: Draft this services agreement from the approved template with every required term bound.
-          expected_outcome: Return a sealed draft where every clause reconciles with the rendered template and delivery stays behind a human gate.
-        - mode: composed
-          request: Continue from this sealed contract draft into the governed delivery step.
-          expected_outcome: Reuse the sealed draft and its send proposal without re-drafting any clause.
-          prior_evidence:
-            - The template, parties, terms, and sealed draft supplied by the prior step.
-          must_not_repeat:
-            - Do not re-render or re-negotiate clauses already sealed.
+    - name: complete-template-fetches-source-and-consumes-canonical-send-as-plan
       inputs:
         template:
-          id: msa-basic-v1
-          version: "1.0"
-          title: Services Agreement
-          required_terms: [services, fee_usd]
-          clauses:
-            - id: parties
-              heading: Parties
-              baseline: "This Services Agreement is between {{provider.legal_name}} and {{customer.legal_name}}."
-            - id: fees
-              heading: Fees and Payment
-              baseline: "Customer will pay USD {{terms.fee_usd}} for {{terms.services}}."
+          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
-          provider: { legal_name: Acme Pty Ltd }
-          customer: { legal_name: Globex LLC }
+          provider:
+            legal_name: Northstar Example Services LLC
+            role: provider
+          customer:
+            legal_name: Harbor Example Studio Inc.
+            role: customer
         terms:
-          services: monthly platform maintenance
-          fee_usd: 4000
+          effective_date: "2026-07-15"
+          services: Monthly release engineering review and incident-readiness support
+          fees: USD 8,000 per month
+          payment_terms: Net 45
+          liability_cap: USD 80,000 aggregate
+          governing_law: Delaware
+          confidentiality_period: 2 years
           send:
             objective: Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.
             principal: account:contract-review-demo
@@ -53,24 +40,13 @@ harness:
               account_ref: provider-account:contract-review-demo
               runtime_path: review_queue.plan
             audience:
-              type: channel
+              type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
             operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
             subject_or_title: Review the services agreement draft
       caller:
         answers:
-          agent_task.contract-drafter-assemble.output:
-            draft_doc:
-              title: Services Agreement
-              clauses:
-                - id: parties
-                  heading: Parties
-                  text: This Services Agreement is between Acme Pty Ltd and Globex LLC.
-                - id: fees
-                  heading: Fees and Payment
-                  text: Customer will pay USD 4000 for monthly platform maintenance.
-              deviations: []
           agent_task.send-as.output:
             send_plan:
               decision: ready
@@ -85,12 +61,12 @@ harness:
               send_class: internal
               channel: other
               audience:
-                type: channel
+                type: repository_review
                 ref: RYDE-PLAY/frantic-86-contract-drafter
                 requires_reconfirmation: false
               content:
-                draft_ref: runx:contract-draft:ae5df79bb1bbd566
-                digest: sha256:ae5df79bb1bbd5669b28ae4870481a9ca07057dad339bf6679f75814ce022331
+                draft_ref: runx:contract-draft:95c347f0a4bfe15a
+                digest: sha256:db4d22e137ff620f24631dabd9c1b14e099d79259603f041ffa3b654869badb7
                 subject_or_title: Review the services agreement draft
               gates:
                 preflight_required: true
@@ -100,24 +76,27 @@ harness:
               provider_actions:
                 - review_queue.plan
               evidence_refs:
-                - runx:contract-draft:ae5df79bb1bbd566
-                - sha256:ae5df79bb1bbd5669b28ae4870481a9ca07057dad339bf6679f75814ce022331
+                - runx:contract-draft:95c347f0a4bfe15a
+                - sha256:db4d22e137ff620f24631dabd9c1b14e099d79259603f041ffa3b654869badb7
               success_checkpoint:
                 milestone: provider_delivery_required
                 description: Provider delivery and readback remain outside contract-drafter.
       expect:
         status: sealed
-        steps: [admit, digest-template, digest-parties, digest-terms, assemble, finalize, plan-send-as, finalize-plan]
+        steps:
+          - draft-contract
+          - plan-send-as
+          - finalize
         step_outputs:
-          finalize-plan:
+          finalize:
             subset:
-              contract_draft:
+              contract_draft_packet:
                 data:
-                  schema: runx.contract_draft.v1
-                  decision: drafted
+                  status: draft_ready
                   review_status: requires_review
                   delivery_status: not_sent
-                  deviations: []
+                  draft_doc:
+                    delivery_status: not_sent
                   send_proposal:
                     consumer:
                       skill: runx/send-as
@@ -126,28 +105,32 @@ harness:
                   send_plan:
                     decision: ready
                     action_family: send-as
-                  delivery_performed: false
+                    content:
+                      draft_ref: runx:contract-draft:95c347f0a4bfe15a
                   validation:
-                    status: pass
-                    findings: []
                     canonical_send_as_dependency_executed: true
-        receipt: { schema: runx.receipt.v1 }
+                    provider_delivery_outside_contract_drafter: true
+        receipt:
+          schema: runx.receipt.v1
 
-    - name: contract-drafter-declared-deviation-seals
+    - name: default-missing-required-term-refuses-before-send-as
       inputs:
         template:
-          id: msa-basic-v1
-          version: "1.0"
-          title: Services Agreement
-          required_terms: [fee_usd]
-          clauses:
-            - id: fees
-              heading: Fees and Payment
-              baseline: "Customer will pay USD {{terms.fee_usd}} within 30 days after invoice."
+          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
-          customer: { legal_name: Globex LLC }
+          provider:
+            legal_name: Northstar Example Services LLC
+            role: provider
+          customer:
+            legal_name: Harbor Example Studio Inc.
+            role: customer
         terms:
-          fee_usd: 4000
+          effective_date: "2026-07-15"
+          services: Monthly release engineering review and incident-readiness support
+          fees: USD 8,000 per month
+          liability_cap: USD 80,000 aggregate
+          governing_law: Delaware
+          confidentiality_period: 2 years
           send:
             objective: Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.
             principal: account:contract-review-demo
@@ -156,91 +139,48 @@ harness:
               account_ref: provider-account:contract-review-demo
               runtime_path: review_queue.plan
             audience:
-              type: channel
+              type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
             operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
             subject_or_title: Review the services agreement draft
-      caller:
-        answers:
-          agent_task.contract-drafter-assemble.output:
-            draft_doc:
-              title: Services Agreement
-              clauses:
-                - id: fees
-                  heading: Fees and Payment
-                  text: Customer will pay USD 4000 within 45 days after invoice.
-              deviations:
-                - clause_id: fees
-                  reason: Customer requested 45-day payment terms and the operator approved the extension.
-          agent_task.send-as.output:
-            send_plan:
-              decision: ready
-              action_family: send-as
-              principal:
-                type: account
-                ref: account:contract-review-demo
-              provider:
-                name: reviewer-queue
-                account_ref: provider-account:contract-review-demo
-                runtime_path: review_queue.plan
-              send_class: internal
-              channel: other
-              audience:
-                type: channel
-                ref: RYDE-PLAY/frantic-86-contract-drafter
-                requires_reconfirmation: false
-              content:
-                draft_ref: runx:contract-draft:bed4bccd0be68276
-                digest: sha256:bed4bccd0be68276d4188f87744fc847644753ada3f4b3172e03d997154cb2e0
-                subject_or_title: Review the services agreement draft
-              gates:
-                preflight_required: true
-                human_approval_required: true
-                approval_ref: send-as.provider-delivery.required
-              blockers: []
-              provider_actions:
-                - review_queue.plan
-              evidence_refs:
-                - runx:contract-draft:bed4bccd0be68276
-                - sha256:bed4bccd0be68276d4188f87744fc847644753ada3f4b3172e03d997154cb2e0
-              success_checkpoint:
-                milestone: provider_delivery_required
-                description: Provider delivery and readback remain outside contract-drafter.
       expect:
         status: sealed
-        steps: [admit, digest-template, digest-parties, digest-terms, assemble, finalize, plan-send-as, finalize-plan]
+        steps:
+          - draft-contract
+          - refused
         step_outputs:
-          finalize-plan:
+          refused:
             subset:
-              contract_draft:
+              contract_draft_packet:
                 data:
-                  decision: drafted
-                  review_status: requires_review
+                  status: refused
+                  review_status: refused
                   delivery_status: not_sent
-                  send_plan:
-                    decision: ready
-                    action_family: send-as
+                  deviations: []
                   validation:
-                    status: pass
-                    canonical_send_as_dependency_executed: true
-        receipt: { schema: runx.receipt.v1 }
+                    no_draft_emitted: true
+                    no_proposal_emitted: true
 
-    - name: contract-drafter-undeclared-deviation-refuses
+    - name: missing-required-term-refuses-without-proposal
+      runner: refusal_check
       inputs:
         template:
-          id: msa-basic-v1
-          version: "1.0"
-          title: Services Agreement
-          required_terms: [fee_usd]
-          clauses:
-            - id: fees
-              heading: Fees and Payment
-              baseline: "Customer will pay USD {{terms.fee_usd}} within 30 days after invoice."
+          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
         parties:
-          customer: { legal_name: Globex LLC }
+          provider:
+            legal_name: Northstar Example Services LLC
+            role: provider
+          customer:
+            legal_name: Harbor Example Studio Inc.
+            role: customer
         terms:
-          fee_usd: 4000
+          effective_date: "2026-07-15"
+          services: Monthly release engineering review and incident-readiness support
+          fees: USD 8,000 per month
+          liability_cap: USD 80,000 aggregate
+          governing_law: Delaware
+          confidentiality_period: 2 years
           send:
             objective: Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.
             principal: account:contract-review-demo
@@ -249,76 +189,15 @@ harness:
               account_ref: provider-account:contract-review-demo
               runtime_path: review_queue.plan
             audience:
-              type: channel
-              ref: RYDE-PLAY/frantic-86-contract-drafter
-            consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
-            subject_or_title: Review the services agreement draft
-      caller:
-        answers:
-          agent_task.contract-drafter-assemble.output:
-            draft_doc:
-              title: Services Agreement
-              clauses:
-                - id: fees
-                  heading: Fees and Payment
-                  text: Customer will pay USD 9000 within 90 days after invoice.
-              deviations: []
-      expect:
-        status: sealed
-        steps: [admit, digest-template, digest-parties, digest-terms, assemble, finalize, finish-refusal]
-        step_outputs:
-          finish-refusal:
-            subset:
-              contract_draft:
-                data:
-                  decision: refused
-                  document: null
-                  send_proposal: null
-                  validation: { status: fail }
-        receipt: { schema: runx.receipt.v1 }
-
-    - name: contract-drafter-missing-term-stops
-      inputs:
-        template:
-          id: msa-basic-v1
-          version: "1.0"
-          title: Services Agreement
-          required_terms: [fee_usd, services]
-          clauses:
-            - id: fees
-              heading: Fees and Payment
-              baseline: "Customer will pay USD {{terms.fee_usd}} for {{terms.services}}."
-        parties:
-          customer: { legal_name: Globex LLC }
-        terms:
-          fee_usd: 4000
-          send:
-            objective: Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.
-            principal: account:contract-review-demo
-            provider_context:
-              name: reviewer-queue
-              account_ref: provider-account:contract-review-demo
-              runtime_path: review_queue.plan
-            audience:
-              type: channel
+              type: repository_review
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
             operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
             subject_or_title: Review the services agreement draft
       expect:
-        status: sealed
-        steps: [admit, stop]
-        step_outputs:
-          stop:
-            subset:
-              contract_draft:
-                data:
-                  decision: refused
-                  document: null
-                  send_proposal: null
-                  validation: { status: fail }
-        receipt: { schema: runx.receipt.v1 }
+        status: failure
+        receipt:
+          schema: runx.receipt.v1
 
 runners:
   draft:
@@ -328,174 +207,270 @@ runners:
       template:
         type: object
         required: true
-        description: Versioned contract template with stable clause baselines and required term keys.
+        description: "Template source descriptor. repo:/file: source_ref is read locally; http/https source_ref requires caller-bound template.source_text and optional source_digest from an upstream native fetch."
       parties:
         type: object
         required: true
-        description: Explicit party records referenced by template placeholders; no party may be inferred.
+        description: "Explicit parties keyed by the roles declared by the fetched template."
       terms:
         type: object
         required: true
-        description: Explicit deal terms; every template required term must be supplied.
+        description: "Explicit deal terms plus canonical send-as planning inputs under terms.send."
     graph:
-      name: contract-drafter-draft
-      result_from: [stop, finish-refusal, finalize-plan]
+      name: contract-drafter
+      result_from:
+        - finalize
+        - refused
       steps:
-        - id: admit
-          label: admit only complete template, party, and term evidence
+        - id: draft-contract
+          label: assemble the deterministic contract review draft
           inputs:
             template: $input.template
             parties: $input.parties
             terms: $input.terms
           run:
-            type: javascript
-            module: contract-drafter.mjs
-            export: admitRequest
-            outputs:
-              draft_context: object
-
-        - id: stop
-          when:
-            field: admit.draft_context.path
-            equals: stop
-          context:
-            draft_context: admit.draft_context
-          run:
-            type: javascript
-            module: contract-drafter.mjs
-            export: finalizeDraft
+            type: cli-tool
+            command: node
+            args:
+              - run.mjs
+              - --wrap-contract-draft
             outputs:
               contract_draft: object
           artifacts:
             named_emits:
               contract_draft: contract_draft
-            packets:
-              contract_draft: runx.contract_draft.v1
-
-        - id: digest-template
-          when:
-            field: admit.draft_context.path
-            equals: draft
-          tool: data.digest
-          inputs:
-            value: $input.template
-
-        - id: digest-parties
-          when:
-            field: admit.draft_context.path
-            equals: draft
-          tool: data.digest
-          inputs:
-            value: $input.parties
-
-        - id: digest-terms
-          when:
-            field: admit.draft_context.path
-            equals: draft
-          tool: data.digest
-          inputs:
-            value: $input.terms
-
-        - id: assemble
-          label: draft clauses from the template under declared-deviation rules
-          when:
-            field: admit.draft_context.path
-            equals: draft
-          run:
-            type: agent-task
-            agent: reviewer
-            task: contract-drafter-assemble
-            outputs:
-              draft_doc: object
-          inputs:
-            template: $input.template
-            parties: $input.parties
-            terms: $input.terms
-          allowed_tools: []
-          artifacts:
-            named_emits:
-              draft_doc: draft_doc
-
-        - id: finalize
-          label: reconcile the draft against the rendered template deterministically
-          when:
-            field: admit.draft_context.path
-            equals: draft
-          inputs:
-            template: $input.template
-            parties: $input.parties
-            terms: $input.terms
-          context:
-            draft_context: admit.draft_context
-            draft_doc: assemble.draft_doc.data
-            template_digest: digest-template.digest_result.data.digest
-            parties_digest: digest-parties.digest_result.data.digest
-            terms_digest: digest-terms.digest_result.data.digest
-          run:
-            type: javascript
-            module: contract-drafter.mjs
-            export: finalizeDraft
-            outputs:
-              contract_draft: object
-          artifacts:
-            named_emits:
-              contract_draft: contract_draft
-            packets:
-              contract_draft: runx.contract_draft.v1
-        - id: finish-refusal
-          label: publish refused evaluations without send-as planning
-          when:
-            field: finalize.contract_draft.data.decision
-            equals: refused
-          context:
-            contract_draft: finalize.contract_draft.data
-          run:
-            type: javascript
-            module: contract-drafter.mjs
-            export: finishRefusal
-            outputs:
-              contract_draft: object
-          artifacts:
-            named_emits:
-              contract_draft: contract_draft
-            packets:
-              contract_draft: runx.contract_draft.v1
 
         - id: plan-send-as
-          label: consume the draft proposal with canonical send-as planning
+          label: consume the proposal with canonical send-as planning
           when:
-            field: finalize.contract_draft.data.decision
-            equals: drafted
+            field: draft-contract.contract_draft.data.status
+            equals: draft_ready
           skill: runx/send-as@sha-1f90b9364a3a
           runner: plan
           context:
-            objective: finalize.contract_draft.data.send_proposal.consumer.inputs.objective
-            principal: finalize.contract_draft.data.send_proposal.consumer.inputs.principal
-            provider_context: finalize.contract_draft.data.send_proposal.consumer.inputs.provider_context
-            audience: finalize.contract_draft.data.send_proposal.consumer.inputs.audience
-            content_ref: finalize.contract_draft.data.send_proposal.consumer.inputs.content_ref
-            consent_basis: finalize.contract_draft.data.send_proposal.consumer.inputs.consent_basis
-            operator_context: finalize.contract_draft.data.send_proposal.consumer.inputs.operator_context
+            objective: draft-contract.contract_draft.data.send_proposal.consumer.inputs.objective
+            principal: draft-contract.contract_draft.data.send_proposal.consumer.inputs.principal
+            provider_context: draft-contract.contract_draft.data.send_proposal.consumer.inputs.provider_context
+            audience: draft-contract.contract_draft.data.send_proposal.consumer.inputs.audience
+            content_ref: draft-contract.contract_draft.data.send_proposal.consumer.inputs.content_ref
+            consent_basis: draft-contract.contract_draft.data.send_proposal.consumer.inputs.consent_basis
+            operator_context: draft-contract.contract_draft.data.send_proposal.consumer.inputs.operator_context
 
-        - id: finalize-plan
-          label: verify the canonical send-as plan is draft-bound and plan-only
+        - id: finalize
+          label: verify the canonical send-as plan remains plan-only and draft-bound
           when:
-            field: finalize.contract_draft.data.decision
-            equals: drafted
+            field: draft-contract.contract_draft.data.status
+            equals: draft_ready
           context:
-            contract_draft: finalize.contract_draft.data
+            contract_draft: draft-contract.contract_draft.data
             send_plan: plan-send-as.send_plan.data
           run:
-            type: javascript
-            module: contract-drafter.mjs
-            export: finalizeSendPlan
+            type: cli-tool
+            command: node
+            args:
+              - finalize.mjs
+              - finalizeDraft
             outputs:
-              contract_draft: object
-              send_plan: object
+              contract_draft_packet:
+                type: object
+                schema:
+                  required: [schema, package, status, review_status, delivery_status, draft_ref, draft_doc, deviations, send_proposal, send_plan, validation]
+                  additionalProperties: true
+                  properties:
+                    schema: { const: runx.contract_draft.v1 }
+                    package: { const: contract-drafter }
+                    status: { const: draft_ready }
+                    review_status: { const: requires_review }
+                    delivery_status: { const: not_sent }
+                    draft_ref: { type: string, pattern: '^runx:contract-draft:[0-9a-f]{16}$' }
+                    draft_doc:
+                      type: object
+                      required: [schema, draft_ref, content_digest, legal_approval, delivery_status, markdown]
+                      additionalProperties: true
+                      properties:
+                        schema: { const: runx.contract_draft.document.v1 }
+                        draft_ref: { type: string, pattern: '^runx:contract-draft:[0-9a-f]{16}$' }
+                        content_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                        legal_approval: { const: not_reviewed }
+                        delivery_status: { const: not_sent }
+                        markdown: { type: string, minLength: 1 }
+                    deviations: { type: array, maxItems: 100 }
+                    send_proposal:
+                      type: object
+                      required: [schema, status, consumer, provider_action, live_external_send_performed]
+                      additionalProperties: true
+                      properties:
+                        schema: { const: runx.contract_send_proposal.v1 }
+                        status: { const: ready_for_send_as }
+                        provider_action: { const: null }
+                        live_external_send_performed: { const: false }
+                        consumer:
+                          type: object
+                          required: [skill, runner, inputs]
+                          additionalProperties: true
+                          properties:
+                            skill: { const: runx/send-as }
+                            runner: { const: plan }
+                    send_plan:
+                      type: object
+                      required: [decision, action_family, principal, audience, content, gates, success_checkpoint]
+                      additionalProperties: true
+                      properties:
+                        decision: { const: ready }
+                        action_family: { const: send-as }
+                        content:
+                          type: object
+                          required: [draft_ref, digest, subject_or_title]
+                          additionalProperties: true
+                          properties:
+                            draft_ref: { type: string, pattern: '^runx:contract-draft:[0-9a-f]{16}$' }
+                            digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                            subject_or_title: { type: string, minLength: 1 }
+                        gates:
+                          type: object
+                          required: [preflight_required, human_approval_required]
+                          additionalProperties: true
+                          properties:
+                            preflight_required: { const: true }
+                            human_approval_required: { const: true }
+                        success_checkpoint:
+                          type: object
+                          required: [milestone]
+                          additionalProperties: true
+                          properties:
+                            milestone: { const: provider_delivery_required }
+                    validation:
+                      type: object
+                      required: [canonical_send_as_dependency_executed, provider_delivery_outside_contract_drafter, live_external_send_performed]
+                      additionalProperties: true
+                      properties:
+                        canonical_send_as_dependency_executed: { const: true }
+                        provider_delivery_outside_contract_drafter: { const: true }
+                        live_external_send_performed: { const: false }
           artifacts:
             named_emits:
-              contract_draft: contract_draft
-              send_plan: send_plan
-            packets:
-              contract_draft: runx.contract_draft.v1
-              send_plan: runx.send_as.plan.v1
+              contract_draft_packet: contract_draft_packet
+
+        - id: refused
+          label: seal a refusal before any send-as planning
+          when:
+            field: draft-contract.contract_draft.data.status
+            equals: refused
+          context:
+            contract_draft: draft-contract.contract_draft.data
+          run:
+            type: cli-tool
+            command: node
+            args:
+              - finalize.mjs
+              - finalizeRefusal
+            outputs:
+              contract_draft_packet:
+                type: object
+                schema:
+                  required: [schema, package, status, review_status, delivery_status, draft_ref, deviations, validation]
+                  additionalProperties: true
+                  properties:
+                    schema: { const: runx.contract_draft.v1 }
+                    package: { const: contract-drafter }
+                    status: { const: refused }
+                    review_status: { const: refused }
+                    delivery_status: { const: not_sent }
+                    draft_ref: { const: "" }
+                    deviations: { type: array, maxItems: 0 }
+                    validation:
+                      type: object
+                      required: [no_draft_emitted, no_proposal_emitted]
+                      additionalProperties: true
+                      properties:
+                        no_draft_emitted: { const: true }
+                        no_proposal_emitted: { const: true }
+          artifacts:
+            named_emits:
+              contract_draft_packet: contract_draft_packet
+
+  draft_packet:
+    type: cli-tool
+    act:
+      form: review
+      purpose: Read a contract template from its source ref or caller-bound source text, assemble a review draft, expose baseline departures, and emit a canonical send-as proposal without sending.
+      legitimacy: The operator supplied a template source ref, parties, terms, and downstream review context; contract-drafter only prepares the draft/proposal for later send-as planning.
+      reason_from: act_reason
+      effect_from: draft_ref
+      effect_type: artifact
+    command: node
+    args:
+      - run.mjs
+    outputs:
+      schema: string
+      package: string
+      status: string
+      review_status: string
+      delivery_status: string
+      act_decision: string
+      act_reason: string
+      draft_ref: string
+      draft_doc:
+        type: object
+        required: false
+      deviations: array
+      send_proposal:
+        type: object
+        required: false
+      validation: object
+      template_id:
+        type: string
+        required: false
+    inputs:
+      template:
+        type: object
+        required: true
+        description: "Template source descriptor. repo:/file: source_ref is read locally; http/https source_ref requires caller-bound template.source_text and optional source_digest from an upstream native fetch."
+      parties:
+        type: object
+        required: true
+        description: "Explicit parties keyed by the roles declared by the fetched template."
+      terms:
+        type: object
+        required: true
+        description: "Explicit deal terms plus canonical send-as planning inputs under terms.send."
+
+  refusal_check:
+    type: cli-tool
+    command: node
+    args:
+      - run.mjs
+      - --fail-on-refusal
+    inputs:
+      template:
+        type: object
+        required: true
+        description: "Template source descriptor to validate without permitting a partial draft. repo:/file: source_ref is read locally; http/https source_ref requires caller-bound source_text."
+      parties:
+        type: object
+        required: true
+        description: "Explicit parties to validate."
+      terms:
+        type: object
+        required: true
+        description: "Explicit terms to validate."
+    outputs:
+      schema: string
+      package: string
+      status: string
+      review_status: string
+      delivery_status: string
+      act_decision: string
+      act_reason: string
+      draft_ref: string
+      draft_doc:
+        type: object
+        required: false
+      deviations: array
+      send_proposal:
+        type: object
+        required: false
+      validation: object
+      template_id:
+        type: string
+        required: false
