@@ -9,11 +9,23 @@ catalog:
   execution: plan
   completion: plan
   requires_adapter: false
-  approval: required
+  approval: none
 
 harness:
   cases:
     - name: complete-template-fetches-source-and-consumes-canonical-send-as-plan
+      operator_journeys:
+        - mode: standalone
+          confusors: [ghostwrite, send-as]
+          request: Draft this services agreement from the supplied versioned template, parties, and terms.
+          expected_outcome: Return a review-only draft with every baseline departure visible and a send-as plan that performs no delivery.
+        - mode: composed
+          request: Continue from the sealed contract draft into provider-specific review without drafting again.
+          expected_outcome: Reuse the sealed draft, deviations, and send proposal without changing contract content.
+          prior_evidence:
+            - The sealed draft_doc, deviations, and send_proposal from this runner.
+          must_not_repeat:
+            - Do not re-render or alter clauses already sealed by contract-drafter.
       inputs:
         template:
           source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
@@ -40,7 +52,7 @@ harness:
               account_ref: provider-account:contract-review-demo
               runtime_path: review_queue.plan
             audience:
-              type: repository_review
+              type: thread
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
             operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
@@ -61,12 +73,12 @@ harness:
               send_class: internal
               channel: other
               audience:
-                type: repository_review
+                type: thread
                 ref: RYDE-PLAY/frantic-86-contract-drafter
                 requires_reconfirmation: false
               content:
-                draft_ref: runx:contract-draft:95c347f0a4bfe15a
-                digest: sha256:db4d22e137ff620f24631dabd9c1b14e099d79259603f041ffa3b654869badb7
+                draft_ref: runx:contract-draft:69cff421e84ef9ce
+                digest: sha256:1c33a083c2d566941c5f2b49d7658b1db9238006f3d81903388bc8c6fe9ca80e
                 subject_or_title: Review the services agreement draft
               gates:
                 preflight_required: true
@@ -76,8 +88,8 @@ harness:
               provider_actions:
                 - review_queue.plan
               evidence_refs:
-                - runx:contract-draft:95c347f0a4bfe15a
-                - sha256:db4d22e137ff620f24631dabd9c1b14e099d79259603f041ffa3b654869badb7
+                - runx:contract-draft:69cff421e84ef9ce
+                - sha256:1c33a083c2d566941c5f2b49d7658b1db9238006f3d81903388bc8c6fe9ca80e
               success_checkpoint:
                 milestone: provider_delivery_required
                 description: Provider delivery and readback remain outside contract-drafter.
@@ -106,7 +118,7 @@ harness:
                     decision: ready
                     action_family: send-as
                     content:
-                      draft_ref: runx:contract-draft:95c347f0a4bfe15a
+                      draft_ref: runx:contract-draft:69cff421e84ef9ce
                   validation:
                     canonical_send_as_dependency_executed: true
                     provider_delivery_outside_contract_drafter: true
@@ -140,7 +152,7 @@ harness:
               account_ref: provider-account:contract-review-demo
               runtime_path: review_queue.plan
             audience:
-              type: repository_review
+              type: thread
               ref: RYDE-PLAY/frantic-86-contract-drafter
             consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
             operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
@@ -171,7 +183,6 @@ runners:
       name: contract-drafter
       result_from:
         - finalize
-        - refused
       steps:
         - id: draft-contract
           label: assemble the deterministic contract review draft
@@ -307,44 +318,6 @@ runners:
                         canonical_send_as_dependency_executed: { const: true }
                         provider_delivery_outside_contract_drafter: { const: true }
                         live_external_send_performed: { const: false }
-          artifacts:
-            named_emits:
-              contract_draft_packet: contract_draft_packet
-
-        - id: refused
-          label: seal a refusal before any send-as planning
-          when:
-            field: draft-contract.contract_draft.data.status
-            equals: refused
-          context:
-            contract_draft: draft-contract.contract_draft.data
-          run:
-            type: cli-tool
-            command: node
-            args:
-              - finalize.mjs
-              - finalizeRefusal
-            outputs:
-              contract_draft_packet:
-                type: object
-                schema:
-                  required: [schema, package, status, review_status, delivery_status, draft_ref, deviations, validation]
-                  additionalProperties: true
-                  properties:
-                    schema: { const: runx.contract_draft.v1 }
-                    package: { const: contract-drafter }
-                    status: { const: refused }
-                    review_status: { const: refused }
-                    delivery_status: { const: not_sent }
-                    draft_ref: { const: "" }
-                    deviations: { type: array, maxItems: 0 }
-                    validation:
-                      type: object
-                      required: [no_draft_emitted, no_proposal_emitted]
-                      additionalProperties: true
-                      properties:
-                        no_draft_emitted: { const: true }
-                        no_proposal_emitted: { const: true }
           artifacts:
             named_emits:
               contract_draft_packet: contract_draft_packet

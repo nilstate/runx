@@ -21,7 +21,7 @@
         "account_ref": "provider-account:contract-review-demo",
         "runtime_path": "review_queue.plan"
       },
-      "audience": {"type": "repository_review", "ref": "RYDE-PLAY/frantic-86-contract-drafter"},
+      "audience": {"type": "thread", "ref": "RYDE-PLAY/frantic-86-contract-drafter"},
       "consent_basis": "Public maintainer review of a nonbinding synthetic contract fixture.",
       "operator_context": "Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.",
       "subject_or_title": "Review the services agreement draft"
