@@ -78,7 +78,7 @@ fn explicit_ref_rejects_internal_skill() -> Result<(), Box<dyn std::error::Error
     let fixture = ExportFixture::new("runx-export-explicit-internal")?;
     fixture.write_skill("hidden", Some("internal"))?;
 
-    let error = run_export_command(
+    let error = match run_export_command(
         &ExportPlan {
             target: Target::Claude,
             refs: vec!["hidden".to_owned()],
@@ -87,8 +87,10 @@ fn explicit_ref_rejects_internal_skill() -> Result<(), Box<dyn std::error::Error
         },
         &fixture.project,
         &fixture.env,
-    )
-    .expect_err("internal skills must not be exported into agent discovery");
+    ) {
+        Ok(_) => return Err("internal skills were exported into agent discovery".into()),
+        Err(error) => error,
+    };
 
     assert!(
         error
