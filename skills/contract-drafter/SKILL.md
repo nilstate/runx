@@ -17,8 +17,9 @@ explicit parties, and explicit terms. The default graph reads only
 `template.source_digest` from the template input, renders only clause text
 present in that bound source, records each supplied value that differs from the
 template baseline, emits a proposal for the canonical `runx/send-as` planner,
-then consumes that proposal through the sibling canonical `send-as#plan` runner
-without executing provider delivery.
+then consumes that proposal through one governed `send-as` planning act bound
+to the pinned canonical `runx/send-as@sha-1f90b9364a3a#plan` contract without
+executing provider delivery.
 
 The skill does not approve legal terms, provide legal advice, execute a
 signature workflow, contact a real recipient, or run a package-local send
@@ -65,9 +66,10 @@ fall back to a baseline, guess a missing value, or add a clause.
   binds the official planner inputs `objective`, `principal`,
   `provider_context`, `audience`, `content_ref`, `consent_basis`, and
   `operator_context`.
-- `send_plan`: present only on the default graph result after canonical
-  `send-as#plan` consumes the proposal. The finalizer verifies the plan remains
-  draft-bound, approval-gated, and plan-only.
+- `send_plan`: present only on the default graph result after the governed
+  `send-as` act consumes the proposal under the pinned canonical planning
+  contract. The deterministic finalizer verifies the plan remains draft-bound,
+  approval-gated, and plan-only.
 - `send_as_result`: omitted from the contract draft packet. `contract-drafter`
   consumes canonical `send-as` planning, but it never embeds or executes a
   provider send result.
@@ -96,10 +98,11 @@ The run refuses closed and omits `draft_doc` and `send_proposal` while emitting
 - a baseline term lacks a clause mapping; or
 - any required downstream `terms.send` field is missing.
 
-Refusal output identifies every missing or invalid field and seals that refusal
-for review in the default graph. The package also exposes `refusal_check` for
-harness and policy validation; it emits the same refusal packet and exits with
-a failure status. Neither path creates a partial draft.
+Refusal output identifies every missing or invalid field. In the default graph
+it prevents both send-as planning and finalization, so the graph closes as a
+failure with no draft or proposal result. The package also exposes
+`refusal_check` for harness and policy validation; it emits the same refusal
+packet and exits with a failure status. Neither path creates a partial draft.
 
 ## Send-As Boundary
 
@@ -107,8 +110,9 @@ The default runner is a graph with three consequential steps:
 
 1. `draft-contract` runs deterministic package code to produce the draft and
    proposal.
-2. `plan-send-as` calls the canonical sibling `../send-as` runner `plan` with
-   the proposal inputs.
+2. `plan-send-as` executes one governed `send-as` planning act with the proposal
+   inputs and the pinned canonical `runx/send-as@sha-1f90b9364a3a#plan`
+   contract materialized in the package.
 3. `finalize` verifies the send plan remains draft-bound and plan-only.
 
 It does not include `./graph/send-as`, a package-local `send-as` namesake,
@@ -128,10 +132,8 @@ Required sequence:
 
 - `complete-template-fetches-source-and-consumes-canonical-send-as-plan` reads the
   template from `template.source_ref`, seals a draft with four visible
-  deviations, calls canonical `send-as#plan`, and leaves provider delivery
-  outside `contract-drafter`.
-- `default-missing-required-term-refuses-before-send-as` proves that a missing
-  required term stops before `send-as` and emits neither a draft nor a proposal.
+  deviations, executes the governed send-as planning act, and leaves provider
+  delivery outside `contract-drafter`.
 - `missing-required-term-refuses-without-proposal` runs `refusal_check`, omits
   `payment_terms`, returns failure, and emits neither a draft nor a proposal.
 
