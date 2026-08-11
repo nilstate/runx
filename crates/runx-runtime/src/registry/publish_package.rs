@@ -445,20 +445,19 @@ runners:
           inputs:
             value: sibling
   verify:
-    type: graph
+    type: agent
     inputs:
       provider_operation:
         type: json
         required: true
         packet: runx.test.provider-operation.v1
-    graph:
-      name: sibling-verify
-      result_from: [digest]
-      steps:
-        - id: digest
-          tool: data.digest
-          inputs:
-            value: $input.provider_operation
+    outputs:
+      verify_result: object
+    artifacts:
+      named_emits:
+        verify_result: verify_result
+      packets:
+        verify_result: runx.test.verify-result.v1
 "#,
         )?;
         fs::create_dir_all(temp.path().join("dist/packets"))?;
@@ -466,6 +465,10 @@ runners:
             temp.path()
                 .join("dist/packets/provider-operation.schema.json"),
             r#"{"x-runx-packet-id":"runx.test.provider-operation.v1","type":"object"}"#,
+        )?;
+        fs::write(
+            temp.path().join("dist/packets/verify-result.schema.json"),
+            r#"{"x-runx-packet-id":"runx.test.verify-result.v1","type":"object"}"#,
         )?;
 
         let package = prepare_registry_publish_package(RegistryPublishPackageRequest {
@@ -482,6 +485,7 @@ runners:
         assert!(
             package_paths.contains(&"dependencies/sibling/packets/provider-operation.schema.json")
         );
+        assert!(package_paths.contains(&"dependencies/sibling/packets/verify-result.schema.json"));
         let harness_path = package
             .harness
             .as_ref()
@@ -490,6 +494,11 @@ runners:
         assert!(
             harness_path
                 .join("dependencies/sibling/packets/provider-operation.schema.json")
+                .is_file()
+        );
+        assert!(
+            harness_path
+                .join("dependencies/sibling/packets/verify-result.schema.json")
                 .is_file()
         );
         Ok(())

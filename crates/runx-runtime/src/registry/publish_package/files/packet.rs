@@ -4,7 +4,10 @@ use std::path::Path;
 
 use super::insert_source_file;
 use crate::LoadedSkillPackage;
-use crate::packet_schemas::{PacketSchemaCatalog, packet_schema_directories};
+use crate::packet_schemas::{
+    PacketSchemaCatalog, declared_input_packet_ids, declared_runner_packet_ids,
+    declared_tool_packet_ids, packet_schema_directories,
+};
 use crate::registry::RegistryPackageFile;
 use crate::registry::publish_package::RegistryPublishPackageError;
 
@@ -17,6 +20,7 @@ pub(super) fn append_declared_packet_schemas(
 ) -> Result<(), RegistryPublishPackageError> {
     let mut materialized_packet_ids = packet_ids.clone();
     materialized_packet_ids.extend(loaded.resolved_input_packet_schemas.keys().cloned());
+    materialized_packet_ids.extend(package_declared_packet_ids(loaded));
     if materialized_packet_ids.is_empty() {
         return Ok(());
     }
@@ -59,4 +63,19 @@ pub(super) fn append_declared_packet_schemas(
         )?;
     }
     Ok(())
+}
+
+fn package_declared_packet_ids(loaded: &LoadedSkillPackage) -> BTreeSet<String> {
+    let mut packet_ids = BTreeSet::new();
+    packet_ids.extend(declared_input_packet_ids(&loaded.package.skill.inputs));
+    for manifest in loaded.package.profiles.values() {
+        packet_ids.extend(declared_input_packet_ids(&manifest.input_definitions));
+        for runner in manifest.runners.values() {
+            packet_ids.extend(declared_runner_packet_ids(runner));
+        }
+    }
+    for package_tool in loaded.package.tools.values() {
+        packet_ids.extend(declared_tool_packet_ids(&package_tool.tool));
+    }
+    packet_ids
 }
