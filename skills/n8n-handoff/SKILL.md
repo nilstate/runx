@@ -1,6 +1,6 @@
 ---
 name: n8n-handoff
-description: Validate a runx execution context and hand off a governed payload to an n8n workflow webhook with scoped auth, idempotency, and receipt expectations.
+description: Validate a runx execution context and hand off a governed payload to an n8n workflow through any compatible provider binding, with idempotency and receipt-backed readback.
 runx:
   category: ops
 ---
@@ -18,32 +18,16 @@ its workflow webhook, canvas, branching, fan-out, and downstream notifications.
 ## Runners
 
 - `preflight`: validates and normalizes the handoff context without network.
-- `send`: validates the context and posts the payload to the n8n webhook.
+- `send`: validates the context, invokes the selected n8n workflow, and reads the invocation back.
 
 Use `preflight` for reviews, CI, and local harnesses; it never needs approval.
 The `send` runner first calls native `control.prepare_handoff`, which validates
-the execution identity and produces both the canonical `delivery` envelope and
-the exact webhook request that carries it. One explicit graph gate approves
-that exact request because native `http.execute` is policy-gated rather than
-effect-owned; the HTTP tool then posts the approved request. There is no second
-approval, package handoff parser, HTTP wrapper, or token-bearing manifest.
-
-Because an n8n host may be self-hosted, bind the stored credential to that
-exact HTTPS audience when configuring it:
-
-```bash
-printf '%s' "$N8N_WEBHOOK_TOKEN" |
-  runx credential set n8n \
-    --profile workflow \
-    --auth-mode bearer \
-    --audience https://n8n.example.com \
-    --from-stdin
-```
-
-Then pass the same host without a scheme as `webhook_host`. Runx intersects
-the request allowlist with the credential audience before sending. A bare
-ambient `N8N_WEBHOOK_TOKEN` has no safe host binding for this dynamic-provider
-case and therefore cannot authorize the HTTP call.
+the execution identity and produces the canonical delivery envelope. It then
+uses the provider boundary for `workflow.invoke`; that boundary owns the exact
+approval, credential custody, idempotency, and provider operation. A separate
+provider read verifies the same event and invocation reference. The binding may
+be local or hosted and may target self-hosted or cloud n8n; the skill never
+assumes who holds the credential.
 
 ## Execution context
 
@@ -70,12 +54,9 @@ receiver must validate before starting its workflow.
 
 ## Edge cases
 
-- Cloud n8n cannot call a local shell or localhost runx process. Use hosted runx
-  APIs for public n8n listing work.
-- Self-hosted n8n can receive local outbound webhooks, but the receiver endpoint
-  still needs an operator-owned bearer token and idempotency check.
-- A profile audience and `webhook_host` must name the same host. Runx rejects a
-  mismatch before credential material reaches the HTTP transport.
+- A compatible n8n binding must resolve the selected `webhook_host`; absence is
+  an actionable preflight blocker, not permission to fall back to ambient HTTP.
+- Self-hosted and cloud bindings must both dedupe `event_id` before branching.
 - Do not put raw provider credentials into `payload` or `execution_context`.
   Pass credential references or let runx hold the provider secret.
 - If the workflow slug changes, update `handoff_audience` to the matching
@@ -90,7 +71,7 @@ receiver must validate before starting its workflow.
 - `payload` (required): business payload delivered to n8n.
 - `handoff_audience` (optional): defaults to
   `n8n:workflow:runx-governed-effect`.
-- `webhook_host` and `workflow_slug` (send runner): public n8n endpoint parts.
+- `webhook_host` and `workflow_slug` (send runner): exact n8n binding target and workflow selector.
 
 `event_id` is also the Runx mutation idempotency key and the value delivered as
 `idempotency_key`; there is no second retry identity that can drift from it.

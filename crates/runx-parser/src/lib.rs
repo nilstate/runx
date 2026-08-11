@@ -28,6 +28,10 @@ pub use graph::{
     MintAuthorityDirective, MintScopeSource, RawGraphIr, parse_graph_yaml, validate_graph,
     validate_graph_document,
 };
+pub use harness_fixture::{
+    HarnessProviderAccess, HarnessProviderGrantFixture, HarnessProviderOperationFixture,
+    HarnessProviderResponsesFixture,
+};
 pub use install::{
     SkillInstallError, SkillInstallOrigin, ValidatedSkillInstall, validate_skill_install,
 };

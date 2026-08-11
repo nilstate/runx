@@ -377,6 +377,7 @@ function validateInspectionClaims({
     );
   }
   findings.push(...validateOperatorJourneys(name, record, inspection));
+  findings.push(...validatePublicInvocationReadiness(name, record, inspection, runnerInspections));
   const closure = inspection.execution_closure;
   if (!hasCanonicalExecutionClosure(closure)) {
     findings.push(`${name}: native inspection omitted the canonical execution closure`);
@@ -402,6 +403,32 @@ function validateInspectionClaims({
     if (!hasCanonicalExecutionClosure(runnerInspection.execution_closure)) {
       findings.push(`${name}#${expectedRunner}: native inspection omitted the execution closure`);
     }
+  }
+  return findings;
+}
+
+function validatePublicInvocationReadiness(name, record, inspection, runnerInspections) {
+  if (record.catalog_visibility !== "public") return [];
+  const findings = [];
+  const readiness = inspection.semantic_report?.readiness;
+  if (readiness?.evaluated !== true) {
+    findings.push(`${name}: public skill has no evaluated native readiness report`);
+  }
+  if (readiness?.coldSelection !== true || readiness?.standaloneDefault !== true) {
+    findings.push(`${name}: public skill is not verified for direct agent invocation`);
+  }
+  if (readiness?.composedReuse !== true) {
+    findings.push(`${name}: public skill is not verified for composed Runx invocation`);
+  }
+  const defaultRunner = inspection.semantic_report?.defaultRunner;
+  const defaultInspection = runnerInspections.find(
+    (entry) => entry.runner?.name === defaultRunner,
+  );
+  const examples = defaultInspection?.runner?.input_schema?.examples;
+  if (!Array.isArray(examples) || examples.length === 0) {
+    findings.push(`${name}#${defaultRunner ?? "<missing>"}: agent default has no copy-valid invocation example`);
+  } else if (Buffer.byteLength(JSON.stringify(examples[0]), "utf8") > 4096) {
+    findings.push(`${name}#${defaultRunner}: agent default invocation example exceeds 4096 bytes`);
   }
   return findings;
 }
@@ -751,7 +778,7 @@ function runSelfTests() {
     status: "ok",
     name: "alpha",
     runners: ["default"],
-    runner: { name: "default" },
+    runner: { name: "default", input_schema: { examples: [{ objective: "fixture" }] } },
     catalog: { visibility: "public", role: "canonical" },
     execution_closure: {
       summary: "tool:data.read",
@@ -767,6 +794,17 @@ function runSelfTests() {
       skill: "alpha",
       defaultRunner: "default",
       diagnostics: [],
+      readiness: {
+        evaluated: true,
+        coldSelection: true,
+        standaloneDefault: true,
+        composedReuse: true,
+        providerProof: "none",
+        suppliedAgentAnswers: false,
+        coldSelectionConfusors: ["extract", "issue-intake", "research"],
+        standaloneCase: "standalone",
+        composedCase: "composed",
+      },
     },
     operator_journeys: [
       {
@@ -832,6 +870,24 @@ function runSelfTests() {
       runnerInspections: [inspection],
     }).length === 0,
     "matching catalog and execution claims must pass",
+  );
+  assert(
+    validatePublicInvocationReadiness(
+      "alpha",
+      official[0],
+      {
+        ...inspection,
+        semantic_report: {
+          ...inspection.semantic_report,
+          readiness: {
+            ...inspection.semantic_report.readiness,
+            standaloneDefault: false,
+          },
+        },
+      },
+      [inspection],
+    ).some((finding) => finding.includes("not verified for direct agent invocation")),
+    "unverified direct invocation must fail the core-skill audit",
   );
   const missingJourney = {
     ...inspection,

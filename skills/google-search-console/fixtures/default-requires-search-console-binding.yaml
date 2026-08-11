@@ -2,10 +2,10 @@ name: google-search-console-default-requires-provider-binding
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [google-analytics, organic-growth]
-    request: Show page-level Google Search performance for this verified property and date range.
-    expected_outcome: Use the live performance runner by default and fail immediately with one provider-binding message when no compatible Search Console grant is configured.
+    request: Show page-level Google Search performance without configuring a Search Console account.
+    expected_outcome: Refuse immediately with one provider-binding message before claiming search evidence.
 inputs:
   property: sc-domain:example.com
   start_date: "2026-07-01"

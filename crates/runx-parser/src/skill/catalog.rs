@@ -544,13 +544,17 @@ fn update_operator_readiness(
     readiness: &mut CatalogOperatorReadiness,
 ) {
     for journey in journeys {
+        let completed = matches!(
+            expected_status,
+            Some(crate::harness_fixture::HarnessExpectedStatus::Sealed)
+        );
         let exercises_default = if package_runner_case {
             selected_runner.is_none_or(|runner| runner == default_runner)
         } else {
             journey.exercises_runner.as_deref() == Some(default_runner)
         };
         match journey.mode {
-            crate::OperatorJourneyMode::Standalone if exercises_default => {
+            crate::OperatorJourneyMode::Standalone if exercises_default && completed => {
                 readiness.standalone_default = true;
                 readiness
                     .standalone_case
@@ -577,13 +581,15 @@ fn update_operator_readiness(
                     readiness.provider_proof = CatalogProviderProof::Harness;
                 }
             }
-            crate::OperatorJourneyMode::Composed => {
+            crate::OperatorJourneyMode::Composed if completed => {
                 readiness.composed_reuse = true;
                 readiness
                     .composed_case
                     .get_or_insert_with(|| case_name.to_owned());
             }
-            crate::OperatorJourneyMode::Standalone | crate::OperatorJourneyMode::Refusal => {}
+            crate::OperatorJourneyMode::Standalone
+            | crate::OperatorJourneyMode::Composed
+            | crate::OperatorJourneyMode::Refusal => {}
         }
     }
 }

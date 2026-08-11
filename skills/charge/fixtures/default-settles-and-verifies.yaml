@@ -1,0 +1,52 @@
+name: charge-default-settles-and-verifies
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [spend, x402-pay]
+    request: Charge this exact paid provider call through its returned MPP credential.
+    expected_outcome: Validate the paid call once, settle it once after approval, and return provider readback.
+  - mode: composed
+    request: Continue charging from this admitted paid-call request and provider credential.
+    expected_outcome: Reuse the tool call, price policy, credential, and retry identity without repricing or duplicate settlement.
+    prior_evidence:
+      - The admitted tool call, provider policy, and opaque returned credential supplied in the fixture.
+    must_not_repeat:
+      - Do not reprice the paid call.
+      - Do not charge again after settlement evidence exists.
+inputs:
+  mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+  provider_policy:
+    price_minor: 125
+    currency: USD
+    accepted_settlement_families: [mpp]
+    counterparty: provider:demo
+    realm: test
+  returned_credential: { family: mpp, credential_ref: credential:mpp:paid-search-001 }
+  verify_capability_ref: capability:charge-verify:paid-search-001
+  idempotency_seed: paid-search-001
+caller:
+  provider_responses:
+    principal_id: charge-fixture
+    grants:
+      - grant_id: charge-fixture
+        provider: mpp
+        scopes: [payment.charge, payment.charge.read]
+    operations:
+      - grant_id: charge-fixture
+        operation: payment.charge
+        target: provider:demo
+        access: mutate
+        result: { charge_ref: charge_demo_001, settlement_family: mpp, status: settled, credential_ref: credential:mpp:paid-search-001 }
+      - grant_id: charge-fixture
+        operation: payment.charge.read
+        target: provider:demo
+        access: read
+        result: { charge_ref: charge_demo_001, settlement_family: mpp, status: settled, credential_ref: credential:mpp:paid-search-001 }
+  approvals:
+    "provider-effect:sha256:7f848dcfd35213d4a3779ed47540bce01a809ed1116b323780146535140abd2f": true
+expect:
+  status: sealed
+  steps: [select-mpp, mpp-plan, mpp-settle, mpp-readback, select-stripe]
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: charge, source_case: direct-default-success, source: skills-fixture }

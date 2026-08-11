@@ -1,0 +1,48 @@
+name: n8n-handoff-default-delivers-webhook
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [zapier-handoff, governed-outbound]
+    request: Hand this governed Runx payload to the configured n8n workflow.
+    expected_outcome: Prepare, approve, and deliver one idempotent webhook request with the receiver response captured.
+  - mode: composed
+    request: Continue this completed Runx operation into the selected n8n workflow.
+    expected_outcome: Reuse the supplied run context and payload without rebuilding upstream results or duplicating webhook delivery.
+    prior_evidence:
+      - The validated Runx execution context, payload, workflow target, and event id supplied in the fixture.
+    must_not_repeat:
+      - Do not rerun the upstream Runx operation.
+      - Do not deliver the webhook again after its response is receipted.
+inputs:
+  webhook_host: n8n.example.com
+  workflow_slug: runx-governed-effect
+  event_id: evt_n8n_demo_001
+  handoff_audience: n8n:workflow:runx-governed-effect
+  execution_context: { caller: runx-cli, workflow_ref: self-hosted-n8n-demo }
+  payload: { hello: workflow }
+caller:
+  provider_responses:
+    principal_id: n8n-fixture
+    grants:
+      - grant_id: n8n-fixture
+        provider: n8n
+        scopes: [orchestrator.n8n.workflow.invoke, orchestrator.n8n.workflow.read]
+    operations:
+      - grant_id: n8n-fixture
+        operation: workflow.invoke
+        target: n8n.example.com
+        access: mutate
+        result: { event_id: evt_n8n_demo_001, invocation_ref: n8n:execution:001, status: accepted, idempotency_key: $request.idempotency_key }
+      - grant_id: n8n-fixture
+        operation: workflow.invocation.read
+        target: n8n.example.com
+        access: read
+        result: { event_id: evt_n8n_demo_001, invocation_ref: n8n:execution:001, status: accepted, idempotency_key: $previous.idempotency_key }
+  approvals:
+    "provider-effect:sha256:ad289e0d9074e02432aa0e6e08e75cac04dc56756d792fd0af5657028595250d": true
+expect:
+  status: sealed
+  steps: [build-handoff-context, invoke, readback]
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: n8n-handoff, source_case: direct-default-success, source: skills-fixture }

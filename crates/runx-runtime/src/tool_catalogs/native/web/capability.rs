@@ -22,7 +22,10 @@ impl CapabilityInput for WebFetchInput {
     fn defaults() -> JsonObject {
         JsonObject::from([
             ("url".to_owned(), JsonValue::String(String::new())),
-            ("allowlist".to_owned(), JsonValue::Array(Vec::new())),
+            (
+                "allowlist".to_owned(),
+                JsonValue::Array(vec![JsonValue::String("*".to_owned())]),
+            ),
             ("extract".to_owned(), JsonValue::String("text".to_owned())),
             (
                 "max_bytes".to_owned(),
@@ -39,7 +42,7 @@ const FIELDS: &[CapabilityField] = &[
     },
     CapabilityField {
         name: "allowlist",
-        description: "Exact or leading-wildcard hosts admitted at every redirect hop.",
+        description: "Optional host restriction; defaults to every publicly routable host.",
     },
     CapabilityField {
         name: "extract",

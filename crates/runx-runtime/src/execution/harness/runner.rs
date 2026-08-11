@@ -178,12 +178,37 @@ where
 {
     let fixture_path = fixture_path.as_ref();
     let fixture = load_harness_fixture(fixture_path)?;
+    #[cfg(feature = "catalog")]
+    let mut fixture = fixture;
     let http_responses = runx_parser::harness_fixture::parse_harness_http_responses(
         fixture.caller.get("http_responses"),
         "caller.http_responses",
     )
     .map_err(HarnessFixtureError::Parser)?;
     options.effects = super::effects_with_harness_http_responses(&options.effects, &http_responses);
+    #[cfg(feature = "catalog")]
+    {
+        let provider_responses = runx_parser::harness_fixture::parse_harness_provider_responses(
+            fixture.caller.get("provider_responses"),
+            "caller.provider_responses",
+        )
+        .map_err(HarnessFixtureError::Parser)?;
+        options.effects = super::effects_with_harness_provider_responses(
+            &options.effects,
+            provider_responses.as_ref(),
+        )
+        .map_err(|error| RuntimeError::effect_state("wiring harness provider responses", error))?;
+        if provider_responses.is_some() {
+            fixture.env.insert(
+                crate::HOSTED_API_BASE_URL_ENV.to_owned(),
+                super::HARNESS_PROVIDER_BASE_URL.to_owned(),
+            );
+            fixture.env.insert(
+                crate::HOSTED_API_TOKEN_ENV.to_owned(),
+                super::HARNESS_PROVIDER_TOKEN.to_owned(),
+            );
+        }
+    }
     let target_path = resolve_target_path(fixture_path, &fixture.target)?;
     seed_harness_receipts(&fixture, &target_path, &options)?;
     let receipt_signature = options.receipt_signature.clone();

@@ -1,5 +1,5 @@
 skill: x402-pay
-version: "0.4.0"
+version: "0.5.0"
 catalog:
   kind: graph
   audience: operator
@@ -27,18 +27,6 @@ runners:
         required: true
       realm: { type: string, required: false }
       idempotency_seed: { type: string, required: true }
-      provider:
-        type: string
-        required: true
-        description: Trusted configured x402 buyer or facilitator adapter.
-      target:
-        type: string
-        required: true
-        description: Exact paid-resource or payment challenge target.
-      idempotency_key:
-        type: string
-        required: true
-        description: Stable retry key for this exact x402 payment.
     graph:
       name: x402-pay-execute
       result_from: [readback]
@@ -54,15 +42,15 @@ runners:
         - id: pay
           tool: provider.mutate
           mutation: true
-          idempotency_key: $input.idempotency_key
+          idempotency_key: $input.idempotency_seed
           scopes: [payment.x402]
           policy:
             provider_permission: { verb: write }
           inputs:
             operation: payment.x402
-            target: $input.target
-            expected_provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            target: $input.payment_signal.counterparty
+            expected_provider: x402
+            idempotency_key: $input.idempotency_seed
             result_fields: [payment_ref, challenge_id, amount_minor, currency, status]
             expected_result:
               challenge_id: $input.payment_signal.challenge_id
@@ -80,8 +68,8 @@ runners:
             provider_permission: { verb: read }
           inputs:
             operation: payment.x402.read
-            target: $input.target
-            expected_provider: $input.provider
+            target: $input.payment_signal.counterparty
+            expected_provider: x402
             result_fields: [payment_ref, challenge_id, amount_minor, currency, status]
           context:
             input: pay.provider_operation.data.result

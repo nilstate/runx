@@ -2,10 +2,10 @@ name: n8n-handoff-default-reaches-exact-approval
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [zapier-handoff, governed-outbound]
     request: Hand this governed Runx payload to the configured n8n workflow.
-    expected_outcome: Prepare the exact idempotent webhook request and stop at one explicit approval before delivery.
+    expected_outcome: Prepare the exact idempotent handoff and stop before delivery when no compatible n8n binding is configured.
 inputs:
   webhook_host: n8n.example.com
   workflow_slug: runx-governed-effect
@@ -13,9 +13,6 @@ inputs:
   handoff_audience: n8n:workflow:runx-governed-effect
   execution_context: { caller: runx-cli, workflow_ref: self-hosted-n8n-demo }
   payload: { hello: workflow }
-caller:
-  approvals:
-    n8n-handoff.send.approval: false
 expect:
   status: policy_denied
-metadata: { public_skill: n8n-handoff, source_case: direct-default-approval, source: skills-fixture }
+metadata: { public_skill: n8n-handoff, source_case: direct-default-provider-refusal, source: skills-fixture }

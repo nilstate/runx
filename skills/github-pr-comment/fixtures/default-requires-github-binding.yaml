@@ -2,10 +2,10 @@ name: github-pr-comment-default-requires-github-binding
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [github-sync, issue-triage]
-    request: Post this exact review comment to the selected GitHub pull request.
-    expected_outcome: Bind the body digest and stop before mutation with one actionable grant error when no GitHub provider binding is configured.
+    request: Post this review comment without a local or hosted GitHub binding.
+    expected_outcome: Refuse with one actionable grant error before mutating GitHub.
 inputs:
   repository: runxhq/runx
   pr_number: "42"

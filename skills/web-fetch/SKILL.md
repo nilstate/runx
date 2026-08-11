@@ -1,6 +1,6 @@
 ---
 name: web-fetch
-description: Fetch and extract one web source within an explicit allowlist, returning the content by digest with full provenance.
+description: Fetch and extract one public web source, optionally restrict its hosts, and return the content by digest with full provenance.
 runx:
   category: research
 ---
@@ -12,10 +12,10 @@ return that slice by digest with the provenance needed to trust it later.
 
 ## What this skill does
 
-`web-fetch` resolves a single URL against a host allowlist, retrieves it,
+`web-fetch` retrieves a single public URL,
 extracts text, metadata, or links, and seals the result so a downstream step can
 cite the fetch without re-fetching. It checks the final host against the
-allowlist before and after redirects, retrieves up to `max_bytes`, and returns
+effective host policy before and after redirects, retrieves up to `max_bytes`, and returns
 the final URL, the HTTP status, a `content_digest` over the retrieved body, the
 extracted slice, and a provenance block recording when it ran, every redirect
 hop, and how many bytes it read. The body is referenced by digest; only the
@@ -25,8 +25,9 @@ This is the primitive an agent reaches for when it has already decided which pag
 to read. The decision it makes easier is "can I read this page, and what did it
 actually say", with the answer backed by a digest instead of a remembered
 paraphrase. The calling agent decides which sources matter and synthesizes
-across them; `web-fetch` retrieves exactly one source and refuses anything off
-the allowlist.
+across them; `web-fetch` retrieves exactly one source. By default it may follow
+that source across any publicly routable host. Supply `allowlist` only when the
+operator needs to narrow the initial request and every redirect to named hosts.
 
 The request path is native Runx code. Skills do not supply a JavaScript HTTP
 client: the runtime owns public-network enforcement, redirect admission,
@@ -36,8 +37,8 @@ timeouts, retries, byte limits, response digests, and receipt-safe evidence.
 
 - An agent has chosen a specific page and needs its content bound to a
   `content_digest` so a later step can cite it without re-fetching.
-- A research pass needs each source retrieved through a single bounded
-  `net:allowlist` fetch with a complete redirect chain and byte count.
+- A research pass needs each source retrieved through one bounded public-network
+  fetch with a complete redirect chain and byte count.
 - A review must later prove what a page said at fetch time.
 - A follow-on governed operation needs one source extracted as
   `text`, `metadata`, or `links`.
@@ -46,21 +47,23 @@ timeouts, retries, byte limits, response digests, and receipt-safe evidence.
 
 - To judge, rank, or synthesize across sources. That remains caller reasoning;
   `web-fetch` retrieves exactly one source and refuses to reason over many.
-- To reach a host the caller did not declare in `allowlist`, including a host
+- To reach a private, loopback, link-local, or otherwise non-public address.
+- To reach a host outside an explicitly supplied `allowlist`, including a host
   reached only through a redirect.
 - To write anything. The only scope is `net:allowlist`; there is no repo, file,
   wallet, or send authority here.
 - To inline a large raw body. The extracted slice is the payload; the full body
   lives behind `content_digest`.
-- To carry secrets. Request headers may reference a credential by `${secret}`
-  handle, but no header value, cookie, token, or auth string appears in the
-  output or the receipt.
+- To carry credentials, cookies, or custom authorization headers. Use the
+  appropriate authenticated provider capability for those reads.
 
 ## Procedure
 
-1. Require `url` and `allowlist`. Either missing returns `needs_agent`; the
-   fetch cannot run without a target and a declared scope.
-2. Match the URL host against `allowlist`. On a miss, return `policy_denied`
+1. Require `url` at runner preflight. A missing target fails before the graph
+   starts with the exact missing input.
+2. Use `allowlist: ["*"]` when the caller omits it, meaning any publicly
+   routable host. A caller-supplied allowlist narrows that default. Match the
+   URL host against the effective allowlist. On a miss, return `policy_denied`
    before any network call, recording the attempted host and the allowlist it
    was checked against.
 3. Fetch, following redirects, re-checking each redirect target's host against
@@ -77,8 +80,8 @@ timeouts, retries, byte limits, response digests, and receipt-safe evidence.
 
 ## Edge cases and stop conditions
 
-- **Missing `url` or `allowlist`:** return `needs_agent`; the fetch has no target
-  or no scope to check against.
+- **Missing `url`:** fail runner preflight; do not start or seal an empty fetch.
+- **Omitted `allowlist`:** use `["*"]`; private-network protection still applies.
 - **Host off the allowlist:** stop with `policy_denied` before any network call;
   record the attempted host, not a response body (there is none).
 - **Redirect off the allowlist:** halt the fetch, return `policy_denied` naming
@@ -87,14 +90,14 @@ timeouts, retries, byte limits, response digests, and receipt-safe evidence.
   digest is over the bytes actually retrieved.
 - **Large raw body:** never inline beyond the extracted slice; anything bigger
   than the requested view is reachable only through `content_digest`.
-- **Credential in a header:** reference it by `${secret}` handle only; no header
-  value, cookie, or token reaches the output or the receipt.
+- **Authenticated source:** stop and use the relevant provider read skill; this
+  public fetch does not accept credentials or custom headers.
 
 ## Output schema
 
 ```yaml
 fetch_result:
-  decision: ready | needs_agent | policy_denied
+  decision: ready | needs_agent | policy_denied | provider_error
   final_url: string            # URL after redirects, the one the digest is over
   status: number               # HTTP status of the final response
   content_digest: string       # digest of the retrieved body, algorithm prefix included
@@ -129,9 +132,9 @@ allowlist decision; no header value reaches it.
 
 ## Inputs
 
-- `url` (required): the single URL to fetch; its host must match the allowlist.
-- `allowlist` (required): permitted hosts or host patterns; the URL and every
-  redirect target must match an entry.
+- `url` (required): the single public HTTP(S) URL to fetch.
+- `allowlist` (optional): permitted hosts or host patterns for the URL and every
+  redirect target. Omit it for `["*"]`, meaning any publicly routable host.
 - `extract` (optional): `text`, `metadata`, or `links`. Defaults to `text`.
 - `max_bytes` (optional): cap on bytes read; a clipped read is flagged
   `truncated` in provenance.

@@ -72,6 +72,45 @@ pub struct HarnessHttpResponseFixture {
     pub body: String,
 }
 
+/// One hosted-provider grant exposed only to deterministic harness execution.
+/// This is authority-shaped test evidence, not a production credential or a
+/// public runner input.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HarnessProviderGrantFixture {
+    pub grant_id: String,
+    pub provider: String,
+    pub scopes: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HarnessProviderAccess {
+    Read,
+    Mutate,
+}
+
+/// One exact provider operation and readback result admitted by the harness.
+/// The runtime still performs its normal authentication, grant selection,
+/// approval, operation validation, finality, and receipt transitions.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HarnessProviderOperationFixture {
+    pub grant_id: String,
+    pub operation: String,
+    pub target: String,
+    pub access: HarnessProviderAccess,
+    pub result: JsonValue,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HarnessProviderResponsesFixture {
+    pub principal_id: String,
+    pub grants: Vec<HarnessProviderGrantFixture>,
+    pub operations: Vec<HarnessProviderOperationFixture>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HarnessFixture {
     pub name: String,
@@ -262,6 +301,10 @@ fn validate_fixture(fixture: RawHarnessFixture) -> Result<HarnessFixture, Harnes
         fixture.caller.get("http_responses"),
         "caller.http_responses",
     )?;
+    parse_harness_provider_responses(
+        fixture.caller.get("provider_responses"),
+        "caller.provider_responses",
+    )?;
     Ok(HarnessFixture {
         name: fixture.name,
         kind: fixture.kind,
@@ -279,6 +322,109 @@ fn validate_fixture(fixture: RawHarnessFixture) -> Result<HarnessFixture, Harnes
             .collect::<Result<_, _>>()?,
         metadata: fixture.metadata,
     })
+}
+
+/// Parse the deterministic hosted-provider lane used by conventional harness
+/// fixtures. The compact fixture describes authority and readback; the runtime
+/// owns the wire protocol and every governance transition around it.
+pub fn parse_harness_provider_responses(
+    value: Option<&JsonValue>,
+    field: &str,
+) -> Result<Option<HarnessProviderResponsesFixture>, HarnessFixtureError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let encoded = serde_json::to_value(value).map_err(|error| HarnessFixtureError::Invalid {
+        field: field.to_owned(),
+        message: error.to_string(),
+    })?;
+    let fixture =
+        serde_json::from_value::<HarnessProviderResponsesFixture>(encoded).map_err(|error| {
+            HarnessFixtureError::Invalid {
+                field: field.to_owned(),
+                message: error.to_string(),
+            }
+        })?;
+    validate_harness_provider_responses(fixture, field).map(Some)
+}
+
+fn validate_harness_provider_responses(
+    fixture: HarnessProviderResponsesFixture,
+    field: &str,
+) -> Result<HarnessProviderResponsesFixture, HarnessFixtureError> {
+    use std::collections::BTreeSet;
+
+    const MAX_GRANTS: usize = 16;
+    const MAX_OPERATIONS: usize = 32;
+    if fixture.principal_id.trim().is_empty() || fixture.principal_id.len() > 256 {
+        return Err(HarnessFixtureError::Invalid {
+            field: format!("{field}.principal_id"),
+            message: "must be a non-empty principal id no longer than 256 characters".to_owned(),
+        });
+    }
+    if fixture.grants.is_empty() || fixture.grants.len() > MAX_GRANTS {
+        return Err(HarnessFixtureError::Invalid {
+            field: format!("{field}.grants"),
+            message: format!("must contain between 1 and {MAX_GRANTS} grants"),
+        });
+    }
+    if fixture.operations.is_empty() || fixture.operations.len() > MAX_OPERATIONS {
+        return Err(HarnessFixtureError::Invalid {
+            field: format!("{field}.operations"),
+            message: format!("must contain between 1 and {MAX_OPERATIONS} operations"),
+        });
+    }
+    let mut grant_ids = BTreeSet::new();
+    for (index, grant) in fixture.grants.iter().enumerate() {
+        let grant_field = format!("{field}.grants[{index}]");
+        if grant.grant_id.trim().is_empty()
+            || grant.provider.trim().is_empty()
+            || grant.scopes.is_empty()
+            || grant.scopes.iter().any(|scope| scope.trim().is_empty())
+        {
+            return Err(HarnessFixtureError::Invalid {
+                field: grant_field,
+                message: "grant_id, provider, and every declared scope must be non-empty"
+                    .to_owned(),
+            });
+        }
+        if !grant_ids.insert(grant.grant_id.as_str()) {
+            return Err(HarnessFixtureError::Invalid {
+                field: grant_field,
+                message: format!("duplicates grant id {:?}", grant.grant_id),
+            });
+        }
+    }
+    let mut operations = BTreeSet::new();
+    for (index, operation) in fixture.operations.iter().enumerate() {
+        let operation_field = format!("{field}.operations[{index}]");
+        if !grant_ids.contains(operation.grant_id.as_str()) {
+            return Err(HarnessFixtureError::Invalid {
+                field: format!("{operation_field}.grant_id"),
+                message: "must reference a declared harness grant".to_owned(),
+            });
+        }
+        if operation.operation.trim().is_empty() || operation.target.trim().is_empty() {
+            return Err(HarnessFixtureError::Invalid {
+                field: operation_field,
+                message: "operation and target must be non-empty".to_owned(),
+            });
+        }
+        let identity = (
+            operation.grant_id.as_str(),
+            operation.operation.as_str(),
+            operation.target.as_str(),
+            operation.access,
+        );
+        if !operations.insert(identity) {
+            return Err(HarnessFixtureError::Invalid {
+                field: operation_field,
+                message: "duplicates an earlier grant, operation, target, and access tuple"
+                    .to_owned(),
+            });
+        }
+    }
+    Ok(fixture)
 }
 
 /// Parse the deterministic HTTP-response lane shared by conventional and inline

@@ -11,11 +11,6 @@ operator_journeys:
     must_not_repeat:
       - Do not invoke the planning agent.
       - Do not ask the caller to author provider operations, result fields, payload plumbing, or an idempotency key.
-env:
-  RUNX_PROVIDER_PERMISSION_GRANT_ID: grant-send-demo
-  RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["message.send"]'
-  RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF: runx:principal:release-bot
-  RUNX_PROVIDER_PERMISSION_TRANSPORT: hosted:grant-send-demo
 inputs:
   send_plan:
     decision: ready
@@ -40,13 +35,33 @@ inputs:
     provider: provider-send-demo
     target: account:acct_release/channel:release-subscribers
 caller:
+  provider_responses:
+    principal_id: release-bot-fixture
+    grants:
+      - grant_id: send-as-composed-fixture
+        provider: provider-send-demo
+        scopes: [message.send]
+    operations:
+      - grant_id: send-as-composed-fixture
+        operation: message.send
+        target: account:acct_release/channel:release-subscribers
+        access: mutate
+        result:
+          message_id: msg_release_001
+          principal_ref: account:release-bot
+          audience_ref: release-subscribers
+          content_digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+          status: sent
+          sent_at: "2026-08-11T00:00:00Z"
+          idempotency_key: $request.idempotency_key
   approvals:
-    "provider-effect:sha256:e41743bc96f7779bbe61dad47f07bca8ff0f9b47e9104cf66a770b5eb8f63088": false
+    "provider-effect:sha256:5630f5fbff6f7f8b56c30efbf435bebc91ef4d0dd64f1c6384409ff258b27e05": true
 expect:
-  status: policy_denied
+  status: sealed
   receipt:
     schema: runx.receipt.v1
-    disposition: blocked
+    state: sealed
+    disposition: closed
 metadata:
   public_skill: send-as
   source_case: composed-apply-reuses-plan

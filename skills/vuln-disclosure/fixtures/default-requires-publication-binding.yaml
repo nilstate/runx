@@ -2,10 +2,10 @@ name: vuln-disclosure-default-requires-publication-binding
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [vuln-triage, cve-audit]
-    request: Publish this validated vulnerability advisory to the exact configured security channel.
-    expected_outcome: Prepare the exact advisory and stop at the publication boundary when no live provider binding is configured.
+    request: Publish this advisory without configuring a compatible security-publication binding.
+    expected_outcome: Refuse at the publication boundary without claiming an advisory was published.
 inputs:
   advisory_packet:
     schema: runx.security.vulnerability_advisory.v1

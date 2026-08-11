@@ -2,7 +2,7 @@ name: x402-pay-default-requires-trusted-buyer-adapter
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [spend, stripe-pay]
     request: Pay this exact x402 challenge under the supplied bounded payment authority.
     expected_outcome: Validate the quote and stop before payment with one actionable adapter error when no trusted x402 buyer is configured.
@@ -42,9 +42,6 @@ inputs:
     capabilities: [effect_single_use_capability]
     issued_by_ref: { type: host, uri: authority:payment:test }
   idempotency_seed: demo-x402-001
-  provider: x402
-  target: merchant:demo
-  idempotency_key: x402-demo-001
 expect:
   status: policy_denied
 metadata: { public_skill: x402-pay, source_case: direct-default-preflight, source: skills-fixture }

@@ -1,0 +1,48 @@
+name: zapier-handoff-default-delivers-hook
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [n8n-handoff, governed-outbound]
+    request: Hand this governed Runx payload to the configured Zapier Catch Hook.
+    expected_outcome: Prepare, approve, and deliver one idempotent hook request with the receiver response captured.
+  - mode: composed
+    request: Continue this completed Runx operation into the selected Zapier workflow.
+    expected_outcome: Reuse the supplied run context and payload without rebuilding upstream results or duplicating hook delivery.
+    prior_evidence:
+      - The validated Runx execution context, payload, hook target, and event id supplied in the fixture.
+    must_not_repeat:
+      - Do not rerun the upstream Runx operation.
+      - Do not deliver the hook again after its response is receipted.
+inputs:
+  zapier_account_id: "12345678"
+  zapier_hook_id: abcDEF123
+  event_id: evt_zapier_demo_001
+  handoff_audience: zapier:zap:runx-governed-effect
+  execution_context: { caller: runx-cli, workflow_ref: operator-zap-demo }
+  payload: { hello: zap }
+caller:
+  provider_responses:
+    principal_id: zapier-fixture
+    grants:
+      - grant_id: zapier-fixture
+        provider: zapier
+        scopes: [orchestrator.zapier.workflow.invoke, orchestrator.zapier.workflow.read]
+    operations:
+      - grant_id: zapier-fixture
+        operation: hook.invoke
+        target: "12345678"
+        access: mutate
+        result: { event_id: evt_zapier_demo_001, invocation_ref: zapier:run:001, status: accepted, idempotency_key: $request.idempotency_key }
+      - grant_id: zapier-fixture
+        operation: hook.invocation.read
+        target: "12345678"
+        access: read
+        result: { event_id: evt_zapier_demo_001, invocation_ref: zapier:run:001, status: accepted, idempotency_key: $previous.idempotency_key }
+  approvals:
+    "provider-effect:sha256:458eede53654e480274fa370c0b98d8d8c8696286b62429cf27e225f38c5b1f8": true
+expect:
+  status: sealed
+  steps: [build-handoff-context, invoke, readback]
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: zapier-handoff, source_case: direct-default-success, source: skills-fixture }

@@ -93,6 +93,19 @@ impl RuntimeEffectRegistry {
         Ok(())
     }
 
+    /// Replace one effect family while preserving every unrelated runtime
+    /// effect. This is crate-private because only isolated runtime assembly
+    /// (currently the deterministic harness) may alter an already-wired
+    /// registry.
+    #[cfg(feature = "catalog")]
+    pub(crate) fn replace_effect<T>(&mut self, effect: T) -> Result<(), RuntimeEffectError>
+    where
+        T: RuntimeEffect + 'static,
+    {
+        self.families.remove(effect.family());
+        self.register_effect(effect)
+    }
+
     pub(crate) fn find_replay(
         &self,
         request: EffectStepRequest<'_>,

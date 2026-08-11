@@ -65,7 +65,7 @@ fn exports_claude_project_scope_with_project_relative_skill_ref()
 
     let shim = fixture.read_project_file(".claude/skills/visible/SKILL.md")?;
     assert!(shim.contains("/opt/runx/bin/runx skill skills/visible"));
-    assert!(shim.contains("--objective \"<objective>\""));
+    assert!(shim.contains(r#"--input-json objective '"fixture"'"#));
     assert!(!shim.contains(&format!(
         "runx skill {}",
         fixture.project.to_str().unwrap_or_default()
@@ -74,11 +74,11 @@ fn exports_claude_project_scope_with_project_relative_skill_ref()
 }
 
 #[test]
-fn explicit_ref_exports_internal_skill() -> Result<(), Box<dyn std::error::Error>> {
+fn explicit_ref_rejects_internal_skill() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = ExportFixture::new("runx-export-explicit-internal")?;
     fixture.write_skill("hidden", Some("internal"))?;
 
-    let report = run_export_command(
+    let error = run_export_command(
         &ExportPlan {
             target: Target::Claude,
             refs: vec!["hidden".to_owned()],
@@ -87,11 +87,15 @@ fn explicit_ref_exports_internal_skill() -> Result<(), Box<dyn std::error::Error
         },
         &fixture.project,
         &fixture.env,
-    )?;
+    )
+    .expect_err("internal skills must not be exported into agent discovery");
 
-    assert_eq!(report.exported.len(), 1);
-    assert_eq!(report.exported[0].skill, "hidden");
-    assert!(fixture.home.join(".claude/skills/hidden/SKILL.md").exists());
+    assert!(
+        error
+            .to_string()
+            .contains("cannot export hidden as an agent skill")
+    );
+    assert!(!fixture.home.join(".claude/skills/hidden/SKILL.md").exists());
     Ok(())
 }
 
@@ -130,7 +134,7 @@ fn codex_global_writes_shim_and_idempotent_permission_block()
     let shim = fixture.read_home_file(".codex/skills/visible/SKILL.md")?;
     assert!(shim.contains("name: visible"));
     assert!(!shim.contains("allowed-tools"));
-    assert!(shim.contains("--objective \"<objective>\""));
+    assert!(shim.contains(r#"--input-json objective '"fixture"'"#));
     assert!(shim.contains("local-development receipt identity"));
     assert!(shim.contains("complete signer tuple"));
     assert!(shim.contains("If runx returns `needs_agent` or `needs_approval`"));
@@ -278,8 +282,8 @@ fn exports_default_runner_inputs_when_skill_frontmatter_has_none()
     )?;
 
     let shim = fixture.read_home_file(".codex/skills/work-plan/SKILL.md")?;
-    assert!(shim.contains("--objective \"<objective>\""));
-    assert!(shim.contains("--principal \"<principal>\""));
+    assert!(shim.contains(r#"--input-json objective '"fixture"'"#));
+    assert!(shim.contains(r#"--input-json principal '"fixture"'"#));
     assert!(!shim.contains("\"input_schema\""));
     assert!(!shim.contains("\"required\": ["));
     assert!(shim.contains("skill inspect"));
@@ -295,12 +299,11 @@ fn exports_default_runner_inputs_when_skill_frontmatter_has_none()
 }
 
 #[test]
-fn exports_multi_runner_skill_without_default_with_explicit_selection()
--> Result<(), Box<dyn std::error::Error>> {
+fn omits_multi_runner_skill_without_default() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = ExportFixture::new("runx-export-multi-runner-selection")?;
     fixture.write_multi_runner_skill_without_default("frantic-operator")?;
 
-    run_export_command(
+    let report = run_export_command(
         &ExportPlan {
             target: Target::Codex,
             refs: Vec::new(),
@@ -311,16 +314,13 @@ fn exports_multi_runner_skill_without_default_with_explicit_selection()
         &fixture.env,
     )?;
 
-    let shim = fixture.read_home_file(".codex/skills/frantic-operator/SKILL.md")?;
-    assert!(shim.contains("## Other runners"));
-    assert!(shim.contains("- `payments`:"));
-    assert!(shim.contains("- `payout_preflight`:"));
-    assert!(shim.contains("skill inspect"));
-    assert!(shim.contains("frantic-operator payments --json"));
-    assert!(shim.contains("frantic-operator payout_preflight --json"));
-    assert!(!shim.contains("--claim \"<claim>\""));
-    assert!(!shim.contains("\n+  --json"));
-    assert!(shim.contains("package-digest=sha256:"));
+    assert!(report.exported.is_empty());
+    assert!(
+        !fixture
+            .home
+            .join(".codex/skills/frantic-operator/SKILL.md")
+            .exists()
+    );
     Ok(())
 }
 
@@ -436,7 +436,7 @@ fn explicit_ref_exports_official_source_skill() -> Result<(), Box<dyn std::error
     let shim = fixture.read_home_file(".codex/skills/work-plan/SKILL.md")?;
     assert!(shim.contains("skill "));
     assert!(shim.contains("/official-skills/work-plan"));
-    assert!(shim.contains("--objective \"<objective>\""));
+    assert!(shim.contains(r#"--input-json objective '"fixture"'"#));
     Ok(())
 }
 

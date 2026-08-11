@@ -1,5 +1,5 @@
 skill: refund
-version: "0.4.0"
+version: "0.5.0"
 catalog:
   kind: graph
   audience: operator
@@ -36,20 +36,8 @@ runners:
       settlement_family:
         type: string
         required: true
-        description: Real configured refund family; mock remains explicit test-only planning.
+        description: Settlement family recorded by the original payment and bounded by the supplied authority.
         schema: { enum: [mpp, stripe] }
-      provider:
-        type: string
-        required: true
-        description: Configured provider that can reverse and read the original charge.
-      target:
-        type: string
-        required: true
-        description: Exact provider charge or payment target.
-      idempotency_key:
-        type: string
-        required: true
-        description: Stable retry key for this exact refund.
     graph:
       name: refund-execute
       result_from: [mpp-readback, stripe-readback]
@@ -75,17 +63,15 @@ runners:
             provider_permission: { verb: write }
           inputs:
             operation: payment.refund
-            target: $input.target
-            expected_provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            expected_provider: $input.settlement_family
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
             expected_result:
               original_receipt_ref: $input.original_receipt_ref
               amount_minor: $input.refund_request.amount_minor
-            input:
-              refund_plan: $input.refund_plan
           context:
-            refund_plan: mpp-plan.refund_plan.data
+            target: mpp-plan.refund_plan.data.adapter_handoff.original_money_movement_id
+            idempotency_key: mpp-plan.refund_plan.data.adapter_handoff.idempotency_key
+            input: mpp-plan.refund_plan.data
         - id: mpp-readback
           when: { field: select-mpp.comparison.data.equal, equals: true }
           tool: provider.read
@@ -94,10 +80,10 @@ runners:
             provider_permission: { verb: read }
           inputs:
             operation: payment.refund.read
-            target: $input.target
-            expected_provider: $input.provider
+            expected_provider: $input.settlement_family
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
           context:
+            target: mpp-plan.refund_plan.data.adapter_handoff.original_money_movement_id
             input: mpp-refund.provider_operation.data.result
             expected_result: mpp-refund.provider_operation.data.result
 
@@ -122,17 +108,15 @@ runners:
             provider_permission: { verb: write }
           inputs:
             operation: payment.refund
-            target: $input.target
-            expected_provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            expected_provider: $input.settlement_family
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
             expected_result:
               original_receipt_ref: $input.original_receipt_ref
               amount_minor: $input.refund_request.amount_minor
-            input:
-              refund_plan: $input.refund_plan
           context:
-            refund_plan: stripe-plan.refund_plan.data
+            target: stripe-plan.refund_plan.data.adapter_handoff.original_money_movement_id
+            idempotency_key: stripe-plan.refund_plan.data.adapter_handoff.idempotency_key
+            input: stripe-plan.refund_plan.data
         - id: stripe-readback
           when: { field: select-stripe.comparison.data.equal, equals: true }
           tool: provider.read
@@ -141,10 +125,10 @@ runners:
             provider_permission: { verb: read }
           inputs:
             operation: payment.refund.read
-            target: $input.target
-            expected_provider: $input.provider
+            expected_provider: $input.settlement_family
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
           context:
+            target: stripe-plan.refund_plan.data.adapter_handoff.original_money_movement_id
             input: stripe-refund.provider_operation.data.result
             expected_result: stripe-refund.provider_operation.data.result
 

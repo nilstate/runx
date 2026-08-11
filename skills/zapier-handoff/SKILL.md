@@ -1,6 +1,6 @@
 ---
 name: zapier-handoff
-description: Validate a runx execution context and hand off a governed payload to a Zapier Catch Hook with scoped auth, idempotency, and receipt expectations.
+description: Validate a runx execution context and hand off a governed payload to a Zapier Catch Hook through any compatible provider binding, with idempotency and receipt-backed readback.
 runx:
   category: ops
 ---
@@ -19,25 +19,15 @@ operator-owned Zap that receives governed effects from runx.
 ## Runners
 
 - `preflight`: validates and normalizes the handoff context without network.
-- `send`: validates the context and posts the payload to the Zapier Catch Hook.
+- `send`: validates the context, invokes the selected Catch Hook, and reads the invocation back.
 
 Use `preflight` for reviews, CI, and local harnesses; it never needs approval.
 The `send` runner first calls native `control.prepare_handoff`, which validates
-the execution identity and produces both the canonical `delivery` envelope and
-the exact webhook request that carries it. One explicit graph gate approves
-that exact request because native `http.execute` is policy-gated rather than
-effect-owned; the HTTP tool then posts the approved request. The skill binds
-the credential to `https://hooks.zapier.com`, so caller-supplied hook path
-segments cannot redirect it to another host. Configure the token through the
-normal profile path:
-
-```bash
-printf '%s' "$ZAPIER_WEBHOOK_TOKEN" |
-  runx credential set zapier \
-    --profile catch-hook \
-    --auth-mode bearer \
-    --from-stdin
-```
+the execution identity and produces the canonical delivery envelope. It then
+uses the provider boundary for `hook.invoke`; that boundary owns the exact
+approval, credential custody, idempotency, and provider operation. A separate
+provider read verifies the same event and invocation reference. The compatible
+binding may be local or hosted; the skill does not assume credential custody.
 
 ## Execution context
 
@@ -73,6 +63,8 @@ before any downstream action.
   Pass credential references or let runx hold the provider secret.
 - Zapier may retry or replay hook deliveries. The Zap must dedupe by `event_id`
   before downstream actions.
+- A missing compatible Zapier binding is an actionable preflight blocker, not
+  permission to fall back to ambient HTTP or an embedded token.
 
 ## Inputs
 

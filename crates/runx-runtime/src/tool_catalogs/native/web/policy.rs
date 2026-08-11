@@ -9,6 +9,10 @@ pub(super) fn normalize_allowlist(values: &[String]) -> Result<Vec<String>, Stri
         if entry.is_empty() {
             return Err("allowlist entries must be non-empty strings".to_owned());
         }
+        if entry == "*" {
+            unique.insert(entry);
+            continue;
+        }
         let host = entry.strip_prefix("*.").unwrap_or(&entry);
         if host.is_empty()
             || host.contains(['/', ':', '*', '?', '#', '@'])
@@ -24,7 +28,8 @@ pub(super) fn normalize_allowlist(values: &[String]) -> Result<Vec<String>, Stri
 
 pub(super) fn host_allowed(host: &str, allowlist: &[String]) -> bool {
     allowlist.iter().any(|entry| {
-        entry == host
+        entry == "*"
+            || entry == host
             || entry.strip_prefix("*.").is_some_and(|suffix| {
                 host.len() > suffix.len()
                     && host.ends_with(suffix)
@@ -70,6 +75,13 @@ mod tests {
         assert!(host_allowed("docs.example.com", &allowlist));
         assert!(!host_allowed("example.com", &allowlist));
         assert!(!host_allowed("notexample.com", &allowlist));
+    }
+
+    #[test]
+    fn global_wildcard_allows_any_public_host_name() {
+        let allowlist = normalize_allowlist(&["*".to_owned()]).unwrap();
+        assert!(host_allowed("example.com", &allowlist));
+        assert!(host_allowed("docs.example.net", &allowlist));
     }
 
     #[test]

@@ -4,7 +4,11 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use runx_parser::{SkillPackageSource, ValidatedSkillPackage, validate_skill_package};
+use runx_parser::harness_fixture::HarnessExpectedStatus;
+use runx_parser::{
+    OperatorJourneyMode, SkillPackageSource, SkillRunnerDefinition, SkillRunnerManifest,
+    ValidatedSkillPackage, validate_skill_package,
+};
 
 use crate::RuntimeError;
 use crate::filesystem::{DirectoryEntry, find_files_named, read_dir_sorted};
@@ -41,6 +45,82 @@ impl LoadedSkillPackage {
             .as_deref()
             .and_then(|path| self.package.manifest_at(path))
     }
+}
+
+/// Return the authored runner examples, or derive the smallest copy-valid
+/// direct-use example from the standalone harness journey that already proves
+/// the public runner. This keeps generated agent instructions executable
+/// without duplicating fixture payloads in every manifest.
+pub(crate) fn effective_runner_examples(
+    package: &ValidatedSkillPackage,
+    manifest: &SkillRunnerManifest,
+    runner: &SkillRunnerDefinition,
+) -> Vec<runx_contracts::JsonObject> {
+    if !runner.examples.is_empty() {
+        return runner.examples.clone();
+    }
+    sealed_standalone_inputs(package, manifest, runner)
+        .cloned()
+        .into_iter()
+        .collect()
+}
+
+pub(crate) fn runner_has_sealed_standalone_journey(
+    package: &ValidatedSkillPackage,
+    manifest: &SkillRunnerManifest,
+    runner: &SkillRunnerDefinition,
+) -> bool {
+    sealed_standalone_inputs(package, manifest, runner).is_some()
+}
+
+fn sealed_standalone_inputs<'a>(
+    package: &'a ValidatedSkillPackage,
+    manifest: &'a SkillRunnerManifest,
+    runner: &SkillRunnerDefinition,
+) -> Option<&'a runx_contracts::JsonObject> {
+    manifest
+        .harness
+        .iter()
+        .flat_map(|harness| harness.cases.iter())
+        .find(|case| {
+            fixture_selects_runner(case.runner.as_deref(), manifest, runner)
+                && usable_example_status(case.expect.status.as_ref())
+                && has_standalone_journey(&case.operator_journeys, &runner.name)
+        })
+        .map(|case| &case.inputs)
+        .or_else(|| {
+            package.harness_fixtures.values().find_map(|fixture| {
+                (fixture_selects_runner(fixture.runner.as_deref(), manifest, runner)
+                    && usable_example_status(fixture.expect.status.as_ref())
+                    && has_standalone_journey(&fixture.operator_journeys, &runner.name))
+                .then_some(&fixture.inputs)
+            })
+        })
+}
+
+fn fixture_selects_runner(
+    selected: Option<&str>,
+    manifest: &SkillRunnerManifest,
+    runner: &SkillRunnerDefinition,
+) -> bool {
+    selected.map_or_else(
+        || runner.default || manifest.runners.len() == 1,
+        |selected| selected == runner.name,
+    )
+}
+
+fn has_standalone_journey(journeys: &[runx_parser::OperatorJourneyClaim], runner: &str) -> bool {
+    journeys.iter().any(|journey| {
+        journey.mode == OperatorJourneyMode::Standalone
+            && journey
+                .exercises_runner
+                .as_deref()
+                .is_none_or(|selected| selected == runner)
+    })
+}
+
+fn usable_example_status(status: Option<&HarnessExpectedStatus>) -> bool {
+    matches!(status, Some(HarnessExpectedStatus::Sealed))
 }
 
 pub(crate) fn verify_loaded_execution_binding(

@@ -1,0 +1,68 @@
+name: vuln-disclosure-default-publishes-and-verifies-advisory
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [vuln-triage, cve-audit]
+    request: Publish this validated vulnerability advisory to the exact configured security channel.
+    expected_outcome: Review the evidence-bound advisory, publish the approved payload once, and return independent provider readback.
+inputs:
+  advisory_packet:
+    schema: runx.security.vulnerability_advisory.v1
+    decision: ready_for_review
+    target: example/service
+    advisory_draft:
+      title: Example dependency advisory
+      summary: A verified dependency finding requires an upgrade.
+      body: example/service includes example-lib 1.2.3, affected by GHSA-example-1234.
+      affected_advisory_ids: [GHSA-example-1234]
+    disclosure_checklist: [confirm fixed version]
+    source_advisories:
+      - { advisory_id: GHSA-example-1234, dependency: example-lib, exact_version: 1.2.3 }
+    remediation_plan: { immediate: [upgrade example-lib] }
+    evidence_binding:
+      receipt_ref: runx:receipt:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      evidence_digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    validation: { status: pass, findings: [] }
+    publication_status: not_published
+  channel: github_security_advisory
+  target: { locator: runxhq/example }
+  provider: github
+  idempotency_key: vuln-disclosure-example-001
+caller:
+  answers:
+    agent_task.vuln-disclosure-review.output:
+      disclosure_review_draft:
+        decision: ready_for_approval
+        rationale: The source packet is verified, the target is exact, and a remediation is available.
+        affected_advisory_ids: [GHSA-example-1234]
+        checklist: [confirm provider approval, verify provider readback]
+  provider_responses:
+    principal_id: security-publisher-fixture
+    grants:
+      - grant_id: vuln-disclosure-fixture
+        provider: github
+        scopes: [advisory.publish, advisory.read]
+    operations:
+      - grant_id: vuln-disclosure-fixture
+        operation: advisory.publish
+        target: runxhq/example
+        access: mutate
+        result:
+          advisory_ref: github:runxhq/example/security-advisories/GHSA-example-1234
+          payload_digest: sha256:ffbfa74bacc06d2eb87da944c16d6827723a80508c52b2a8f6bdd5c077e56490
+      - grant_id: vuln-disclosure-fixture
+        operation: advisory.read
+        target: runxhq/example
+        access: read
+        result:
+          advisory_ref: github:runxhq/example/security-advisories/GHSA-example-1234
+          payload_digest: sha256:ffbfa74bacc06d2eb87da944c16d6827723a80508c52b2a8f6bdd5c077e56490
+          status: published
+  approvals:
+    "provider-effect:sha256:caafdf2be7a452bedb22e38e656cb8085cd3ad26718d579adbc07df8d0522e89": true
+expect:
+  status: sealed
+  steps: [prepare, publish]
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: vuln-disclosure, source_case: direct-default-success, source: skills-fixture }

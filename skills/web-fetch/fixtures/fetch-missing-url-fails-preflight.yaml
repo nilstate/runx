@@ -1,11 +1,11 @@
-name: fetch-missing-inputs-needs-agent
+name: fetch-missing-url-fails-preflight
 kind: skill
 target: ..
 runner: web-fetch
 inputs: {}
 expect:
-  status: sealed
+  status: failure
 metadata:
   public_skill: web-fetch
-  source_case: fetch-missing-inputs
+  source_case: fetch-missing-url
   source: skills-fixture

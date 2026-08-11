@@ -2,7 +2,7 @@ name: refund-default-requires-refund-adapter
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [dispute-respond, spend]
     request: Refund this payment under the supplied receipt-linked authority.
     expected_outcome: Validate refund evidence once and return one actionable adapter blocker without claiming money moved.

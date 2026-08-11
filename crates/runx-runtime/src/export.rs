@@ -103,6 +103,15 @@ pub fn load_export_skills_with_options(
         if !explicit && manifest_visibility(&manifest) == Some(CatalogVisibility::Internal) {
             continue;
         }
+        if !has_agent_export_contract(&package, manifest.as_ref()) {
+            if explicit {
+                return Err(RunxExportLoadError::InvalidArgs(format!(
+                    "cannot export {} as an agent skill because its default runner has no sealed standalone invocation contract",
+                    package.skill.name
+                )));
+            }
+            continue;
+        }
         skills.push(export_skill(
             directory,
             package,
@@ -112,6 +121,37 @@ pub fn load_export_skills_with_options(
     }
     validate_unique_export_names(&mut skills)?;
     Ok(skills)
+}
+
+fn has_agent_export_contract(
+    package: &ValidatedSkillPackage,
+    manifest: Option<&SkillRunnerManifest>,
+) -> bool {
+    let Some(manifest) = manifest else {
+        return true;
+    };
+    if manifest.catalog.as_ref().map(|catalog| catalog.visibility)
+        == Some(CatalogVisibility::Internal)
+    {
+        return false;
+    }
+    let report = runx_parser::analyze_package_catalog_semantics(
+        &package.skill.name,
+        manifest,
+        &package.harness_fixtures,
+    );
+    let has_copy_valid_example = report
+        .default_runner
+        .as_deref()
+        .and_then(|name| manifest.runners.get(name))
+        .is_some_and(|runner| {
+            !crate::skill_package::effective_runner_examples(package, manifest, runner).is_empty()
+        });
+    report.diagnostics.is_empty()
+        && report.readiness.evaluated
+        && report.readiness.cold_selection
+        && report.readiness.standalone_default
+        && has_copy_valid_example
 }
 
 fn validate_unique_export_names(skills: &mut [RunxExportSkill]) -> Result<(), RunxExportLoadError> {
@@ -133,9 +173,9 @@ fn export_skill(
     manifest: Option<SkillRunnerManifest>,
     execution_env: Option<&BTreeMap<String, String>>,
 ) -> Result<RunxExportSkill, RunxExportLoadError> {
+    let mode = export_mode(&package.skill, manifest.as_ref());
+    let mut runners = export_runners(&package, manifest.as_ref());
     let skill = package.skill;
-    let mode = export_mode(&skill, manifest.as_ref());
-    let mut runners = export_runners(&skill, manifest.as_ref());
     if mode == RunxExportMode::Delegated {
         let loaded = crate::load_validated_skill_package(&directory)
             .map_err(|error| RunxExportLoadError::Parse(error.to_string()))?;
@@ -214,7 +254,7 @@ fn export_mode(_skill: &ValidatedSkill, manifest: Option<&SkillRunnerManifest>) 
 }
 
 fn export_runners(
-    skill: &ValidatedSkill,
+    package: &ValidatedSkillPackage,
     manifest: Option<&SkillRunnerManifest>,
 ) -> Vec<RunxExportRunner> {
     let Some(manifest) = manifest else {
@@ -222,19 +262,26 @@ fn export_runners(
             name: None,
             default: true,
             execution_closure_digest: None,
-            inputs: skill.inputs.clone(),
+            inputs: package.skill.inputs.clone(),
             examples: Vec::new(),
         }];
     };
     let mut runners = manifest
         .runners
         .values()
+        .filter(|runner| {
+            runner.default
+                || manifest.runners.len() == 1
+                || crate::skill_package::runner_has_sealed_standalone_journey(
+                    package, manifest, runner,
+                )
+        })
         .map(|runner| RunxExportRunner {
             name: Some(runner.name.clone()),
             default: runner.default || manifest.runners.len() == 1,
             execution_closure_digest: None,
             inputs: runner.inputs.clone(),
-            examples: runner.examples.clone(),
+            examples: crate::skill_package::effective_runner_examples(package, manifest, runner),
         })
         .collect::<Vec<_>>();
     runners.sort_by(|left, right| {
@@ -339,11 +386,6 @@ mod tests {
             "---\nname: demo\ndescription: Demo skill.\n---\n\n# Demo\n",
         )
         .expect("child manual");
-        fs::write(
-            child.join("X.yaml"),
-            "skill: demo\nrunners:\n  default:\n    default: true\n    type: agent\n",
-        )
-        .expect("child manifest");
         fs::write(root.join("unrelated/X.yaml"), "not: [valid").expect("unrelated repository file");
 
         let skills = load_export_skills(root, &[]).expect("export skills");

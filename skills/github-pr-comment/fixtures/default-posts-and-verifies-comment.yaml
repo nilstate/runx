@@ -1,0 +1,56 @@
+name: github-pr-comment-default-posts-and-verifies-comment
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [github-sync, issue-triage]
+    request: Post this exact review comment to the selected GitHub pull request.
+    expected_outcome: Post the approved comment once and return independent GitHub readback for the exact body.
+inputs:
+  repository: runxhq/runx
+  pr_number: "42"
+  body: The reviewed path is sound; please add the missing harness case.
+  idempotency_key: runxhq-runx-pr-42-connect-note-v1
+caller:
+  provider_responses:
+    principal_id: operator-fixture
+    grants:
+      - grant_id: github-pr-comment-fixture
+        provider: github
+        scopes: [pr.comment, pr.read]
+    operations:
+      - grant_id: github-pr-comment-fixture
+        operation: pullrequest.comment
+        target: runxhq/runx
+        access: mutate
+        result:
+          repository: runxhq/runx
+          number: "42"
+          comment_ref: github:runxhq/runx/pull/42#issuecomment-1001
+          body_digest: sha256:df26f05463c360a9196935701b95e515768bf4fcecdd0bf721b8a1f1823c9278
+      - grant_id: github-pr-comment-fixture
+        operation: pullrequest.comment.read
+        target: runxhq/runx
+        access: read
+        result:
+          repository: runxhq/runx
+          number: "42"
+          comment_ref: github:runxhq/runx/pull/42#issuecomment-1001
+          body_digest: sha256:df26f05463c360a9196935701b95e515768bf4fcecdd0bf721b8a1f1823c9278
+          state: published
+  approvals:
+    "provider-effect:sha256:3af8edab95cebc6bb41d0ec9416e0355a657e2b83d68abcb8bbd813498f496f3": true
+expect:
+  status: sealed
+  steps: [digest-body, post-comment, bind-body, readback]
+  step_outputs:
+    readback:
+      subset:
+        provider_operation:
+          data:
+            status: success
+            provider: github
+            result:
+              state: published
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: github-pr-comment, source_case: direct-default-success, source: skills-fixture }

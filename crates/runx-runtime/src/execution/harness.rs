@@ -2,6 +2,8 @@ mod assertions;
 pub mod fixtures;
 mod http_responses;
 mod json_assertions;
+#[cfg(feature = "catalog")]
+mod provider_responses;
 pub mod runner;
 
 use std::collections::BTreeMap;
@@ -51,6 +53,10 @@ pub use fixtures::{
 pub(crate) use http_responses::effects_with_harness_http_responses;
 #[cfg(feature = "cli-tool")]
 pub(crate) use json_assertions::assert_json_expectation;
+#[cfg(feature = "catalog")]
+pub(crate) use provider_responses::{
+    HARNESS_PROVIDER_BASE_URL, HARNESS_PROVIDER_TOKEN, effects_with_harness_provider_responses,
+};
 pub use runner::{
     HarnessReplayError, HarnessReplayOutput, run_harness_fixture, run_harness_fixture_with_adapter,
 };

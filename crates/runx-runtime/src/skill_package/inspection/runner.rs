@@ -9,6 +9,7 @@ use super::SkillInspectionError;
 pub(super) fn inspect_runner(
     manifest: &SkillRunnerManifest,
     runner: &SkillRunnerDefinition,
+    examples: &[JsonObject],
 ) -> Result<JsonValue, SkillInspectionError> {
     let mut output = JsonObject::from([
         ("name".to_owned(), JsonValue::String(runner.name.clone())),
@@ -20,7 +21,7 @@ pub(super) fn inspect_runner(
             "input_schema".to_owned(),
             JsonValue::Object(runx_contracts::input_contract_schema_with_examples(
                 &runner.inputs,
-                &runner.examples,
+                examples,
             )),
         ),
         (

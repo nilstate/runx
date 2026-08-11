@@ -1,5 +1,5 @@
 skill: moltbook
-version: "0.4.1"
+version: "0.4.2"
 
 catalog:
   kind: skill
@@ -280,6 +280,9 @@ runners:
           context:
             feed_index: admit.feed_index.data
             evidence_digest: digest.digest_result.data.digest
+          artifacts:
+            named_emits:
+              scan_draft: scan_draft
 
         - id: finalize
           when:

@@ -1,5 +1,5 @@
 skill: charge
-version: "0.4.0"
+version: "0.5.0"
 catalog:
   kind: graph
   audience: operator
@@ -45,30 +45,13 @@ runners:
       returned_credential: { definition: returned_credential }
       verify_capability_ref: { definition: verify_capability_ref }
       idempotency_seed: { definition: idempotency_seed }
-      settlement_family:
-        type: string
-        required: true
-        description: Real configured settlement family; mock is never a production default.
-        schema: { enum: [mpp, stripe] }
-      provider:
-        type: string
-        required: true
-        description: Configured seller-side settlement provider.
-      target:
-        type: string
-        required: true
-        description: Exact provider account or paid-operation target.
-      idempotency_key:
-        type: string
-        required: true
-        description: Stable retry key for verification and settlement.
     graph:
       name: charge-settle
       result_from: [mpp-readback, stripe-readback]
       steps:
         - id: select-mpp
           tool: data.compare
-          inputs: { actual: $input.settlement_family, expected: mpp }
+          inputs: { actual: $input.returned_credential.family, expected: mpp }
         - id: mpp-plan
           when: { field: select-mpp.comparison.data.equal, equals: true }
           skill: .
@@ -83,15 +66,15 @@ runners:
           when: { field: select-mpp.comparison.data.equal, equals: true }
           tool: provider.mutate
           mutation: true
-          idempotency_key: $input.idempotency_key
+          idempotency_key: $input.idempotency_seed
           scopes: [payment.charge]
           policy:
             provider_permission: { verb: write }
           inputs:
             operation: payment.charge
-            target: $input.target
-            expected_provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            target: $input.provider_policy.counterparty
+            expected_provider: $input.returned_credential.family
+            idempotency_key: $input.idempotency_seed
             result_fields: [charge_ref, settlement_family, status, credential_ref]
             expected_result: { settlement_family: mpp, status: settled }
             input:
@@ -107,8 +90,8 @@ runners:
             provider_permission: { verb: read }
           inputs:
             operation: payment.charge.read
-            target: $input.target
-            expected_provider: $input.provider
+            target: $input.provider_policy.counterparty
+            expected_provider: $input.returned_credential.family
             result_fields: [charge_ref, settlement_family, status, credential_ref]
           context:
             input: mpp-settle.provider_operation.data.result
@@ -116,7 +99,7 @@ runners:
 
         - id: select-stripe
           tool: data.compare
-          inputs: { actual: $input.settlement_family, expected: stripe }
+          inputs: { actual: $input.returned_credential.family, expected: stripe }
         - id: stripe-plan
           when: { field: select-stripe.comparison.data.equal, equals: true }
           skill: .
@@ -131,15 +114,15 @@ runners:
           when: { field: select-stripe.comparison.data.equal, equals: true }
           tool: provider.mutate
           mutation: true
-          idempotency_key: $input.idempotency_key
+          idempotency_key: $input.idempotency_seed
           scopes: [payment.charge]
           policy:
             provider_permission: { verb: write }
           inputs:
             operation: payment.charge
-            target: $input.target
-            expected_provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            target: $input.provider_policy.counterparty
+            expected_provider: $input.returned_credential.family
+            idempotency_key: $input.idempotency_seed
             result_fields: [charge_ref, settlement_family, status, credential_ref]
             expected_result: { settlement_family: stripe, status: settled }
             input:
@@ -155,8 +138,8 @@ runners:
             provider_permission: { verb: read }
           inputs:
             operation: payment.charge.read
-            target: $input.target
-            expected_provider: $input.provider
+            target: $input.provider_policy.counterparty
+            expected_provider: $input.returned_credential.family
             result_fields: [charge_ref, settlement_family, status, credential_ref]
           context:
             input: stripe-settle.provider_operation.data.result

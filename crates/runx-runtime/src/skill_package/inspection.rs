@@ -116,6 +116,8 @@ pub(crate) fn inspect_loaded_skill_package(
                     .runners
                     .values()
                     .map(|runner| {
+                        let examples =
+                            super::effective_runner_examples(&loaded.package, manifest, runner);
                         let closure =
                             execution_closures
                                 .get(&runner.name)
@@ -124,7 +126,10 @@ pub(crate) fn inspect_loaded_skill_package(
                                     runner: runner.name.clone(),
                                 })?;
                         Ok(JsonValue::Object(JsonObject::from([
-                            ("runner".to_owned(), inspect_runner(manifest, runner)?),
+                            (
+                                "runner".to_owned(),
+                                inspect_runner(manifest, runner, &examples)?,
+                            ),
                             ("execution_closure".to_owned(), closure),
                         ])))
                     })
@@ -289,7 +294,11 @@ fn append_runner_inspection(
     runner: &SkillRunnerDefinition,
     execution_closure: JsonValue,
 ) -> Result<(), SkillInspectionError> {
-    output.insert("runner".to_owned(), inspect_runner(manifest, runner)?);
+    let examples = super::effective_runner_examples(&loaded.package, manifest, runner);
+    output.insert(
+        "runner".to_owned(),
+        inspect_runner(manifest, runner, &examples)?,
+    );
     output.insert("execution_closure".to_owned(), execution_closure);
     output.insert(
         "readiness".to_owned(),

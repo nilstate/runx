@@ -1,5 +1,5 @@
 skill: dispute-respond
-version: "0.5.0"
+version: "0.5.1"
 
 catalog:
   kind: graph
@@ -72,17 +72,9 @@ runners:
         type: string
         required: false
         schema: { enum: [accept, contest, refund_already_sent, needs_more_evidence, operator_review] }
-      provider:
-        type: string
-        required: true
-        description: Configured payment provider expected to file and read the response.
-      idempotency_key:
-        type: string
-        required: true
-        description: Stable retry key for this exact dispute filing.
     graph:
       name: dispute-respond-file-response
-      result_from: [file]
+      result_from: [respond, file]
       steps:
         - id: respond
           skill: .
@@ -100,8 +92,8 @@ runners:
           skill: .
           runner: file
           inputs:
-            provider: $input.provider
-            idempotency_key: $input.idempotency_key
+            provider: $input.dispute_event.provider
+            idempotency_key: $input.dispute_event.dispute_id
           context:
             dispute_packet: respond.dispute_packet.data
 

@@ -1,0 +1,46 @@
+name: slack-default-searches-messages
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [slack-notify, send-as]
+    request: Find the bounded Slack messages about release readiness.
+    expected_outcome: Search the configured Slack account once and return bounded provider evidence.
+inputs:
+  query: { keywords: release readiness, channel_types: [public_channel, private_channel], limit: 20 }
+caller:
+  provider_responses:
+    principal_id: operator-fixture
+    grants:
+      - grant_id: slack-search-fixture
+        provider: slack
+        scopes: [messages.search]
+    operations:
+      - grant_id: slack-search-fixture
+        operation: messages.search
+        target: slack://messages
+        access: read
+        result:
+          external_tenant_ref: slack:workspace:T123ABC
+          connected_subject_ref: slack:user:U123ABC
+          messages:
+            - message_ref: slack://T123ABC/C123ABC/1750000000.000001
+              channel_ref: slack://T123ABC/C123ABC
+              author_ref: slack:user:U456ABC
+              text: Release readiness checks are green.
+              posted_at: "2026-08-10T10:00:00Z"
+          next_cursor: ""
+expect:
+  status: sealed
+  steps: [search]
+  step_outputs:
+    search:
+      subset:
+        provider_operation:
+          data:
+            status: success
+            provider: slack
+            result:
+              external_tenant_ref: slack:workspace:T123ABC
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: slack, source_case: direct-default-success, source: skills-fixture }

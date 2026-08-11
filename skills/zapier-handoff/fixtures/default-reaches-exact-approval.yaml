@@ -2,10 +2,10 @@ name: zapier-handoff-default-reaches-exact-approval
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [n8n-handoff, governed-outbound]
     request: Hand this governed Runx payload to the configured Zapier Catch Hook.
-    expected_outcome: Prepare the exact idempotent webhook request and stop at one explicit approval before delivery.
+    expected_outcome: Prepare the exact idempotent handoff and stop before delivery when no compatible Zapier binding is configured.
 inputs:
   zapier_account_id: "12345678"
   zapier_hook_id: abcDEF123
@@ -13,9 +13,6 @@ inputs:
   handoff_audience: zapier:zap:runx-governed-effect
   execution_context: { caller: runx-cli, workflow_ref: operator-zap-demo }
   payload: { hello: zap }
-caller:
-  approvals:
-    zapier-handoff.send.approval: false
 expect:
   status: policy_denied
-metadata: { public_skill: zapier-handoff, source_case: direct-default-approval, source: skills-fixture }
+metadata: { public_skill: zapier-handoff, source_case: direct-default-provider-refusal, source: skills-fixture }

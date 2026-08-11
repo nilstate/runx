@@ -116,6 +116,12 @@ pub(crate) fn materialize_graph_parameter_inputs(
                     resolve_graph_input_path(graph_inputs, path)
                         .and_then(JsonValue::as_str)
                         .map(str::to_owned)
+                        // Context edges are materialized only when their producer
+                        // has run. Preserve a reference that is not an ambient
+                        // graph input so the effect boundary can resolve it from
+                        // the complete step invocation instead of silently
+                        // discarding the idempotency contract.
+                        .or_else(|| Some(value.to_owned()))
                 },
             )
         });
@@ -589,6 +595,24 @@ mod tests {
             .ok_or_else(|| "graph should have one step".to_owned())?;
 
         assert_eq!(step.idempotency_key.as_deref(), Some("fixed-key"));
+        Ok(())
+    }
+
+    #[test]
+    fn graph_input_materialization_preserves_context_bound_idempotency_reference()
+    -> Result<(), String> {
+        let graph = graph_with_idempotency_key("$input.idempotency_key")?;
+
+        let materialized = materialize_graph_parameter_inputs(graph, &JsonObject::new());
+        let step = materialized
+            .steps
+            .first()
+            .ok_or_else(|| "graph should have one step".to_owned())?;
+
+        assert_eq!(
+            step.idempotency_key.as_deref(),
+            Some("$input.idempotency_key")
+        );
         Ok(())
     }
 

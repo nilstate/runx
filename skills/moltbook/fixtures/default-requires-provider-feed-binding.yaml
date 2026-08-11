@@ -2,10 +2,10 @@ name: moltbook-default-requires-provider-feed-binding
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [ecosystem-brief, research]
-    request: Scan Moltbook for current credible opportunities relevant to Runx builders.
-    expected_outcome: Use the live feed runner by default and fail immediately with one provider-binding message when no feed grant is configured.
+    request: Scan Moltbook without configuring a Moltbook feed binding.
+    expected_outcome: Refuse immediately with one provider-binding message before claiming feed evidence.
 inputs:
   objective: Find one useful post for Runx builders.
   as_of: "2026-07-17T12:00:00Z"

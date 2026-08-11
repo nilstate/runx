@@ -1,5 +1,5 @@
 skill: web-fetch
-version: "0.3.2"
+version: "0.4.0"
 
 catalog:
   kind: graph
@@ -18,14 +18,24 @@ runners:
     inputs:
       url:
         type: string
-        required: false
-        default: ""
-        description: "Single HTTP(S) URL to fetch; its host and every redirect host must match the allowlist."
+        required: true
+        description: "Single public HTTP(S) URL to fetch."
+        schema:
+          format: uri
+          pattern: '^https?://'
       allowlist:
-        type: json
+        type: array
         required: false
-        default: []
-        description: "Permitted exact hosts or leading-wildcard host patterns such as *.example.com."
+        default: ["*"]
+        description: "Optional host restriction. Omit for any publicly routable host; use exact hosts or leading wildcards such as *.example.com to narrow the fetch and redirects."
+        schema:
+          minItems: 1
+          maxItems: 64
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 253
       extract:
         type: string
         required: false
@@ -36,6 +46,12 @@ runners:
         required: false
         default: 1000000
         description: "Positive cap on response bytes read; a clipped read is flagged truncated."
+        schema:
+          minimum: 1
+          maximum: 8388608
+    examples:
+      - url: https://example.com/
+        extract: text
     graph:
       name: web-fetch
       result_from: [fetch]

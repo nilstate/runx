@@ -1,0 +1,72 @@
+name: send-as-default-sends-and-verifies
+kind: skill
+target: ..
+operator_journeys:
+  - mode: standalone
+    confusors: [slack-notify, governed-outbound]
+    request: Send this digest-bound release notice as the release bot.
+    expected_outcome: Plan once, send the approved payload once, and return independent provider readback.
+inputs:
+  objective: Send the digest-bound release notice.
+  principal: account:release-bot
+  provider_context: { provider: provider-send-demo, account_ref: acct_release, runtime_path: provider.send, ready: true }
+  audience: { type: channel, ref: release-subscribers }
+  content_ref: { draft_ref: message:release-notice, digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee, subject_or_title: Release notice }
+  consent_basis: Subscribers opted in to release notices.
+  operator_context: Require exact approval before live delivery.
+  connector: { provider: provider-send-demo, target: account:acct_release/channel:release-subscribers }
+caller:
+  answers:
+    agent_task.send-as.output:
+      send_plan:
+        decision: ready
+        action_family: send-as
+        principal: { type: account, ref: account:release-bot }
+        provider: { name: provider-send-demo, account_ref: acct_release, runtime_path: provider.send }
+        send_class: status
+        channel: email
+        audience: { type: channel, ref: release-subscribers, requires_reconfirmation: false }
+        content: { draft_ref: message:release-notice, digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee, subject_or_title: Release notice }
+        gates: { preflight_required: true, human_approval_required: true, approval_ref: send-as.live-send.approval }
+        blockers: []
+        provider_actions: [message.send]
+        evidence_refs: [provider_context:provider-send-demo]
+        success_checkpoint: { milestone: send_ready_for_approval, description: The exact release notice is ready for provider delivery. }
+  provider_responses:
+    principal_id: release-bot-fixture
+    grants:
+      - grant_id: send-as-fixture
+        provider: provider-send-demo
+        scopes: [message.send, message.read]
+    operations:
+      - grant_id: send-as-fixture
+        operation: message.send
+        target: account:acct_release/channel:release-subscribers
+        access: mutate
+        result:
+          message_id: msg_release_001
+          principal_ref: account:release-bot
+          audience_ref: release-subscribers
+          content_digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+          status: sent
+          sent_at: "2026-08-11T00:00:00Z"
+          idempotency_key: $request.idempotency_key
+      - grant_id: send-as-fixture
+        operation: message.read
+        target: account:acct_release/channel:release-subscribers
+        access: read
+        result:
+          message_id: msg_release_001
+          principal_ref: account:release-bot
+          audience_ref: release-subscribers
+          content_digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+          status: sent
+          sent_at: "2026-08-11T00:00:00Z"
+          idempotency_key: $previous.idempotency_key
+  approvals:
+    "provider-effect:sha256:bf114a66c1b73cff44d3315528983bf653f906ef74c205ab1953cfd23d51d98f": true
+expect:
+  status: sealed
+  steps: [plan, apply, finalize]
+  receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
+metadata: { public_skill: send-as, source_case: direct-default-success, source: skills-fixture }

@@ -2,10 +2,10 @@ name: send-as-default-reaches-exact-live-send-gate
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [slack-notify, governed-outbound]
-    request: Send this digest-bound release notice as the release bot.
-    expected_outcome: Plan once, derive the canonical provider request, and pause at one exact live-send approval without claiming delivery.
+    request: Attempt to send this digest-bound release notice without approving the exact live effect.
+    expected_outcome: Refuse at one exact live-send approval without claiming delivery.
 env:
   RUNX_PROVIDER_PERMISSION_GRANT_ID: grant-send-demo
   RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["message.send"]'

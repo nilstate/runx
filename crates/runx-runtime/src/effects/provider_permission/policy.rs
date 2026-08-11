@@ -137,6 +137,16 @@ pub(super) fn provider_permission_witness(
     request: &EffectStepRequest<'_>,
     plan: &ProviderPermissionPlan,
 ) -> AuthorityAdmissionWitness {
+    // The provider input is the executed request and therefore authoritative
+    // when a context edge supplied the idempotency key after graph inputs were
+    // materialized. Static graph declarations remain the fallback for other
+    // provider operations.
+    let idempotency_key = request
+        .inputs
+        .get("idempotency_key")
+        .and_then(JsonValue::as_str)
+        .map(str::to_owned)
+        .or_else(|| request.step.idempotency_key.clone());
     AuthorityAdmissionWitness {
         verb: plan.verb.clone(),
         parent_term_id: format!("provider-permission:{}", plan.grant_id),
@@ -145,7 +155,7 @@ pub(super) fn provider_permission_witness(
             request.step.id,
             scope_list_digest(&plan.required_scopes)
         ),
-        idempotency_key: request.step.idempotency_key.clone(),
+        idempotency_key,
         capability_ref: None,
     }
 }

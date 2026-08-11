@@ -2,10 +2,10 @@ name: issue-triage-default-requires-github-binding
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [issue-intake, github-sync]
-    request: Triage issue 241 in runxhq/runx and draft the next helpful maintainer response.
-    expected_outcome: Read the issue through the default provider runner and fail immediately with one grant message when no GitHub binding is configured.
+    request: Triage issue 241 in runxhq/runx without a local or hosted GitHub binding.
+    expected_outcome: Refuse immediately with one grant message before claiming issue evidence.
 inputs:
   repository: runxhq/runx
   issue_number: "241"

@@ -2,7 +2,7 @@ name: charge-default-requires-settlement-adapter
 kind: skill
 target: ..
 operator_journeys:
-  - mode: standalone
+  - mode: refusal
     confusors: [spend, x402-pay]
     request: Charge this exact paid provider call through the selected settlement family.
     expected_outcome: Validate the charge plan and stop with one actionable provider-binding error before any settlement when no live adapter is configured.
@@ -17,10 +17,6 @@ inputs:
   returned_credential: { family: mpp, credential_ref: credential:mpp:paid-search-001 }
   verify_capability_ref: capability:charge-verify:paid-search-001
   idempotency_seed: paid-search-001
-  settlement_family: mpp
-  provider: mpp
-  target: provider:demo
-  idempotency_key: charge-paid-search-001
 expect:
   status: policy_denied
 metadata: { public_skill: charge, source_case: direct-default-preflight, source: skills-fixture }
