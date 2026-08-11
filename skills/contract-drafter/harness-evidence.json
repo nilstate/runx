@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v2",
-  "recorded_at": "2026-08-11T13:22:07Z",
+  "recorded_at": "2026-08-11T13:26:32Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "runx harness ./skills/contract-drafter -R <temporary-receipt-dir> --json",
   "status": "passed",
@@ -11,18 +11,18 @@
     {
       "name": "complete-template-fetches-source-and-consumes-canonical-send-as-plan",
       "status": "sealed",
-      "receipt_id": "sha256:1ab8ec003a3edde47766d33c2a4d792e84ab08d432b492140f770327802673f5",
+      "receipt_id": "sha256:21e652251e09a6af9e5f20b4a80404f717b30df9dfe348da0e8df99d8094b495",
       "observations": {
         "draft_ref": "runx:contract-draft:95c347f0a4bfe15a",
         "deviation_count": 4,
-        "send_proposal_consumer": "runx/send-as@sha-1f90b9364a3a#plan",
+        "send_proposal_consumer": "send-as plan, pinned manual runx/send-as@sha-1f90b9364a3a",
         "provider_delivery_performed": false
       }
     },
     {
       "name": "missing-required-term-refuses-without-proposal",
       "status": "failure_refusal",
-      "receipt_id": "sha256:7766fe4b44fa2c1daee05750a3de1b9b27025907c4da26d8925da29aada0c089",
+      "receipt_id": "sha256:f81eee7b37cca2109a2d3f05dd903ef4ea1583ac3ad128e000dc6e27b3118ff2",
       "observations": {
         "missing_term": "payment_terms",
         "reason": "terms.payment_terms is required",
@@ -39,7 +39,7 @@
       "each deviation identifies clause, baseline, and proposed_change",
       "repeat execution is byte-for-byte deterministic",
       "missing payment_terms emits neither draft_doc nor send_proposal",
-      "the graph consumes the proposal through immutable runx/send-as@sha-1f90b9364a3a#plan",
+      "the graph consumes the proposal through the send-as agent contract pinned to runx/send-as@sha-1f90b9364a3a",
       "contract-drafter performs no provider delivery"
     ]
   },

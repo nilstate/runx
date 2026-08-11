@@ -192,12 +192,21 @@ runners:
               contract_draft: contract_draft
 
         - id: plan-send-as
-          label: consume the proposal with canonical send-as planning
+          label: consume the proposal through the canonical send-as agent contract
           when:
             field: draft-contract.contract_draft.data.status
             equals: draft_ready
-          skill: ./runx/send-as@sha-1f90b9364a3a
-          runner: plan
+          run:
+            type: agent-task
+            agent: reviewer
+            task: send-as
+            outputs:
+              send_plan: object
+          artifacts:
+            named_emits:
+              send_plan: send_plan
+            packets:
+              send_plan: runx.send_as.plan.v1
           context:
             objective: draft-contract.contract_draft.data.send_proposal.consumer.inputs.objective
             principal: draft-contract.contract_draft.data.send_proposal.consumer.inputs.principal
