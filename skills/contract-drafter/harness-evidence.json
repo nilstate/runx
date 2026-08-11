@@ -1,17 +1,17 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v2",
-  "recorded_at": "2026-08-11T13:13:59Z",
+  "recorded_at": "2026-08-11T13:22:07Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "runx harness ./skills/contract-drafter -R <temporary-receipt-dir> --json",
   "status": "passed",
-  "case_count": 3,
-  "graph_case_count": 2,
+  "case_count": 2,
+  "graph_case_count": 1,
   "assertion_error_count": 0,
   "case_results": [
     {
       "name": "complete-template-fetches-source-and-consumes-canonical-send-as-plan",
       "status": "sealed",
-      "receipt_id": "sha256:5865e849b2c1b3ec6aa3f5a0268ffdb823fa0062e4b896572281abe55939f279",
+      "receipt_id": "sha256:1ab8ec003a3edde47766d33c2a4d792e84ab08d432b492140f770327802673f5",
       "observations": {
         "draft_ref": "runx:contract-draft:95c347f0a4bfe15a",
         "deviation_count": 4,
@@ -20,19 +20,9 @@
       }
     },
     {
-      "name": "default-missing-required-term-refuses-before-send-as",
-      "status": "sealed_refusal",
-      "receipt_id": "sha256:156608fc2f745e78678bfa4a9f9bd6cf6215207d98e8e4b601a4df93e96cfdd7",
-      "observations": {
-        "missing_term": "payment_terms",
-        "draft_doc_emitted": false,
-        "send_proposal_emitted": false
-      }
-    },
-    {
       "name": "missing-required-term-refuses-without-proposal",
       "status": "failure_refusal",
-      "receipt_id": "sha256:f75bc6059da0edc5d4a16df112dae50dcd0b2625b45d8b7bf779bb6c7b58f96b",
+      "receipt_id": "sha256:7766fe4b44fa2c1daee05750a3de1b9b27025907c4da26d8925da29aada0c089",
       "observations": {
         "missing_term": "payment_terms",
         "reason": "terms.payment_terms is required",

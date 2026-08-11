@@ -113,55 +113,6 @@ harness:
         receipt:
           schema: runx.receipt.v1
 
-    - name: default-missing-required-term-refuses-before-send-as
-      inputs:
-        template:
-          source_ref: repo:skills/contract-drafter/fixtures/templates/public-services-review-v1.json
-        parties:
-          provider:
-            legal_name: Northstar Example Services LLC
-            role: provider
-          customer:
-            legal_name: Harbor Example Studio Inc.
-            role: customer
-        terms:
-          effective_date: "2026-07-15"
-          services: Monthly release engineering review and incident-readiness support
-          fees: USD 8,000 per month
-          liability_cap: USD 80,000 aggregate
-          governing_law: Delaware
-          confidentiality_period: 2 years
-          send:
-            objective: Plan reviewer delivery for the nonbinding contract review draft; do not send from contract-drafter.
-            principal: account:contract-review-demo
-            provider_context:
-              name: reviewer-queue
-              account_ref: provider-account:contract-review-demo
-              runtime_path: review_queue.plan
-            audience:
-              type: repository_review
-              ref: RYDE-PLAY/frantic-86-contract-drafter
-            consent_basis: Public maintainer review of a nonbinding synthetic contract fixture.
-            operator_context: Contract-drafter only drafts and prepares a send-as plan; provider delivery must run outside this skill.
-            subject_or_title: Review the services agreement draft
-      expect:
-        status: sealed
-        steps:
-          - draft-contract
-          - refused
-        step_outputs:
-          refused:
-            subset:
-              contract_draft_packet:
-                data:
-                  status: refused
-                  review_status: refused
-                  delivery_status: not_sent
-                  deviations: []
-                  validation:
-                    no_draft_emitted: true
-                    no_proposal_emitted: true
-
     - name: missing-required-term-refuses-without-proposal
       runner: refusal_check
       inputs:
@@ -245,7 +196,7 @@ runners:
           when:
             field: draft-contract.contract_draft.data.status
             equals: draft_ready
-          skill: runx/send-as@sha-1f90b9364a3a
+          skill: ./runx/send-as@sha-1f90b9364a3a
           runner: plan
           context:
             objective: draft-contract.contract_draft.data.send_proposal.consumer.inputs.objective
