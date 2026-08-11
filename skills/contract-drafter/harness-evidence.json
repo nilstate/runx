@@ -1,6 +1,6 @@
 {
   "schema": "runx.contract_drafter.harness_evidence.v2",
-  "recorded_at": "2026-08-11T13:51:45Z",
+  "recorded_at": "2026-08-11T13:53:12Z",
   "runx_version": "runx-cli 0.6.14",
   "command": "runx harness ./skills/contract-drafter -R <temporary-receipt-dir> --json",
   "status": "passed",
@@ -11,7 +11,7 @@
     {
       "name": "complete-template-fetches-source-and-consumes-canonical-send-as-plan",
       "status": "sealed",
-      "receipt_id": "sha256:93e5613fd14d0a57015a3f98f1782b3e0515d0a97d85e7dbf73d0094461c6a7f",
+      "receipt_id": "sha256:fa4392deee2e7a7eacae56c1792286a52c5ffc51861ef24f40f82c6755354a92",
       "observations": {
         "draft_ref": "runx:contract-draft:69cff421e84ef9ce",
         "deviation_count": 4,
@@ -22,7 +22,7 @@
     {
       "name": "missing-required-term-refuses-without-proposal",
       "status": "failure_refusal",
-      "receipt_id": "sha256:760d4dc7b1e6f6fb3da30fa7aa095c015c16f593594756f3d35fbc65f3b005f5",
+      "receipt_id": "sha256:3e38f7b9210e56332c5e64f2d521513f26176a1fd16f94d10e8b654152eba35e",
       "observations": {
         "missing_term": "payment_terms",
         "reason": "terms.payment_terms is required",

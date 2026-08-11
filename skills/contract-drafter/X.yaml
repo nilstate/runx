@@ -12,6 +12,8 @@ catalog:
   approval: none
 
 harness:
+  files:
+    - fixtures/templates/public-services-review-v1.json
   cases:
     - name: complete-template-fetches-source-and-consumes-canonical-send-as-plan
       operator_journeys:
