@@ -11,6 +11,97 @@ catalog:
   requires_adapter: true
   approval: none
 
+harness:
+  cases:
+    - name: sealed_decay_re_permission
+      operator_journeys:
+        - mode: standalone
+          confusors: [send-as, campaign-dispatch]
+          request: Judge a stale but unsubscribed contact and record the bounded re-permission transition.
+          expected_outcome: Return a sealed re_permission decision with one append and a projection readback.
+        - mode: composed
+          request: Continue from the recorded consent decision into a downstream governed send lane.
+          expected_outcome: Reuse the recorded state; this skill does not send.
+          prior_evidence: [The sealed contact projection and transition receipt from the prior run.]
+          must_not_repeat: [Do not send or re-judge the same contact without a fresh governed run.]
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-decay":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-decay.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-decay
+        resource: contacts
+        aggregate_id: contact:alice
+        expected_version: 0
+        idempotency_key: alice:inline:consent:v1
+        engagement_history: { opens_count: 4, clicks_count: 1, hard_bounces: 0, recency_days: 120 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: suppressed, unsubscribe_active: false }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: re_permission }
+                  persistence: { append_status: committed, before_version: 0, after_version: 1 }
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: sealed_hard_bounce_suppress
+      operator_journeys:
+        - mode: standalone
+          confusors: [re_permission, retain]
+          request: Judge a contact with hard-bounce evidence under the suppression policy.
+          expected_outcome: Return a sealed suppress decision with one append and a projection readback.
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-bounce":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-bounce.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-bounce
+        resource: contacts
+        aggregate_id: contact:bob
+        expected_version: 0
+        idempotency_key: bob:inline:consent:v1
+        engagement_history: { opens_count: 2, clicks_count: 0, hard_bounces: 1, recency_days: 5 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: subscribed, unsubscribe_active: false }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: suppress }
+                  persistence: { append_status: committed, before_version: 0, after_version: 1 }
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: stop_missing_or_stale_evidence
+      operator_journeys:
+        - mode: standalone
+          confusors: [retain, suppress]
+          request: Judge a contact whose unsubscribe marker and expected version make a write unsafe.
+          expected_outcome: Return a sealed stop decision and emit no append.
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-stop":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-stop.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-stop
+        resource: contacts
+        aggregate_id: contact:carol
+        expected_version: 7
+        idempotency_key: carol:inline:consent:v1
+        engagement_history: { opens_count: 0, clicks_count: 0, hard_bounces: 0, recency_days: 180 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: suppressed, unsubscribe_active: true }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: stop }
+                  persistence: { append_status: not_appended, before_version: 0, after_version: 0 }
+        receipt: { schema: runx.receipt.v1 }
+
 runners:
   decide:
     default: true
