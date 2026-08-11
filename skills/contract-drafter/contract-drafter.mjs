@@ -7,6 +7,7 @@ export function admitRequest(inputs) {
   const findings = [];
   const requiredTerms = uniqueStrings(template.required_terms);
   const clauses = Array.isArray(template.clauses) ? template.clauses.map(record) : [];
+  const send = record(terms.send);
   if (!stringValue(template.id) || !stringValue(template.version) || !stringValue(template.title)) {
     findings.push({ code: "template.invalid", message: "template must carry id, version, and title." });
   }
@@ -20,6 +21,13 @@ export function admitRequest(inputs) {
   for (const key of missingTerms) {
     findings.push({ code: "terms.missing", message: `required term ${key} was not supplied.` });
   }
+  requireString(send.objective, "terms.send.objective", findings);
+  requireString(send.principal, "terms.send.principal", findings);
+  requireRecord(send.provider_context, "terms.send.provider_context", findings);
+  requireRecord(send.audience, "terms.send.audience", findings);
+  requireString(send.consent_basis, "terms.send.consent_basis", findings);
+  requireString(send.operator_context, "terms.send.operator_context", findings);
+  requireString(send.subject_or_title, "terms.send.subject_or_title", findings);
   return {
     draft_context: {
       path: findings.length === 0 ? "draft" : "stop",
@@ -38,7 +46,12 @@ export function finalizeDraft(inputs) {
       document: null,
       deviations: [],
       send_proposal: null,
-      validation: { status: "fail", findings: Array.isArray(context.findings) ? context.findings : [] },
+      validation: {
+        status: "fail",
+        findings: Array.isArray(context.findings) ? context.findings : [],
+        no_draft_emitted: true,
+        no_proposal_emitted: true,
+      },
       template_digest: null,
       parties_digest: null,
       terms_digest: null,
@@ -48,6 +61,7 @@ export function finalizeDraft(inputs) {
   const template = record(inputs.template);
   const parties = record(inputs.parties);
   const terms = record(inputs.terms);
+  const send = record(terms.send);
   const draft = record(record(inputs.draft_doc));
   const declared = (Array.isArray(draft.deviations) ? draft.deviations : []).map(record);
   const findings = [];
@@ -92,8 +106,47 @@ export function finalizeDraft(inputs) {
   }
 
   const drafted = findings.length === 0;
+  const termsDigest = drafted ? requiredDigest(inputs.terms_digest) : null;
+  const draftRef = drafted ? `runx:contract-draft:${termsDigest.slice("sha256:".length, "sha256:".length + 16)}` : null;
+  const sendProposal = drafted
+    ? {
+        schema: "runx.contract_send_proposal.v1",
+        status: "ready_for_send_as",
+        gate: {
+          gate_id: "send-as.provider-delivery.required",
+          human_approval_required: true,
+          approved: false,
+          send_as_preflight_required: true,
+        },
+        delivery_skill: "send-as",
+        sent: false,
+        consumer: {
+          skill: "runx/send-as",
+          runner: "plan",
+          packet: "runx.send_as.plan.v1",
+          inputs: {
+            objective: stringValue(send.objective),
+            principal: stringValue(send.principal),
+            provider_context: record(send.provider_context),
+            audience: record(send.audience),
+            content_ref: {
+              draft_ref: draftRef,
+              digest: termsDigest,
+              subject_or_title: stringValue(send.subject_or_title),
+            },
+            consent_basis: stringValue(send.consent_basis),
+            operator_context: stringValue(send.operator_context),
+          },
+        },
+        provider_action: null,
+        live_external_send_performed: false,
+      }
+    : null;
   return packet({
     decision: drafted ? "drafted" : "refused",
+    review_status: drafted ? "requires_review" : "refused",
+    delivery_status: "not_sent",
+    draft_ref: draftRef,
     reason: drafted
       ? `Draft covers every template clause with all required terms bound and ${confirmedDeviations.length} declared deviation(s).`
       : "Refused: the draft does not deterministically reconcile with the template and declared deviations.",
@@ -109,14 +162,65 @@ export function finalizeDraft(inputs) {
         }
       : null,
     deviations: confirmedDeviations,
-    send_proposal: drafted
-      ? { gate: "human-approver", delivery_skill: "send-as", sent: false }
-      : null,
-    validation: { status: drafted ? "pass" : "fail", findings },
+    send_proposal: sendProposal,
+    validation: {
+      status: drafted ? "pass" : "fail",
+      findings,
+      provider_delivery_outside_contract_drafter: true,
+      live_external_send_performed: false,
+    },
     template_digest: requiredDigest(inputs.template_digest),
     parties_digest: requiredDigest(inputs.parties_digest),
-    terms_digest: requiredDigest(inputs.terms_digest),
+    terms_digest: termsDigest ?? requiredDigest(inputs.terms_digest),
   });
+}
+
+export function finalizeSendPlan(inputs) {
+  const draft = record(inputs.contract_draft);
+  const sendPlan = record(inputs.send_plan);
+  const proposal = record(draft.send_proposal);
+  const proposalInputs = record(record(proposal.consumer).inputs);
+  if (draft.decision !== "drafted") throw new Error("send-as planning may only finalize a drafted contract");
+  assertEqual(proposal.consumer?.skill, "runx/send-as", "proposal must target canonical runx/send-as");
+  assertEqual(proposal.consumer?.runner, "plan", "proposal must target send-as plan");
+  assertEqual(proposal.provider_action, null, "contract-drafter must not select a provider action");
+  assertEqual(proposal.live_external_send_performed, false, "contract-drafter must not perform a live send");
+  assertEqual(sendPlan.decision, "ready", "send_plan decision must be ready");
+  assertEqual(sendPlan.action_family, "send-as", "send_plan action_family must be send-as");
+  assertEqual(record(sendPlan.principal).ref, proposalInputs.principal, "send_plan principal must match proposal");
+  assertEqual(record(sendPlan.audience).ref, record(proposalInputs.audience).ref, "send_plan audience must match proposal");
+  assertEqual(record(sendPlan.content).draft_ref, draft.draft_ref, "send_plan content draft_ref must match draft_ref");
+  assertEqual(record(sendPlan.content).digest, record(proposalInputs.content_ref).digest, "send_plan content digest must match proposal content_ref");
+  assertEqual(record(sendPlan.gates).human_approval_required, true, "send_plan must require human approval before provider delivery");
+  assertEqual(record(sendPlan.gates).preflight_required, true, "send_plan must require preflight before provider delivery");
+  assertEqual(record(sendPlan.success_checkpoint).milestone, "provider_delivery_required", "send_plan must leave provider delivery outstanding");
+  if (sendPlan.delivery_evidence || sendPlan.provider_receipt || sendPlan.delivery_status === "delivered") {
+    throw new Error("send_plan must not claim provider delivery");
+  }
+  return {
+    contract_draft: {
+      ...draft,
+      send_plan: sendPlan,
+      validation: {
+        ...record(draft.validation),
+        canonical_send_as_dependency_executed: true,
+        canonical_send_as_dependency: "../send-as#plan",
+        provider_delivery_outside_contract_drafter: true,
+        live_external_send_performed: false,
+      },
+    },
+  };
+}
+
+export function finishRefusal(inputs) {
+  const draft = record(inputs.contract_draft);
+  if (draft.decision !== "refused") throw new Error("finishRefusal only accepts refused draft evaluations");
+  assertEqual(draft.review_status, "refused", "refused drafts must pin review_status");
+  assertEqual(draft.delivery_status, "not_sent", "refused drafts must pin delivery_status");
+  assertEqual(draft.draft_ref, null, "refused drafts must not emit a draft_ref");
+  assertEqual(draft.document, null, "refused drafts must not emit a document");
+  assertEqual(draft.send_proposal, null, "refused drafts must not emit a send proposal");
+  return { contract_draft: draft };
 }
 
 function renderBaseline(baseline, scope) {
@@ -141,6 +245,18 @@ function requiredDigest(value) {
     throw new Error("native digest evidence is missing");
   }
   return value;
+}
+
+function requireString(value, field, findings) {
+  if (!stringValue(value)) findings.push({ code: "send.missing", message: `${field} is required.` });
+}
+
+function requireRecord(value, field, findings) {
+  if (Object.keys(record(value)).length === 0) findings.push({ code: "send.missing", message: `${field} is required.` });
+}
+
+function assertEqual(actual, expected, message) {
+  if (actual !== expected) throw new Error(message);
 }
 
 function stringValue(value) {

@@ -28,14 +28,19 @@ drafted, which terms were bound, and which deviations were declared.
    deviation with a reason. Undeclared deviations, deviations that match the
    baseline anyway, unknown clause targets, unresolved placeholders, and
    missing clauses all refuse.
-5. A drafted verdict carries the document and a send proposal gated on a human
-   approver through `send-as`. `delivery_performed` is always false.
+5. A drafted verdict carries the document, top-level `review_status` and
+   `delivery_status`, and a send proposal gated on a human approver. The default
+   graph consumes that proposal through canonical `../send-as#plan` and then
+   verifies the returned plan is bound to the draft digest. Provider delivery
+   remains outside this skill; `delivery_performed` is always false.
 
 ## Output
 
-`contract_draft` (`runx.contract_draft.v1`) carries `decision`, `reason`, the
-`document` or null, confirmed `deviations` with baseline and text, the gated
-`send_proposal` or null, `validation`, and the three input digests.
+`contract_draft` (`runx.contract_draft.v1`) carries `decision`,
+`review_status`, `delivery_status`, `draft_ref`, `reason`, the `document` or
+null, confirmed `deviations` with baseline and text, the gated `send_proposal`
+or null, the canonical `send_plan` on drafted paths, `validation`, and the
+three input digests.
 
 Inputs are `template`, `parties`, and `terms`.
 
