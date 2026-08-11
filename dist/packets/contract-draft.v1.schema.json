@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.runx.ai/runx/contract-draft/v1.json",
+  "x-runx-packet-id": "runx.contract_draft.v1",
+  "$defs": {
+    "contractDraft": {
+      "type": "object",
+      "required": [
+        "schema",
+        "decision",
+        "review_status",
+        "delivery_status",
+        "draft_ref",
+        "reason",
+        "document",
+        "deviations",
+        "send_proposal",
+        "validation",
+        "template_digest",
+        "parties_digest",
+        "terms_digest",
+        "delivery_performed"
+      ],
+      "properties": {
+        "schema": { "const": "runx.contract_draft.v1" },
+        "decision": { "type": "string", "enum": ["drafted", "refused"] },
+        "review_status": { "type": "string", "enum": ["requires_review", "refused"] },
+        "delivery_status": { "const": "not_sent" },
+        "draft_ref": {
+          "type": ["string", "null"],
+          "pattern": "^runx:contract-draft:[0-9a-f]{16}$"
+        },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "document": {
+          "type": ["object", "null"],
+          "required": ["template_id", "template_version", "title", "clauses"],
+          "properties": {
+            "template_id": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "template_version": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "clauses": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "object",
+                "required": ["id", "heading", "text"],
+                "properties": {
+                  "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "heading": { "type": "string", "minLength": 1, "maxLength": 500 },
+                  "text": { "type": "string", "minLength": 1, "maxLength": 20000 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "deviations": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "required": ["clause_id", "reason", "baseline", "text"],
+            "properties": {
+              "clause_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "baseline": { "type": "string", "minLength": 1, "maxLength": 20000 },
+              "text": { "type": "string", "minLength": 1, "maxLength": 20000 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "send_proposal": {
+          "type": ["object", "null"],
+          "required": [
+            "schema",
+            "status",
+            "gate",
+            "delivery_skill",
+            "sent",
+            "consumer",
+            "provider_action",
+            "live_external_send_performed"
+          ],
+          "properties": {
+            "schema": { "const": "runx.contract_send_proposal.v1" },
+            "status": { "const": "ready_for_send_as" },
+            "gate": {
+              "type": "object",
+              "required": ["gate_id", "human_approval_required", "approved", "send_as_preflight_required"],
+              "properties": {
+                "gate_id": { "const": "send-as.provider-delivery.required" },
+                "human_approval_required": { "const": true },
+                "approved": { "const": false },
+                "send_as_preflight_required": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "delivery_skill": { "const": "send-as" },
+            "sent": { "const": false },
+            "consumer": {
+              "type": "object",
+              "required": ["skill", "runner", "packet", "inputs"],
+              "properties": {
+                "skill": { "const": "runx/send-as" },
+                "runner": { "const": "plan" },
+                "packet": { "const": "runx.send_as.plan.v1" },
+                "inputs": {
+                  "type": "object",
+                  "required": ["objective", "principal", "provider_context", "audience", "content_ref", "consent_basis", "operator_context"],
+                  "properties": {
+                    "objective": { "type": "string", "minLength": 1 },
+                    "principal": { "type": "string", "minLength": 1 },
+                    "provider_context": {
+                      "type": "object",
+                      "required": ["name", "account_ref", "runtime_path"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "account_ref": { "type": "string", "minLength": 1 },
+                        "runtime_path": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": true
+                    },
+                    "audience": {
+                      "type": "object",
+                      "required": ["type", "ref"],
+                      "properties": {
+                        "type": { "type": "string", "minLength": 1 },
+                        "ref": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": true
+                    },
+                    "content_ref": {
+                      "type": "object",
+                      "required": ["draft_ref", "digest", "subject_or_title"],
+                      "properties": {
+                        "draft_ref": { "type": "string", "pattern": "^runx:contract-draft:[0-9a-f]{16}$" },
+                        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+                        "subject_or_title": { "type": "string", "minLength": 1 }
+                      },
+                      "additionalProperties": false
+                    },
+                    "consent_basis": { "type": "string", "minLength": 1 },
+                    "operator_context": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            "provider_action": { "const": null },
+            "live_external_send_performed": { "const": false }
+          },
+          "additionalProperties": false
+        },
+        "send_plan": {
+          "type": "object",
+          "required": ["decision", "action_family", "principal", "provider", "send_class", "channel", "audience", "content", "gates", "blockers", "provider_actions", "evidence_refs", "success_checkpoint"],
+          "properties": {
+            "decision": { "const": "ready" },
+            "action_family": { "const": "send-as" },
+            "principal": {
+              "type": "object",
+              "required": ["type", "ref"],
+              "properties": {
+                "type": { "type": "string", "enum": ["user", "team", "account", "service"] },
+                "ref": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            "provider": {
+              "type": "object",
+              "required": ["name", "account_ref", "runtime_path"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "account_ref": { "type": "string", "minLength": 1 },
+                "runtime_path": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            "send_class": { "type": "string", "enum": ["transactional", "campaign", "flow_step", "support_reply", "outreach", "status", "internal"] },
+            "channel": { "type": "string", "enum": ["email", "sms", "chat", "push", "webhook", "other"] },
+            "audience": {
+              "type": "object",
+              "required": ["type", "ref", "requires_reconfirmation"],
+              "properties": {
+                "type": { "type": "string", "enum": ["recipient", "list", "segment", "thread", "channel", "all_contacts"] },
+                "ref": { "type": "string", "minLength": 1 },
+                "requires_reconfirmation": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            },
+            "content": {
+              "type": "object",
+              "required": ["draft_ref", "digest", "subject_or_title"],
+              "properties": {
+                "draft_ref": { "type": "string", "pattern": "^runx:contract-draft:[0-9a-f]{16}$" },
+                "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+                "subject_or_title": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            },
+            "gates": {
+              "type": "object",
+              "required": ["preflight_required", "human_approval_required", "approval_ref"],
+              "properties": {
+                "preflight_required": { "const": true },
+                "human_approval_required": { "const": true },
+                "approval_ref": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            },
+            "blockers": { "type": "array", "maxItems": 100, "items": { "type": "string" } },
+            "provider_actions": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "type": "string" } },
+            "evidence_refs": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "type": "string" } },
+            "success_checkpoint": {
+              "type": "object",
+              "required": ["milestone", "description"],
+              "properties": {
+                "milestone": { "const": "provider_delivery_required" },
+                "description": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "validation": {
+          "type": "object",
+          "required": ["status", "findings", "provider_delivery_outside_contract_drafter", "live_external_send_performed"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pass", "fail"] },
+            "findings": {
+              "type": "array",
+              "maxItems": 100,
+              "items": {
+                "type": "object",
+                "required": ["code", "message"],
+                "properties": {
+                  "code": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "message": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "canonical_send_as_dependency_executed": { "type": "boolean" },
+            "canonical_send_as_dependency": { "type": "string" },
+            "no_draft_emitted": { "const": true },
+            "no_proposal_emitted": { "const": true },
+            "provider_delivery_outside_contract_drafter": { "const": true },
+            "live_external_send_performed": { "const": false }
+          },
+          "additionalProperties": false
+        },
+        "template_digest": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "parties_digest": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "terms_digest": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "delivery_performed": { "const": false }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "const": "refused" } },
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "review_status": { "const": "refused" },
+              "draft_ref": { "const": null },
+              "document": { "const": null },
+              "send_proposal": { "const": null },
+              "validation": {
+                "properties": { "status": { "const": "fail" } }
+              }
+            },
+            "not": { "required": ["send_plan"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "decision": { "const": "drafted" } },
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "review_status": { "const": "requires_review" },
+              "draft_ref": { "type": "string" },
+              "document": { "type": "object", "additionalProperties": true },
+              "send_proposal": { "type": "object", "additionalProperties": true },
+              "validation": {
+                "properties": { "status": { "const": "pass" } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "required": ["send_plan"] },
+          "then": {
+            "properties": {
+              "validation": {
+                "required": [
+                  "canonical_send_as_dependency_executed",
+                  "canonical_send_as_dependency",
+                  "provider_delivery_outside_contract_drafter",
+                  "live_external_send_performed"
+                ],
+                "properties": {
+                  "canonical_send_as_dependency_executed": { "const": true },
+                  "canonical_send_as_dependency": { "const": "runx/send-as@sha-1f90b9364a3a#plan" }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/contractDraft" }
+  ],
+  "properties": {
+    "data": { "$ref": "#/$defs/contractDraft" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,50 @@
+skill: send-as
+version: "0.1.5"
+# The immutable first-party registry package is materialized here only because
+# legacy graph resolvers interpret registry step refs as relative paths. Its
+# public catalog metadata remains registry-owned; this copy exposes only the
+# canonical plan runner and cannot perform provider delivery.
+runners:
+  plan:
+    default: true
+    type: agent-task
+    agent: reviewer
+    task: send-as
+    outputs:
+      send_plan: object
+    artifacts:
+      named_emits:
+        send_plan: send_plan
+      packets:
+        send_plan: runx.send_as.plan.v1
+    runx:
+      category: ops
+    inputs:
+      objective:
+        type: string
+        required: true
+        description: Bounded send-planning or authorization objective; provider delivery is outside this runner.
+      principal:
+        type: string
+        required: true
+        description: Principal the message is sent as.
+      provider_context:
+        type: json
+        required: false
+        description: Provider/account readiness, connector, or MCP status.
+      audience:
+        type: json
+        required: false
+        description: Recipient, list, segment, thread, channel, or audience brief.
+      content_ref:
+        type: json
+        required: false
+        description: Digest, draft id, template id, campaign id, or stable content reference.
+      consent_basis:
+        type: string
+        required: false
+        description: Why the recipient or audience may receive this message.
+      operator_context:
+        type: string
+        required: false
+        description: Approval posture, legal constraints, or extra guardrails.

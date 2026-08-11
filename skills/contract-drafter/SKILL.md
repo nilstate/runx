@@ -15,12 +15,6 @@ This is not legal advice and does not replace counsel. It is an execution
 boundary for template fidelity: the receipt proves which template version was
 drafted, which terms were bound, and which deviations were declared.
 
-## Composes
-
-<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
-
-- `send-as#plan`
-
 ## Procedure
 
 1. Admission requires a complete template (id, version, title, clauses with
@@ -36,9 +30,13 @@ drafted, which terms were bound, and which deviations were declared.
    missing clauses all refuse.
 5. A drafted verdict carries the document, top-level `review_status` and
    `delivery_status`, and a send proposal gated on a human approver. The default
-   graph consumes that proposal through canonical `../send-as#plan` and then
-   verifies the returned plan is bound to the draft digest. Provider delivery
-   remains outside this skill; `delivery_performed` is always false.
+   graph consumes that proposal through the immutable, first-party registry
+   dependency `runx/send-as@sha-1f90b9364a3a#plan` and then verifies the
+   returned plan is bound to the draft digest. For legacy graph resolvers, the
+   exact first-party skill text, plan runner, packet schema, and registry origin
+   are materialized at that immutable ref inside the package; it contains no
+   mock or provider-delivery runner. Provider delivery remains outside this
+   skill; `delivery_performed` is always false.
 
 ## Output
 

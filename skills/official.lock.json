@@ -64,8 +64,8 @@
   },
   {
     "skill_id": "runx/contract-drafter",
-    "version": "sha-8948f4bbbcf2",
-    "digest": "bc576236f8709c5e6d95ecf8c8788804951ae944212fa46182ca3c49c4cd1dd0",
+    "version": "sha-719cbf33b14f",
+    "digest": "9a4a2c5f508a0f8b8bc4caa24f7c19a83a63c084e0f8dcfecdfc2ca7826ab55a",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },

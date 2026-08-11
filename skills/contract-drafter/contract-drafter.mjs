@@ -42,6 +42,9 @@ export function finalizeDraft(inputs) {
   if (context.path === "stop") {
     return packet({
       decision: "refused",
+      review_status: "refused",
+      delivery_status: "not_sent",
+      draft_ref: null,
       reason: "Refused: the request is missing required template, party, or term evidence.",
       document: null,
       deviations: [],
@@ -51,6 +54,8 @@ export function finalizeDraft(inputs) {
         findings: Array.isArray(context.findings) ? context.findings : [],
         no_draft_emitted: true,
         no_proposal_emitted: true,
+        provider_delivery_outside_contract_drafter: true,
+        live_external_send_performed: false,
       },
       template_digest: null,
       parties_digest: null,
@@ -204,11 +209,12 @@ export function finalizeSendPlan(inputs) {
       validation: {
         ...record(draft.validation),
         canonical_send_as_dependency_executed: true,
-        canonical_send_as_dependency: "../send-as#plan",
+        canonical_send_as_dependency: "runx/send-as@sha-1f90b9364a3a#plan",
         provider_delivery_outside_contract_drafter: true,
         live_external_send_performed: false,
       },
     },
+    send_plan: sendPlan,
   };
 }
 
