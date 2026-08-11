@@ -13,11 +13,12 @@ catalog:
 
 harness:
   files:
-    - fixtures/seeded-repermission.sqlite
-    - fixtures/seeded-hard-bounce.sqlite
-    - fixtures/seeded-stale.sqlite
+    - fixtures/seeded-repermission.json
+    - fixtures/seeded-hard-bounce.json
+    - fixtures/seeded-stale.json
   cases:
     - name: sealed_decay_re_permission
+      runner: harness_judge
       operator_journeys:
         - mode: standalone
           confusors: [send-as, outreach-sequencer]
@@ -32,11 +33,13 @@ harness:
             - Do not append the same transition again.
             - Do not treat the result packet as delivery authority.
       env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/repermission":{"adapter":"data.sqlite","database_path":"fixtures/seeded-repermission.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/repermission":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-repermission.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         data_source_ref: tenant://list-hygiene/repermission
         resource: contact_consent_events
         aggregate_id: contact:decay
+        seed_idempotency_key: contact:decay:fixture:v1
+        bootstrap_event: { type: contact.engagement_snapshot_recorded, contact_id: "contact:decay", consent_state: subscribed, recency_days: 121, source: public_harness_fixture }
         expected_version: 1
         idempotency_key: contact:decay:consent:v2
         engagement_history: { opens_count: 0, clicks_count: 0, hard_bounces: 0, recency_days: 121 }
@@ -44,14 +47,20 @@ harness:
         current_consent_state: { state: subscribed, active_unsubscribe_marker: false, evidence_status: read, evidence_version: 1 }
       expect:
         status: sealed
-        steps: [read-contact, decide, append-transition, readback-contact, finalize]
+        steps: [seed-contact, read-contact, decide, append-transition, readback-contact, finalize]
         step_outputs:
+          seed-contact:
+            subset:
+              data_operation_result:
+                data:
+                  operation: append_event
+                  aggregate_id: contact:decay
+                  after_version: 1
           append-transition:
             subset:
               data_operation_result:
                 data:
                   operation: append_event
-                  status: committed
                   aggregate_id: contact:decay
                   after_version: 2
           finalize:
@@ -75,12 +84,15 @@ harness:
         receipt: { schema: runx.receipt.v1 }
 
     - name: sealed_hard_bounce_suppress
+      runner: harness_judge
       env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/hard-bounce":{"adapter":"data.sqlite","database_path":"fixtures/seeded-hard-bounce.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/hard-bounce":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-hard-bounce.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         data_source_ref: tenant://list-hygiene/hard-bounce
         resource: contact_consent_events
         aggregate_id: contact:hard-bounce
+        seed_idempotency_key: contact:hard-bounce:fixture:v1
+        bootstrap_event: { type: contact.hard_bounce_observed, contact_id: "contact:hard-bounce", consent_state: subscribed, hard_bounces: 1, source: public_harness_fixture }
         expected_version: 1
         idempotency_key: contact:hard-bounce:consent:v2
         engagement_history: { opens_count: 2, clicks_count: 1, hard_bounces: 1, recency_days: 12 }
@@ -88,7 +100,7 @@ harness:
         current_consent_state: { state: subscribed, active_unsubscribe_marker: false, evidence_status: read, evidence_version: 1 }
       expect:
         status: sealed
-        steps: [read-contact, decide, append-transition, readback-contact, finalize]
+        steps: [seed-contact, read-contact, decide, append-transition, readback-contact, finalize]
         step_outputs:
           finalize:
             subset:
@@ -106,12 +118,15 @@ harness:
         receipt: { schema: runx.receipt.v1 }
 
     - name: stop_missing_or_stale_evidence
+      runner: harness_judge
       env:
-        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/stale":{"adapter":"data.sqlite","database_path":"fixtures/seeded-stale.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://list-hygiene/stale":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-stale.sqlite","resources":{"contact_consent_events":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
         data_source_ref: tenant://list-hygiene/stale
         resource: contact_consent_events
         aggregate_id: contact:stale
+        seed_idempotency_key: contact:stale:fixture:v1
+        bootstrap_event: { type: contact.engagement_snapshot_recorded, contact_id: "contact:stale", consent_state: subscribed, recency_days: 180, source: public_harness_fixture }
         expected_version: 2
         idempotency_key: contact:stale:consent:v3
         engagement_history: { opens_count: 0, clicks_count: 0, hard_bounces: 0, recency_days: 180 }
@@ -119,7 +134,7 @@ harness:
         current_consent_state: { state: subscribed, active_unsubscribe_marker: false, evidence_status: stale, evidence_version: 1 }
       expect:
         status: sealed
-        steps: [read-contact, decide, readback-contact, finalize]
+        steps: [seed-contact, read-contact, decide, readback-contact, finalize]
         step_outputs:
           finalize:
             subset:
@@ -176,6 +191,107 @@ runners:
       name: list-hygiene-judge
       result_from: [finalize]
       steps:
+        - id: read-contact
+          label: read the durable contact projection before judgment
+          skill: registry:runx/data-store@sha-30c9df39e353
+          runner: read_projection
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+
+        - id: decide
+          label: bind the consent decision to the durable projection
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            expected_version: $input.expected_version
+            idempotency_key: $input.idempotency_key
+            engagement_history: $input.engagement_history
+            bounce_policy: $input.bounce_policy
+            current_consent_state: $input.current_consent_state
+          context:
+            contact_readback: read-contact.data_operation_result.data
+          run:
+            type: javascript
+            module: list-hygiene-judge.mjs
+            export: decideTransition
+            outputs:
+              decision_plan: object
+
+        - id: append-transition
+          label: append exactly one consent-state transition with compare-and-set
+          when:
+            field: decide.decision_plan.path
+            equals: append
+          skill: registry:runx/data-store@sha-30c9df39e353
+          runner: append_event
+          mutation: true
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            expected_version: $input.expected_version
+            idempotency_key: $input.idempotency_key
+          context:
+            event: decide.decision_plan.event
+
+        - id: readback-contact
+          label: read the contact projection after the optional transition
+          skill: registry:runx/data-store@sha-30c9df39e353
+          runner: read_projection
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+
+        - id: finalize
+          label: return the decision only with truthful durable finality
+          context:
+            decision_plan: decide.decision_plan
+            recorded_readback: readback-contact.data_operation_result.data
+          run:
+            type: javascript
+            module: list-hygiene-judge.mjs
+            export: finalizeResult
+            outputs:
+              list_hygiene_result: object
+          artifacts:
+            named_emits:
+              list_hygiene_result: list_hygiene_result
+
+  harness_judge:
+    default: false
+    type: graph
+    inputs:
+      data_source_ref: { type: string, required: true }
+      resource: { type: string, required: true }
+      aggregate_id: { type: string, required: true }
+      seed_idempotency_key: { type: string, required: true }
+      bootstrap_event: { type: json, required: true }
+      expected_version: { type: number, required: true }
+      idempotency_key: { type: string, required: true }
+      engagement_history: { type: json, required: true }
+      bounce_policy: { type: json, required: true }
+      current_consent_state: { type: json, required: true }
+    graph:
+      name: list-hygiene-judge-harness
+      result_from: [finalize]
+      steps:
+        - id: seed-contact
+          label: create the declared fixture projection in the isolated harness store
+          skill: registry:runx/data-store@sha-30c9df39e353
+          runner: append_event
+          mutation: true
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            expected_version: 0
+            idempotency_key: $input.seed_idempotency_key
+            event: $input.bootstrap_event
+
         - id: read-contact
           label: read the durable contact projection before judgment
           skill: registry:runx/data-store@sha-30c9df39e353
