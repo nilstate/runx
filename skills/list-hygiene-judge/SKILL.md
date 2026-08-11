@@ -1,6 +1,7 @@
 ---
 name: list-hygiene-judge
 description: Judge whether a contact should be verified, suppressed, or moved to re-permission from bounded engagement evidence and a durable data-store projection; record exactly one consent-state transition with optimistic concurrency, or stop for human review without writing. Use for list hygiene decisions before a separate send-as run reads the recorded consent state.
+registry_owner: emilianochagoya
 ---
 
 # List Hygiene Judge
@@ -76,6 +77,15 @@ records corrected evidence in the contact stream, rerun with the new projection
 version and a new idempotency key. Never weaken the version guard or clear an
 unsubscribe marker inside this skill.
 
+## Reproducible harness
+
+The default `judge` runner never invents or seeds source data. The non-default
+`harness_judge` runner exists only to make the three public harness cases
+reproducible in an isolated workspace: it appends one declared fixture event to
+a fresh SQLite-backed `data-store`, then runs the same read, decide, optional
+append, readback, and finalization path. Fixture documents are UTF-8 JSON so the
+hosted registry can reconstruct and rerun the package without binary sidecars.
+
 ## Example
 
 A contact has durable projection version 3, no unsubscribe marker, no hard
@@ -94,4 +104,3 @@ This package uses deterministic JavaScript rather than model judgment.
 - Never emit an operational proposal, provider payload, or claimed send result.
 - Preserve `aggregate_id`, `idempotency_key`, the source projection digest, and
   the recorded version in the final result.
-
