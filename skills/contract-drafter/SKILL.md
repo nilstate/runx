@@ -15,6 +15,12 @@ This is not legal advice and does not replace counsel. It is an execution
 boundary for template fidelity: the receipt proves which template version was
 drafted, which terms were bound, and which deviations were declared.
 
+## Composes
+
+<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
+
+- `send-as#plan`
+
 ## Procedure
 
 1. Admission requires a complete template (id, version, title, clauses with
