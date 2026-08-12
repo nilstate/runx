@@ -1,0 +1,12 @@
+{
+  "exported_at": "2026-08-11T00:00:00Z",
+  "source": "crm-connector-export",
+  "records": [
+    {
+      "id": "acct-globex",
+      "account_status": "healthy",
+      "next_action": "none",
+      "industry": "software"
+    }
+  ]
+}
