@@ -1,6 +1,8 @@
 ---
 name: list-hygiene-judge
 description: Read a contact's engagement and bounce projection, decide whether to re-permission or suppress, and record one idempotent consent-state transition.
+category: growth
+source: https://github.com/SmartMenu9872/runx/tree/smartmenu9872-list-hygiene-judge/skills/list-hygiene-judge
 ---
 
 # List hygiene judge
