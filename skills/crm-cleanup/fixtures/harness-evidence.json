@@ -1,23 +1,29 @@
 {
   "schema": "runx.crm_cleanup.harness_evidence.v1",
-  "generated_at": "2026-08-12T16:14:53Z",
+  "package_version": "0.3.0",
+  "generated_at": "2026-08-12T16:44:32Z",
   "runtime": "runx-cli 0.8.2",
   "runtime_distribution": "@runxhq/cli@0.8.2",
   "command": "runx harness ./skills/crm-cleanup --json",
   "status": "passed",
-  "case_count": 6,
+  "case_count": 9,
   "assertion_error_count": 0,
   "cases": [
     "crm-cleanup-fetches-and-writes-changed-fields",
     "crm-cleanup-no-op-does-not-write",
     "crm-cleanup-refuses-field-outside-schema",
     "crm-cleanup-refuses-malformed-directive",
+    "crm-cleanup-routes-hedged-change-to-review",
+    "crm-cleanup-routes-actionable-unmapped-prose-to-review",
+    "crm-cleanup-routes-conflicting-values-to-review",
     "crm-cleanup-refuses-unsuccessful-source-read",
     "crm-cleanup-needs-all-typed-inputs"
   ],
   "happy_path": {
     "case": "crm-cleanup-fetches-and-writes-changed-fields",
     "decision": "updated",
+    "natural_transcript_without_update_dsl": true,
+    "schema_keyed_fields": ["account_status", "health_score", "next_action"],
     "separate_transport_step": true,
     "write_executed": true,
     "writes_attempted": 1,
@@ -26,6 +32,7 @@
   "no_op_path": {
     "case": "crm-cleanup-no-op-does-not-write",
     "decision": "no_action",
+    "natural_transcript_without_update_dsl": true,
     "write_executed": false,
     "writes_attempted": 0,
     "writes_completed": 0,
@@ -34,6 +41,9 @@
   "safety_paths": {
     "out_of_schema_field_refused": true,
     "malformed_directive_refused": true,
+    "hedged_change_routed_to_review_without_write": true,
+    "actionable_unmapped_prose_routed_to_review_without_write": true,
+    "conflicting_values_routed_to_review_without_write": true,
     "unsuccessful_source_read_failed_closed": true,
     "missing_typed_inputs_failed_preflight": true
   },

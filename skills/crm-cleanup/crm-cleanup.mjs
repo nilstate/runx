@@ -9,6 +9,7 @@ export function reconcileCleanup(inputs) {
   const schemaDigest = requiredDigest(inputs.crm_schema_digest, "crm_schema_digest");
 
   validateSourceHandle(sourceHandle);
+  assertClosedKeys(crmSchema, ["record_id_field", "fields"], "crm_schema");
   if (transcript.length > 100000) {
     throw new Error("transcript exceeds 100000 characters");
   }
@@ -40,7 +41,8 @@ export function reconcileCleanup(inputs) {
     validateFieldDefinition(field, requiredRecord(fieldDefinitions[field], `crm_schema.fields.${field}`));
   }
 
-  const parsed = parseTranscript(transcript);
+  const extractionDraft = requiredRecord(inputs.extraction_draft, "extraction_draft");
+  const parsed = validateExtractionDraft(transcript, fieldDefinitions, extractionDraft);
   const findings = [...parsed.findings];
   const candidates = {};
   const seen = new Set();
@@ -90,11 +92,14 @@ export function reconcileCleanup(inputs) {
     cleanup_plan: {
       decision: refused ? "refused" : changed ? "ready" : "no_action",
       reason: refused
-        ? "The transcript contained a directive that the CRM schema does not authorize."
+        ? parsed.needsReview.length > 0
+          ? "The transcript contains a possible CRM change that is ambiguous, hedged, or not safely extractable; human review is required and no write was executed."
+          : "The transcript contained a directive that the CRM schema does not authorize."
         : changed
           ? `Prepared ${Object.keys(candidates).length} schema-authorized field update(s) for the CRM transport.`
-          : "No schema-authorized directive changed the current CRM record.",
+          : "No schema-authorized candidate changed the current CRM record.",
       takeaways: parsed.takeaways,
+      needs_review: parsed.needsReview,
       field_updates: refused ? {} : candidates,
       record_id: targetId,
       before: cloneJson(before),
@@ -107,6 +112,141 @@ export function reconcileCleanup(inputs) {
       },
     },
   };
+}
+
+function validateExtractionDraft(transcript, fieldDefinitions, draft) {
+  const allowedKeys = new Set(["takeaways", "candidates", "review_items"]);
+  for (const key of Object.keys(draft)) {
+    if (!allowedKeys.has(key)) {
+      throw new Error(`extraction_draft.${key} is not supported`);
+    }
+  }
+  if (!Array.isArray(draft.takeaways) || draft.takeaways.length > 50) {
+    throw new Error("extraction_draft.takeaways must be an array of at most 50 strings");
+  }
+  if (!Array.isArray(draft.candidates) || draft.candidates.length > 100) {
+    throw new Error("extraction_draft.candidates must be an array of at most 100 objects");
+  }
+  if (!Array.isArray(draft.review_items) || draft.review_items.length > 100) {
+    throw new Error("extraction_draft.review_items must be an array of at most 100 objects");
+  }
+
+  const takeaways = draft.takeaways.map((value, index) => {
+    const takeaway = requiredString(value, `extraction_draft.takeaways.${index}`);
+    if (takeaway.length > 2000) throw new Error("extraction_draft takeaway exceeds 2000 characters");
+    return takeaway;
+  });
+  const directives = [];
+  const findings = [];
+  const needsReview = [];
+  const candidateFields = new Set();
+  for (const [index, rawCandidate] of draft.candidates.entries()) {
+    const candidate = requiredRecord(rawCandidate, `extraction_draft.candidates.${index}`);
+    assertClosedKeys(
+      candidate,
+      ["field", "to", "evidence_quote"],
+      `extraction_draft.candidates.${index}`,
+    );
+    const field = requiredString(candidate.field, `extraction_draft.candidates.${index}.field`);
+    const evidenceQuote = requiredString(
+      candidate.evidence_quote,
+      `extraction_draft.candidates.${index}.evidence_quote`,
+    );
+    if (evidenceQuote.length > 2000) {
+      throw new Error(`extraction_draft.candidates.${index}.evidence_quote exceeds 2000 characters`);
+    }
+    if (!Object.hasOwn(fieldDefinitions, field)) {
+      findings.push({
+        code: "extraction.field_not_allowed",
+        message: `${field} is not declared in crm_schema.fields.`,
+      });
+      continue;
+    }
+    if (!transcript.includes(evidenceQuote)) {
+      findings.push({
+        code: "extraction.quote_not_found",
+        message: `${field} evidence_quote is not an exact transcript substring.`,
+      });
+      continue;
+    }
+    if (candidateFields.has(field)) {
+      needsReview.push({
+        field,
+        evidence_quote: evidenceQuote,
+        reason: `${field} has conflicting or duplicate extracted values; confirm one exact value before writing.`,
+      });
+      continue;
+    }
+    candidateFields.add(field);
+    if (/\b(?:maybe|might|may|possibly|probably|perhaps|uncertain|unsure|not\s+sure|i\s+think|i\s+guess|seems?|appears?|looks?)\b/i.test(evidenceQuote)) {
+      needsReview.push({
+        field,
+        evidence_quote: evidenceQuote,
+        reason: `${field} is mentioned with hedged or uncertain language; confirm an exact value before writing.`,
+      });
+      continue;
+    }
+    const rawValue = scalarExtractionValue(candidate.to, field);
+    directives.push({ field, rawValue, evidenceQuote });
+  }
+
+  for (const [index, rawItem] of draft.review_items.entries()) {
+    const item = requiredRecord(rawItem, `extraction_draft.review_items.${index}`);
+    assertClosedKeys(
+      item,
+      ["field", "evidence_quote", "reason"],
+      `extraction_draft.review_items.${index}`,
+    );
+    const evidenceQuote = requiredString(
+      item.evidence_quote,
+      `extraction_draft.review_items.${index}.evidence_quote`,
+    );
+    if (evidenceQuote.length > 2000) {
+      throw new Error(`extraction_draft.review_items.${index}.evidence_quote exceeds 2000 characters`);
+    }
+    if (!transcript.includes(evidenceQuote)) {
+      findings.push({
+        code: "extraction.review_quote_not_found",
+        message: `review_items.${index}.evidence_quote is not an exact transcript substring.`,
+      });
+      continue;
+    }
+    const field = item.field === null || item.field === undefined
+      ? "unmapped"
+      : requiredString(item.field, `extraction_draft.review_items.${index}.field`);
+    if (field !== "unmapped" && !Object.hasOwn(fieldDefinitions, field)) {
+      findings.push({
+        code: "extraction.review_field_not_allowed",
+        message: `${field} is not declared in crm_schema.fields.`,
+      });
+      continue;
+    }
+    const reason = requiredString(item.reason, `extraction_draft.review_items.${index}.reason`);
+    if (reason.length > 2000) {
+      throw new Error(`extraction_draft.review_items.${index}.reason exceeds 2000 characters`);
+    }
+    needsReview.push({
+      field,
+      evidence_quote: evidenceQuote,
+      reason,
+    });
+  }
+  for (const item of needsReview) {
+    findings.push({
+      code: "transcript.needs_review",
+      field: item.field,
+      evidence_quote: item.evidence_quote,
+      message: item.reason,
+    });
+  }
+  return { directives, findings, needsReview, takeaways };
+}
+
+function scalarExtractionValue(value, field) {
+  if (!["string", "number", "boolean"].includes(typeof value)) {
+    throw new Error(`extraction candidate ${field}.to must be a string, number, or boolean`);
+  }
+  return String(value);
 }
 
 export function finalizeCleanup(inputs) {
@@ -179,6 +319,7 @@ export function finalizeCleanup(inputs) {
       ? `Applied ${updateFields.length} schema-authorized field update(s) through the mock CRM transport.`
       : requiredString(plan.reason, "cleanup_plan.reason"),
     takeaways: Array.isArray(plan.takeaways) ? plan.takeaways : [],
+    needs_review: Array.isArray(plan.needs_review) ? plan.needs_review : [],
     field_updates: fieldUpdates,
     write_result: writeResult,
     source_read: requiredRecord(plan.source_read, "cleanup_plan.source_read"),
@@ -189,6 +330,7 @@ export function finalizeCleanup(inputs) {
   return {
     crm_cleanup_result: crmCleanupResult,
     takeaways: crmCleanupResult.takeaways,
+    needs_review: crmCleanupResult.needs_review,
     field_updates: crmCleanupResult.field_updates,
     write_result: crmCleanupResult.write_result,
   };
@@ -241,10 +383,18 @@ export function applyMockCrmWrite(inputs) {
 }
 
 function validateSourceHandle(sourceHandle) {
+  assertClosedKeys(
+    sourceHandle,
+    ["kind", "url", "allowlist", "record_id"],
+    "source_handle",
+  );
   if (requiredString(sourceHandle.kind, "source_handle.kind") !== "connector_export") {
     throw new Error("source_handle.kind must be connector_export");
   }
   const sourceUrl = requiredString(sourceHandle.url, "source_handle.url");
+  if (sourceUrl.length > 2048) {
+    throw new Error("source_handle.url exceeds 2048 characters");
+  }
   if (!/^https:\/\/[^/\s]+(?:\/|$)/i.test(sourceUrl)) {
     throw new Error("source_handle.url must be a valid HTTPS URL");
   }
@@ -254,9 +404,14 @@ function validateSourceHandle(sourceHandle) {
   if (sourceHandle.allowlist.length > 64) {
     throw new Error("source_handle.allowlist exceeds 64 hosts");
   }
-  for (const host of sourceHandle.allowlist) {
-    requiredString(host, "source_handle.allowlist host");
+  for (const hostValue of sourceHandle.allowlist) {
+    const host = requiredString(hostValue, "source_handle.allowlist host");
+    if (host.length > 253 || !/^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/.test(host)) {
+      throw new Error("source_handle.allowlist contains an invalid host");
+    }
   }
+  const recordId = requiredString(sourceHandle.record_id, "source_handle.record_id");
+  if (recordId.length > 500) throw new Error("source_handle.record_id exceeds 500 characters");
 }
 
 function validateSourceRead(sourceHandle, sourceRead) {
@@ -313,39 +468,16 @@ function parseRecords(extracted) {
   return records.map((entry, index) => requiredRecord(entry, `source record ${index}`));
 }
 
-function parseTranscript(transcript) {
-  const directives = [];
-  const takeaways = [];
-  const findings = [];
-  for (const rawLine of transcript.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const update = /^CRM update\s*:\s*([A-Za-z][A-Za-z0-9_]{0,127})\s*=\s*(.+)$/i.exec(line);
-    if (update) {
-      directives.push({
-        field: update[1],
-        rawValue: update[2].trim(),
-        evidenceQuote: line,
-      });
-      continue;
-    }
-    if (/^CRM update\s*:/i.test(line)) {
-      findings.push({
-        code: "directive.malformed",
-        message: "CRM update directives must use CRM update: field=value with a non-empty value.",
-      });
-      continue;
-    }
-    const takeaway = /^Takeaway\s*:\s*(.+)$/i.exec(line);
-    if (takeaway) {
-      takeaways.push(takeaway[1].trim());
-    }
-  }
-  return { directives, findings, takeaways: [...new Set(takeaways)].slice(0, 50) };
-}
-
 function validateFieldDefinition(field, definition) {
-  const allowedKeys = new Set(["type", "enum", "max_length", "minimum", "maximum"]);
+  const allowedKeys = new Set([
+    "type",
+    "enum",
+    "max_length",
+    "minimum",
+    "maximum",
+    "aliases",
+    "semantic_role",
+  ]);
   for (const key of Object.keys(definition)) {
     if (!allowedKeys.has(key)) {
       throw new Error(`crm_schema.fields.${field}.${key} is not supported`);
@@ -354,6 +486,22 @@ function validateFieldDefinition(field, definition) {
   const type = requiredString(definition.type, `crm_schema.fields.${field}.type`);
   if (!new Set(["string", "number", "boolean"]).has(type)) {
     throw new Error(`crm_schema.fields.${field}.type is not supported`);
+  }
+  if (definition.aliases !== undefined) {
+    if (!Array.isArray(definition.aliases) || definition.aliases.length > 20) {
+      throw new Error(`crm_schema.fields.${field}.aliases must contain at most 20 strings`);
+    }
+    for (const alias of definition.aliases) {
+      if (typeof alias !== "string" || !alias.trim() || alias.length > 100) {
+        throw new Error(`crm_schema.fields.${field}.aliases contains an invalid alias`);
+      }
+    }
+  }
+  if (
+    definition.semantic_role !== undefined
+    && !new Set(["status", "score", "next_action"]).has(definition.semantic_role)
+  ) {
+    throw new Error(`crm_schema.fields.${field}.semantic_role is not supported`);
   }
   if (definition.enum !== undefined) {
     if (!Array.isArray(definition.enum) || definition.enum.length === 0 || definition.enum.length > 100) {
@@ -426,6 +574,13 @@ function requiredRecord(value, label) {
     throw new Error(`${label} must be an object`);
   }
   return value;
+}
+
+function assertClosedKeys(value, allowedKeys, label) {
+  const allowed = new Set(allowedKeys);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) throw new Error(`${label}.${key} is not supported`);
+  }
 }
 
 function record(value) {
