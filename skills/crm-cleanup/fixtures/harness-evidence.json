@@ -1,6 +1,6 @@
 {
   "schema": "runx.crm_cleanup.harness_evidence.v1",
-  "generated_at": "2026-08-12T16:02:21Z",
+  "generated_at": "2026-08-12T16:04:56Z",
   "runtime": "runx-cli 0.8.2",
   "runtime_source_revision": "71a61ca72abe37050a0072f1d380447de0958de0",
   "command": "runx harness ./skills/crm-cleanup --json",
@@ -41,7 +41,9 @@
     "kind": "connector_export",
     "url": "https://gist.githubusercontent.com/SQbal1/b4d40911bc08c261fbedcdebcf069a96/raw/62c45933ebb94ba01a18b9eb0ffc76c4ed47eb12/current-records.json",
     "content_digest": "sha256:489ff9fbdde5a885525a5ca0a0573bcd27136f4314684d28c87f01e0c5be3024",
-    "read_at_runtime": true
+    "read_at_runtime": true,
+    "harness_transport": "explicit deterministic HTTP response",
+    "live_dogfood_required": true
   },
   "receipt_binding": "Receipt IDs are generated from the final immutable package revision and published in the external verification report to avoid a self-referential package digest."
 }

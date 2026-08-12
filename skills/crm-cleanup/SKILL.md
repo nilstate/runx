@@ -14,6 +14,9 @@ the transport's exact before/after records.
 
 The mock transport is deliberate: it demonstrates the complete read/write
 control loop without possessing credentials or mutating a production CRM.
+Harness cases bind deterministic HTTP responses to the public connector URL so
+registry verification does not depend on third-party uptime. A live run still
+fetches that URL through the native network effect.
 
 ## Inputs
 
