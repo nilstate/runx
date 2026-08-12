@@ -1,12 +1,14 @@
 {
   "schema": "runx.tool.manifest.v1",
-  "name": "data.local",
+  "name": "data.source",
   "version": "0.1.0",
   "description": "Local JSON event-store adapter for the provider-agnostic runx data operation envelope.",
   "source": {
     "type": "cli-tool",
     "command": "node",
-    "args": ["./run.mjs"]
+    "args": [
+      "./run.mjs"
+    ]
   },
   "inputs": {
     "operation": {
@@ -56,22 +58,15 @@
       "description": "Maximum events returned by read_events."
     }
   },
-  "scopes": ["runx:data:read", "runx:data:append"],
-  "runx": {
-    "artifacts": {
-      "named_emits": {
-        "data_operation_result": "runx.data.operation_result.v1"
-      },
-      "wrap_as": "data_operation_result"
-    }
-  },
-  "runtime": {
-    "command": "node",
-    "args": ["./run.mjs"]
-  },
-  "output": {
-    "packet": "runx.data.operation_result.v1",
+  "scopes": [
+    "runx:data:read",
+    "runx:data:append"
+  ],
+  "artifacts": {
+    "named_emits": {
+      "data_operation_result": "runx.data.operation_result.v1"
+    },
     "wrap_as": "data_operation_result"
   },
-  "toolkit_version": "0.1.4"
+  "mutating": true
 }

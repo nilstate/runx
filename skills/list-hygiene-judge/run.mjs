@@ -231,13 +231,40 @@ const observations = {
   receipt_id: "assigned by runx receipt after execution",
 };
 
+// Every declared runner output is always a well-formed object; the branch is
+// expressed by the `recorded` / `status` field inside each one, never by an
+// absent or null key. On a stop path contact_event is deliberately inert, so
+// that even if the append guard were ever removed there is no transition in it
+// to apply.
 const result = {
   decision,
   observations,
+  recorded_transition: {
+    recorded: false,
+    aggregate_id: aggregateId,
+    resource,
+    expected_version: expectedVersion,
+    idempotency_key: idempotencyKey,
+  },
+  contact_event: {
+    type: "contact.consent_no_transition",
+    payload: {
+      packet: "runx.list.hygiene_judge.v1",
+      aggregate_id: aggregateId,
+      resource,
+      records_transition: false,
+    },
+  },
+  stop_state: {
+    status: "no_stop",
+    reason: null,
+    no_append_emitted: false,
+    no_consent_transition_recorded: false,
+  },
 };
 
 if (writes) {
-  result.recorded_transition = recordedTransition;
+  result.recorded_transition = { recorded: true, ...recordedTransition };
   result.contact_event = {
     type: `contact.consent_${decisionState}`,
     payload: {

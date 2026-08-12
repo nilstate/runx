@@ -7,15 +7,29 @@ catalog:
   visibility: public
   role: canonical
   runtime_path: data-adapter
-
-emits:
-  - name: list_hygiene_judgment
-    packet: runx.list.hygiene_judge.v1
+  execution: plan
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
 
 harness:
   cases:
     - name: sealed_decay_re_permission
       runner: judge
+      operator_journeys:
+        - mode: standalone
+          confusors: [reply-router, outreach-sequencer]
+          request: This contact has not opened or clicked in over a year. Decide whether we should still be mailing them, and record whatever you decide.
+          expected_outcome: Return a re_permission verdict grounded in the read engagement counters and record it as one compare-and-set append on the contact stream, with no send performed.
+        - mode: composed
+          request: Continue from this contact whose consent transition has already been judged and recorded.
+          expected_outcome: Reuse the recorded transition and its read-back projection version, and leave the gating of any actual delivery to a separate governed send-as run.
+          prior_evidence:
+            - The engagement_history, bounce_policy, and contact projection supplied and read in the fixture.
+            - The recorded consent transition and the version it was appended at.
+          must_not_repeat:
+            - Do not re-derive the consent verdict already sealed in the recorded transition.
+            - Do not append the transition a second time; the idempotency_key replays it.
       inputs:
         data_source_ref: local://runx-list-hygiene-judge/harness
         store_id: list-hygiene-judge-harness-v1
@@ -113,7 +127,6 @@ runners:
       observations: object
     artifacts:
       wrap_as: list_hygiene_judgment
-      packet: runx.list.hygiene_judge.v1
     inputs:
       data_source_ref:
         type: string
@@ -194,6 +207,7 @@ runners:
         description: Consent state as the caller has it; an active unsubscribe marker in the store escalates instead of re-permissioning.
     graph:
       name: list-hygiene-judge
+      result_from: [decide, readback]
       steps:
         - id: read-contact
           tool: data.source
