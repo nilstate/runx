@@ -11,58 +11,6 @@ catalog:
   requires_adapter: false
   approval: none
 
-input_definitions:
-  source_handle:
-    type: object
-    required: true
-    description: Public connector-export handle read during this run; no record payload is accepted from the caller.
-    schema:
-      required: [kind, url, allowlist, record_id]
-      additionalProperties: false
-      properties:
-        kind: { type: string, const: connector_export }
-        url: { type: string, format: uri, pattern: '^https://' }
-        allowlist:
-          type: array
-          minItems: 1
-          maxItems: 64
-          uniqueItems: true
-          items: { type: string, minLength: 1, maxLength: 253 }
-        record_id: { type: string, minLength: 1, maxLength: 500 }
-  transcript:
-    type: string
-    required: true
-    description: Call transcript with optional Takeaway lines and explicit CRM update field=value directives.
-    schema: { minLength: 1, maxLength: 100000 }
-  crm_schema:
-    type: object
-    required: true
-    description: Record identity plus typed update authority for each writable CRM field.
-    schema:
-      required: [record_id_field, fields]
-      additionalProperties: false
-      properties:
-        record_id_field: { type: string, pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-        fields:
-          type: object
-          minProperties: 1
-          maxProperties: 100
-          propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-          additionalProperties:
-            type: object
-            required: [type]
-            additionalProperties: false
-            properties:
-              type: { type: string, enum: [string, number, boolean] }
-              enum:
-                type: array
-                minItems: 1
-                maxItems: 100
-                items: { type: [string, number, boolean] }
-              max_length: { type: integer, minimum: 1, maximum: 10000 }
-              minimum: { type: number }
-              maximum: { type: number }
-
 harness:
   cases:
     - name: crm-cleanup-fetches-and-writes-changed-fields
@@ -365,11 +313,17 @@ runners:
     type: graph
     inputs:
       source_handle:
-        definition: source_handle
+        type: object
+        required: true
+        description: Public connector-export handle with kind, HTTPS url, host allowlist, and record_id; record payloads are rejected.
       transcript:
-        definition: transcript
+        type: string
+        required: true
+        description: Call transcript with optional Takeaway lines and explicit CRM update field=value directives; bounded to 100000 characters at runtime.
       crm_schema:
-        definition: crm_schema
+        type: object
+        required: true
+        description: Record ID field and typed string, number, or boolean definitions for each writable CRM field; closed and bounded at runtime.
     graph:
       name: crm-cleanup-reconcile-and-write
       result_from: [finalize]
@@ -411,70 +365,7 @@ runners:
             module: crm-cleanup.mjs
             export: reconcileCleanup
             outputs:
-              cleanup_plan:
-                type: object
-                schema:
-                  required: [decision, reason, takeaways, field_updates, record_id, before, source_read, transcript_digest, crm_schema_digest, validation]
-                  additionalProperties: false
-                  properties:
-                    decision: { type: string, enum: [ready, no_action, refused] }
-                    reason: { type: string, minLength: 1, maxLength: 2000 }
-                    takeaways:
-                      type: array
-                      maxItems: 50
-                      items: { type: string, minLength: 1, maxLength: 4000 }
-                    field_updates:
-                      type: object
-                      maxProperties: 100
-                      propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-                      additionalProperties:
-                        type: object
-                        required: [from, to, evidence_quote]
-                        additionalProperties: false
-                        properties:
-                          from: { type: [string, number, boolean, "null"] }
-                          to: { type: [string, number, boolean] }
-                          evidence_quote: { type: string, minLength: 1, maxLength: 4000 }
-                    record_id: { type: string, minLength: 1, maxLength: 500 }
-                    before: { type: object, additionalProperties: true }
-                    source_read:
-                      type: object
-                      required: [handle_kind, record_id, allowlist, requested_url, final_url, status, content_digest, fetched_at, bytes, truncated]
-                      additionalProperties: false
-                      properties:
-                        handle_kind: { type: string, const: connector_export }
-                        record_id: { type: string, minLength: 1, maxLength: 500 }
-                        allowlist:
-                          type: array
-                          minItems: 1
-                          maxItems: 64
-                          uniqueItems: true
-                          items: { type: string, minLength: 1, maxLength: 253 }
-                        requested_url: { type: string, format: uri, pattern: '^https://' }
-                        final_url: { type: string, format: uri, pattern: '^https://' }
-                        status: { type: integer, minimum: 200, maximum: 299 }
-                        content_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                        fetched_at: { type: string, format: date-time }
-                        bytes: { type: integer, minimum: 0, maximum: 1000000 }
-                        truncated: { type: boolean, const: false }
-                    transcript_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                    crm_schema_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                    validation:
-                      type: object
-                      required: [status, findings]
-                      additionalProperties: false
-                      properties:
-                        status: { type: string, enum: [pass, fail] }
-                        findings:
-                          type: array
-                          maxItems: 100
-                          items:
-                            type: object
-                            required: [code, message]
-                            additionalProperties: false
-                            properties:
-                              code: { type: string, minLength: 1, maxLength: 200 }
-                              message: { type: string, minLength: 1, maxLength: 2000 }
+              cleanup_plan: object
           artifacts:
             named_emits:
               cleanup_plan: cleanup_plan
@@ -488,26 +379,7 @@ runners:
             module: crm-cleanup.mjs
             export: applyMockCrmWrite
             outputs:
-              write_result:
-                type: object
-                schema:
-                  required: [transport, operation, status, executed, record_id, applied_fields, writes_attempted, writes_completed, before, after]
-                  additionalProperties: false
-                  properties:
-                    transport: { type: string, const: mock-crm }
-                    operation: { type: string, const: update_fields }
-                    status: { type: string, enum: [applied, no_op] }
-                    executed: { type: boolean }
-                    record_id: { type: string, minLength: 1, maxLength: 500 }
-                    applied_fields:
-                      type: array
-                      maxItems: 100
-                      uniqueItems: true
-                      items: { type: string, pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-                    writes_attempted: { type: integer, minimum: 0, maximum: 1 }
-                    writes_completed: { type: integer, minimum: 0, maximum: 1 }
-                    before: { type: object, additionalProperties: true }
-                    after: { type: object, additionalProperties: true }
+              write_result: object
           artifacts:
             named_emits:
               write_result: write_result
@@ -522,87 +394,13 @@ runners:
             module: crm-cleanup.mjs
             export: finalizeCleanup
             outputs:
-              crm_cleanup_result:
-                type: object
-                schema:
-                  required: [decision, reason, takeaways, field_updates, write_result, source_read, transcript_digest, crm_schema_digest, validation]
-                  additionalProperties: false
-                  properties:
-                    decision: { type: string, enum: [updated, no_action, refused] }
-                    reason: { type: string, minLength: 1, maxLength: 2000 }
-                    takeaways:
-                      type: array
-                      maxItems: 50
-                      items: { type: string, minLength: 1, maxLength: 4000 }
-                    field_updates:
-                      type: object
-                      maxProperties: 100
-                      propertyNames: { pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-                      additionalProperties:
-                        type: object
-                        required: [from, to, evidence_quote]
-                        additionalProperties: false
-                        properties:
-                          from: { type: [string, number, boolean, "null"] }
-                          to: { type: [string, number, boolean] }
-                          evidence_quote: { type: string, minLength: 1, maxLength: 4000 }
-                    write_result:
-                      type: object
-                      required: [transport, operation, status, executed, record_id, applied_fields, writes_attempted, writes_completed, before, after]
-                      additionalProperties: false
-                      properties:
-                        transport: { type: string, const: mock-crm }
-                        operation: { type: string, const: update_fields }
-                        status: { type: string, enum: [applied, no_op] }
-                        executed: { type: boolean }
-                        record_id: { type: string, minLength: 1, maxLength: 500 }
-                        applied_fields:
-                          type: array
-                          maxItems: 100
-                          uniqueItems: true
-                          items: { type: string, pattern: '^[A-Za-z][A-Za-z0-9_]{0,127}$' }
-                        writes_attempted: { type: integer, minimum: 0, maximum: 1 }
-                        writes_completed: { type: integer, minimum: 0, maximum: 1 }
-                        before: { type: object, additionalProperties: true }
-                        after: { type: object, additionalProperties: true }
-                    source_read:
-                      type: object
-                      required: [handle_kind, record_id, allowlist, requested_url, final_url, status, content_digest, fetched_at, bytes, truncated]
-                      additionalProperties: false
-                      properties:
-                        handle_kind: { type: string, const: connector_export }
-                        record_id: { type: string, minLength: 1, maxLength: 500 }
-                        allowlist:
-                          type: array
-                          minItems: 1
-                          maxItems: 64
-                          uniqueItems: true
-                          items: { type: string, minLength: 1, maxLength: 253 }
-                        requested_url: { type: string, format: uri, pattern: '^https://' }
-                        final_url: { type: string, format: uri, pattern: '^https://' }
-                        status: { type: integer, minimum: 200, maximum: 299 }
-                        content_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                        fetched_at: { type: string, format: date-time }
-                        bytes: { type: integer, minimum: 0, maximum: 1000000 }
-                        truncated: { type: boolean, const: false }
-                    transcript_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                    crm_schema_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                    validation:
-                      type: object
-                      required: [status, findings]
-                      additionalProperties: false
-                      properties:
-                        status: { type: string, enum: [pass, fail] }
-                        findings:
-                          type: array
-                          maxItems: 100
-                          items:
-                            type: object
-                            required: [code, message]
-                            additionalProperties: false
-                            properties:
-                              code: { type: string, minLength: 1, maxLength: 200 }
-                              message: { type: string, minLength: 1, maxLength: 2000 }
+              crm_cleanup_result: object
+              takeaways: array
+              field_updates: object
+              write_result: object
           artifacts:
             named_emits:
               crm_cleanup_result: crm_cleanup_result
+              takeaways: takeaways
+              field_updates: field_updates
+              write_result: write_result

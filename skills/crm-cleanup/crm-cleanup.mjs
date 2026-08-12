@@ -171,20 +171,24 @@ export function finalizeCleanup(inputs) {
     throw new Error("cleanup_plan validation does not match its decision");
   }
 
+  const crmCleanupResult = {
+    decision: planDecision === "ready" ? "updated" : planDecision,
+    reason: planDecision === "ready"
+      ? `Applied ${updateFields.length} schema-authorized field update(s) through the mock CRM transport.`
+      : requiredString(plan.reason, "cleanup_plan.reason"),
+    takeaways: Array.isArray(plan.takeaways) ? plan.takeaways : [],
+    field_updates: fieldUpdates,
+    write_result: writeResult,
+    source_read: requiredRecord(plan.source_read, "cleanup_plan.source_read"),
+    transcript_digest: requiredDigest(plan.transcript_digest, "cleanup_plan.transcript_digest"),
+    crm_schema_digest: requiredDigest(plan.crm_schema_digest, "cleanup_plan.crm_schema_digest"),
+    validation,
+  };
   return {
-    crm_cleanup_result: {
-      decision: planDecision === "ready" ? "updated" : planDecision,
-      reason: planDecision === "ready"
-        ? `Applied ${updateFields.length} schema-authorized field update(s) through the mock CRM transport.`
-        : requiredString(plan.reason, "cleanup_plan.reason"),
-      takeaways: Array.isArray(plan.takeaways) ? plan.takeaways : [],
-      field_updates: fieldUpdates,
-      write_result: writeResult,
-      source_read: requiredRecord(plan.source_read, "cleanup_plan.source_read"),
-      transcript_digest: requiredDigest(plan.transcript_digest, "cleanup_plan.transcript_digest"),
-      crm_schema_digest: requiredDigest(plan.crm_schema_digest, "cleanup_plan.crm_schema_digest"),
-      validation,
-    },
+    crm_cleanup_result: crmCleanupResult,
+    takeaways: crmCleanupResult.takeaways,
+    field_updates: crmCleanupResult.field_updates,
+    write_result: crmCleanupResult.write_result,
   };
 }
 

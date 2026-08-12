@@ -1,8 +1,8 @@
 {
   "schema": "runx.crm_cleanup.harness_evidence.v1",
-  "generated_at": "2026-08-12T16:04:56Z",
+  "generated_at": "2026-08-12T16:11:01Z",
   "runtime": "runx-cli 0.8.2",
-  "runtime_source_revision": "71a61ca72abe37050a0072f1d380447de0958de0",
+  "runtime_distribution": "@runxhq/cli@0.8.2",
   "command": "runx harness ./skills/crm-cleanup --json",
   "status": "passed",
   "case_count": 6,
@@ -16,7 +16,7 @@
     "crm-cleanup-needs-all-typed-inputs"
   ],
   "happy_path": {
-    "case": "crm-cleanup-write-happy-path",
+    "case": "crm-cleanup-fetches-and-writes-changed-fields",
     "decision": "updated",
     "separate_transport_step": true,
     "write_executed": true,
@@ -24,7 +24,7 @@
     "writes_completed": 1
   },
   "no_op_path": {
-    "case": "crm-cleanup-no-op",
+    "case": "crm-cleanup-no-op-does-not-write",
     "decision": "no_action",
     "write_executed": false,
     "writes_attempted": 0,
