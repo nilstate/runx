@@ -42,7 +42,7 @@ fetches that URL through the native network effect.
    `crm_schema.fields` key. Each changed field carries its prior value, new
    typed value, and the exact directive line as evidence.
 5. A separate `write-through-transport` graph step consumes that same field
-   map through the transport export in `crm-cleanup.mjs`. If any value changed,
+   map through the transport operation in `crm-cleanup.mjs`. If any value changed,
    it applies all changes atomically and reports `executed: true`. If no
    directive changed current state, it reports `executed: false`, with
    identical before and after records.

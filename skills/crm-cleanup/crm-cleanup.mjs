@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 export function reconcileCleanup(inputs) {
   const transcript = requiredString(inputs.transcript, "transcript");
   const sourceHandle = requiredRecord(inputs.source_handle, "source_handle");
@@ -462,4 +464,30 @@ function sameJsonValue(left, right) {
 
 function cloneJson(value) {
   return value === undefined ? null : JSON.parse(JSON.stringify(value));
+}
+
+function readCliInputs() {
+  if (process.env.RUNX_INPUTS_PATH) {
+    return JSON.parse(readFileSync(process.env.RUNX_INPUTS_PATH, "utf8"));
+  }
+  return JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+}
+
+function runCli() {
+  const operation = process.argv[2];
+  const inputs = readCliInputs();
+  if (operation === "reconcile") return reconcileCleanup(inputs);
+  if (operation === "transport") return applyMockCrmWrite(inputs);
+  if (operation === "finalize") return finalizeCleanup(inputs);
+  throw new Error("operation must be reconcile, transport, or finalize");
+}
+
+if (process.argv[1]?.endsWith("crm-cleanup.mjs")) {
+  try {
+    process.stdout.write(`${JSON.stringify(runCli())}\n`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`crm-cleanup failed: ${message}\n`);
+    process.exitCode = 1;
+  }
 }

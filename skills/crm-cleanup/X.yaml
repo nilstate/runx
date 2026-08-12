@@ -361,9 +361,10 @@ runners:
             transcript_digest: digest-transcript.digest_result.data.digest
             crm_schema_digest: digest-schema.digest_result.data.digest
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: reconcileCleanup
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, reconcile]
+            input_mode: none
             outputs:
               cleanup_plan: object
           artifacts:
@@ -375,9 +376,10 @@ runners:
           context:
             cleanup_plan: reconcile.cleanup_plan.data
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: applyMockCrmWrite
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, transport]
+            input_mode: none
             outputs:
               write_result: object
           artifacts:
@@ -390,9 +392,10 @@ runners:
             cleanup_plan: reconcile.cleanup_plan.data
             write_result: write-through-transport.write_result.data
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: finalizeCleanup
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, finalize]
+            input_mode: none
             outputs:
               crm_cleanup_result: object
               takeaways: array
