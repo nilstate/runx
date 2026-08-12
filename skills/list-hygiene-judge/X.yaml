@@ -210,13 +210,11 @@ runners:
       result_from: [decide, readback]
       steps:
         - id: read-contact
-          tool: data.source
+          tool: data.read_projection
           scopes:
             - runx:data:read
           inputs:
-            operation: read_projection
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: contacts
             aggregate_id: "$input.aggregate_id"
         - id: decide
@@ -235,13 +233,11 @@ runners:
           context:
             contact_read: read-contact.data_operation_result
         - id: append-transition
-          tool: data.source
+          tool: data.append_event
           scopes:
             - runx:data:append
           inputs:
-            operation: append_event
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: contacts
             aggregate_id: "$input.aggregate_id"
             expected_version: "$input.expected_version"
@@ -249,13 +245,11 @@ runners:
           context:
             event: decide.list_hygiene_judgment.data.contact_event
         - id: readback
-          tool: data.source
+          tool: data.read_projection
           scopes:
             - runx:data:read
           inputs:
-            operation: read_projection
             data_source_ref: "$input.data_source_ref"
-            store_id: "$input.store_id"
             resource: contacts
             aggregate_id: "$input.aggregate_id"
       policy:
