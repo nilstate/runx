@@ -1,0 +1,238 @@
+skill: list-hygiene-judge
+version: "0.1.0"
+
+catalog:
+  kind: graph
+  audience: public
+  visibility: public
+  role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: true
+  approval: none
+
+harness:
+  cases:
+    - name: sealed_decay_re_permission
+      operator_journeys:
+        - mode: standalone
+          confusors: [send-as, campaign-dispatch]
+          request: Judge a stale but unsubscribed contact and record the bounded re-permission transition.
+          expected_outcome: Return a sealed re_permission decision with one append and a projection readback.
+        - mode: composed
+          request: Continue from the recorded consent decision into a downstream governed send lane.
+          expected_outcome: Reuse the recorded state; this skill does not send.
+          prior_evidence: [The sealed contact projection and transition receipt from the prior run.]
+          must_not_repeat: [Do not send or re-judge the same contact without a fresh governed run.]
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-decay":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-decay.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-decay
+        resource: contacts
+        aggregate_id: contact:alice
+        expected_version: 0
+        idempotency_key: alice:inline:consent:v1
+        engagement_history: { opens_count: 4, clicks_count: 1, hard_bounces: 0, recency_days: 120 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: suppressed, unsubscribe_active: false }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: re_permission }
+                  persistence: { append_status: committed, before_version: 0, after_version: 1 }
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: sealed_hard_bounce_suppress
+      operator_journeys:
+        - mode: standalone
+          confusors: [re_permission, retain]
+          request: Judge a contact with hard-bounce evidence under the suppression policy.
+          expected_outcome: Return a sealed suppress decision with one append and a projection readback.
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-bounce":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-bounce.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-bounce
+        resource: contacts
+        aggregate_id: contact:bob
+        expected_version: 0
+        idempotency_key: bob:inline:consent:v1
+        engagement_history: { opens_count: 2, clicks_count: 0, hard_bounces: 1, recency_days: 5 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: subscribed, unsubscribe_active: false }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: suppress }
+                  persistence: { append_status: committed, before_version: 0, after_version: 1 }
+        receipt: { schema: runx.receipt.v1 }
+
+    - name: stop_missing_or_stale_evidence
+      operator_journeys:
+        - mode: standalone
+          confusors: [retain, suppress]
+          request: Judge a contact whose unsubscribe marker and expected version make a write unsafe.
+          expected_outcome: Return a sealed stop decision and emit no append.
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"local://runx-data-store/list-hygiene-judge-inline-stop":{"adapter":"data.sqlite","database_path":".runx/data/list-hygiene-judge-inline-stop.sqlite","resources":{"contacts":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+      inputs:
+        data_source_ref: local://runx-data-store/list-hygiene-judge-inline-stop
+        resource: contacts
+        aggregate_id: contact:carol
+        expected_version: 7
+        idempotency_key: carol:inline:consent:v1
+        engagement_history: { opens_count: 0, clicks_count: 0, hard_bounces: 0, recency_days: 180 }
+        bounce_policy: { hard_bounce_action: suppress, decay_threshold_days: 90 }
+        current_consent_state: { state: suppressed, unsubscribe_active: true }
+      expect:
+        status: sealed
+        step_outputs:
+          finalize:
+            subset:
+              list_hygiene_decision:
+                data:
+                  decision: { state: stop }
+                  persistence: { append_status: not_appended, before_version: 0, after_version: 0 }
+        receipt: { schema: runx.receipt.v1 }
+
+runners:
+  decide:
+    default: true
+    type: graph
+    inputs:
+      data_source_ref:
+        type: string
+        required: true
+        description: Pinned data-store source containing contact event streams.
+      resource:
+        type: string
+        required: true
+        description: Event-stream resource containing contact consent transitions.
+      aggregate_id:
+        type: string
+        required: true
+        description: Contact entity key used for the projection and append.
+      expected_version:
+        type: number
+        required: true
+        description: Compare-and-set version expected from the contact projection.
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry key for this exact consent transition.
+      engagement_history:
+        type: object
+        required: true
+        description: Read engagement and bounce evidence; never inferred by the skill.
+      bounce_policy:
+        type: object
+        required: true
+        description: Explicit policy for hard-bounce suppression and decay re-permission.
+      current_consent_state:
+        type: object
+        required: true
+        description: Current consent projection and unsubscribe marker supplied by the caller.
+    graph:
+      name: list-hygiene-judge
+      result_from: [finalize]
+      steps:
+        - id: contact-read
+          tool: data.read_projection
+          scopes: [runx:data:read]
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+
+        - id: decide
+          label: judge consent state from explicit evidence and the contact projection
+          inputs:
+            engagement_history: "$input.engagement_history"
+            bounce_policy: "$input.bounce_policy"
+            current_consent_state: "$input.current_consent_state"
+            expected_version: "$input.expected_version"
+            aggregate_id: "$input.aggregate_id"
+            idempotency_key: "$input.idempotency_key"
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+          context:
+            contact_readback: contact-read.data_operation_result.data
+          run:
+            type: javascript
+            module: list-hygiene-judge.mjs
+            export: decide
+            outputs:
+              decision_packet: object
+          artifacts:
+            named_emits:
+              decision_packet: decision_packet
+
+        - id: contact-append
+          when: { field: decide.decision_packet.data.should_append, equals: true }
+          tool: data.append_event
+          mutation: true
+          scopes: [runx:data:append]
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+            expected_version: "$input.expected_version"
+            idempotency_key: "$input.idempotency_key"
+          context:
+            event: decide.decision_packet.data.event
+
+        - id: contact-readback
+          when: { field: decide.decision_packet.data.should_append, equals: true }
+          tool: data.read_projection
+          scopes: [runx:data:read]
+          inputs:
+            data_source_ref: "$input.data_source_ref"
+            resource: "$input.resource"
+            aggregate_id: "$input.aggregate_id"
+
+        - id: finalize
+          context:
+            decision_packet: decide.decision_packet.data
+            contact_readback: contact-read.data_operation_result.data
+            append_result: contact-append.data_operation_result.data
+            projection_result: contact-readback.data_operation_result.data
+          run:
+            type: javascript
+            module: list-hygiene-judge.mjs
+            export: finalize
+            outputs:
+              list_hygiene_decision:
+                type: object
+                schema:
+                  required: [schema, aggregate_id, decision, evidence, persistence, recorded_transition]
+                  additionalProperties: false
+                  properties:
+                    schema: { const: runx.list_hygiene_judge.v1 }
+                    aggregate_id: { type: string, minLength: 1 }
+                    decision:
+                      type: object
+                      required: [state, reason]
+                      additionalProperties: false
+                      properties:
+                        state: { type: string, enum: [re_permission, suppress, retain, stop] }
+                        reason: { type: string, minLength: 1, maxLength: 2000 }
+                    evidence:
+                      type: object
+                      required: [source, resource, aggregate_id, expected_version, idempotency_key, contact_readback]
+                      additionalProperties: true
+                    persistence:
+                      type: object
+                      required: [append_status, before_version, after_version]
+                      additionalProperties: false
+                      properties:
+                        append_status: { type: string, enum: [committed, idempotent_replay, not_appended] }
+                        before_version: { type: integer, minimum: 0 }
+                        after_version: { type: integer, minimum: 0 }
+                    recorded_transition: { type: [object, "null"], additionalProperties: true }
