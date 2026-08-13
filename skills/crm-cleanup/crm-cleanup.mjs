@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 const SOURCE_KINDS = ["read_projection", "connector_export", "web_fetch"];
 
 export function normalizeRecords(inputs) {
@@ -239,4 +241,31 @@ function array(value) {
 
 function record(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function readCliInputs() {
+  if (process.env.RUNX_INPUTS_PATH) {
+    return JSON.parse(readFileSync(process.env.RUNX_INPUTS_PATH, "utf8"));
+  }
+  return JSON.parse(process.env.RUNX_INPUTS_JSON || "{}");
+}
+
+function runCli() {
+  const operation = process.argv[2];
+  const inputs = readCliInputs();
+  if (operation === "normalize") return normalizeRecords(inputs);
+  if (operation === "decide") return decideUpdates(inputs);
+  if (operation === "transport") return executeWrites(inputs);
+  if (operation === "finalize") return finalizeResult(inputs);
+  throw new Error("operation must be normalize, decide, transport, or finalize");
+}
+
+if (process.argv[1]?.endsWith("crm-cleanup.mjs")) {
+  try {
+    process.stdout.write(`${JSON.stringify(runCli())}\n`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`crm-cleanup failed: ${message}\n`);
+    process.exitCode = 1;
+  }
 }
