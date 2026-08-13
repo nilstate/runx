@@ -1,0 +1,39 @@
+name: crm-cleanup-noop-sqlite
+kind: skill
+target: ..
+runner: reconcile_and_write
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://crm/sqlite-fixture-noop":{"adapter":"data.sqlite","database_path":".runx/data/crm-cleanup-fixture-noop.sqlite","resources":{"crm_updates":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  crm_source_url: https://fixture.runx.invalid/crm/acct-fixture-noop.json
+  source_allowlist: [fixture.runx.invalid]
+  record_id: acct-fixture-noop
+  transcript: "Routine check-in. No CRM changes discussed."
+  crm_schema: { allowed_fields: [account_status, next_action] }
+  data_source_ref: tenant://crm/sqlite-fixture-noop
+  resource: crm_updates
+  aggregate_id: acct-fixture-noop
+  expected_version: 0
+  idempotency_key: acct-fixture-noop:cleanup:2026-08-13:v1
+caller:
+  http_responses:
+    "https://fixture.runx.invalid/crm/acct-fixture-noop.json":
+      status: 200
+      headers: { content-type: application/json }
+      body: '{"records":[{"id":"acct-fixture-noop","account_status":"healthy","next_action":"none"}]}'
+  answers:
+    agent_task.crm-cleanup-reconcile.output:
+      update_draft: { updates: [] }
+expect:
+  status: sealed
+  steps: [fetch-current, parse-source, digest-transcript, reconcile, plan, stop]
+  output:
+    subset:
+      crm_cleanup_result:
+        data:
+          schema: runx.crm_cleanup_result.v1
+          decision: no_action
+          field_updates: []
+          write_result: { performed: false, append_status: not_attempted, readback_verified: false }
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: crm-cleanup, source_case: noop-sqlite, source: skills-fixture }
