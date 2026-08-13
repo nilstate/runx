@@ -16,13 +16,6 @@ The SQLite data adapter is a safe mock CRM transport for harnesses and local
 dogfood. Production operators bind the same `data_source_ref` contract to their
 governed CRM event transport; the skill never receives provider credentials.
 
-## Composes
-
-<!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
-
-- `data-store#append_event`
-- `data-store#read_events`
-
 ## Procedure
 
 1. Native `http.read` performs the source-of-truth web fetch using the caller's
@@ -38,9 +31,9 @@ governed CRM event transport; the skill never receives provider credentials.
    outside the allowlist are explicitly rejected and never written.
 4. When valid updates exist, the skill creates one
    `runx.crm_cleanup.write_event.v1` containing the sealed before and after
-   records and calls `data-store#append_event` with the caller's expected
+   records and calls native `data.append_event` with the caller's expected
    version and idempotency key.
-5. The skill calls `data-store#read_events` in the same run and verifies the
+5. The skill calls native `data.read_events` in the same run and verifies the
    exact event body, digest, event ref, and idempotency key. Only that matched
    provider readback may produce `decision: updated`.
 6. `no_action` and `refused` terminate before the append step. Their

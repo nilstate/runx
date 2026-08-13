@@ -299,8 +299,8 @@ runners:
 
         - id: persist-update
           when: { field: plan.effect_plan.data.path, equals: write }
-          skill: ../data-store
-          runner: append_event
+          tool: data.append_event
+          scopes: [runx:data:append]
           mutation: true
           inputs:
             data_source_ref: $input.data_source_ref
@@ -312,8 +312,8 @@ runners:
 
         - id: readback
           when: { field: plan.effect_plan.data.path, equals: write }
-          skill: ../data-store
-          runner: read_events
+          tool: data.read_events
+          scopes: [runx:data:read]
           inputs:
             data_source_ref: $input.data_source_ref
             resource: $input.resource
