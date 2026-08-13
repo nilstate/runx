@@ -57,7 +57,7 @@ harness:
                   evidence_quote: "send the Q3 usage report by Friday"
       expect:
         status: sealed
-        steps: [fetch-source, normalize-records, digest-transcript, digest-records, reconcile, decide, execute-writes, finalize]
+        steps: [fetch-source, normalize-records, digest-transcript, reconcile, decide, execute-writes, finalize]
         step_outputs:
           finalize:
             subset:
@@ -110,7 +110,7 @@ harness:
               updates: []
       expect:
         status: sealed
-        steps: [fetch-source, normalize-records, digest-transcript, digest-records, reconcile, decide, execute-writes, finalize]
+        steps: [fetch-source, normalize-records, digest-transcript, reconcile, decide, execute-writes, finalize]
         step_outputs:
           finalize:
             subset:
@@ -148,7 +148,7 @@ harness:
                   evidence_quote: move the account to Kim
       expect:
         status: sealed
-        steps: [fetch-source, normalize-records, digest-transcript, digest-records, reconcile, decide, execute-writes, finalize]
+        steps: [fetch-source, normalize-records, digest-transcript, reconcile, decide, execute-writes, finalize]
         step_outputs:
           finalize:
             subset:
@@ -189,7 +189,7 @@ harness:
                   evidence_quote: customer threatened to churn immediately
       expect:
         status: sealed
-        steps: [fetch-source, normalize-records, digest-transcript, digest-records, reconcile, decide, execute-writes, finalize]
+        steps: [fetch-source, normalize-records, digest-transcript, reconcile, decide, execute-writes, finalize]
         step_outputs:
           finalize:
             subset:
@@ -251,9 +251,10 @@ runners:
           context:
             source_fetch: fetch-source.fetch_result.data
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: normalizeRecords
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, normalize]
+            input_mode: none
             outputs:
               source_read: object
           artifacts:
@@ -265,11 +266,6 @@ runners:
           inputs:
             value: $input.transcript
             encoding: utf8_text
-
-        - id: digest-records
-          tool: data.digest
-          context:
-            value: normalize-records.source_read.data.records
 
         - id: reconcile
           label: derive candidate field updates from the transcript
@@ -298,11 +294,12 @@ runners:
             update_draft: reconcile.update_draft.data
             source_read: normalize-records.source_read.data
             transcript_digest: digest-transcript.digest_result.data.digest
-            records_digest: digest-records.digest_result.data.digest
+            records_digest: fetch-source.fetch_result.data.content_digest
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: decideUpdates
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, decide]
+            input_mode: none
             outputs:
               crm_decision: object
           artifacts:
@@ -315,9 +312,10 @@ runners:
             crm_decision: decide.crm_decision.data
             source_read: normalize-records.source_read.data
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: executeWrites
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, transport]
+            input_mode: none
             outputs:
               write_result: object
           artifacts:
@@ -331,9 +329,10 @@ runners:
             source_read: normalize-records.source_read.data
             write_result: execute-writes.write_result.data
           run:
-            type: javascript
-            module: crm-cleanup.mjs
-            export: finalizeResult
+            type: cli-tool
+            command: node
+            args: [crm-cleanup.mjs, finalize]
+            input_mode: none
             outputs:
               crm_cleanup_result: object
           artifacts:
