@@ -14,6 +14,18 @@ catalog:
 harness:
   cases:
     - name: crm-cleanup-applies-traced-updates
+      operator_journeys:
+        - mode: standalone
+          confusors: [lead-enrichment, lead-router]
+          request: Read the CRM records from the source, reconcile this call transcript against them, and execute the field updates through the CRM transport.
+          expected_outcome: Return allowlisted field updates, each traced to a verbatim transcript quote, executed through the transport with a sealed before/after write result.
+        - mode: composed
+          request: Continue from this sealed cleanup result into pipeline reporting.
+          expected_outcome: Hand the sealed result with its write_result to the reporting step without re-deriving updates.
+          prior_evidence:
+            - The transcript, source read, decision, and sealed write result supplied by the prior run.
+          must_not_repeat:
+            - Do not re-reconcile or re-execute updates already sealed.
       inputs:
         crm_source:
           kind: web_fetch
@@ -23,6 +35,11 @@ harness:
         crm_schema:
           allowed_fields: [account_status, next_action, health_score]
       caller:
+        http_responses:
+          "https://raw.githubusercontent.com/antheducation/runx/crm-cleanup-executed-writes/harness-data/crm-records-globex.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '[{"id":"acct-globex","account_status":"healthy","next_action":"none"}]'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
@@ -80,6 +97,11 @@ harness:
         crm_schema:
           allowed_fields: [account_status, next_action]
       caller:
+        http_responses:
+          "https://raw.githubusercontent.com/antheducation/runx/crm-cleanup-executed-writes/harness-data/crm-records-acct1-status.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '[{"id":"acct-1","account_status":"healthy"}]'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
@@ -111,6 +133,11 @@ harness:
         crm_schema:
           allowed_fields: [next_action]
       caller:
+        http_responses:
+          "https://raw.githubusercontent.com/antheducation/runx/crm-cleanup-executed-writes/harness-data/crm-records-acct1-owner.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '[{"id":"acct-1","owner":"lee"}]'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
@@ -147,6 +174,11 @@ harness:
         crm_schema:
           allowed_fields: [account_status]
       caller:
+        http_responses:
+          "https://raw.githubusercontent.com/antheducation/runx/crm-cleanup-executed-writes/harness-data/crm-records-acct1-status.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '[{"id":"acct-1","account_status":"healthy"}]'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
