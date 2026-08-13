@@ -1,0 +1,52 @@
+name: crm-cleanup-writeback-sqlite
+kind: skill
+target: ..
+runner: reconcile_and_write
+env:
+  RUNX_DATA_SOURCES: '{"data_sources":{"tenant://crm/sqlite-fixture":{"adapter":"data.sqlite","database_path":".runx/data/crm-cleanup-fixture-write.sqlite","resources":{"crm_updates":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
+inputs:
+  crm_source_url: https://fixture.runx.invalid/crm/acct-fixture-write.json
+  source_allowlist: [fixture.runx.invalid]
+  record_id: acct-fixture-write
+  transcript: "The rollout stalled. Mark the account at risk and send the Q3 usage report by Friday."
+  crm_schema: { allowed_fields: [account_status, next_action] }
+  data_source_ref: tenant://crm/sqlite-fixture
+  resource: crm_updates
+  aggregate_id: acct-fixture-write
+  expected_version: 0
+  idempotency_key: acct-fixture-write:cleanup:2026-08-13:v1
+caller:
+  http_responses:
+    "https://fixture.runx.invalid/crm/acct-fixture-write.json":
+      status: 200
+      headers: { content-type: application/json }
+      body: '{"records":[{"id":"acct-fixture-write","account_status":"healthy","next_action":"none"}]}'
+  answers:
+    agent_task.crm-cleanup-reconcile.output:
+      update_draft:
+        updates:
+          - record_id: acct-fixture-write
+            field: account_status
+            to: at_risk
+            evidence_quote: The rollout stalled
+          - record_id: acct-fixture-write
+            field: next_action
+            to: send the Q3 usage report by Friday
+            evidence_quote: send the Q3 usage report by Friday
+expect:
+  status: sealed
+  steps: [fetch-current, parse-source, digest-transcript, reconcile, plan, persist-update, readback, finalize-write]
+  output:
+    subset:
+      crm_cleanup_result:
+        data:
+          schema: runx.crm_cleanup_result.v1
+          decision: updated
+          write_result:
+            performed: true
+            append_status: committed
+            before_version: 0
+            after_version: 1
+            readback_verified: true
+  receipt: { schema: runx.receipt.v1 }
+metadata: { public_skill: crm-cleanup, source_case: writeback-sqlite, source: skills-fixture }

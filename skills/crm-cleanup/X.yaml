@@ -1,40 +1,66 @@
 skill: crm-cleanup
-version: "0.1.0"
+version: "0.2.0"
 
 catalog:
   kind: graph
   audience: operator
   visibility: public
   role: canonical
-  execution: plan
-  completion: runtime_receipt
-  requires_adapter: false
-  approval: none
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: conditional
+
+policy:
+  allow:
+    - provider: http
+      method: READ
+      scope: net:http
+    - provider: data-source
+      method: READ
+      scope: runx:data:read
+    - provider: data-source
+      method: APPEND
+      scope: runx:data:append
+  deny:
+    - raw_sql_from_model
+    - unrestricted_crm_write
+    - secret_material
+    - update_without_source_read
+    - update_without_verbatim_evidence
 
 harness:
   cases:
-    - name: crm-cleanup-proposes-traced-updates
+    - name: crm-cleanup-fetches-writes-and-reads-back
       operator_journeys:
         - mode: standalone
           confusors: [lead-enrichment, lead-router]
-          request: Reconcile this call transcript against the CRM records and propose the field updates.
-          expected_outcome: Return allowlisted field updates, each traced to a verbatim transcript quote, with no CRM write performed.
+          request: Read the live CRM record, reconcile this call transcript, apply supported updates, and verify the write.
+          expected_outcome: One allowlisted update event is committed and independently read back with sealed before and after records.
         - mode: composed
-          request: Continue from this sealed update proposal into the CRM write step.
-          expected_outcome: Hand the sealed proposal to the gated CRM operator without re-deriving updates.
-          prior_evidence:
-            - The transcript, records, and sealed proposal supplied by the prior step.
-          must_not_repeat:
-            - Do not re-reconcile updates already sealed.
+          request: Continue from this verified CRM write into a follow-up workflow.
+          expected_outcome: Reuse the sealed write result without re-reading or re-writing the CRM.
+          prior_evidence: [The fetched source digest, transcript evidence, append receipt, and provider readback.]
+          must_not_repeat: [Do not repeat the already committed idempotent CRM write.]
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://crm/sqlite-harness":{"adapter":"data.sqlite","database_path":".runx/data/crm-cleanup.sqlite","resources":{"crm_updates":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
-        transcript: "Call with Globex on renewal. Dana said the rollout stalled and they want an executive review before renewing. Next step agreed: send the Q3 usage report by Friday."
-        crm_records:
-          - id: acct-globex
-            account_status: healthy
-            next_action: none
-        crm_schema:
-          allowed_fields: [account_status, next_action, health_score]
+        crm_source_url: https://fixture.runx.invalid/crm/acct-globex.json
+        source_allowlist: [fixture.runx.invalid]
+        record_id: acct-globex
+        transcript: "Call with Globex. Dana said the rollout stalled and they want an executive review before renewing. Next step agreed: send the Q3 usage report by Friday."
+        crm_schema: { allowed_fields: [account_status, next_action, health_score] }
+        data_source_ref: tenant://crm/sqlite-harness
+        resource: crm_updates
+        aggregate_id: acct-globex
+        expected_version: 0
+        idempotency_key: acct-globex:cleanup:2026-08-13:v1
       caller:
+        http_responses:
+          "https://fixture.runx.invalid/crm/acct-globex.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '{"records":[{"id":"acct-globex","account_status":"healthy","next_action":"none"}]}'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
@@ -46,228 +72,265 @@ harness:
                 - record_id: acct-globex
                   field: next_action
                   to: send the Q3 usage report by Friday
-                  evidence_quote: "send the Q3 usage report by Friday"
+                  evidence_quote: send the Q3 usage report by Friday
       expect:
         status: sealed
-        steps: [digest-transcript, digest-records, reconcile, finalize]
+        steps: [fetch-current, parse-source, digest-transcript, reconcile, plan, persist-update, readback, finalize-write]
         step_outputs:
-          finalize:
+          finalize-write:
             subset:
-              crm_update_proposal:
+              crm_cleanup_result:
                 data:
-                  schema: runx.crm_update_proposal.v1
-                  decision: proposed
-                  write_performed: false
-                  gate: crm-operator-or-human-approver
-                  rejected_updates: []
+                  schema: runx.crm_cleanup_result.v1
+                  decision: updated
+                  field_updates:
+                    - { record_id: acct-globex, field: account_status, from: healthy, to: at_risk, evidence_quote: the rollout stalled and they want an executive review before renewing }
+                    - { record_id: acct-globex, field: next_action, from: none, to: send the Q3 usage report by Friday, evidence_quote: send the Q3 usage report by Friday }
+                  write_result:
+                    performed: true
+                    transport: data-store.append_event
+                    append_status: committed
+                    before_version: 0
+                    after_version: 1
+                    readback_verified: true
+                    before: { id: acct-globex, account_status: healthy, next_action: none }
+                    after: { id: acct-globex, account_status: at_risk, next_action: send the Q3 usage report by Friday }
                   validation: { status: pass, findings: [] }
         receipt: { schema: runx.receipt.v1 }
 
-    - name: crm-cleanup-rejects-unlisted-field
+    - name: crm-cleanup-noop-skips-write
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://crm/sqlite-harness":{"adapter":"data.sqlite","database_path":".runx/data/crm-cleanup-noop.sqlite","resources":{"crm_updates":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
-        transcript: "Owner said move the account to Kim."
-        crm_records:
-          - id: acct-1
-            owner: lee
-        crm_schema:
-          allowed_fields: [next_action]
+        crm_source_url: https://fixture.runx.invalid/crm/acct-steady.json
+        source_allowlist: [fixture.runx.invalid]
+        record_id: acct-steady
+        transcript: "Routine check-in. No CRM changes discussed."
+        crm_schema: { allowed_fields: [account_status, next_action] }
+        data_source_ref: tenant://crm/sqlite-harness
+        resource: crm_updates
+        aggregate_id: acct-steady
+        expected_version: 0
+        idempotency_key: acct-steady:cleanup:2026-08-13:v1
       caller:
+        http_responses:
+          "https://fixture.runx.invalid/crm/acct-steady.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '{"records":[{"id":"acct-steady","account_status":"healthy","next_action":"none"}]}'
         answers:
           agent_task.crm-cleanup-reconcile.output:
-            update_draft:
-              updates:
-                - record_id: acct-1
-                  field: owner
-                  to: kim
-                  evidence_quote: move the account to Kim
+            update_draft: { updates: [] }
       expect:
         status: sealed
-        steps: [digest-transcript, digest-records, reconcile, finalize]
+        steps: [fetch-current, parse-source, digest-transcript, reconcile, plan, stop]
         step_outputs:
-          finalize:
+          stop:
             subset:
-              crm_update_proposal:
+              crm_cleanup_result:
                 data:
                   decision: no_action
-                  updates: []
-                  rejected_updates:
-                    - record_id: acct-1
-                      field: owner
-                      reason: field is outside the crm_schema allowlist
-                  validation: { status: pass, findings: [] }
+                  field_updates: []
+                  write_result:
+                    performed: false
+                    append_status: not_attempted
+                    before_version: null
+                    after_version: null
+                    readback_verified: false
         receipt: { schema: runx.receipt.v1 }
 
-    - name: crm-cleanup-refuses-invented-quote
+    - name: crm-cleanup-refuses-invented-evidence-without-write
+      env:
+        RUNX_DATA_SOURCES: '{"data_sources":{"tenant://crm/sqlite-harness":{"adapter":"data.sqlite","database_path":".runx/data/crm-cleanup-refused.sqlite","resources":{"crm_updates":{"kind":"event_stream","partition_key":"aggregate_id"}}}}}'
       inputs:
+        crm_source_url: https://fixture.runx.invalid/crm/acct-refused.json
+        source_allowlist: [fixture.runx.invalid]
+        record_id: acct-refused
         transcript: "Short call, no changes discussed."
-        crm_records:
-          - id: acct-1
-            account_status: healthy
-        crm_schema:
-          allowed_fields: [account_status]
+        crm_schema: { allowed_fields: [account_status] }
+        data_source_ref: tenant://crm/sqlite-harness
+        resource: crm_updates
+        aggregate_id: acct-refused
+        expected_version: 0
+        idempotency_key: acct-refused:cleanup:2026-08-13:v1
       caller:
+        http_responses:
+          "https://fixture.runx.invalid/crm/acct-refused.json":
+            status: 200
+            headers: { content-type: application/json }
+            body: '{"records":[{"id":"acct-refused","account_status":"healthy"}]}'
         answers:
           agent_task.crm-cleanup-reconcile.output:
             update_draft:
               updates:
-                - record_id: acct-1
+                - record_id: acct-refused
                   field: account_status
                   to: at_risk
                   evidence_quote: customer threatened to churn immediately
       expect:
         status: sealed
-        steps: [digest-transcript, digest-records, reconcile, finalize]
+        steps: [fetch-current, parse-source, digest-transcript, reconcile, plan, stop]
         step_outputs:
-          finalize:
+          stop:
             subset:
-              crm_update_proposal:
+              crm_cleanup_result:
                 data:
                   decision: refused
-                  updates: []
+                  field_updates: []
+                  write_result: { performed: false, append_status: not_attempted, readback_verified: false }
                   validation: { status: fail }
         receipt: { schema: runx.receipt.v1 }
 
     - name: crm-cleanup-needs-transcript
       inputs:
-        crm_records:
-          - id: acct-1
-        crm_schema:
-          allowed_fields: [next_action]
-      expect:
-        status: failure
+        crm_source_url: https://fixture.runx.invalid/crm/acct-missing.json
+        source_allowlist: [fixture.runx.invalid]
+        record_id: acct-missing
+        crm_schema: { allowed_fields: [next_action] }
+        data_source_ref: tenant://crm/sqlite-harness
+        resource: crm_updates
+        aggregate_id: acct-missing
+        expected_version: 0
+        idempotency_key: acct-missing:cleanup:2026-08-13:v1
+      expect: { status: failure }
 
 runners:
-  reconcile:
+  reconcile_and_write:
     default: true
     type: graph
     inputs:
-      transcript:
+      crm_source_url:
         type: string
         required: true
-        description: Call transcript that is the only evidence for proposed updates.
-      crm_records:
-        type: json
+        description: Public HTTP(S) JSON endpoint containing records; the runtime fetch is the source-of-truth read.
+      source_allowlist:
+        type: array
         required: true
-        description: Current CRM records read from the caller's source of truth.
+        description: Exact host allowlist for the source read and redirects.
+      record_id: { type: string, required: true, description: Exact CRM record id selected from the fetched document. }
+      transcript: { type: string, required: true, description: Call transcript used as the only semantic evidence for field changes. }
       crm_schema:
         type: object
         required: true
-        description: Explicit update authority; fields outside allowed_fields are rejected.
-        schema:
-          additionalProperties: false
-          properties:
-            allowed_fields:
-              type: array
-              minItems: 1
-              maxItems: 100
-              items: { type: string, minLength: 1, maxLength: 200 }
-    examples:
-      - transcript: "Dana said the rollout stalled."
-        crm_records:
-          - id: acct-globex
-            account_status: healthy
-        crm_schema:
-          allowed_fields: [account_status]
+        description: Explicit field-level write authority.
+      data_source_ref: { type: string, required: true, description: Operator-bound CRM mutation transport. }
+      resource: { type: string, required: true, description: CRM update event-stream resource. }
+      aggregate_id: { type: string, required: true, description: CRM mutation stream key; normally the record id. }
+      expected_version: { type: number, required: true, description: Current CRM mutation stream version required before append. }
+      idempotency_key: { type: string, required: true, description: Stable retry key for exactly one CRM mutation. }
     graph:
-      name: crm-cleanup-reconcile
-      result_from: [finalize]
+      name: crm-cleanup-reconcile-and-write
+      result_from: [stop, finalize-write]
       steps:
+        - id: fetch-current
+          tool: http.read
+          scopes: [net:http]
+          inputs:
+            requests:
+              - id: crm-source
+                method: GET
+                url: $input.crm_source_url
+                headers: { accept: application/json }
+            allowed_hosts: $input.source_allowlist
+            stop_on_error: true
+
+        - id: parse-source
+          label: parse exactly one current CRM record from the runtime fetch
+          inputs:
+            record_id: $input.record_id
+            source_url: $input.crm_source_url
+          context: { http_execution: fetch-current.http_execution.data }
+          run:
+            type: javascript
+            module: crm-cleanup.mjs
+            export: parseSourceSnapshot
+            outputs: { source_snapshot: object }
+          artifacts:
+            named_emits: { source_snapshot: source_snapshot }
+
         - id: digest-transcript
           tool: data.digest
-          inputs:
-            value: $input.transcript
-            encoding: utf8_text
-
-        - id: digest-records
-          tool: data.digest
-          inputs:
-            value: $input.crm_records
+          inputs: { value: $input.transcript, encoding: utf8_text }
 
         - id: reconcile
-          label: derive candidate field updates from the transcript
+          label: derive candidate field updates from fetched CRM state and transcript
           run:
             type: agent-task
             agent: reviewer
             task: crm-cleanup-reconcile
-            outputs:
-              update_draft: object
+            outputs: { update_draft: object }
           inputs:
             transcript: $input.transcript
-            crm_records: $input.crm_records
-            crm_schema: $input.crm_schema
-          allowed_tools: []
-          artifacts:
-            named_emits:
-              update_draft: update_draft
-
-        - id: finalize
-          label: enforce allowlist and transcript traceability deterministically
-          inputs:
-            transcript: $input.transcript
-            crm_records: $input.crm_records
             crm_schema: $input.crm_schema
           context:
+            crm_record: parse-source.source_snapshot.data.record
+          allowed_tools: []
+          artifacts:
+            named_emits: { update_draft: update_draft }
+
+        - id: plan
+          label: enforce field authority and verbatim evidence before any mutation
+          inputs:
+            transcript: $input.transcript
+            crm_schema: $input.crm_schema
+          context:
+            source_snapshot: parse-source.source_snapshot.data
             update_draft: reconcile.update_draft.data
             transcript_digest: digest-transcript.digest_result.data.digest
-            records_digest: digest-records.digest_result.data.digest
           run:
             type: javascript
             module: crm-cleanup.mjs
-            export: finalizeUpdates
-            outputs:
-              crm_update_proposal:
-                type: object
-                schema:
-                  required: [schema, decision, reason, updates, rejected_updates, write_performed, gate, transcript_digest, records_digest, validation]
-                  additionalProperties: false
-                  properties:
-                    schema: { const: runx.crm_update_proposal.v1 }
-                    decision: { type: string, enum: [proposed, no_action, refused] }
-                    reason: { type: string, minLength: 1, maxLength: 2000 }
-                    updates:
-                      type: array
-                      maxItems: 200
-                      items:
-                        type: object
-                        required: [record_id, field, from, to, evidence_quote]
-                        additionalProperties: false
-                        properties:
-                          record_id: { type: string, minLength: 1, maxLength: 500 }
-                          field: { type: string, minLength: 1, maxLength: 200 }
-                          from: {}
-                          to: {}
-                          evidence_quote: { type: string, minLength: 1, maxLength: 4000 }
-                    rejected_updates:
-                      type: array
-                      maxItems: 200
-                      items:
-                        type: object
-                        required: [record_id, field, reason]
-                        additionalProperties: false
-                        properties:
-                          record_id: { type: [string, "null"], maxLength: 500 }
-                          field: { type: string, maxLength: 200 }
-                          reason: { type: string, minLength: 1, maxLength: 500 }
-                    write_performed: { const: false }
-                    gate: { const: crm-operator-or-human-approver }
-                    transcript_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
-                    records_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
-                    validation:
-                      type: object
-                      required: [status, findings]
-                      additionalProperties: false
-                      properties:
-                        status: { type: string, enum: [pass, fail] }
-                        findings:
-                          type: array
-                          maxItems: 100
-                          items:
-                            type: object
-                            required: [code, message]
-                            additionalProperties: false
-                            properties:
-                              code: { type: string, minLength: 1, maxLength: 200 }
-                              message: { type: string, minLength: 1, maxLength: 2000 }
+            export: planUpdate
+            outputs: { effect_plan: object }
           artifacts:
-            named_emits:
-              crm_update_proposal: crm_update_proposal
+            named_emits: { effect_plan: effect_plan }
+
+        - id: stop
+          when: { field: plan.effect_plan.data.path, equals: stop }
+          inputs: { idempotency_key: $input.idempotency_key }
+          context: { effect_plan: plan.effect_plan.data }
+          run:
+            type: javascript
+            module: crm-cleanup.mjs
+            export: finalizeNoWrite
+            outputs: { crm_cleanup_result: object }
+          artifacts:
+            named_emits: { crm_cleanup_result: crm_cleanup_result }
+
+        - id: persist-update
+          when: { field: plan.effect_plan.data.path, equals: write }
+          skill: ../data-store
+          runner: append_event
+          mutation: true
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            expected_version: $input.expected_version
+            idempotency_key: $input.idempotency_key
+          context: { event: plan.effect_plan.data.event }
+
+        - id: readback
+          when: { field: plan.effect_plan.data.path, equals: write }
+          skill: ../data-store
+          runner: read_events
+          inputs:
+            data_source_ref: $input.data_source_ref
+            resource: $input.resource
+            aggregate_id: $input.aggregate_id
+            limit: 1
+            after_version: $input.expected_version
+
+        - id: finalize-write
+          when: { field: plan.effect_plan.data.path, equals: write }
+          context:
+            effect_plan: plan.effect_plan.data
+            append_result: persist-update.data_operation_result.data
+            readback_result: readback.data_operation_result.data
+          run:
+            type: javascript
+            module: crm-cleanup.mjs
+            export: finalizeWrite
+            outputs: { crm_cleanup_result: object }
+          artifacts:
+            named_emits: { crm_cleanup_result: crm_cleanup_result }

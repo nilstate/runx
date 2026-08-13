@@ -1,0 +1,10 @@
+{
+  "records": [
+    {
+      "id": "acct-dogfood",
+      "account_status": "healthy",
+      "next_action": "none",
+      "health_score": 82
+    }
+  ]
+}
