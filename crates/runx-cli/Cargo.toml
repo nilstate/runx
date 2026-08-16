@@ -25,7 +25,7 @@ workspace = true
 default = []
 
 [dependencies]
-base64 = "0.22.1"
+base64 = "0.23.1"
 ctrlc = "3.5.2"
 ring = "0.17.14"
 runx-contracts.workspace = true

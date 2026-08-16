@@ -44,7 +44,7 @@ thread-outbox-provider = []
 
 [dependencies]
 aes-gcm = "0.11.0"
-base64 = "0.22.1"
+base64 = "0.23.1"
 dotenvy.workspace = true
 fs2.workspace = true
 bytes = { version = "1.11.1", optional = true }
