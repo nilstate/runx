@@ -24,7 +24,7 @@ thiserror.workspace = true
 url.workspace = true
 
 [target.'cfg(unix)'.dependencies]
-rlimit = "0.10.2"
+rlimit = "0.11.0"
 
 [target.'cfg(windows)'.dependencies]
 win32job = "2.0.3"
