@@ -98,7 +98,7 @@ process-wrap = { version = "=9.1.0", default-features = false, features = ["std"
 win32job = "2.0.3"
 
 [dev-dependencies]
-criterion = "0.7.0"
+criterion = "0.8.2"
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
 # Same crate/features as the runtime dependency above; integration tests use it
 # to poll descendant-process death instead of fixed sleeps.
