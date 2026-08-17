@@ -140,7 +140,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install Rust test and advisory tools
-        uses: taiki-e/install-action@v2.85.5
+        uses: taiki-e/install-action@v2.85.13
         with:
           # Prebuilt binaries instead of compiling from source on every cache miss.
           # cargo-public-api is snapshot-sensitive; keep this in sync with
