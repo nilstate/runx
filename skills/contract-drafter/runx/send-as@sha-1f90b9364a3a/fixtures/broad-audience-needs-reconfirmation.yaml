@@ -1,0 +1,83 @@
+name: broad-audience-needs-reconfirmation
+kind: skill
+target: ..
+runner: plan
+inputs:
+  objective: Send the product announcement to every contact.
+  principal: account:growth-demo
+  provider_context:
+    provider: provider-send-demo
+    account_ref: acct_demo
+    runtime_path: provider.send
+    domain_verified: true
+  audience:
+    type: all_contacts
+    ref: account:growth-demo:all-contacts
+  content_ref:
+    draft_ref: campaign:product-announcement
+    digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    subject_or_title: Product announcement
+  consent_basis: Mixed account audience requires explicit reconfirmation and suppression review.
+  operator_context: Broad audiences cannot proceed from an implicit selection.
+caller:
+  answers:
+    agent_task.send-as.output:
+      send_plan:
+        decision: needs_input
+        action_family: send-as
+        principal:
+          type: account
+          ref: account:growth-demo
+        provider:
+          name: provider-send-demo
+          account_ref: acct_demo
+          runtime_path: provider.send
+        send_class: campaign
+        channel: email
+        audience:
+          type: all_contacts
+          ref: account:growth-demo:all-contacts
+          requires_reconfirmation: true
+        content:
+          draft_ref: campaign:product-announcement
+          digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+          subject_or_title: Product announcement
+        gates:
+          preflight_required: true
+          human_approval_required: true
+          approval_ref: ""
+        blockers:
+          - broad audience requires explicit reconfirmation
+          - suppression and unsubscribe checks are required
+        provider_actions:
+          - provider.review_audience
+          - provider.review_suppressions
+        evidence_refs:
+          - provider_context:provider-send-demo
+        success_checkpoint:
+          milestone: awaiting_audience_reconfirmation
+          description: All-contacts delivery remains blocked until the operator reconfirms the audience and preflight passes.
+expect:
+  status: sealed
+  receipt:
+    schema: runx.receipt.v1
+  output:
+    subset:
+      send_plan:
+        decision: needs_input
+        audience:
+          type: all_contacts
+          requires_reconfirmation: true
+        gates:
+          preflight_required: true
+          human_approval_required: true
+          approval_ref: ""
+        blockers:
+          - broad audience requires explicit reconfirmation
+          - suppression and unsubscribe checks are required
+        success_checkpoint:
+          milestone: awaiting_audience_reconfirmation
+metadata:
+  public_skill: send-as
+  source_case: broad-audience-needs-reconfirmation
+  source: skills-fixture

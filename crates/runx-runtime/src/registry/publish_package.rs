@@ -389,6 +389,122 @@ runners:
     }
 
     #[test]
+    fn dependency_input_packet_schemas_are_materialized_even_for_unwalked_runners()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        fs::write(temp.path().join("pnpm-workspace.yaml"), "packages: []\n")?;
+        let catalog = temp.path().join("skills");
+        let root = catalog.join("root");
+        let sibling = catalog.join("sibling");
+        fs::create_dir_all(&root)?;
+        fs::create_dir_all(&sibling)?;
+        fs::write(
+            root.join("SKILL.md"),
+            "---\nname: root\ndescription: Root fixture.\n---\n# Root\n",
+        )?;
+        fs::write(
+            root.join("X.yaml"),
+            r#"skill: root
+harness:
+  cases:
+    - name: sibling-plan-only
+      runner: main
+      inputs: {}
+      expect:
+        status: sealed
+runners:
+  main:
+    default: true
+    type: graph
+    graph:
+      name: root
+      result_from: [sibling]
+      steps:
+        - id: sibling
+          skill: ../sibling
+          runner: plan
+"#,
+        )?;
+        fs::write(
+            sibling.join("SKILL.md"),
+            "---\nname: sibling\ndescription: Sibling fixture.\n---\n# Sibling\n",
+        )?;
+        fs::write(
+            sibling.join("X.yaml"),
+            r#"skill: sibling
+runners:
+  plan:
+    default: true
+    type: graph
+    graph:
+      name: sibling-plan
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: sibling
+  verify:
+    type: agent
+    inputs:
+      provider_operation:
+        type: json
+        required: true
+        packet: runx.test.provider-operation.v1
+    outputs:
+      verify_result: object
+    artifacts:
+      named_emits:
+        verify_result: verify_result
+      packets:
+        verify_result: runx.test.verify-result.v1
+"#,
+        )?;
+        fs::create_dir_all(temp.path().join("dist/packets"))?;
+        fs::write(
+            temp.path()
+                .join("dist/packets/provider-operation.schema.json"),
+            r#"{"x-runx-packet-id":"runx.test.provider-operation.v1","type":"object"}"#,
+        )?;
+        fs::write(
+            temp.path().join("dist/packets/verify-result.schema.json"),
+            r#"{"x-runx-packet-id":"runx.test.verify-result.v1","type":"object"}"#,
+        )?;
+
+        let package = prepare_registry_publish_package(RegistryPublishPackageRequest {
+            subject: root.to_str().ok_or("temporary path is not UTF-8")?,
+            profile: None,
+            env: &BTreeMap::new(),
+            cwd: &root,
+        })?;
+        let package_paths = package
+            .package_files()
+            .iter()
+            .map(|file| file.path.as_str())
+            .collect::<Vec<_>>();
+        assert!(
+            package_paths.contains(&"dependencies/sibling/packets/provider-operation.schema.json")
+        );
+        assert!(package_paths.contains(&"dependencies/sibling/packets/verify-result.schema.json"));
+        let harness_path = package
+            .harness
+            .as_ref()
+            .ok_or("staged harness missing")?
+            .path();
+        assert!(
+            harness_path
+                .join("dependencies/sibling/packets/provider-operation.schema.json")
+                .is_file()
+        );
+        assert!(
+            harness_path
+                .join("dependencies/sibling/packets/verify-result.schema.json")
+                .is_file()
+        );
+        Ok(())
+    }
+
+    #[test]
     fn packet_input_schema_is_materialized_into_registry_bundle()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
