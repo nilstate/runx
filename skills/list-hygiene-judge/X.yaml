@@ -175,7 +175,7 @@ runners:
       steps:
         - id: read-contact
           label: read the contact projection from the pinned data-store before judging
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-8d27af503065
           runner: read_projection
           inputs:
             data_source_ref: $input.data_source_ref
@@ -215,7 +215,7 @@ runners:
         - id: persist-transition
           when: { field: judge.judgment.data.write.should_append, equals: true }
           label: record the consent transition with an ungated compare-and-set append
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-8d27af503065
           runner: append_event
           mutation: true
           inputs:
@@ -230,7 +230,7 @@ runners:
         - id: readback-transition
           when: { field: judge.judgment.data.write.should_append, equals: true }
           label: read the recorded transition back from the contact projection
-          skill: ../data-store
+          skill: registry:runx/data-store@sha-8d27af503065
           runner: read_projection
           inputs:
             data_source_ref: $input.data_source_ref
