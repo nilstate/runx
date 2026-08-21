@@ -15,9 +15,11 @@ transport is allowed to read or mutate GitHub.
 The default `github-sync` runner performs the requested pull or push. `plan`
 is the explicit no-effect runner; `pull` and `push` remain explicit execution
 lanes for compatible callers. Pulls need no human approval because they are
-bounded reads. Each push carries exactly one bounded typed mutation, stops at
-an approval bound to its native digest, uses a stable idempotency key, and
-closes only on an independent GitHub readback. No GitHub token enters this
+bounded reads. A push carries one to eight typed mutations, uses one approval
+bound to the exact batch digest, and returns an individual status, sync
+reference, and mutation digest for every item. It closes only on independent
+GitHub readback for every applied item. A partial or unknown item is deferred
+for reconciliation and is never silently retried. No GitHub token enters this
 package.
 
 ## Composes
@@ -30,13 +32,13 @@ package.
 ## When to use it
 
 Use `github-sync` when an operator needs a reproducible pull or push contract for
-issues, pull requests, or threads—especially when cursor state must survive
+issues, pull requests, threads, or a mixed `batch`—especially when cursor state must survive
 across runs. Use `plan` only when the requested outcome is a plan. Use `pull`
 for an explicitly selected read lane. Use `push` for one already-decided issue,
-pull-request, or thread
-mutation; use another run for another mutation. This avoids presenting a
-non-atomic remote batch as one transaction. Use `issue-triage` to decide what an
-issue means and `issue-to-pr` to govern an implementation lane.
+pull-request, or thread mutation. Batches are bounded and best-effort, not
+atomic: if one item fails, the result identifies each item and the operator
+must reconcile before retrying. Use `issue-triage` to decide what an issue means
+and `issue-to-pr` to govern an implementation lane.
 
 Do not use a plan as evidence that remote state was read or changed. Only the
 native `runx.provider.operation.v1` result from `pull` or `push` is provider
@@ -48,7 +50,7 @@ evidence. Do not silently turn a denied push into a pull.
    filters, maximum result count, and requested scope.
 2. A `pull` plan requires read scope and records the exact resources a provider
    may fetch.
-3. A `push` plan requires write scope and exactly one typed mutation. It
+3. A `push` plan requires write scope and one to eight typed mutations. It
    rejects unknown fields and oversized content, then returns
    `ready_for_approval`; planning itself does not open or satisfy that gate.
 4. Optional `plan_and_append_cursor` composes the canonical `data-store` skill
@@ -57,7 +59,7 @@ evidence. Do not silently turn a denied push into a pull.
    second cursor database or storage adapter.
 5. The default runner selects the same bounded read or write path from the
    validated direction. `pull` executes the plan with `repo.read`. `push`
-   hashes the exact mutation
+  hashes the exact mutation set
    with the native digest tool, requests approval, executes it with
    `repo.write`, verifies the returned digest, and reads the resource back.
    Both runners use the native provider lane.
@@ -66,10 +68,12 @@ evidence. Do not silently turn a denied push into a pull.
 
 - `repo` is exactly `owner/name`.
 - `direction` is `pull` or `push`.
-- `resources` contains the issue, PR, or thread selector and a limit no greater
-  than 100. A push has one `mutations` entry with `ref`, `op`, and an exact
-  typed `payload`. Issue and PR changes use `op: update`; new thread comments
-  use `op: comment`. Bodies are capped at 65,536 characters.
+- `resources` contains the issue, PR, thread, or mixed `batch` selector and a
+  limit no greater than 100. A push has one to eight `mutations` entries with `ref`, `op`, and an
+  exact typed `payload`. Issue and PR changes use `op: update`; new thread
+  comments use `op: comment`. Bodies are capped at 65,536 characters. Pulls
+  return compact metadata and body digests by default; set `include_body: true`
+  only when the full bounded body is needed.
 - `scope` is the requested read or write scope.
 
 The `runx.github_sync.v1` plan records exact direction, provider operation,
@@ -81,7 +85,7 @@ remote effect.
 ## Stop conditions
 
 - Refuse malformed repositories, unknown resource kinds, unbounded selectors,
-  limits above the contract, multiple mutations, unknown mutation fields, or
+  limits above the contract, more than eight mutations, unknown mutation fields, or
   content beyond the declared bounds.
 - Refuse push when write scope is missing; do not degrade silently.
 - Do not treat local cursor persistence as remote provider readback.

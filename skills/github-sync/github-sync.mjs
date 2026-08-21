@@ -7,10 +7,13 @@ export default function planSync(inputs) {
 
   let mutation = null;
   if (direction === "push") {
-    if (mutations.length === 1) mutation = mutations[0];
-    else blockers.push("push requires exactly one typed mutation");
+    if (mutations.length >= 1 && mutations.length <= 8) mutation = mutations[0];
+    else blockers.push("push requires 1 to 8 typed mutations");
+    if (resources.kind === "batch" && mutations.length === 0) blockers.push("batch push requires at least one mutation");
   } else if (mutations.length > 0) {
     blockers.push("pull does not accept mutations");
+  } else if (resources.kind === "batch") {
+    blockers.push("batch resources are only valid for push");
   }
 
   let decision = blockers.length === 0 ? "ready" : "blocked";
@@ -24,23 +27,40 @@ export default function planSync(inputs) {
     decision = "ready_for_approval";
   }
 
-  const providerOperation = {
-    issues: direction === "push" ? "issues.write" : "issues.read",
-    prs: direction === "push" ? "pullrequests.write" : "pullrequests.read",
-    threads: direction === "push" ? "threads.write" : "threads.read",
-  }[resources.kind];
+  const providerOperation = direction === "push"
+    ? (resources.kind === "batch" || mutations.length > 1
+      ? "sync.write_batch"
+      : {
+        issues: "issues.write",
+        prs: "pullrequests.write",
+        threads: "threads.write",
+      }[resources.kind])
+    : {
+      issues: "issues.read",
+      prs: "pullrequests.read",
+      threads: "threads.read",
+      batch: "sync.read",
+    }[resources.kind];
 
   return {
     sync_plan: {
       decision,
       repo,
       direction,
-      resource_selector: { kind: resources.kind, filters, refs },
+      resource_selector: {
+        kind: resources.kind,
+        filters,
+        refs,
+        include_body: resources.include_body === true,
+      },
       resources_touched: [],
       mutation,
-      diff_summary: mutation
-        ? [{ ref: mutation.ref, op: mutation.op, fields: Object.keys(mutation.payload).sort() }]
-        : [],
+      mutations,
+      diff_summary: mutations.map((entry) => ({
+        ref: entry.ref,
+        op: entry.op,
+        fields: Object.keys(entry.payload).sort(),
+      })),
       provider_operation: providerOperation,
       scope_used: direction === "push" ? "repo.write" : "repo.read",
       gates: { approval_required: direction === "push", approval_ref: "" },

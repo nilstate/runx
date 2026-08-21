@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use runx_contracts::{JsonObject, JsonValue};
+use runx_contracts::{JsonObject, JsonValue, ProviderOperationPacket};
 
 use super::ProviderNativeAccess;
 use super::execution::provider_tool_error;
@@ -100,6 +100,8 @@ pub(super) fn provider_operation_access(access: ProviderNativeAccess) -> Provide
 #[cfg(feature = "catalog")]
 pub(super) struct ProviderReadbackContract {
     pub(super) expected_provider: String,
+    pub(super) operation: String,
+    pub(super) target: String,
     pub(super) grant_id: String,
     pub(super) access: ProviderNativeAccess,
     pub(super) principal_ref: String,
@@ -160,10 +162,30 @@ pub(super) fn project_provider_tool_readback(
         project_result_fields(tool_ref, &mut readback, fields)?;
     }
     append_readback_contract(&mut readback, &contract);
+    validate_provider_operation_packet(tool_ref, &readback)?;
     Ok(JsonValue::Object(JsonObject::from([(
         "provider_operation".to_owned(),
         JsonValue::Object(readback),
     )])))
+}
+
+fn validate_provider_operation_packet(
+    tool_ref: &str,
+    readback: &JsonObject,
+) -> Result<(), RuntimeError> {
+    let value = serde_json::to_value(readback).map_err(|error| {
+        provider_tool_error(
+            tool_ref,
+            format!("provider packet encoding failed: {error}"),
+        )
+    })?;
+    serde_json::from_value::<ProviderOperationPacket>(value).map_err(|error| {
+        provider_tool_error(
+            tool_ref,
+            format!("provider operation packet violates its core contract: {error}"),
+        )
+    })?;
+    Ok(())
 }
 
 fn validate_expected_provider(
@@ -250,6 +272,15 @@ fn append_readback_contract(readback: &mut JsonObject, contract: &ProviderReadba
     readback.insert(
         "schema".to_owned(),
         JsonValue::String("runx.provider.operation.v1".to_owned()),
+    );
+    readback.insert("status".to_owned(), JsonValue::String("success".to_owned()));
+    readback.insert(
+        "operation".to_owned(),
+        JsonValue::String(contract.operation.clone()),
+    );
+    readback.insert(
+        "target".to_owned(),
+        JsonValue::String(contract.target.clone()),
     );
     readback.insert(
         "access".to_owned(),

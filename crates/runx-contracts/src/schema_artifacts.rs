@@ -15,13 +15,13 @@ use crate::{
     ExternalAdapterInvocation, ExternalAdapterManifest, ExternalAdapterResponse,
     ExternalReceiptVerification, Fixture, GitBlobDigest, HandoffSignal, HandoffState, LedgerEntry,
     LocalArtifact, LocalArtifactPage, OperationalPolicy, OperationalProposal,
-    OrchestratorExecutionContext, OrchestratorHandoffContext, Output, PacketIndex, Question,
-    Receipt, Redaction, Reference, ReferenceLink, RegistryBinding, ResolutionRequest,
-    ResolutionResponse, ReviewReceiptOutput, RunSummary, RunxListReport, ScopeAdmission, Signal,
-    SkillApplyResult, SkillArchitectureDecision, SkillArchitecturePlan, SkillChangeBundle,
-    SkillChangeDraft, SkillValidationResult, SourcePacket, SuppressionRecord,
-    ThreadOutboxProviderFetch, ThreadOutboxProviderManifest, ThreadOutboxProviderObservation,
-    ThreadOutboxProviderPush, ToolManifest, Verification,
+    OrchestratorExecutionContext, OrchestratorHandoffContext, Output, PacketIndex,
+    ProviderOperationPacket, Question, Receipt, Redaction, Reference, ReferenceLink,
+    RegistryBinding, ResolutionRequest, ResolutionResponse, ReviewReceiptOutput, RunSummary,
+    RunxListReport, ScopeAdmission, Signal, SkillApplyResult, SkillArchitectureDecision,
+    SkillArchitecturePlan, SkillChangeBundle, SkillChangeDraft, SkillValidationResult,
+    SourcePacket, SuppressionRecord, ThreadOutboxProviderFetch, ThreadOutboxProviderManifest,
+    ThreadOutboxProviderObservation, ThreadOutboxProviderPush, ToolManifest, Verification,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -121,6 +121,7 @@ pub fn generated_schema_artifacts() -> Vec<SchemaArtifact> {
             "orchestrator-handoff-context.schema.json",
         ),
         schema_artifact::<RegistryBinding>("registry-binding.schema.json"),
+        public_packet_artifact::<ProviderOperationPacket>("provider-operation.schema.json"),
         schema_artifact::<ReviewReceiptOutput>("review-receipt-output.schema.json"),
     ]
 }

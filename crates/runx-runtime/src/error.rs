@@ -80,6 +80,10 @@ pub enum RuntimeError {
         reason: String,
         sync_decision: Box<FanoutSyncDecision>,
     },
+    #[error(
+        "provider mutation was applied but independent readback is unavailable at graph step '{step_id}': {reason}"
+    )]
+    ProviderReadbackPending { step_id: String, reason: String },
     #[error("checkpoint graph '{checkpoint_graph}' cannot resume graph '{graph}'")]
     CheckpointGraphMismatch {
         checkpoint_graph: String,
@@ -172,7 +176,8 @@ impl RuntimeError {
             source @ (Self::AuthorityDenied { .. }
             | Self::GraphBlocked { .. }
             | Self::GraphPaused { .. }
-            | Self::GraphEscalated { .. }) => source,
+            | Self::GraphEscalated { .. }
+            | Self::ProviderReadbackPending { .. }) => source,
             source => Self::EngineFailure {
                 context,
                 source: Box::new(source),
@@ -208,6 +213,7 @@ impl RuntimeError {
             | Self::AuthorityDenied { .. }
             | Self::GraphPaused { .. }
             | Self::GraphEscalated { .. }
+            | Self::ProviderReadbackPending { .. }
             | Self::UnsupportedAdapter { .. }
             | Self::UnsupportedSource { .. }
             | Self::UnsupportedRunnerSelection { .. }
@@ -280,6 +286,19 @@ impl RuntimeError {
             Self::ManagedAgentResolution { source, .. } => {
                 projection = source.public_failure_projection();
             }
+            Self::ProviderReadbackPending { step_id, reason } => {
+                projection.insert(
+                    "code".to_owned(),
+                    JsonValue::String("provider_readback_pending".to_owned()),
+                );
+                projection.insert("step_id".to_owned(), JsonValue::String(step_id.clone()));
+                projection.insert(
+                    "mutation_status".to_owned(),
+                    JsonValue::String("applied_unconfirmed".to_owned()),
+                );
+                projection.insert("retryable".to_owned(), JsonValue::Bool(false));
+                projection.insert("reason".to_owned(), JsonValue::String(reason.clone()));
+            }
             _ => {}
         }
         projection
@@ -298,7 +317,8 @@ impl RuntimeError {
             | Self::AuthorityDenied { step_id, .. }
             | Self::GraphPlanningFailed { step_id, .. }
             | Self::GraphPaused { step_id, .. }
-            | Self::GraphEscalated { step_id, .. } => Some(step_id),
+            | Self::GraphEscalated { step_id, .. }
+            | Self::ProviderReadbackPending { step_id, .. } => Some(step_id),
             Self::InputContract { step_id, .. } => step_id.as_deref(),
             #[cfg(feature = "agent")]
             Self::ManagedAgentResolution { step_id, .. } => Some(step_id),
@@ -354,6 +374,10 @@ impl RuntimeError {
                 step_id: step_id.to_owned(),
                 reason,
                 sync_decision,
+            },
+            Self::ProviderReadbackPending { reason, .. } => Self::ProviderReadbackPending {
+                step_id: step_id.to_owned(),
+                reason,
             },
             #[cfg(feature = "agent")]
             Self::ManagedAgentResolution {

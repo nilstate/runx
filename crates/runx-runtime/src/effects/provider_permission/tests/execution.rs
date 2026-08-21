@@ -146,6 +146,8 @@ fn readback_projection_is_bounded_and_identity_checked() {
         readback,
         ProviderReadbackContract {
             expected_provider: "vault".to_owned(),
+            operation: "handles.unseal".to_owned(),
+            target: "vault://deployment".to_owned(),
             grant_id: "grant_vault".to_owned(),
             access: ProviderNativeAccess::Mutate,
             principal_ref: "runx:principal:operator:test".to_owned(),
@@ -183,6 +185,8 @@ fn readback_projection_is_bounded_and_identity_checked() {
         ]),
         ProviderReadbackContract {
             expected_provider: "github".to_owned(),
+            operation: "issues.read".to_owned(),
+            target: "runxhq/runx".to_owned(),
             grant_id: "grant_github".to_owned(),
             access: ProviderNativeAccess::Read,
             principal_ref: "runx:principal:operator:test".to_owned(),

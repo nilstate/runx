@@ -34,6 +34,7 @@ pub mod orchestrator_handoff;
 pub mod output;
 pub mod packet_index;
 pub mod policy_proof;
+pub mod provider_operation;
 pub mod receipt;
 pub mod redaction;
 pub mod reference;
@@ -199,6 +200,7 @@ pub use policy_proof::{
     CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference, ScopeAdmission,
     ScopeAdmissionStatus,
 };
+pub use provider_operation::ProviderOperationPacket;
 pub use receipt::{
     EFFECT_FINALITY_RECEIPT_SCHEMA, EffectFinalityPhase, EffectFinalityReceipt,
     EffectFinalityReceiptSchema, FanoutReceiptDecision, FanoutReceiptStrategy,

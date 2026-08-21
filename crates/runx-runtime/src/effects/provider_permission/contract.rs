@@ -8,11 +8,17 @@ use crate::{
 
 use super::{PROVIDER_MUTATE_TOOL, PROVIDER_READ_TOOL};
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
 #[serde(deny_unknown_fields)]
 struct ProviderReadInput {
     operation: String,
     target: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    readback: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     input: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,6 +56,10 @@ const READ_FIELDS: &[CapabilityField] = &[
         "target",
         "Human-readable provider target bound into readback and mutation approval.",
     ),
+    field(
+        "readback",
+        "Explicitly marks this provider read as independent finality verification for a prior mutation.",
+    ),
     field("input", "Credential-free provider operation input."),
     field(
         "result_fields",
@@ -68,7 +78,6 @@ const READ_FIELDS: &[CapabilityField] = &[
 const MUTATE_FIELDS: &[CapabilityField] = &[
     READ_FIELDS[0],
     READ_FIELDS[1],
-    READ_FIELDS[2],
     READ_FIELDS[3],
     READ_FIELDS[4],
     field(
@@ -76,6 +85,7 @@ const MUTATE_FIELDS: &[CapabilityField] = &[
         "Stable request identity hashed into the provider idempotency key by Runx.",
     ),
     READ_FIELDS[5],
+    READ_FIELDS[6],
 ];
 
 const fn field(name: &'static str, description: &'static str) -> CapabilityField {

@@ -47939,6 +47939,78 @@ export const runxSchemaArtifacts = {
     "x-runx-packet": true,
     "x-runx-schema": "runx.payment.tool_call.v1"
   } as JsonSchema,
+  "provider-operation.schema.json": {
+    "$id": "https://schemas.runx.ai/runx/provider/operation/v1.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "access": {
+        "type": "string"
+      },
+      "account_ref": {
+        "type": "string"
+      },
+      "finality": {
+        "type": "string"
+      },
+      "grant_ref": {
+        "type": "string"
+      },
+      "host": {
+        "type": "string"
+      },
+      "idempotency_key": {
+        "type": "string"
+      },
+      "operation": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "plan_digest": {
+        "type": "string"
+      },
+      "principal_ref": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "readback_ref": {
+        "type": "string"
+      },
+      "result": {},
+      "result_digest": {
+        "type": "string"
+      },
+      "schema": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "target": {
+        "type": "string"
+      },
+      "transport": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "schema",
+      "status",
+      "provider",
+      "operation",
+      "target",
+      "result",
+      "transport",
+      "readback_ref"
+    ],
+    "type": "object",
+    "x-runx-packet": true,
+    "x-runx-schema": "runx.provider.operation.v1"
+  } as JsonSchema,
   "question.schema.json": {
     "$id": "https://runx.ai/spec/question.schema.json",
     "$schema": "https://json-schema.org/draft/2020-12/schema",

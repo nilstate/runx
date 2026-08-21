@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
-use runx_contracts::{JsonObject, JsonValue, sha256_prefixed};
+use runx_contracts::{JsonObject, JsonValue, ProviderOperationPacket, sha256_prefixed};
 
 use super::ProviderNativeAccess;
 use crate::process::{ProcessSpec, ProcessStdin, run_process};
@@ -62,6 +62,7 @@ enum GithubOperation {
     PullRequestComment,
     PullRequestCommentRead,
     SyncRead,
+    SyncWriteBatch,
 }
 
 impl GithubOperation {
@@ -80,6 +81,7 @@ impl GithubOperation {
             "pullrequest.comment" => Ok(Self::PullRequestComment),
             "pullrequest.comment.read" => Ok(Self::PullRequestCommentRead),
             "sync.read" => Ok(Self::SyncRead),
+            "sync.write_batch" => Ok(Self::SyncWriteBatch),
             _ => Err(LocalGithubError::new(format!(
                 "local GitHub does not support provider operation {operation:?}"
             ))),
@@ -100,7 +102,8 @@ impl GithubOperation {
             | Self::PullRequestOpen
             | Self::PullRequestPublish
             | Self::ThreadsWrite
-            | Self::PullRequestComment => ProviderNativeAccess::Mutate,
+            | Self::PullRequestComment
+            | Self::SyncWriteBatch => ProviderNativeAccess::Mutate,
         }
     }
 
@@ -117,6 +120,7 @@ impl GithubOperation {
             Self::ThreadsRead => matches!(scope, "repo.read" | "pr.read"),
             Self::ThreadsWrite => matches!(scope, "repo.write" | "pr.comment"),
             Self::PullRequestComment => scope == "pr.comment",
+            Self::SyncWriteBatch => scope == "repo.write",
         }
     }
 }
@@ -322,6 +326,12 @@ pub(super) fn invoke(
             "admitted local GitHub operation changed access class before execution",
         ));
     }
+    if access == ProviderNativeAccess::Mutate {
+        // Validate all mutation-wide requirements before dispatching any
+        // provider request. A missing idempotency key must never be learned
+        // after a remote write has already happened.
+        required_string(input, "idempotency_key", "idempotency key")?;
+    }
     let result = match operation {
         GithubOperation::IssueRead => read_issue(env, cwd, binding, input)?,
         GithubOperation::IssuesRead => read_issues(env, cwd, binding, input)?,
@@ -338,54 +348,51 @@ pub(super) fn invoke(
             read_pull_request_comment(env, cwd, binding, input)?
         }
         GithubOperation::SyncRead => read_sync_result(env, cwd, binding, input)?,
+        GithubOperation::SyncWriteBatch => sync_write_batch(env, cwd, binding, input)?,
     };
     let readback_digest = sha256_prefixed(
         &serde_json::to_vec(&result)
             .map_err(|error| LocalGithubError::new(format!("encoding GitHub result: {error}")))?,
     );
-    let mut readback = JsonObject::from([
+    let (idempotency_key, operation_id) = if access == ProviderNativeAccess::Mutate {
         (
-            "schema".to_owned(),
-            JsonValue::String("runx.provider.operation.v1".to_owned()),
-        ),
-        ("status".to_owned(), JsonValue::String("success".to_owned())),
-        (
-            "provider".to_owned(),
-            JsonValue::String(GITHUB_PROVIDER.to_owned()),
-        ),
-        (
-            "operation".to_owned(),
-            JsonValue::String(operation_name.to_owned()),
-        ),
-        (
-            "target".to_owned(),
-            JsonValue::String(binding.repository.clone()),
-        ),
-        ("result".to_owned(), JsonValue::Object(result.clone())),
-        (
-            "readback_ref".to_owned(),
-            JsonValue::String(format!("runx:github-readback:{readback_digest}")),
-        ),
-        (
-            "transport".to_owned(),
-            JsonValue::String("local_github".to_owned()),
-        ),
-        ("host".to_owned(), JsonValue::String(binding.host.clone())),
-        (
-            "account_ref".to_owned(),
-            JsonValue::String(binding.principal_ref()),
-        ),
-    ]);
-    if access == ProviderNativeAccess::Mutate {
-        let idempotency_key = required_string(input, "idempotency_key", "idempotency key")?;
-        let operation_id = local_operation_id(operation, input, &result)?;
-        readback.insert(
-            "idempotency_key".to_owned(),
-            JsonValue::String(idempotency_key),
-        );
-        readback.insert("operation_id".to_owned(), JsonValue::String(operation_id));
-    }
-    Ok(readback)
+            Some(required_string(input, "idempotency_key", "idempotency key")?.to_owned()),
+            Some(local_operation_id(operation, input, &result)?),
+        )
+    } else {
+        (None, None)
+    };
+    let packet = ProviderOperationPacket {
+        schema: "runx.provider.operation.v1".to_owned(),
+        status: "success".to_owned(),
+        provider: GITHUB_PROVIDER.to_owned(),
+        operation: operation_name.to_owned(),
+        target: binding.repository.clone(),
+        result: JsonValue::Object(result),
+        transport: "local_github".to_owned(),
+        readback_ref: format!("runx:github-readback:{readback_digest}"),
+        access: None,
+        principal_ref: None,
+        grant_ref: None,
+        finality: None,
+        plan_digest: None,
+        result_digest: None,
+        operation_id,
+        idempotency_key,
+        host: Some(binding.host.clone()),
+        account_ref: Some(binding.principal_ref()),
+    };
+    let packet_value: JsonValue =
+        serde_json::from_value(serde_json::to_value(packet).map_err(|error| {
+            LocalGithubError::new(format!("encoding GitHub provider packet: {error}"))
+        })?)
+        .map_err(|error| {
+            LocalGithubError::new(format!("projecting GitHub provider packet: {error}"))
+        })?;
+    packet_value
+        .as_object()
+        .cloned()
+        .ok_or_else(|| LocalGithubError::new("GitHub provider packet is not an object"))
 }
 
 fn read_issue(
@@ -405,6 +412,79 @@ fn read_issue(
     normalize_issue(&issue, &binding.repository)
 }
 
+#[derive(Clone, Copy)]
+enum ResourceCollectionKind {
+    Issues,
+    PullRequests,
+}
+
+fn read_exact_collection_refs(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    refs: &[JsonValue],
+    kind: ResourceCollectionKind,
+    include_body: bool,
+) -> Result<Option<Vec<JsonValue>>, LocalGithubError> {
+    if refs.is_empty() {
+        return Ok(None);
+    }
+    if refs.len() > 100 {
+        return Err(LocalGithubError::new(
+            "GitHub collection refs exceed the declared limit",
+        ));
+    }
+    let (prefix, label) = match kind {
+        ResourceCollectionKind::Issues => ("issues/", "issue"),
+        ResourceCollectionKind::PullRequests => ("pulls/", "pull-request"),
+    };
+    let mut items = Vec::with_capacity(refs.len());
+    for reference in refs {
+        let reference = reference
+            .as_str()
+            .ok_or_else(|| LocalGithubError::new(format!("GitHub {label} ref must be a string")))?;
+        let number = reference
+            .strip_prefix(prefix)
+            .ok_or_else(|| {
+                LocalGithubError::new(format!("GitHub {label} ref must be {prefix}<number>"))
+            })
+            .and_then(|number| safe_number(number, &format!("{label} number")))?;
+        let path_kind = match kind {
+            ResourceCollectionKind::Issues => "issues",
+            ResourceCollectionKind::PullRequests => "pulls",
+        };
+        let resource = github_api_get(
+            env,
+            cwd,
+            binding,
+            &format!("repos/{}/{path_kind}/{number}", binding.repository),
+            if matches!(kind, ResourceCollectionKind::Issues) {
+                "GitHub issue read"
+            } else {
+                "GitHub pull-request read"
+            },
+        )?;
+        if matches!(kind, ResourceCollectionKind::Issues)
+            && value_field(&resource, "pull_request").is_some()
+        {
+            return Err(LocalGithubError::new(format!(
+                "GitHub issue ref issues/{number} targets a pull request"
+            )));
+        }
+        let normalized = match kind {
+            ResourceCollectionKind::Issues => normalize_issue(&resource, &binding.repository)?,
+            ResourceCollectionKind::PullRequests => {
+                normalize_pull_request(&resource, &binding.repository)?
+            }
+        };
+        items.push(JsonValue::Object(compact_collection_item(
+            normalized,
+            include_body,
+        )?));
+    }
+    Ok(Some(items))
+}
+
 fn read_issues(
     env: &BTreeMap<String, String>,
     cwd: &Path,
@@ -420,6 +500,24 @@ fn read_issues(
         .and_then(JsonValue::as_object)
         .cloned()
         .unwrap_or_default();
+    let include_body = selector
+        .get("include_body")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false);
+    if let Some(items) = read_exact_collection_refs(
+        env,
+        cwd,
+        binding,
+        selector
+            .get("refs")
+            .and_then(JsonValue::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]),
+        ResourceCollectionKind::Issues,
+        include_body,
+    )? {
+        return Ok(collection_result(&binding.repository, items));
+    }
     let mut query = url::form_urlencoded::Serializer::new(String::new());
     query.append_pair("per_page", &bounded_limit(&filters)?.to_string());
     if let Some(state) = filters.get("state").and_then(JsonValue::as_str) {
@@ -442,7 +540,11 @@ fn read_issues(
         .ok_or_else(|| LocalGithubError::new("gh issue list response was not an array"))?
         .iter()
         .filter(|issue| value_field(issue, "pull_request").is_none())
-        .map(|issue| normalize_issue(issue, &binding.repository).map(JsonValue::Object))
+        .map(|issue| {
+            normalize_issue(issue, &binding.repository)
+                .and_then(|item| compact_collection_item(item, include_body))
+                .map(JsonValue::Object)
+        })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(collection_result(&binding.repository, items))
 }
@@ -462,6 +564,24 @@ fn read_pull_requests(
         .and_then(JsonValue::as_object)
         .cloned()
         .unwrap_or_default();
+    let include_body = selector
+        .get("include_body")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false);
+    if let Some(items) = read_exact_collection_refs(
+        env,
+        cwd,
+        binding,
+        selector
+            .get("refs")
+            .and_then(JsonValue::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or(&[]),
+        ResourceCollectionKind::PullRequests,
+        include_body,
+    )? {
+        return Ok(collection_result(&binding.repository, items));
+    }
     let mut query = url::form_urlencoded::Serializer::new(String::new());
     query.append_pair("per_page", &bounded_limit(&filters)?.to_string());
     if let Some(state) = filters.get("state").and_then(JsonValue::as_str) {
@@ -483,7 +603,11 @@ fn read_pull_requests(
         .as_array()
         .ok_or_else(|| LocalGithubError::new("gh pull-request list response was not an array"))?
         .iter()
-        .map(|pull| normalize_pull_request(pull, &binding.repository).map(JsonValue::Object))
+        .map(|pull| {
+            normalize_pull_request(pull, &binding.repository)
+                .and_then(|item| compact_collection_item(item, include_body))
+                .map(JsonValue::Object)
+        })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(collection_result(&binding.repository, items))
 }
@@ -855,11 +979,22 @@ fn read_threads(
         }
     };
     let response = github_api_get(env, cwd, binding, &endpoint, "GitHub thread read")?;
+    let include_body = input
+        .get("resource_selector")
+        .and_then(JsonValue::as_object)
+        .and_then(|selector| selector.get("include_body"))
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false);
     let items = response
         .as_array()
         .ok_or_else(|| LocalGithubError::new("gh thread response was not an array"))?
         .iter()
-        .map(normalize_comment)
+        .map(normalize_comment_object)
+        .map(|result| {
+            result
+                .and_then(|item| compact_collection_item(item, include_body))
+                .map(JsonValue::Object)
+        })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(collection_result(&binding.repository, items))
 }
@@ -871,29 +1006,10 @@ fn mutate_issue(
     input: &JsonObject,
 ) -> Result<JsonObject, LocalGithubError> {
     let mutation = required_mutation(input, "issues")?;
-    let number = reference_number(mutation, "issues")?;
-    let patch = mutation_payload(mutation)?;
-    github_api_write(
-        env,
-        cwd,
-        binding,
-        "PATCH",
-        &format!("repos/{}/issues/{number}", binding.repository),
-        patch,
-        "GitHub issue mutation",
-    )?;
-    let actual = github_api_get(
-        env,
-        cwd,
-        binding,
-        &format!("repos/{}/issues/{number}", binding.repository),
-        "GitHub issue mutation readback",
-    )?;
-    verify_issue_patch(mutation_payload(mutation)?, &actual)?;
     sync_mutation_result(
         binding,
         mutation,
-        normalize_issue(&actual, &binding.repository)?,
+        mutate_resource(env, cwd, binding, mutation, ResourceMutationKind::Issue)?,
     )
 }
 
@@ -904,30 +1020,67 @@ fn mutate_pull_request(
     input: &JsonObject,
 ) -> Result<JsonObject, LocalGithubError> {
     let mutation = required_mutation(input, "pulls")?;
-    let number = reference_number(mutation, "pulls")?;
+    sync_mutation_result(
+        binding,
+        mutation,
+        mutate_resource(
+            env,
+            cwd,
+            binding,
+            mutation,
+            ResourceMutationKind::PullRequest,
+        )?,
+    )
+}
+
+/// Apply and independently verify an issue or pull-request update, returning
+/// the normalized provider resource. The surrounding sync envelope is built
+/// exactly once by `sync_mutation_result`, whether this is a standalone write
+/// or one item in a batch.
+fn mutate_resource(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+    kind: ResourceMutationKind,
+) -> Result<JsonObject, LocalGithubError> {
+    let (kind_ref, issue) = match kind {
+        ResourceMutationKind::Issue => ("issues", true),
+        ResourceMutationKind::PullRequest => ("pulls", false),
+    };
+    let number = reference_number(mutation, kind_ref)?;
     let patch = mutation_payload(mutation)?;
     github_api_write(
         env,
         cwd,
         binding,
         "PATCH",
-        &format!("repos/{}/pulls/{number}", binding.repository),
+        &format!("repos/{}/{kind_ref}/{number}", binding.repository),
         patch,
-        "GitHub pull-request mutation",
+        if issue {
+            "GitHub issue mutation"
+        } else {
+            "GitHub pull-request mutation"
+        },
     )?;
     let actual = github_api_get(
         env,
         cwd,
         binding,
-        &format!("repos/{}/pulls/{number}", binding.repository),
-        "GitHub pull-request mutation readback",
+        &format!("repos/{}/{kind_ref}/{number}", binding.repository),
+        if issue {
+            "GitHub issue mutation readback"
+        } else {
+            "GitHub pull-request mutation readback"
+        },
     )?;
-    verify_simple_patch(mutation_payload(mutation)?, &actual)?;
-    sync_mutation_result(
-        binding,
-        mutation,
-        normalize_pull_request(&actual, &binding.repository)?,
-    )
+    if issue {
+        verify_issue_patch(mutation_payload(mutation)?, &actual)?;
+        normalize_issue(&actual, &binding.repository)
+    } else {
+        verify_simple_patch(mutation_payload(mutation)?, &actual)?;
+        normalize_pull_request(&actual, &binding.repository)
+    }
 }
 
 fn mutate_thread(
@@ -940,6 +1093,19 @@ fn mutate_thread(
         .get("mutation")
         .and_then(JsonValue::as_object)
         .ok_or_else(|| LocalGithubError::new("GitHub thread mutation is missing"))?;
+    sync_mutation_result(
+        binding,
+        mutation,
+        mutate_thread_resource(env, cwd, binding, mutation)?,
+    )
+}
+
+fn mutate_thread_resource(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+) -> Result<JsonObject, LocalGithubError> {
     let reference = mutation
         .get("ref")
         .and_then(JsonValue::as_str)
@@ -987,7 +1153,7 @@ fn mutate_thread(
         "GitHub thread mutation readback",
     )?;
     verify_simple_patch(mutation_payload(mutation)?, &actual)?;
-    sync_mutation_result(binding, mutation, normalize_comment_object(&actual)?)
+    normalize_comment_object(&actual)
 }
 
 fn comment_on_pull_request(
@@ -1092,41 +1258,116 @@ fn read_sync_result(
     binding: &LocalGithubBinding,
     input: &JsonObject,
 ) -> Result<JsonObject, LocalGithubError> {
+    if input
+        .get("mutations")
+        .and_then(JsonValue::as_array)
+        .is_some()
+    {
+        return read_sync_batch_result(env, cwd, binding, input);
+    }
     let mutation = input
         .get("mutation")
         .and_then(JsonValue::as_object)
         .ok_or_else(|| LocalGithubError::new("GitHub sync readback mutation is missing"))?;
-    let reference = required_string(mutation, "ref", "GitHub mutation ref")?;
-    let parts = reference.split('/').collect::<Vec<_>>();
+    let sync_ref = required_string(input, "sync_ref", "GitHub sync readback ref")?;
+    let mutation_digest = required_string(
+        input,
+        "mutation_digest",
+        "GitHub sync readback mutation digest",
+    )?;
+    let resource = read_sync_item(env, cwd, binding, mutation, &sync_ref, &mutation_digest)?;
+    let mut result = sync_mutation_result(binding, mutation, resource)?;
+    // Preserve the caller's batch identity when this is a readback of a
+    // prior write. The resource and mutation envelope itself must come from
+    // the fresh provider read, not from the stale input packet.
+    for field in ["batch_digest", "idempotency_key"] {
+        if let Some(value) = input.get(field) {
+            result.insert(field.to_owned(), value.clone());
+        }
+    }
+    Ok(result)
+}
+
+fn read_sync_item(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+    sync_ref: &str,
+    mutation_digest: &str,
+) -> Result<JsonObject, LocalGithubError> {
+    let actual_mutation_digest = sha256_prefixed(
+        &serde_json::to_vec(&JsonValue::Object(mutation.clone()))
+            .map_err(|error| LocalGithubError::new(format!("encoding mutation: {error}")))?,
+    );
+    if mutation_digest != actual_mutation_digest {
+        return Err(LocalGithubError::new(
+            "GitHub sync readback mutation digest does not match the approved mutation",
+        ));
+    }
+    let mutation_ref = required_string(mutation, "ref", "GitHub mutation ref")?;
+    let parts = sync_ref.split('/').collect::<Vec<_>>();
+    if let ["issues", "comments", comment] = parts.as_slice() {
+        let actual = github_api_get(
+            env,
+            cwd,
+            binding,
+            &format!(
+                "repos/{}/issues/comments/{}",
+                binding.repository,
+                safe_number(comment, "comment number")?
+            ),
+            "GitHub sync comment readback",
+        )?;
+        verify_comment_sync_readback(env, cwd, binding, mutation, &actual)?;
+        return Ok(compact_sync_resource(
+            &normalize_comment_object(&actual)?,
+            sync_ref,
+        ));
+    }
     let (actual, issue) = match parts.as_slice() {
-        ["issues", number] => (
-            github_api_get(
-                env,
-                cwd,
-                binding,
-                &format!(
-                    "repos/{}/issues/{}",
-                    binding.repository,
-                    safe_number(number, "issue number")?
-                ),
-                "GitHub sync issue readback",
-            )?,
-            true,
-        ),
-        ["pulls", number] => (
-            github_api_get(
-                env,
-                cwd,
-                binding,
-                &format!(
-                    "repos/{}/pulls/{}",
-                    binding.repository,
-                    safe_number(number, "pull-request number")?
-                ),
-                "GitHub sync pull-request readback",
-            )?,
-            false,
-        ),
+        ["issues", number] => {
+            if mutation_ref != sync_ref {
+                return Err(LocalGithubError::new(
+                    "GitHub issue readback ref did not match the approved mutation",
+                ));
+            }
+            (
+                github_api_get(
+                    env,
+                    cwd,
+                    binding,
+                    &format!(
+                        "repos/{}/issues/{}",
+                        binding.repository,
+                        safe_number(number, "issue number")?
+                    ),
+                    "GitHub sync issue readback",
+                )?,
+                true,
+            )
+        }
+        ["pulls", number] => {
+            if mutation_ref != sync_ref {
+                return Err(LocalGithubError::new(
+                    "GitHub pull-request readback ref did not match the approved mutation",
+                ));
+            }
+            (
+                github_api_get(
+                    env,
+                    cwd,
+                    binding,
+                    &format!(
+                        "repos/{}/pulls/{}",
+                        binding.repository,
+                        safe_number(number, "pull-request number")?
+                    ),
+                    "GitHub sync pull-request readback",
+                )?,
+                false,
+            )
+        }
         _ => {
             return Err(LocalGithubError::new(
                 "GitHub sync readback reference is unsupported",
@@ -1135,10 +1376,322 @@ fn read_sync_result(
     };
     if issue {
         verify_issue_patch(mutation_payload(mutation)?, &actual)?;
+        Ok(compact_sync_resource(
+            &normalize_issue(&actual, &binding.repository)?,
+            sync_ref,
+        ))
     } else {
         verify_simple_patch(mutation_payload(mutation)?, &actual)?;
+        Ok(compact_sync_resource(
+            &normalize_pull_request(&actual, &binding.repository)?,
+            sync_ref,
+        ))
     }
-    Ok(input.clone())
+}
+
+fn sync_write_batch(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    input: &JsonObject,
+) -> Result<JsonObject, LocalGithubError> {
+    let mutations = bounded_mutation_array(input)?;
+    for mutation in &mutations {
+        validate_batch_mutation(mutation)?;
+    }
+    let mut items = Vec::with_capacity(mutations.len());
+    for mutation in &mutations {
+        let item = apply_batch_mutation(env, cwd, binding, mutation)
+            .map(JsonValue::Object)
+            .unwrap_or_else(|_| batch_unknown_item(mutation));
+        items.push(item);
+    }
+    batch_result(binding, mutations, items)
+}
+
+fn apply_batch_mutation(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+) -> Result<JsonObject, LocalGithubError> {
+    let actual = match mutation_ref_kind(mutation)? {
+        MutationRefKind::Issue => {
+            mutate_resource(env, cwd, binding, mutation, ResourceMutationKind::Issue)?
+        }
+        MutationRefKind::PullRequest => mutate_resource(
+            env,
+            cwd,
+            binding,
+            mutation,
+            ResourceMutationKind::PullRequest,
+        )?,
+        MutationRefKind::Thread => mutate_thread_resource(env, cwd, binding, mutation)?,
+    };
+    mutation_item(mutation, actual)
+}
+
+fn validate_batch_mutation(mutation: &JsonObject) -> Result<(), LocalGithubError> {
+    match mutation_ref_kind(mutation)? {
+        MutationRefKind::Issue => {
+            required_mutation_shape(mutation, "issues")?;
+        }
+        MutationRefKind::PullRequest => {
+            required_mutation_shape(mutation, "pulls")?;
+        }
+        MutationRefKind::Thread => {
+            let reference = required_string(mutation, "ref", "GitHub thread mutation ref")?;
+            let op = required_string(mutation, "op", "GitHub thread mutation operation")?;
+            match (reference, op.as_str()) {
+                (reference, "comment") if reference.ends_with("/comments") => {
+                    mutation_payload(mutation)?;
+                }
+                (reference, "update") if reference.starts_with("issues/comments/") => {
+                    mutation_payload(mutation)?;
+                }
+                _ => {
+                    return Err(LocalGithubError::new(
+                        "GitHub thread mutation must be a comment or comment update",
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn required_mutation_shape(
+    mutation: &JsonObject,
+    expected_kind: &str,
+) -> Result<(), LocalGithubError> {
+    let reference = required_string(mutation, "ref", "GitHub mutation ref")?;
+    if !reference.starts_with(&format!("{expected_kind}/")) {
+        return Err(LocalGithubError::new(format!(
+            "GitHub mutation ref must target {expected_kind}"
+        )));
+    }
+    if required_string(mutation, "op", "GitHub mutation operation")? != "update" {
+        return Err(LocalGithubError::new(
+            "GitHub issue/pull-request mutation must use update",
+        ));
+    }
+    mutation_payload(mutation)?;
+    Ok(())
+}
+
+fn read_sync_batch_result(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    input: &JsonObject,
+) -> Result<JsonObject, LocalGithubError> {
+    let items = input
+        .get("mutations")
+        .and_then(JsonValue::as_array)
+        .ok_or_else(|| LocalGithubError::new("GitHub batch readback mutations are missing"))?;
+    if items.is_empty() || items.len() > 8 {
+        return Err(LocalGithubError::new(
+            "GitHub batch readback mutations must contain 1 to 8 items",
+        ));
+    }
+    let mut updated_items = Vec::with_capacity(items.len());
+    let mut unresolved = 0usize;
+    for item in items {
+        let item = item
+            .as_object()
+            .ok_or_else(|| LocalGithubError::new("GitHub batch readback item is not an object"))?;
+        let mut child = JsonObject::new();
+        for field in ["mutation", "sync_ref", "mutation_digest"] {
+            if let Some(value) = item.get(field) {
+                child.insert(field.to_owned(), value.clone());
+            }
+        }
+        if !child.contains_key("mutation") {
+            return Err(LocalGithubError::new(
+                "GitHub batch readback item is missing mutation",
+            ));
+        }
+        let mutation = child
+            .get("mutation")
+            .and_then(JsonValue::as_object)
+            .ok_or_else(|| {
+                LocalGithubError::new("GitHub batch readback item mutation is missing")
+            })?;
+        let sync_ref = required_string(&child, "sync_ref", "GitHub batch readback sync ref")?;
+        let mutation_digest = required_string(
+            &child,
+            "mutation_digest",
+            "GitHub batch readback mutation digest",
+        )?;
+        let mut updated = item.clone();
+        match read_sync_item(env, cwd, binding, mutation, &sync_ref, &mutation_digest) {
+            Ok(resource) => {
+                updated.insert("status".to_owned(), JsonValue::String("applied".to_owned()));
+                updated.insert("resource".to_owned(), JsonValue::Object(resource));
+            }
+            Err(_) => unresolved += 1,
+        }
+        updated_items.push(JsonValue::Object(updated));
+    }
+    if unresolved > 0 {
+        return Err(LocalGithubError::new(format!(
+            "GitHub batch readback could not verify {unresolved} mutation item(s)"
+        )));
+    }
+    let mut output = input.clone();
+    output.insert(
+        "batch_status".to_owned(),
+        JsonValue::String("applied".to_owned()),
+    );
+    output.insert(
+        "mutations".to_owned(),
+        JsonValue::Array(updated_items.clone()),
+    );
+    output.insert(
+        "resources".to_owned(),
+        JsonValue::Array(
+            updated_items
+                .iter()
+                .filter_map(JsonValue::as_object)
+                .filter_map(|item| item.get("resource").cloned())
+                .collect(),
+        ),
+    );
+    Ok(output)
+}
+
+#[derive(Clone, Copy)]
+enum ResourceMutationKind {
+    Issue,
+    PullRequest,
+}
+
+#[derive(Clone, Copy)]
+enum MutationRefKind {
+    Issue,
+    PullRequest,
+    Thread,
+}
+
+fn mutation_ref_kind(mutation: &JsonObject) -> Result<MutationRefKind, LocalGithubError> {
+    let reference = required_string(mutation, "ref", "GitHub batch mutation ref")?;
+    let parts = reference.split('/').collect::<Vec<_>>();
+    match parts.as_slice() {
+        ["issues", number] if number.parse::<u64>().is_ok() => Ok(MutationRefKind::Issue),
+        ["pulls", number] if number.parse::<u64>().is_ok() => Ok(MutationRefKind::PullRequest),
+        [kind, number, "comments"]
+            if matches!(*kind, "issues" | "pulls") && number.parse::<u64>().is_ok() =>
+        {
+            Ok(MutationRefKind::Thread)
+        }
+        ["issues", "comments", comment] if comment.parse::<u64>().is_ok() => {
+            Ok(MutationRefKind::Thread)
+        }
+        _ => Err(LocalGithubError::new(
+            "GitHub batch mutation ref is unsupported",
+        )),
+    }
+}
+
+fn bounded_mutation_array(input: &JsonObject) -> Result<Vec<&JsonObject>, LocalGithubError> {
+    let mutations = input
+        .get("mutations")
+        .and_then(JsonValue::as_array)
+        .ok_or_else(|| LocalGithubError::new("GitHub batch mutations are missing"))?;
+    if mutations.is_empty() || mutations.len() > 8 {
+        return Err(LocalGithubError::new(
+            "GitHub batch mutations must contain 1 to 8 items",
+        ));
+    }
+    mutations
+        .iter()
+        .map(|value| {
+            value
+                .as_object()
+                .ok_or_else(|| LocalGithubError::new("GitHub batch mutation is not an object"))
+        })
+        .collect()
+}
+
+fn batch_unknown_item(mutation: &JsonObject) -> JsonValue {
+    let mutation_value = JsonValue::Object(mutation.clone());
+    let digest = serde_json::to_vec(&mutation_value)
+        .map(|bytes| sha256_prefixed(&bytes))
+        .unwrap_or_else(|_| "sha256:unknown".to_owned());
+    JsonValue::Object(JsonObject::from([
+        ("status".to_owned(), JsonValue::String("unknown".to_owned())),
+        (
+            "sync_ref".to_owned(),
+            mutation.get("ref").cloned().unwrap_or(JsonValue::Null),
+        ),
+        ("mutation_digest".to_owned(), JsonValue::String(digest)),
+        ("mutation".to_owned(), mutation_value),
+        ("resource".to_owned(), JsonValue::Null),
+    ]))
+}
+
+fn batch_result(
+    binding: &LocalGithubBinding,
+    mutations: Vec<&JsonObject>,
+    items: Vec<JsonValue>,
+) -> Result<JsonObject, LocalGithubError> {
+    let mutation_values = mutations
+        .into_iter()
+        .cloned()
+        .map(JsonValue::Object)
+        .collect::<Vec<_>>();
+    let batch_digest = sha256_prefixed(
+        &serde_json::to_vec(&JsonValue::Array(mutation_values.clone()))
+            .map_err(|error| LocalGithubError::new(format!("encoding batch mutations: {error}")))?,
+    );
+    let first = items
+        .first()
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| LocalGithubError::new("GitHub batch result has no first mutation"))?;
+    let resources = items
+        .iter()
+        .filter_map(JsonValue::as_object)
+        .filter_map(|item| item.get("resource").cloned())
+        .filter(|resource| !matches!(resource, JsonValue::Null))
+        .collect::<Vec<_>>();
+    let batch_status = if items.iter().all(|item| {
+        item.as_object()
+            .and_then(|item| item.get("status"))
+            .and_then(JsonValue::as_str)
+            == Some("applied")
+    }) {
+        "applied"
+    } else {
+        "partial_unknown"
+    };
+    Ok(JsonObject::from([
+        (
+            "repository".to_owned(),
+            JsonValue::String(binding.repository.clone()),
+        ),
+        ("batch_digest".to_owned(), JsonValue::String(batch_digest)),
+        (
+            "batch_status".to_owned(),
+            JsonValue::String(batch_status.to_owned()),
+        ),
+        (
+            "sync_ref".to_owned(),
+            first.get("sync_ref").cloned().unwrap_or(JsonValue::Null),
+        ),
+        (
+            "mutation_digest".to_owned(),
+            first
+                .get("mutation_digest")
+                .cloned()
+                .unwrap_or(JsonValue::Null),
+        ),
+        (
+            "mutation".to_owned(),
+            first.get("mutation").cloned().unwrap_or(JsonValue::Null),
+        ),
+        ("mutations".to_owned(), JsonValue::Array(items)),
+        ("resources".to_owned(), JsonValue::Array(resources)),
+    ]))
 }
 
 fn github_api_get(
@@ -1589,10 +2142,6 @@ fn nested_string_value(value: &JsonValue, object: &str, field: &str) -> Option<J
         .map(|value| JsonValue::String(value.to_owned()))
 }
 
-fn normalize_comment(comment: &JsonValue) -> Result<JsonValue, LocalGithubError> {
-    normalize_comment_object(comment).map(JsonValue::Object)
-}
-
 fn normalize_comment_object(comment: &JsonValue) -> Result<JsonObject, LocalGithubError> {
     let id = json_u64(comment, "id", "GitHub comment id")?;
     Ok(JsonObject::from([
@@ -1614,6 +2163,25 @@ fn normalize_comment_object(comment: &JsonValue) -> Result<JsonObject, LocalGith
                 .unwrap_or(JsonValue::Null),
         ),
     ]))
+}
+
+fn compact_collection_item(
+    mut item: JsonObject,
+    include_body: bool,
+) -> Result<JsonObject, LocalGithubError> {
+    if include_body {
+        return Ok(item);
+    }
+    if let Some(body) = item
+        .remove("body")
+        .and_then(|value| value.as_str().map(str::to_owned))
+    {
+        item.insert(
+            "body_digest".to_owned(),
+            JsonValue::String(sha256_prefixed(body.as_bytes())),
+        );
+    }
+    Ok(item)
 }
 
 fn collection_result(repository: &str, items: Vec<JsonValue>) -> JsonObject {
@@ -1728,8 +2296,7 @@ fn value_field<'a>(value: &'a JsonValue, field: &str) -> Option<&'a JsonValue> {
     value.as_object().and_then(|object| object.get(field))
 }
 
-fn sync_mutation_result(
-    binding: &LocalGithubBinding,
+fn mutation_item(
     mutation: &JsonObject,
     actual: JsonObject,
 ) -> Result<JsonObject, LocalGithubError> {
@@ -1738,14 +2305,16 @@ fn sync_mutation_result(
         &serde_json::to_vec(&mutation_value)
             .map_err(|error| LocalGithubError::new(format!("encoding mutation: {error}")))?,
     );
+    let sync_ref = actual
+        .get("comment_ref")
+        .and_then(JsonValue::as_str)
+        .or_else(|| mutation.get("ref").and_then(JsonValue::as_str))
+        .ok_or_else(|| LocalGithubError::new("GitHub mutation sync ref is missing"))?;
     Ok(JsonObject::from([
-        (
-            "repository".to_owned(),
-            JsonValue::String(binding.repository.clone()),
-        ),
+        ("status".to_owned(), JsonValue::String("applied".to_owned())),
         (
             "sync_ref".to_owned(),
-            JsonValue::String(required_string(mutation, "ref", "GitHub mutation ref")?),
+            JsonValue::String(sync_ref.to_owned()),
         ),
         (
             "mutation_digest".to_owned(),
@@ -1753,10 +2322,139 @@ fn sync_mutation_result(
         ),
         ("mutation".to_owned(), mutation_value),
         (
-            "resources".to_owned(),
-            JsonValue::Array(vec![JsonValue::Object(actual)]),
+            "resource".to_owned(),
+            JsonValue::Object(compact_sync_resource(&actual, sync_ref)),
         ),
     ]))
+}
+
+fn sync_mutation_result(
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+    actual: JsonObject,
+) -> Result<JsonObject, LocalGithubError> {
+    let item = mutation_item(mutation, actual)?;
+    let mutation_value = item
+        .get("mutation")
+        .cloned()
+        .ok_or_else(|| LocalGithubError::new("GitHub mutation item is missing its mutation"))?;
+    let mutation_digest = required_string(&item, "mutation_digest", "GitHub mutation item digest")?;
+    let sync_ref = required_string(&item, "sync_ref", "GitHub mutation item ref")?;
+    let resource = item
+        .get("resource")
+        .cloned()
+        .ok_or_else(|| LocalGithubError::new("GitHub mutation item is missing its resource"))?;
+    let batch_digest = sha256_prefixed(
+        &serde_json::to_vec(&JsonValue::Array(vec![mutation_value.clone()]))
+            .map_err(|error| LocalGithubError::new(format!("encoding mutation batch: {error}")))?,
+    );
+    let mut result = JsonObject::from([
+        (
+            "repository".to_owned(),
+            JsonValue::String(binding.repository.clone()),
+        ),
+        (
+            "sync_ref".to_owned(),
+            JsonValue::String(sync_ref.to_owned()),
+        ),
+        (
+            "mutation_digest".to_owned(),
+            JsonValue::String(mutation_digest.clone()),
+        ),
+        ("batch_digest".to_owned(), JsonValue::String(batch_digest)),
+        (
+            "batch_status".to_owned(),
+            JsonValue::String("applied".to_owned()),
+        ),
+        ("mutation".to_owned(), mutation_value),
+        ("resources".to_owned(), JsonValue::Array(vec![resource])),
+    ]);
+    result.insert(
+        "mutations".to_owned(),
+        JsonValue::Array(vec![JsonValue::Object(item)]),
+    );
+    Ok(result)
+}
+
+fn compact_sync_resource(actual: &JsonObject, fallback_ref: &str) -> JsonObject {
+    let mut compact = JsonObject::new();
+    compact.insert(
+        "ref".to_owned(),
+        actual
+            .get("comment_ref")
+            .or_else(|| actual.get("ref"))
+            .cloned()
+            .unwrap_or_else(|| JsonValue::String(fallback_ref.to_owned())),
+    );
+    for field in [
+        "repository",
+        "number",
+        "state",
+        "url",
+        "updated_at",
+        "draft",
+        "merged",
+    ] {
+        if let Some(value) = actual.get(field) {
+            compact.insert(field.to_owned(), value.clone());
+        }
+    }
+    if let Some(value) = actual.get("body_digest") {
+        compact.insert("body_digest".to_owned(), value.clone());
+    } else if let Some(body) = actual.get("body").and_then(JsonValue::as_str) {
+        compact.insert(
+            "body_digest".to_owned(),
+            JsonValue::String(sha256_prefixed(body.as_bytes())),
+        );
+    }
+    compact
+}
+
+fn verify_comment_sync_readback(
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    binding: &LocalGithubBinding,
+    mutation: &JsonObject,
+    actual: &JsonValue,
+) -> Result<(), LocalGithubError> {
+    let mutation_ref = required_string(mutation, "ref", "GitHub mutation ref")?;
+    let payload = mutation_payload(mutation)?;
+    let body = required_json_string(actual, "body", "GitHub comment body")?;
+    if payload.get("body") != Some(&JsonValue::String(body.to_owned())) {
+        return Err(LocalGithubError::new(
+            "GitHub comment readback body did not match the approved mutation",
+        ));
+    }
+    let parts = mutation_ref.split('/').collect::<Vec<_>>();
+    if let [kind, number, "comments"] = parts.as_slice()
+        && matches!(*kind, "issues" | "pulls")
+    {
+        let number = safe_number(number, "thread number")?;
+        let thread = github_api_get(
+            env,
+            cwd,
+            binding,
+            &format!("repos/{}/issues/{number}", binding.repository),
+            "GitHub sync comment thread readback",
+        )?;
+        let is_pull_request = value_field(&thread, "pull_request").is_some();
+        if (*kind == "pulls") != is_pull_request {
+            return Err(LocalGithubError::new(
+                "GitHub comment readback thread type did not match the approved mutation",
+            ));
+        }
+        let issue_url = required_json_string(actual, "issue_url", "GitHub comment issue URL")?;
+        if !issue_url.ends_with(&format!("/issues/{number}")) {
+            return Err(LocalGithubError::new(
+                "GitHub comment readback did not belong to the approved thread",
+            ));
+        }
+    } else if mutation_ref != required_json_string(actual, "comment_ref", "GitHub comment ref")? {
+        return Err(LocalGithubError::new(
+            "GitHub comment readback ref did not match the approved mutation",
+        ));
+    }
+    Ok(())
 }
 
 fn thread_reference(input: &JsonObject) -> Result<Vec<&str>, LocalGithubError> {
@@ -1795,6 +2493,9 @@ fn local_operation_id(
             .and_then(JsonValue::as_str)
             .map(str::to_owned)
             .ok_or_else(|| LocalGithubError::new("GitHub mutation operation id is missing")),
+        GithubOperation::SyncWriteBatch => {
+            required_string(result, "batch_digest", "GitHub batch mutation digest")
+        }
         GithubOperation::PullRequestComment => Ok(format!(
             "pulls/{}/comments",
             issue_number(input, "pr_number")?
@@ -1852,6 +2553,10 @@ mod tests {
         assert!(GithubOperation::parse("issues.delete").is_err());
         assert_eq!(
             GithubOperation::parse("issues.write")?.access(),
+            ProviderNativeAccess::Mutate
+        );
+        assert_eq!(
+            GithubOperation::parse("sync.write_batch")?.access(),
             ProviderNativeAccess::Mutate
         );
         Ok(())
@@ -1936,6 +2641,63 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn local_github_collection_refs_are_exact_and_compact_by_default()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture = FakeGh::new("runxhq/runx", false)?;
+        let env = fixture.env();
+        let binding = preflight(
+            &env,
+            fixture.root.path(),
+            "issues.read",
+            ProviderNativeAccess::Read,
+            "runxhq/runx",
+            &["repo.read".to_owned()],
+        )?;
+        let readback = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "issues.read",
+            ProviderNativeAccess::Read,
+            &JsonObject::from([(
+                "resource_selector".to_owned(),
+                JsonValue::Object(JsonObject::from([
+                    ("kind".to_owned(), JsonValue::String("issues".to_owned())),
+                    (
+                        "refs".to_owned(),
+                        JsonValue::Array(vec![JsonValue::String("issues/442".to_owned())]),
+                    ),
+                    ("include_body".to_owned(), JsonValue::Bool(false)),
+                ])),
+            )]),
+        )?;
+        let item = readback
+            .get("result")
+            .and_then(JsonValue::as_object)
+            .and_then(|result| result.get("items"))
+            .and_then(JsonValue::as_array)
+            .and_then(|items| items.first())
+            .and_then(JsonValue::as_object)
+            .ok_or("missing compact issue item")?;
+        assert!(item.get("body").is_none());
+        let expected_body_digest = sha256_prefixed(b"body");
+        assert_eq!(
+            item.get("body_digest").and_then(JsonValue::as_str),
+            Some(expected_body_digest.as_str())
+        );
+        let log = fs::read_to_string(fixture.log_path())?;
+        assert_eq!(
+            log.lines().count(),
+            2,
+            "preflight plus one exact issue read"
+        );
+        assert!(log.contains("repos/runxhq/runx/issues/442"));
+        assert!(!log.contains("repos/runxhq/runx/issues?"));
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn local_github_mutation_uses_stable_idempotency_and_independent_readback()
     -> Result<(), Box<dyn std::error::Error>> {
         let fixture = FakeGh::new("runxhq/runx", false)?;
@@ -1989,6 +2751,314 @@ mod tests {
         let body: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(fixture.body_path())?)?;
         assert_eq!(body.get("labels"), Some(&serde_json::json!(["triage"])));
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn local_github_sync_read_returns_fresh_compact_evidence()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture = FakeGh::new("runxhq/runx", false)?;
+        let env = fixture.env();
+        let binding = preflight(
+            &env,
+            fixture.root.path(),
+            "sync.read",
+            ProviderNativeAccess::Read,
+            "runxhq/runx",
+            &["repo.read".to_owned()],
+        )?;
+        let mutation = JsonObject::from([
+            ("ref".to_owned(), JsonValue::String("issues/442".to_owned())),
+            ("op".to_owned(), JsonValue::String("update".to_owned())),
+            (
+                "payload".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "labels".to_owned(),
+                    JsonValue::Array(vec![JsonValue::String("triage".to_owned())]),
+                )])),
+            ),
+        ]);
+        let mutation_value = JsonValue::Object(mutation.clone());
+        let mutation_digest = sha256_prefixed(&serde_json::to_vec(&mutation_value)?);
+        let result = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "sync.read",
+            ProviderNativeAccess::Read,
+            &JsonObject::from([
+                (
+                    "sync_ref".to_owned(),
+                    JsonValue::String("issues/442".to_owned()),
+                ),
+                (
+                    "mutation_digest".to_owned(),
+                    JsonValue::String(mutation_digest),
+                ),
+                ("mutation".to_owned(), mutation_value),
+                (
+                    "resources".to_owned(),
+                    JsonValue::Array(vec![JsonValue::Object(JsonObject::from([(
+                        "ref".to_owned(),
+                        JsonValue::String("stale/issues/442".to_owned()),
+                    )]))]),
+                ),
+            ]),
+        )?;
+        let resource = result
+            .get("result")
+            .and_then(JsonValue::as_object)
+            .and_then(|result| result.get("resources"))
+            .and_then(JsonValue::as_array)
+            .and_then(|resources| resources.first())
+            .and_then(JsonValue::as_object)
+            .ok_or("missing fresh sync resource")?;
+        assert_eq!(
+            resource.get("ref").and_then(JsonValue::as_str),
+            Some("issues/442")
+        );
+        assert!(
+            result
+                .get("result")
+                .and_then(JsonValue::as_object)
+                .and_then(|result| result.get("resources"))
+                .is_some_and(|resources| !serde_json::to_string(resources)
+                    .unwrap_or_default()
+                    .contains("stale/issues/442"))
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn local_github_batch_reuses_one_mutation_envelope_per_item()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture = FakeGh::new("runxhq/runx", false)?;
+        let env = fixture.env();
+        let binding = preflight(
+            &env,
+            fixture.root.path(),
+            "sync.write_batch",
+            ProviderNativeAccess::Mutate,
+            "runxhq/runx",
+            &["repo.write".to_owned()],
+        )?;
+        let mutation = JsonObject::from([
+            ("ref".to_owned(), JsonValue::String("issues/442".to_owned())),
+            ("op".to_owned(), JsonValue::String("update".to_owned())),
+            (
+                "payload".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "labels".to_owned(),
+                    JsonValue::Array(vec![JsonValue::String("triage".to_owned())]),
+                )])),
+            ),
+        ]);
+        let readback = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "sync.write_batch",
+            ProviderNativeAccess::Mutate,
+            &JsonObject::from([
+                (
+                    "mutations".to_owned(),
+                    JsonValue::Array(vec![JsonValue::Object(mutation)]),
+                ),
+                (
+                    "idempotency_key".to_owned(),
+                    JsonValue::String("runx:sha256:batch-test".to_owned()),
+                ),
+            ]),
+        )?;
+        let result = readback
+            .get("result")
+            .and_then(JsonValue::as_object)
+            .ok_or("missing batch result")?;
+        assert_eq!(
+            result.get("batch_status").and_then(JsonValue::as_str),
+            Some("applied")
+        );
+        let item = result
+            .get("mutations")
+            .and_then(JsonValue::as_array)
+            .and_then(|items| items.first())
+            .and_then(JsonValue::as_object)
+            .ok_or("missing batch item")?;
+        assert_eq!(
+            item.get("status").and_then(JsonValue::as_str),
+            Some("applied")
+        );
+        assert_eq!(
+            item.get("sync_ref").and_then(JsonValue::as_str),
+            Some("issues/442")
+        );
+        assert_eq!(
+            item.get("resource")
+                .and_then(JsonValue::as_object)
+                .and_then(|resource| resource.get("ref"))
+                .and_then(JsonValue::as_str),
+            Some("issues/442")
+        );
+        let log = fs::read_to_string(fixture.log_path())?;
+        assert_eq!(log.lines().count(), 3, "preflight, mutation, readback");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn local_github_batch_readback_reconciles_unknown_items_before_retry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture = FakeGh::new("runxhq/runx", false)?;
+        let env = fixture.env();
+        let binding = preflight(
+            &env,
+            fixture.root.path(),
+            "sync.read",
+            ProviderNativeAccess::Read,
+            "runxhq/runx",
+            &["repo.read".to_owned()],
+        )?;
+        let mutation = JsonObject::from([
+            ("ref".to_owned(), JsonValue::String("issues/442".to_owned())),
+            ("op".to_owned(), JsonValue::String("update".to_owned())),
+            (
+                "payload".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "labels".to_owned(),
+                    JsonValue::Array(vec![JsonValue::String("triage".to_owned())]),
+                )])),
+            ),
+        ]);
+        let mutation_value = JsonValue::Object(mutation.clone());
+        let mutation_digest = sha256_prefixed(&serde_json::to_vec(&mutation_value)?);
+        let result = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "sync.read",
+            ProviderNativeAccess::Read,
+            &JsonObject::from([
+                (
+                    "batch_digest".to_owned(),
+                    JsonValue::String("sha256:batch".to_owned()),
+                ),
+                (
+                    "mutations".to_owned(),
+                    JsonValue::Array(vec![JsonValue::Object(JsonObject::from([
+                        ("status".to_owned(), JsonValue::String("unknown".to_owned())),
+                        (
+                            "sync_ref".to_owned(),
+                            JsonValue::String("issues/442".to_owned()),
+                        ),
+                        (
+                            "mutation_digest".to_owned(),
+                            JsonValue::String(mutation_digest),
+                        ),
+                        ("mutation".to_owned(), mutation_value),
+                        ("resource".to_owned(), JsonValue::Null),
+                    ]))]),
+                ),
+            ]),
+        )?;
+        let batch = result
+            .get("result")
+            .and_then(JsonValue::as_object)
+            .ok_or("missing reconciled batch result")?;
+        assert_eq!(
+            batch.get("batch_status").and_then(JsonValue::as_str),
+            Some("applied")
+        );
+        assert_eq!(
+            batch
+                .get("mutations")
+                .and_then(JsonValue::as_array)
+                .and_then(|items| items.first())
+                .and_then(JsonValue::as_object)
+                .and_then(|item| item.get("status"))
+                .and_then(JsonValue::as_str),
+            Some("applied")
+        );
+        let log = fs::read_to_string(fixture.log_path())?;
+        assert_eq!(log.lines().count(), 2, "preflight plus reconciliation read");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn local_github_thread_mutation_returns_comment_ref_for_sync_readback()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let fixture = FakeGh::new("runxhq/runx", false)?;
+        let env = fixture.env();
+        let binding = preflight(
+            &env,
+            fixture.root.path(),
+            "threads.write",
+            ProviderNativeAccess::Mutate,
+            "runxhq/runx",
+            &["repo.write".to_owned()],
+        )?;
+        let mutation = JsonObject::from([
+            (
+                "ref".to_owned(),
+                JsonValue::String("issues/442/comments".to_owned()),
+            ),
+            ("op".to_owned(), JsonValue::String("comment".to_owned())),
+            (
+                "payload".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "body".to_owned(),
+                    JsonValue::String("Applied once.".to_owned()),
+                )])),
+            ),
+        ]);
+        let mut write_input = JsonObject::from([
+            ("mutation".to_owned(), JsonValue::Object(mutation.clone())),
+            (
+                "idempotency_key".to_owned(),
+                JsonValue::String("runx:sha256:thread-write".to_owned()),
+            ),
+        ]);
+        let write = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "threads.write",
+            ProviderNativeAccess::Mutate,
+            &write_input,
+        )?;
+        assert_eq!(
+            write
+                .get("result")
+                .and_then(JsonValue::as_object)
+                .and_then(|result| result.get("sync_ref"))
+                .and_then(JsonValue::as_str),
+            Some("issues/comments/9001")
+        );
+
+        write_input.extend(
+            write
+                .get("result")
+                .and_then(JsonValue::as_object)
+                .cloned()
+                .unwrap_or_default(),
+        );
+        let read = invoke(
+            &env,
+            fixture.root.path(),
+            &binding,
+            "sync.read",
+            ProviderNativeAccess::Read,
+            &write_input,
+        )?;
+        assert_eq!(
+            read.get("result")
+                .and_then(JsonValue::as_object)
+                .and_then(|result| result.get("sync_ref"))
+                .and_then(JsonValue::as_str),
+            Some("issues/comments/9001")
+        );
         Ok(())
     }
 
@@ -2314,6 +3384,13 @@ case "$*" in
   *"--method PATCH"*)
     /bin/cat > "$dir/body.json"
     printf '%s\n' '{{"number":442,"title":"Operator contract","state":"open","body":"body","html_url":"https://github.test/runxhq/runx/issues/442","labels":[{{"name":"triage"}}]}}'
+    ;;
+  *"--method POST repos/runxhq/runx/issues/442/comments"*)
+    /bin/cat > "$dir/body.json"
+    printf '%s\n' '{{"id":9001,"body":"Applied once.","issue_url":"https://github.test/repos/runxhq/runx/issues/442","html_url":"https://github.test/runxhq/runx/issues/442#issuecomment-9001"}}'
+    ;;
+  *"--method GET repos/runxhq/runx/issues/comments/9001"*)
+    printf '%s\n' '{{"id":9001,"body":"Applied once.","issue_url":"https://github.test/repos/runxhq/runx/issues/442","html_url":"https://github.test/runxhq/runx/issues/442#issuecomment-9001"}}'
     ;;
   *"repos/runxhq/runx/issues/442"*)
     printf '%s\n' '{{"number":442,"title":"Operator contract","state":"open","body":"body","html_url":"https://github.test/runxhq/runx/issues/442","labels":[{{"name":"{readback_label}"}}]}}'

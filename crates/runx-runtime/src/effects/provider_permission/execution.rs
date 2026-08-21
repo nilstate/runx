@@ -73,6 +73,8 @@ pub(super) fn invoke_provider_tool(
             readback.0,
             ProviderReadbackContract {
                 expected_provider: input.expected_provider,
+                operation: input.operation,
+                target: input.target,
                 grant_id: input.grant_id,
                 access,
                 principal_ref: readback.1,
@@ -85,6 +87,12 @@ pub(super) fn invoke_provider_tool(
     });
     result.map_err(|error| {
         if access == ProviderNativeAccess::Read {
+            if is_mutation_readback_request(request.inputs) {
+                return RuntimeError::ProviderReadbackPending {
+                    step_id: "provider-readback".to_owned(),
+                    reason: error.to_string(),
+                };
+            }
             return error;
         }
         let unknown = attempt
@@ -102,6 +110,29 @@ pub(super) fn invoke_provider_tool(
             reason: error.to_string(),
         }
     })
+}
+
+/// An explicitly marked provider read carrying the exact mutation identity is
+/// the independent readback boundary for a prior provider write. If that read
+/// cannot be completed, the write must not be reported as an ordinary failed
+/// mutation: the provider may already have applied it, so the safe disposition
+/// is deferred/reconcile rather than retry.
+fn is_mutation_readback_request(inputs: &JsonObject) -> bool {
+    inputs.get("readback").and_then(JsonValue::as_bool) == Some(true)
+        && inputs
+            .get("input")
+            .and_then(JsonValue::as_object)
+            .is_some_and(|input| {
+                input.get("sync_ref").and_then(JsonValue::as_str).is_some()
+                    && input
+                        .get("mutation_digest")
+                        .and_then(JsonValue::as_str)
+                        .is_some()
+                    && input
+                        .get("mutation")
+                        .and_then(JsonValue::as_object)
+                        .is_some()
+            })
 }
 
 fn cached_provider_readback(

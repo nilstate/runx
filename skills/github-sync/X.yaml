@@ -1,5 +1,5 @@
 skill: github-sync
-version: "0.5.0"
+version: "0.5.1"
 
 catalog:
   kind: skill
@@ -36,14 +36,18 @@ input_definitions:
   resources:
     type: object
     required: true
-    description: Bounded issue, pull-request, or thread selector with at most one typed mutation.
+    description: Bounded issue, pull-request, or thread selector with up to eight typed mutations.
     schema:
       required: [kind]
       additionalProperties: false
       properties:
         kind:
           type: string
-          enum: [issues, prs, threads]
+          enum: [issues, prs, threads, batch]
+        include_body:
+          type: boolean
+          default: false
+          description: Include full issue, pull-request, or comment bodies in a pull; default is compact metadata with body digests.
         filters: {}
         refs: {}
         mutations: {}
@@ -73,7 +77,7 @@ input_definitions:
                 items: { type: string, pattern: '^issues/[1-9][0-9]*$' }
               mutations:
                 type: array
-                maxItems: 1
+                maxItems: 8
                 items:
                   type: object
                   required: [ref, op, payload]
@@ -126,7 +130,7 @@ input_definitions:
                 items: { type: string, pattern: '^pulls/[1-9][0-9]*$' }
               mutations:
                 type: array
-                maxItems: 1
+                maxItems: 8
                 items:
                   type: object
                   required: [ref, op, payload]
@@ -162,9 +166,76 @@ input_definitions:
                 items: { type: string, pattern: '^(issues|pulls)/[1-9][0-9]*/comments$' }
               mutations:
                 type: array
-                maxItems: 1
+                maxItems: 8
                 items:
                   oneOf:
+                    - type: object
+                      required: [ref, op, payload]
+                      additionalProperties: false
+                      properties:
+                        ref: { type: string, pattern: '^(issues|pulls)/[1-9][0-9]*/comments$' }
+                        op: { const: comment }
+                        payload:
+                          type: object
+                          required: [body]
+                          additionalProperties: false
+                          properties:
+                            body: { type: string, minLength: 1, maxLength: 65536, pattern: '^[^\u0000]+$' }
+        - if:
+            properties: { kind: { const: batch } }
+            required: [kind]
+          then:
+            properties:
+              mutations:
+                type: array
+                minItems: 1
+                maxItems: 8
+                items:
+                  oneOf:
+                    - type: object
+                      required: [ref, op, payload]
+                      additionalProperties: false
+                      properties:
+                        ref: { type: string, pattern: '^issues/[1-9][0-9]*$' }
+                        op: { const: update }
+                        payload:
+                          type: object
+                          minProperties: 1
+                          additionalProperties: false
+                          properties:
+                            title: { type: string, minLength: 1, maxLength: 256, pattern: '^[^\u0000]+$' }
+                            body: { type: string, maxLength: 65536, pattern: '^[^\u0000]*$' }
+                            state: { type: string, enum: [open, closed] }
+                            state_reason: { type: string, enum: [completed, not_planned, reopened] }
+                            labels:
+                              type: array
+                              maxItems: 100
+                              uniqueItems: true
+                              items: { type: string, minLength: 1, maxLength: 100, pattern: '^[^\u0000]+$' }
+                            assignees:
+                              type: array
+                              maxItems: 20
+                              uniqueItems: true
+                              items: { type: string, minLength: 1, maxLength: 100, pattern: '^[^\u0000]+$' }
+                            milestone:
+                              type: [integer, 'null']
+                              minimum: 1
+                    - type: object
+                      required: [ref, op, payload]
+                      additionalProperties: false
+                      properties:
+                        ref: { type: string, pattern: '^pulls/[1-9][0-9]*$' }
+                        op: { const: update }
+                        payload:
+                          type: object
+                          minProperties: 1
+                          additionalProperties: false
+                          properties:
+                            title: { type: string, minLength: 1, maxLength: 256, pattern: '^[^\u0000]+$' }
+                            body: { type: string, maxLength: 65536, pattern: '^[^\u0000]*$' }
+                            state: { type: string, enum: [open, closed] }
+                            base: { type: string, minLength: 1, maxLength: 255, pattern: '^[A-Za-z0-9._/-]+$' }
+                            maintainer_can_modify: { type: boolean }
                     - type: object
                       required: [ref, op, payload]
                       additionalProperties: false
@@ -189,7 +260,6 @@ input_definitions:
                           additionalProperties: false
                           properties:
                             body: { type: string, minLength: 1, maxLength: 65536, pattern: '^[^\u0000]+$' }
-
 runners:
   github-sync:
     default: true
@@ -254,7 +324,7 @@ runners:
             equals: ready_for_approval
           tool: data.digest
           context:
-            value: plan.sync_plan.data.mutation
+            value: plan.sync_plan.data.mutations
 
         - id: push
           when:
@@ -273,7 +343,7 @@ runners:
             idempotency_key: $input.idempotency_key
             expected_result:
               repository: $input.repo
-            result_fields: [repository, sync_ref, mutation_digest, mutation, resources]
+            result_fields: [repository, sync_ref, mutation_digest, mutation, resources, batch_digest, batch_status, mutations]
           context:
             operation: plan.sync_plan.data.provider_operation
             input: plan.sync_plan.data
@@ -284,7 +354,7 @@ runners:
             equals: ready_for_approval
           tool: data.compare
           context:
-            actual: push.provider_operation.data.result.mutation_digest
+            actual: push.provider_operation.data.result.batch_digest
             expected: digest-mutation.digest_result.data.digest
 
         - id: readback
@@ -298,9 +368,10 @@ runners:
               verb: read
           inputs:
             operation: sync.read
+            readback: true
             target: $input.repo
             expected_provider: github
-            result_fields: [repository, sync_ref, mutation_digest, mutation, resources]
+            result_fields: [repository, sync_ref, mutation_digest, mutation, resources, batch_digest, batch_status, mutations]
           context:
             expected_result: push.provider_operation.data.result
             input: push.provider_operation.data.result
@@ -418,7 +489,7 @@ runners:
             equals: ready_for_approval
           tool: data.digest
           context:
-            value: plan.sync_plan.data.mutation
+            value: plan.sync_plan.data.mutations
 
         - id: push
           when:
@@ -438,7 +509,7 @@ runners:
             idempotency_key: $input.idempotency_key
             expected_result:
               repository: $input.repo
-            result_fields: [repository, sync_ref, mutation_digest, mutation, resources]
+            result_fields: [repository, sync_ref, mutation_digest, mutation, resources, batch_digest, batch_status, mutations]
           context:
             operation: plan.sync_plan.data.provider_operation
             input: plan.sync_plan.data
@@ -449,7 +520,7 @@ runners:
             equals: ready_for_approval
           tool: data.compare
           context:
-            actual: push.provider_operation.data.result.mutation_digest
+            actual: push.provider_operation.data.result.batch_digest
             expected: digest-mutation.digest_result.data.digest
 
         - id: readback
@@ -464,9 +535,10 @@ runners:
               verb: read
           inputs:
             operation: sync.read
+            readback: true
             target: $input.repo
             expected_provider: github
-            result_fields: [repository, sync_ref, mutation_digest, mutation, resources]
+            result_fields: [repository, sync_ref, mutation_digest, mutation, resources, batch_digest, batch_status, mutations]
           context:
             expected_result: push.provider_operation.data.result
             input: push.provider_operation.data.result
