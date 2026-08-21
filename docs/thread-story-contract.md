@@ -46,7 +46,8 @@ Slack, support-channel, or other provider mutations require the separate
 delivery; they must not be implemented as hidden provider side effects in a
 local helper module.
 
-A source (such as Frantic) uses that provider lane for source-thread continuity
+A source (a bounty board, an issue queue, any system of record) uses that
+provider lane for source-thread continuity
 through a generic, declarative reconcile. The source publishes a
 `thread_desired_state` document: per thread, the state it should be in now
 (`title`, `body`, full `labels` + the `managed_labels` the source controls,

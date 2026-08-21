@@ -86,7 +86,7 @@ impl<T> AnthropicModelCaller<T> {
     }
 
     /// Map a wire tool name from the model back to the runx tool ref it was
-    /// offered as. runx tool refs are namespaced with a dot (`frantic.post`),
+    /// offered as. runx tool refs are namespaced with a dot (`acme.post`),
     /// which the Anthropic tool-name schema forbids, so they are offered with
     /// dots flattened; recover the real ref before the governed executor sees it.
     fn real_tool_name(&self, wire: &str) -> String {
@@ -102,7 +102,7 @@ impl<T> AnthropicModelCaller<T> {
 
 /// Flatten a runx tool ref into an Anthropic-admissible tool name. The Messages
 /// API requires tool names to match `^[a-zA-Z0-9_-]{1,128}$`, but runx requires
-/// a dotted namespace (`frantic.post`). Dots become underscores on the wire in
+/// a dotted namespace (`acme.post`). Dots become underscores on the wire in
 /// every outbound place a tool name appears (the tool list and the replayed
 /// assistant `tool_use` blocks); [`AnthropicModelCaller::real_tool_name`] maps
 /// the model's call back to the dotted ref on the way in.
@@ -306,9 +306,8 @@ mod tests {
     fn namespaced_tool_ref_is_flattened_on_the_wire_and_restored_on_the_way_in()
     -> Result<(), String> {
         let stub = StubTransport {
-            body:
-                r#"{"content":[{"type":"tool_use","id":"tu_1","name":"frantic_post","input":{}}]}"#
-                    .to_owned(),
+            body: r#"{"content":[{"type":"tool_use","id":"tu_1","name":"acme_post","input":{}}]}"#
+                .to_owned(),
             status: 200,
             requests: RefCell::new(Vec::new()),
         };
@@ -317,7 +316,7 @@ mod tests {
             SecretString::new("key"),
             "claude".to_owned(),
             vec![AgentToolDefinition {
-                name: "frantic.post".to_owned(),
+                name: "acme.post".to_owned(),
                 description: "post".to_owned(),
                 input_schema: {
                     let mut schema = runx_contracts::JsonObject::new();
@@ -331,12 +330,12 @@ mod tests {
             .map_err(|error| format!("call should succeed: {error}"))?;
         // The model's flattened call maps back to the dotted runx tool ref.
         assert_eq!(uses.len(), 1);
-        assert_eq!(uses[0].name, "frantic.post");
+        assert_eq!(uses[0].name, "acme.post");
         // The tool was offered to Anthropic without a dot (the API rejects dots).
         let sent = stub.requests.borrow();
         let body = sent[0].body.as_deref().unwrap_or_default();
         assert!(
-            body.contains("\"frantic_post\"") && !body.contains("frantic.post"),
+            body.contains("\"acme_post\"") && !body.contains("acme.post"),
             "tool must be offered flattened, never dotted; got: {body}"
         );
         Ok(())
@@ -358,7 +357,7 @@ mod tests {
             SecretString::new("key"),
             "claude".to_owned(),
             vec![AgentToolDefinition {
-                name: "frantic.post".to_owned(),
+                name: "acme.post".to_owned(),
                 description: "post".to_owned(),
                 input_schema: JsonValue::Object(Default::default()),
             }],

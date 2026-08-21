@@ -303,7 +303,7 @@ fn exports_default_runner_inputs_when_skill_frontmatter_has_none()
 #[test]
 fn omits_multi_runner_skill_without_default() -> Result<(), Box<dyn std::error::Error>> {
     let fixture = ExportFixture::new("runx-export-multi-runner-selection")?;
-    fixture.write_multi_runner_skill_without_default("frantic-operator")?;
+    fixture.write_multi_runner_skill_without_default("acme-operator")?;
 
     let report = run_export_command(
         &ExportPlan {
@@ -320,7 +320,7 @@ fn omits_multi_runner_skill_without_default() -> Result<(), Box<dyn std::error::
     assert!(
         !fixture
             .home
-            .join(".codex/skills/frantic-operator/SKILL.md")
+            .join(".codex/skills/acme-operator/SKILL.md")
             .exists()
     );
     Ok(())

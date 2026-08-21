@@ -54,7 +54,7 @@ fn effect_finality_deferred_chain_reaches_sealed_at_threshold() {
         criterion_id: "criterion_effect_finality".to_owned(),
         proof_ref: Some(proof.clone()),
         evidence_refs: vec![Reference::runx(ReferenceType::Artifact, &in_flight_2.id)],
-        norm_refs: vec!["frantic:norm:reply-before-escalation".into()],
+        norm_refs: vec!["acme:norm:reply-before-escalation".into()],
         confirmation_depth: Some(3),
         payload: finality_payload(EFFECT_CONFIRMATION_CHANNEL, "sealed"),
     });
@@ -93,7 +93,7 @@ fn effect_finality_deferred_chain_reaches_sealed_at_threshold() {
             .iter()
             .map(AsRef::as_ref)
             .collect::<Vec<_>>(),
-        vec!["frantic:norm:reply-before-escalation"],
+        vec!["acme:norm:reply-before-escalation"],
     );
     assert_ne!(provisional.id, in_flight_1.id);
     assert_ne!(in_flight_1.id, in_flight_2.id);

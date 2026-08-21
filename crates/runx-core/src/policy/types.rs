@@ -355,7 +355,7 @@ mod tests {
     fn admission_decision_round_trips_allow_marked() -> Result<(), serde_json::Error> {
         let decision = AdmissionDecision::AllowMarked {
             reasons: vec!["allowed with visible norm mark".to_owned()],
-            norm_refs: vec!["frantic:norm:reply-before-escalation".to_owned()],
+            norm_refs: vec!["acme:norm:reply-before-escalation".to_owned()],
         };
 
         let json = serde_json::to_string(&decision)?;
@@ -363,7 +363,7 @@ mod tests {
 
         assert_eq!(
             json,
-            r#"{"status":"allow-marked","reasons":["allowed with visible norm mark"],"normRefs":["frantic:norm:reply-before-escalation"]}"#,
+            r#"{"status":"allow-marked","reasons":["allowed with visible norm mark"],"normRefs":["acme:norm:reply-before-escalation"]}"#,
         );
         assert_eq!(decoded, decision);
         Ok(())

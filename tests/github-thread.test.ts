@@ -307,26 +307,26 @@ describe("GitHub thread helper", () => {
     const thread = {
       schema_version: 1,
       provider: "github",
-      target_repo: "auscaster/frantic-board",
-      identity_key: "frantic:bounty:7",
-      thread_locator: "github://auscaster/frantic-board/issues/7",
-      title: "Frantic bounty #7",
-      body: "Frantic is the source of truth.",
+      target_repo: "acme/board",
+      identity_key: "acme:bounty:7",
+      thread_locator: "github://acme/board/issues/7",
+      title: "Acme bounty #7",
+      body: "Acme is the source of truth.",
       labels: ["bounty", "funded", "available"],
       managed_labels: ["bounty", "funded", "available", "paid", "closed"],
       state: "open",
       comments: [],
-      ref: { posting_id: "auscaster/frantic-board#7", bounty_number: 7 },
+      ref: { posting_id: "acme/board#7", bounty_number: 7 },
     };
     const frame = buildMessageFrame(
       thread,
       {
         entry_id: "github:payout-1:thread.comment",
-        body: "Frantic paid one accepted claim.",
-        receipt_ref: "frantic:receipt:payout:7",
+        body: "Acme paid one accepted claim.",
+        receipt_ref: "acme:receipt:payout:7",
       },
       thread.thread_locator,
-      { sourceId: "frantic" },
+      { sourceId: "acme" },
     );
 
     expect(frame).toMatchObject({
@@ -334,7 +334,7 @@ describe("GitHub thread helper", () => {
       provider: "github",
       outbox_entry_id: "github:payout-1:thread.comment",
       thread_locator: {
-        locator: "github://auscaster/frantic-board/issues/7",
+        locator: "github://acme/board/issues/7",
       },
       idempotency: {
         key: "github:payout-1:thread.comment",
@@ -347,16 +347,16 @@ describe("GitHub thread helper", () => {
     expect(body.provider_readback).toBe("mutation_only");
     expect(body.thread).toMatchObject({
       adapter: {
-        adapter_ref: "auscaster/frantic-board#issue/7",
+        adapter_ref: "acme/board#issue/7",
       },
-      canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+      canonical_uri: "https://github.com/acme/board/issues/7",
     });
     expect(body.outbox_entry).toMatchObject({
       kind: "message",
       metadata: {
         channel: "github_issue_comment",
-        source: "frantic",
-        outbox_receipt_id: "frantic:receipt:payout:7",
+        source: "acme",
+        outbox_receipt_id: "acme:receipt:payout:7",
       },
     });
   });
@@ -365,10 +365,10 @@ describe("GitHub thread helper", () => {
     const thread = {
       schema_version: 1,
       provider: "github",
-      target_repo: "auscaster/frantic-board",
-      identity_key: "frantic:bounty:9",
-      title: "Frantic bounty #9: Audit the public receipt trail",
-      body: "Frantic is the source of truth.",
+      target_repo: "acme/board",
+      identity_key: "acme:bounty:9",
+      title: "Acme bounty #9: Audit the public receipt trail",
+      body: "Acme is the source of truth.",
       labels: ["bounty", "funded", "available"],
       managed_labels: ["bounty", "funded", "available", "claimed", "paid", "closed"],
       state: "open",
@@ -376,36 +376,36 @@ describe("GitHub thread helper", () => {
       ref: { posting_id: "round-one-009", bounty_number: 9 },
     };
 
-    const createFrame = buildCreateFrame(thread, { sourceId: "frantic" });
+    const createFrame = buildCreateFrame(thread, { sourceId: "acme" });
     expect(createFrame).toMatchObject({
       protocol_version: "runx.thread_outbox_provider.v1",
       provider: "github",
-      outbox_entry_id: "frantic:bounty:9",
+      outbox_entry_id: "acme:bounty:9",
       thread_locator: {
         type: "provider_thread_target",
-        locator: expect.stringContaining("github://auscaster/frantic-board/issues/new/"),
+        locator: expect.stringContaining("github://acme/board/issues/new/"),
       },
     });
     const createBody = JSON.parse((createFrame.payload as { body: string }).body);
     expect(createBody.thread).toMatchObject({
       metadata: {
-        repo: "auscaster/frantic-board",
+        repo: "acme/board",
         pending_provider_thread: true,
       },
     });
     expect(createBody.outbox_entry).toMatchObject({
       kind: "provider_thread_create",
       metadata: {
-        target_repo: "auscaster/frantic-board",
+        target_repo: "acme/board",
         labels: ["bounty", "funded", "available"],
-        dedupe_key: "frantic:bounty:9",
+        dedupe_key: "acme:bounty:9",
       },
     });
 
     const lifecycleFrame = buildLifecycleFrame(
       { ...thread, state: "closed", close_reason: "completed", labels: ["paid", "closed"] },
-      "github://auscaster/frantic-board/issues/9",
-      { sourceId: "frantic" },
+      "github://acme/board/issues/9",
+      { sourceId: "acme" },
     );
     const lifecycleBody = JSON.parse((lifecycleFrame.payload as { body: string }).body);
     expect(lifecycleBody.outbox_entry).toMatchObject({
@@ -423,10 +423,10 @@ describe("GitHub thread helper", () => {
     const thread = {
       schema_version: 1,
       provider: "github",
-      target_repo: "auscaster/frantic-board",
-      identity_key: "frantic:bounty:90",
-      thread_locator: "github://auscaster/frantic-board/issues/205",
-      title: "Frantic bounty #90: runx skill: compliance pack",
+      target_repo: "acme/board",
+      identity_key: "acme:bounty:90",
+      thread_locator: "github://acme/board/issues/205",
+      title: "Acme bounty #90: runx skill: compliance pack",
       body: "Status: claimed",
       labels: ["bounty", "funded", "claimed"],
       managed_labels: ["bounty", "funded", "available", "claimed", "paid", "closed"],
@@ -435,30 +435,30 @@ describe("GitHub thread helper", () => {
       ref: { posting_id: "round-one-090", bounty_number: 90 },
     };
 
-    const frame = buildCreateFrame(thread, { sourceId: "frantic" });
+    const frame = buildCreateFrame(thread, { sourceId: "acme" });
     expect(frame.thread_locator).toMatchObject({
       type: "provider_thread",
-      locator: "github://auscaster/frantic-board/issues/205",
+      locator: "github://acme/board/issues/205",
     });
     const body = JSON.parse((frame.payload as { body: string }).body);
     expect(body.thread).toMatchObject({
       adapter: {
-        adapter_ref: "auscaster/frantic-board#issue/205",
+        adapter_ref: "acme/board#issue/205",
       },
-      thread_locator: "github://auscaster/frantic-board/issues/205",
+      thread_locator: "github://acme/board/issues/205",
     });
     expect(body.outbox_entry).toMatchObject({
       kind: "provider_thread_create",
-      thread_locator: "github://auscaster/frantic-board/issues/205",
+      thread_locator: "github://acme/board/issues/205",
       metadata: {
-        target_repo: "auscaster/frantic-board",
-        title: "Frantic bounty #90: runx skill: compliance pack",
+        target_repo: "acme/board",
+        title: "Acme bounty #90: runx skill: compliance pack",
       },
     });
   });
 
-  it("creates Frantic GitHub issues idempotently through the GitHub adapter", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-create-"));
+  it("creates Acme GitHub issues idempotently through the GitHub adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-create-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -468,24 +468,24 @@ describe("GitHub thread helper", () => {
       const result = pushGitHubCreateIssue({
         thread: {
           adapter: {
-            adapter_ref: "auscaster/frantic-board#issue/new:round-one-009",
+            adapter_ref: "acme/board#issue/new:round-one-009",
           },
-          thread_locator: "github://auscaster/frantic-board/issues/new/frantic-bounty-9",
-          canonical_uri: "https://github.com/auscaster/frantic-board/issues/new",
+          thread_locator: "github://acme/board/issues/new/acme-bounty-9",
+          canonical_uri: "https://github.com/acme/board/issues/new",
           metadata: {
-            repo: "auscaster/frantic-board",
+            repo: "acme/board",
             pending_provider_thread: true,
           },
         },
         outboxEntry: {
-          entry_id: "frantic:bounty:9:github:thread.create",
+          entry_id: "acme:bounty:9:github:thread.create",
           kind: "provider_thread_create",
           status: "pending",
           metadata: {
-            target_repo: "auscaster/frantic-board",
-            title: "Frantic bounty #9: Audit the public receipt trail",
-            body_markdown: "Frantic is the source of truth.",
-            labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
+            target_repo: "acme/board",
+            title: "Acme bounty #9: Audit the public receipt trail",
+            body_markdown: "Acme is the source of truth.",
+            labels: ["acme:bounty", "acme:funded", "acme:open"],
             posting_id: "round-one-009",
             bounty_number: "9",
           },
@@ -514,13 +514,13 @@ describe("GitHub thread helper", () => {
       expect(result).toMatchObject({
         outbox_entry: {
           status: "published",
-          locator: "https://github.com/auscaster/frantic-board/issues/91",
-          thread_locator: "github://auscaster/frantic-board/issues/91",
+          locator: "https://github.com/acme/board/issues/91",
+          thread_locator: "github://acme/board/issues/91",
         },
         provider_thread: {
           issue_number: "91",
           created: true,
-          added_labels: ["frantic:bounty", "frantic:funded", "frantic:open"],
+          added_labels: ["acme:bounty", "acme:funded", "acme:open"],
         },
       });
     } finally {
@@ -528,8 +528,8 @@ describe("GitHub thread helper", () => {
     }
   });
 
-  it("pushes Frantic lifecycle labels and close operations through the GitHub adapter", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+  it("pushes Acme lifecycle labels and close operations through the GitHub adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -539,12 +539,12 @@ describe("GitHub thread helper", () => {
       const result = pushGitHubLifecycleIntent({
         thread: {
           adapter: {
-            adapter_ref: "auscaster/frantic-board#issue/7",
+            adapter_ref: "acme/board#issue/7",
           },
-          thread_locator: "github://auscaster/frantic-board/issues/7",
-          canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+          thread_locator: "github://acme/board/issues/7",
+          canonical_uri: "https://github.com/acme/board/issues/7",
           metadata: {
-            repo: "auscaster/frantic-board",
+            repo: "acme/board",
           },
         },
         outboxEntry: {
@@ -553,8 +553,8 @@ describe("GitHub thread helper", () => {
           status: "pending",
           metadata: {
             action: "close",
-            add_labels: ["frantic:paid", "frantic:closed"],
-            remove_labels: ["frantic:open"],
+            add_labels: ["acme:paid", "acme:closed"],
+            remove_labels: ["acme:open"],
             close_reason: "completed",
           },
         },
@@ -580,11 +580,11 @@ describe("GitHub thread helper", () => {
       expect(result).toMatchObject({
         outbox_entry: {
           status: "published",
-          locator: "https://github.com/auscaster/frantic-board/issues/7",
+          locator: "https://github.com/acme/board/issues/7",
         },
         lifecycle: {
-          added_labels: ["frantic:paid", "frantic:closed"],
-          removed_labels: ["frantic:open"],
+          added_labels: ["acme:paid", "acme:closed"],
+          removed_labels: ["acme:open"],
           closed: true,
         },
       });
@@ -593,8 +593,8 @@ describe("GitHub thread helper", () => {
     }
   });
 
-  it("pushes Frantic open lifecycle operations through the GitHub adapter", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+  it("pushes Acme open lifecycle operations through the GitHub adapter", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -604,12 +604,12 @@ describe("GitHub thread helper", () => {
       const result = pushGitHubLifecycleIntent({
         thread: {
           adapter: {
-            adapter_ref: "auscaster/frantic-board#issue/7",
+            adapter_ref: "acme/board#issue/7",
           },
-          thread_locator: "github://auscaster/frantic-board/issues/7",
-          canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+          thread_locator: "github://acme/board/issues/7",
+          canonical_uri: "https://github.com/acme/board/issues/7",
           metadata: {
-            repo: "auscaster/frantic-board",
+            repo: "acme/board",
           },
         },
         outboxEntry: {
@@ -636,7 +636,7 @@ describe("GitHub thread helper", () => {
       expect(result).toMatchObject({
         outbox_entry: {
           status: "published",
-          locator: "https://github.com/auscaster/frantic-board/issues/7",
+          locator: "https://github.com/acme/board/issues/7",
         },
         lifecycle: {
           opened: true,
@@ -648,7 +648,7 @@ describe("GitHub thread helper", () => {
   });
 
   it("includes visible comment bodies in issue snapshots for markerless dedupe", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-snapshot-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-snapshot-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -656,18 +656,18 @@ describe("GitHub thread helper", () => {
       await writeFile(ghBin, fakeGhScript(logPath));
       await chmod(ghBin, 0o700);
       const snapshot = readGitHubThreadSnapshot({
-        adapterRef: "github://auscaster/frantic-board/issues/7",
+        adapterRef: "github://acme/board/issues/7",
         env: {
           ...process.env,
           RUNX_GH_BIN: ghBin,
           GH_FAKE_LOG: logPath,
           GH_FAKE_COMMENTS: JSON.stringify([
             {
-              body: "Frantic posted this bounty.",
+              body: "Acme posted this bounty.",
             },
             {
               body: [
-                "Frantic funding is visible on the ledger.",
+                "Acme funding is visible on the ledger.",
                 "",
                 "<!-- runx-outbox-envelope: v1 -->",
                 "<!-- runx-outbox-entry: organic:posting:p-1:funded:thread.comment -->",
@@ -677,8 +677,8 @@ describe("GitHub thread helper", () => {
         },
       });
 
-      expect(snapshot.comment_bodies).toContain("Frantic posted this bounty.");
-      expect(snapshot.comment_bodies).toContain("Frantic funding is visible on the ledger.");
+      expect(snapshot.comment_bodies).toContain("Acme posted this bounty.");
+      expect(snapshot.comment_bodies).toContain("Acme funding is visible on the ledger.");
       expect(snapshot.comment_markers).toContain("organic:posting:p-1:funded:thread.comment");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -686,7 +686,7 @@ describe("GitHub thread helper", () => {
   });
 
   it("reads every REST comment page before deciding which thread comments are missing", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-rest-snapshot-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-rest-snapshot-"));
     const curlBin = path.join(tempDir, "curl");
     const logPath = path.join(tempDir, "curl.log");
 
@@ -694,7 +694,7 @@ describe("GitHub thread helper", () => {
       await writeFile(curlBin, fakeCurlScript(logPath));
       await chmod(curlBin, 0o700);
       const snapshot = readGitHubThreadSnapshot({
-        adapterRef: "github://auscaster/frantic-board/issues/7",
+        adapterRef: "github://acme/board/issues/7",
         env: {
           ...process.env,
           PATH: `${tempDir}:${process.env.PATH ?? ""}`,
@@ -707,8 +707,8 @@ describe("GitHub thread helper", () => {
       expect(snapshot.comment_bodies).toHaveLength(101);
       const calls = JSON.parse(await readFile(logPath, "utf8"));
       const urls = calls.map((call: { url: string }) => call.url);
-      expect(urls).toContain("https://api.github.com/repos/auscaster/frantic-board/issues/7/comments?per_page=100&page=1");
-      expect(urls).toContain("https://api.github.com/repos/auscaster/frantic-board/issues/7/comments?per_page=100&page=2");
+      expect(urls).toContain("https://api.github.com/repos/acme/board/issues/7/comments?per_page=100&page=1");
+      expect(urls).toContain("https://api.github.com/repos/acme/board/issues/7/comments?per_page=100&page=2");
       expect(urls.some((url: string) => url.includes("page=3"))).toBe(false);
     } finally {
       await rm(tempDir, { recursive: true, force: true });
@@ -716,7 +716,7 @@ describe("GitHub thread helper", () => {
   });
 
   it("lists GitHub issues carrying any managed label without duplicates", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-list-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-list-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -724,7 +724,7 @@ describe("GitHub thread helper", () => {
       await writeFile(ghBin, fakeGhScript(logPath));
       await chmod(ghBin, 0o700);
       const issues = listGitHubIssuesWithAnyLabel({
-        repoSlug: "auscaster/frantic-board",
+        repoSlug: "acme/board",
         labels: ["bounty", "funded"],
         env: {
           ...process.env,
@@ -735,21 +735,21 @@ describe("GitHub thread helper", () => {
               number: 71,
               title: "old paid bounty",
               state: "CLOSED",
-              url: "https://github.com/auscaster/frantic-board/issues/71",
+              url: "https://github.com/acme/board/issues/71",
               labels: [{ name: "bounty" }, { name: "funded" }],
             },
             {
               number: 72,
               title: "funded bounty",
               state: "OPEN",
-              url: "https://github.com/auscaster/frantic-board/issues/72",
+              url: "https://github.com/acme/board/issues/72",
               labels: [{ name: "funded" }],
             },
             {
               number: 73,
               title: "unmanaged issue",
               state: "OPEN",
-              url: "https://github.com/auscaster/frantic-board/issues/73",
+              url: "https://github.com/acme/board/issues/73",
               labels: [{ name: "help wanted" }],
             },
           ]),
@@ -758,7 +758,7 @@ describe("GitHub thread helper", () => {
 
       expect(issues.map((issue) => issue.number)).toEqual(["71", "72"]);
       expect(issues[0]).toMatchObject({
-        thread_locator: "github://auscaster/frantic-board/issues/71",
+        thread_locator: "github://acme/board/issues/71",
         labels: ["bounty", "funded"],
       });
       const calls = JSON.parse(await readFile(logPath, "utf8"));
@@ -772,16 +772,16 @@ describe("GitHub thread helper", () => {
   });
 
   it("dry-runs orphan retirement for managed GitHub issues missing from full desired state", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-thread-sync-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-thread-sync-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
     const desiredThread = {
       schema_version: 1,
       provider: "github",
-      target_repo: "auscaster/frantic-board",
-      identity_key: "frantic:bounty:10",
-      thread_locator: "github://auscaster/frantic-board/issues/10",
-      title: "Frantic bounty #10: live thread",
+      target_repo: "acme/board",
+      identity_key: "acme:bounty:10",
+      thread_locator: "github://acme/board/issues/10",
+      title: "Acme bounty #10: live thread",
       body: "Still desired.",
       labels: ["bounty", "funded"],
       managed_labels: ["bounty", "funded", "available", "claimed", "paid", "closed"],
@@ -834,7 +834,7 @@ describe("GitHub thread helper", () => {
           ]),
           THREAD_SYNC_API_BASE_URL: `http://127.0.0.1:${address.port}`,
           THREAD_SYNC_INTERNAL_SECRET: "test-secret",
-          THREAD_SYNC_TARGET_REPO: "auscaster/frantic-board",
+          THREAD_SYNC_TARGET_REPO: "acme/board",
           THREAD_SYNC_FULL_RECONCILE: "1",
           THREAD_SYNC_DRY_RUN: "1",
           THREAD_SYNC_PROGRESS_EVERY: "999",
@@ -845,8 +845,8 @@ describe("GitHub thread helper", () => {
       const output = JSON.parse(result.stdout);
       expect(output).toMatchObject({ ok: true, reconciled: 1, orphaned: 1 });
       expect(output.results).toContainEqual(expect.objectContaining({
-        identity_key: "orphan:auscaster/frantic-board#11",
-        locator: "github://auscaster/frantic-board/issues/11",
+        identity_key: "orphan:acme/board#11",
+        locator: "github://acme/board/issues/11",
         orphaned: true,
         dry_run: true,
       }));
@@ -857,7 +857,7 @@ describe("GitHub thread helper", () => {
   });
 
   it("publishes an already-open lifecycle operation without GitHub mutation", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
 
@@ -867,12 +867,12 @@ describe("GitHub thread helper", () => {
       const result = pushGitHubLifecycleIntent({
         thread: {
           adapter: {
-            adapter_ref: "auscaster/frantic-board#issue/7",
+            adapter_ref: "acme/board#issue/7",
           },
-          thread_locator: "github://auscaster/frantic-board/issues/7",
-          canonical_uri: "https://github.com/auscaster/frantic-board/issues/7",
+          thread_locator: "github://acme/board/issues/7",
+          canonical_uri: "https://github.com/acme/board/issues/7",
           metadata: {
-            repo: "auscaster/frantic-board",
+            repo: "acme/board",
           },
         },
         outboxEntry: {
@@ -990,17 +990,17 @@ describe("GitHub thread helper", () => {
   });
 
   it("uses mutation-only provider frames without redundant GraphQL thread reads", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-frantic-github-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-thread-github-"));
     const ghBin = path.join(tempDir, "fake-gh.mjs");
     const logPath = path.join(tempDir, "gh.log");
     const thread = {
       schema_version: 1,
       provider: "github",
-      target_repo: "auscaster/frantic-board",
-      identity_key: "frantic:bounty:7",
-      thread_locator: "github://auscaster/frantic-board/issues/7",
-      title: "Frantic bounty #7",
-      body: "Frantic is the source of truth.",
+      target_repo: "acme/board",
+      identity_key: "acme:bounty:7",
+      thread_locator: "github://acme/board/issues/7",
+      title: "Acme bounty #7",
+      body: "Acme is the source of truth.",
       labels: ["bounty", "funded", "available"],
       managed_labels: ["bounty", "funded", "available", "paid", "closed"],
       state: "open",
@@ -1010,11 +1010,11 @@ describe("GitHub thread helper", () => {
       thread,
       {
         entry_id: "github:payout-1:thread.comment",
-        body: "Frantic paid one accepted claim.",
-        receipt_ref: "frantic:receipt:payout:7",
+        body: "Acme paid one accepted claim.",
+        receipt_ref: "acme:receipt:payout:7",
       },
       thread.thread_locator,
-      { sourceId: "frantic" },
+      { sourceId: "acme" },
     );
 
     try {
@@ -1077,7 +1077,7 @@ if (args[0] === "issue" && args[1] === "list") {
 }
 
 if (args[0] === "issue" && args[1] === "create") {
-  process.stdout.write("https://github.com/auscaster/frantic-board/issues/91\\n");
+  process.stdout.write("https://github.com/acme/board/issues/91\\n");
   process.exit(0);
 }
 if (args[0] === "issue" && args[1] === "view") {
@@ -1085,8 +1085,8 @@ if (args[0] === "issue" && args[1] === "view") {
     title: "Fixture issue",
     body: "Fixture body",
     state: process.env.GH_FAKE_ISSUE_STATE || "OPEN",
-    url: "https://github.com/auscaster/frantic-board/issues/7",
-    labels: [{ name: "frantic:open" }],
+    url: "https://github.com/acme/board/issues/7",
+    labels: [{ name: "acme:open" }],
     comments: JSON.parse(process.env.GH_FAKE_COMMENTS || "[]")
   }));
   process.exit(0);
@@ -1115,9 +1115,9 @@ calls.push({ url });
 writeFileSync(logPath, JSON.stringify(calls));
 
 let body;
-if (url.endsWith("/repos/auscaster/frantic-board/issues/7")) {
+if (url.endsWith("/repos/acme/board/issues/7")) {
   body = { title: "Fixture issue", body: "Fixture body", state: "open", labels: [] };
-} else if (url.includes("/repos/auscaster/frantic-board/issues/7/comments?")) {
+} else if (url.includes("/repos/acme/board/issues/7/comments?")) {
   const page = Number(new URL(url).searchParams.get("page") || "1");
   body = page === 1
     ? Array.from({ length: 100 }, (_, index) => ({ body: \`comment \${index + 1}\` }))
