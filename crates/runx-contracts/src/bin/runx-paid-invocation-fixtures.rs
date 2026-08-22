@@ -408,6 +408,7 @@ fn quote_request(idempotency_key: &str, parent: Option<Value>) -> Value {
         "idempotency": idempotency(idempotency_key),
         "input_digest": digest('1'),
         "offer_revision": offer_revision(),
+        "package_digest": digest('7'),
         "principal": reference("principal", "runx:principal:buyer-1")
     });
     if let Some(parent) = parent
@@ -449,6 +450,7 @@ fn invocation(
         "invocation_id": invocation_id,
         "offer_revision": offer_revision(),
         "outcome_gate": outcome_gate,
+        "package_digest": digest('7'),
         "payment_state": payment_state,
         "principal": reference("principal", "runx:principal:buyer-1"),
         "updated_at": "2026-08-22T09:01:00Z"

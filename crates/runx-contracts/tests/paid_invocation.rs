@@ -18,11 +18,19 @@ fn vectors_cover_identity_replay_terms_binding_and_outcomes()
         direct.pointer("/payload/value/invocation/input_digest"),
         replay.pointer("/payload/value/invocation/input_digest")
     );
+    assert_eq!(
+        direct.pointer("/payload/value/invocation/package_digest"),
+        replay.pointer("/payload/value/invocation/package_digest")
+    );
 
     let independent = vector("quote-independent-purchase.json")?;
     assert_eq!(
         direct.pointer("/payload/value/invocation/input_digest"),
         independent.pointer("/payload/input_digest")
+    );
+    assert_eq!(
+        direct.pointer("/payload/value/invocation/package_digest"),
+        independent.pointer("/payload/package_digest")
     );
     assert_ne!(
         direct.pointer("/payload/value/invocation/idempotency/key"),

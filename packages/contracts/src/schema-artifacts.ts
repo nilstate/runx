@@ -17641,6 +17641,10 @@ export const runxSchemaArtifacts = {
                       }
                     ]
                   },
+                  "package_digest": {
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
                   "parent": {
                     "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
                     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -17987,6 +17991,7 @@ export const runxSchemaArtifacts = {
                   "principal",
                   "counterparty",
                   "offer_revision",
+                  "package_digest",
                   "input_digest",
                   "canonicalizer_version",
                   "amount_minor",
@@ -25535,6 +25540,10 @@ export const runxSchemaArtifacts = {
                       }
                     ]
                   },
+                  "package_digest": {
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
                   "parent": {
                     "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
                     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -25881,6 +25890,7 @@ export const runxSchemaArtifacts = {
                   "principal",
                   "counterparty",
                   "offer_revision",
+                  "package_digest",
                   "input_digest",
                   "canonicalizer_version",
                   "amount_minor",
@@ -29502,6 +29512,10 @@ export const runxSchemaArtifacts = {
                       }
                     ]
                   },
+                  "package_digest": {
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
                   "parent": {
                     "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
                     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -29848,6 +29862,7 @@ export const runxSchemaArtifacts = {
                   "principal",
                   "counterparty",
                   "offer_revision",
+                  "package_digest",
                   "input_digest",
                   "canonicalizer_version",
                   "amount_minor",
@@ -35280,6 +35295,10 @@ export const runxSchemaArtifacts = {
           }
         ]
       },
+      "package_digest": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
       "parent": {
         "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -35626,6 +35645,7 @@ export const runxSchemaArtifacts = {
       "principal",
       "counterparty",
       "offer_revision",
+      "package_digest",
       "input_digest",
       "canonicalizer_version",
       "amount_minor",
@@ -36090,6 +36110,10 @@ export const runxSchemaArtifacts = {
         "type": "object",
         "x-runx-schema": "runx.payment.offer_revision_ref.v1"
       },
+      "package_digest": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
       "parent": {
         "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -36182,6 +36206,7 @@ export const runxSchemaArtifacts = {
       "principal",
       "counterparty",
       "offer_revision",
+      "package_digest",
       "input_digest",
       "canonicalizer_version",
       "amount_minor",
@@ -37078,6 +37103,10 @@ export const runxSchemaArtifacts = {
                       }
                     ]
                   },
+                  "package_digest": {
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
                   "parent": {
                     "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
                     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -37424,6 +37453,7 @@ export const runxSchemaArtifacts = {
                   "principal",
                   "counterparty",
                   "offer_revision",
+                  "package_digest",
                   "input_digest",
                   "canonicalizer_version",
                   "amount_minor",
