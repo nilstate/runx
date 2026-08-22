@@ -19,7 +19,6 @@ mod managed_agent;
 pub mod mcp;
 mod official_skills;
 pub mod parser;
-pub mod payment;
 pub mod policy;
 mod project;
 pub mod publish;

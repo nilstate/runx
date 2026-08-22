@@ -22,4 +22,3 @@
 - [OpenAPI Tool](examples/openapi-tool)
 - [OpenAPI Graph](examples/openapi-graph)
 - [GitHub MCP Hero](examples/github-mcp-hero)
-- [Governed Spend](examples/governed-spend)

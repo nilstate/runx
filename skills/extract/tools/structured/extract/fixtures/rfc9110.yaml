@@ -5,7 +5,7 @@ target:
   ref: structured.extract
 inputs:
   input_path: fixtures/rfc9110-http-semantics.html
-  schema_path: schemas/extraction.schema.json
+  schema_path: packets/extraction.schema.json
   source_url: https://www.rfc-editor.org/rfc/rfc9110.html
   content_type: text/html
   max_items: 18

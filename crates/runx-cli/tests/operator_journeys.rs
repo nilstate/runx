@@ -694,24 +694,8 @@ esac
                 "operation": "search.paid",
                 "realm": "test"
             },
-            "parent_payment_authority": {
-                "term_id": "authority-term:payment:default-no-rail",
-                "principal_ref": { "type": "host", "uri": "principal:operator:test" },
-                "resource_ref": { "type": "surface", "uri": "merchant:demo" },
-                "resource_family": "effect",
-                "verbs": ["prepare", "commit"],
-                "bounds": { "effect_limits": [{
-                    "family": "payment", "unit": "USD", "max_per_call_units": 125,
-                    "max_per_run_units": 125, "channels": ["mock", "mpp", "stripe-spt"],
-                    "realm": "test", "peer": "merchant:demo", "operation": "search.paid",
-                    "idempotency_required": true, "recovery_required": true,
-                    "receipt_before_success": true, "single_use_capability": true,
-                    "authorization_form": "single_use_capability"
-                }] },
-                "conditions": [], "approvals": [], "capabilities": ["effect_single_use_capability"],
-                "issued_by_ref": { "type": "host", "uri": "authority:payment:test" }
-            },
-            "rail_profile_ref": "rail-profile:mock:test",
+            "parent_payment_authority": { "term_id": "authority-term:payment:default-no-rail" },
+            "rail_profile_ref": "rail-profile:hosted:test",
             "realm": "test",
             "idempotency_seed": "default-no-rail"
         })

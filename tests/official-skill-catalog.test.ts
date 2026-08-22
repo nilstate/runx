@@ -98,26 +98,12 @@ const currentPaymentRegistrySkillIds = [
   "runx/mock-charge",
   "runx/mock-pay",
   "runx/mock-refund",
-  "runx/mpp-charge",
-  "runx/mpp-pay",
-  "runx/mpp-refund",
   "runx/refund",
+  "runx/settle-invoice",
   "runx/spend",
-  "runx/stripe-charge",
-  "runx/stripe-refund",
   "runx/stripe-pay",
   "runx/x402-pay",
 ] as const;
-
-const paymentGraphStageOwners: Readonly<Record<string, string>> = {
-  "charge-challenge": "charge",
-  "charge-price": "charge",
-  "charge-verify": "charge",
-  "pay-fulfill-rail": "spend",
-  "pay-quote": "spend",
-  "pay-recover": "spend",
-  "pay-reserve": "spend",
-};
 
 const retiredPaymentRegistrySkillIds = [
   "runx/payment-authorize-reserve",
@@ -139,6 +125,11 @@ const retiredPaymentRegistrySkillIds = [
   "runx/payment-refund-recover",
   "runx/payment-refund-reserve",
   "runx/payment-reserve",
+  "runx/mpp-charge",
+  "runx/mpp-pay",
+  "runx/mpp-refund",
+  "runx/stripe-charge",
+  "runx/stripe-refund",
   "runx/x402-charge",
   "runx/x402-refund",
 ] as const;
@@ -151,6 +142,7 @@ function isPaymentRegistrySkillId(skillId: string): boolean {
     skillId.startsWith("runx/refund-") ||
     skillId === "runx/charge" ||
     skillId === "runx/refund" ||
+    skillId === "runx/settle-invoice" ||
     skillId === "runx/spend" ||
     skillId.startsWith("runx/x402-") ||
     skillId === "runx/dispute-respond" ||
@@ -293,7 +285,7 @@ describe("official skill catalog", () => {
     }
   });
 
-  it("keeps graph stages out of the official skills catalog", async () => {
+  it("keeps only the public hosted contracts and local simulators in the payment catalog", async () => {
     const entries = JSON.parse(
       await readFile(path.resolve("skills", "official.lock.json"), "utf8"),
     ) as ReadonlyArray<{ readonly skill_id: string }>;
@@ -305,17 +297,13 @@ describe("official skill catalog", () => {
     expect(entryIds.filter(isPaymentRegistrySkillId).sort()).toEqual(
       [...currentPaymentRegistrySkillIds].sort(),
     );
-    for (const [stage, owner] of Object.entries(paymentGraphStageOwners)) {
-      expect(existsSync(path.resolve("skills", owner, "graph", stage, "X.yaml")), stage).toBe(true);
-      expect(ids.has(`runx/${stage}`), stage).toBe(false);
-      expect(existsSync(path.resolve("skills", stage)), stage).toBe(false);
-    }
     expect(ids.has("runx/scafld")).toBe(false);
     expect(existsSync(path.resolve("skills", "issue-to-pr", "graph", "scafld"))).toBe(false);
     expect([...paymentCatalogPublicIds()].sort()).toEqual([
       "runx/charge",
       "runx/dispute-respond",
       "runx/refund",
+      "runx/settle-invoice",
       "runx/spend",
       "runx/stripe-pay",
       "runx/x402-pay",
@@ -414,7 +402,7 @@ describe("official skill catalog", () => {
         RUNX_HOME: path.join(home, ".runx"),
       }) as { readonly exported: readonly { readonly skill: string }[] };
       const names = exported.exported.map((entry) => entry.skill);
-      expect(names).toHaveLength(71);
+      expect(names).toHaveLength(77);
       expect(names).toEqual(expect.arrayContaining([
         "adopt-skill",
         "diagnose-skill-run",

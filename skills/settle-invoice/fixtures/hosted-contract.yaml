@@ -1,0 +1,29 @@
+name: settle-invoice-hosted-contract
+kind: skill
+target: ..
+runner: settle-invoice
+operator_journeys:
+  - { mode: standalone, confusors: [spend, refund], request: Settle this validated invoice., expected_outcome: Require hosted settlement authority and return provider readback. }
+  - mode: composed
+    request: Continue this admitted invoice settlement.
+    expected_outcome: Reuse supplied invoice and authority evidence.
+    prior_evidence: [The validated invoice and authority supplied by the caller.]
+    must_not_repeat: [Do not mint a second settlement identity.]
+inputs:
+  invoice_ref: invoice-test-001
+  amount_minor: 125
+  currency: USD
+  payee: { name: Demo, party_ref: "merchant:demo" }
+  rail: mpp
+  rail_profile_ref: "rail-profile:test"
+  parent_payment_authority: { term_id: "authority:test" }
+  idempotency_seed: invoice-test-001
+caller:
+  approvals: { "provider-effect:sha256:5b307ebbe36f0712fe40772b05748cb33b16eeab4fb6a3e2a1acc1ab8c3a27f7": true }
+  provider_responses:
+    principal_id: invoice-fixture
+    grants: [{ grant_id: invoice-fixture, provider: mpp, scopes: [payment.invoice.settle, payment.invoice.read] }]
+    operations:
+      - { grant_id: invoice-fixture, operation: payment.invoice.settle, target: invoice-test-001, access: mutate, result: { payment_ref: payment_invoice_001, invoice_ref: invoice-test-001, amount_minor: 125, currency: USD, status: settled } }
+      - { grant_id: invoice-fixture, operation: payment.invoice.read, target: invoice-test-001, access: read, result: { payment_ref: payment_invoice_001, invoice_ref: invoice-test-001, amount_minor: 125, currency: USD, status: settled } }
+expect: { status: sealed, receipt: { schema: runx.receipt.v1 } }

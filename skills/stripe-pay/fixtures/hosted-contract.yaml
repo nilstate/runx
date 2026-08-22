@@ -1,0 +1,25 @@
+name: stripe-pay-hosted-contract
+kind: skill
+target: ..
+runner: stripe-spt
+operator_journeys:
+  - { mode: standalone, confusors: [spend, x402-pay], request: Pay this exact requirement with Stripe SPT., expected_outcome: Require hosted Stripe authority and return provider readback. }
+  - mode: composed
+    request: Continue this admitted Stripe payment.
+    expected_outcome: Reuse supplied payment and authority evidence.
+    prior_evidence: [The admitted Stripe payment supplied by the caller.]
+    must_not_repeat: [Do not mint a second Stripe payment identity.]
+inputs:
+  payment_signal: { amount_minor: 125, currency: USD, counterparty: "merchant:demo" }
+  parent_payment_authority: { term_id: "authority:test" }
+  rail_profile_ref: "rail-profile:stripe-test"
+  idempotency_seed: stripe-test-001
+caller:
+  approvals: { "provider-effect:sha256:006bd1450653a46f0bf86c7da09986c3d53e874ebfc2af05efcd1d30e9998ae1": true }
+  provider_responses:
+    principal_id: stripe-fixture
+    grants: [{ grant_id: stripe-fixture, provider: stripe-spt, scopes: [payment.spend, payment.spend.read] }]
+    operations:
+      - { grant_id: stripe-fixture, operation: payment.spend, target: "merchant:demo", access: mutate, result: { payment_ref: payment_stripe_001, rail: stripe-spt, amount_minor: 125, currency: USD, status: settled } }
+      - { grant_id: stripe-fixture, operation: payment.spend.read, target: "merchant:demo", access: read, result: { payment_ref: payment_stripe_001, rail: stripe-spt, amount_minor: 125, currency: USD, status: settled } }
+expect: { status: sealed, receipt: { schema: runx.receipt.v1 } }

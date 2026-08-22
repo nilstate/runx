@@ -110,11 +110,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Demo and local payment dogfood
-        run: |
-          pnpm demos:check
-          pnpm x402:dogfood:local
-
       - name: Heavy graph Vitest
         run: pnpm test:heavy:graph
 

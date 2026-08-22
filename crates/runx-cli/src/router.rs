@@ -14,7 +14,6 @@ use crate::login::LoginPlan;
 use crate::managed_agent::{managed_agent_policy, parse_boolean_flag, parse_managed_agent_rounds};
 use crate::mcp::McpPlan;
 use crate::parser::ParserPlan;
-use crate::payment::{PaymentAction, PaymentAdmissionPlan, PaymentPlan};
 use crate::policy::{PolicyAction, PolicyPlan};
 use crate::publish::PublishPlan;
 use crate::registry::{RegistryAction, RegistryPlan};
@@ -40,7 +39,6 @@ pub enum RouterAction {
     RunVerify(VerifyPlan),
     RunHarness(HarnessPlan),
     RunKernel(KernelPlan),
-    RunPayment(PaymentPlan),
     RunConfig(ConfigPlan),
     RunConnect(ConnectPlan),
     RunCredential(CredentialPlan),
@@ -268,10 +266,6 @@ fn route_args_with_optional_workspace(
 
     if first_arg_is(&args, "kernel") {
         return route_parse(&args, parse_kernel_plan(&args), RouterAction::RunKernel);
-    }
-
-    if first_arg_is(&args, "payment") {
-        return route_parse(&args, parse_payment_plan(&args), RouterAction::RunPayment);
     }
 
     if first_arg_is(&args, "parser") {
@@ -1103,37 +1097,6 @@ fn parse_kernel_plan(args: &[OsString]) -> Result<KernelPlan, String> {
     Ok(KernelPlan {
         input: parsed.input,
         json: true,
-    })
-}
-
-// Function rationale: this flat argument parser walks the
-// payment subcommand grammar in a single readable pass; extracting sub-parsers
-// would obscure which flags belong to which positional verb.
-fn parse_payment_plan(args: &[OsString]) -> Result<PaymentPlan, String> {
-    let topic = os_arg(args, 1, "payment")?;
-    if topic != "admission" {
-        return Err(format!("unknown payment subcommand {topic}"));
-    }
-    let action = os_arg(args, 2, "payment admission")?;
-    if action != "issue" {
-        return Err(format!("unknown payment admission subcommand {action}"));
-    }
-    let parsed = parse_json_eval_input(
-        args,
-        3,
-        JsonEvalCommand {
-            command: "payment admission issue",
-            subject: "payment admission issue",
-            duplicate_input: "runx payment admission issue accepts exactly one --input",
-            requires_json: "runx payment admission issue requires --json",
-            requires_input: "runx payment admission issue requires --input <file|->",
-        },
-    )?;
-    Ok(PaymentPlan {
-        action: PaymentAction::IssueAdmission(PaymentAdmissionPlan {
-            input: parsed.input,
-            json: true,
-        }),
     })
 }
 

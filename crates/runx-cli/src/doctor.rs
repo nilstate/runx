@@ -8,10 +8,6 @@ use runx_contracts::{
     DoctorRepairConfidence, DoctorRepairKind, DoctorRepairRisk, DoctorReport, DoctorReportSchema,
     DoctorStatus, DoctorSummary, JsonObject, JsonValue,
 };
-use runx_pay::effect_state::{
-    RUNX_EFFECT_STATE_PATH_ENV, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV,
-    hosted_effect_state_backend_is_supported, resolve_effect_state_path,
-};
 use runx_runtime::{
     HostedApiEnvironment, PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
     PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
@@ -561,7 +557,6 @@ fn run_authority_doctor(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorRep
     let diagnostics = vec![
         receipt_signer_diagnostic(env),
         receipt_verification_diagnostic(env),
-        effect_state_diagnostic(env, cwd),
         provider_grant_diagnostic(env, cwd),
     ];
     DoctorReport {
@@ -811,156 +806,6 @@ fn provider_grant_message(
             "Provider permission grant is unavailable; configure Runx Connect, or set {PROVIDER_PERMISSION_GRANT_ID_ENV}, {PROVIDER_PERMISSION_GRANTED_SCOPES_ENV}, and {PROVIDER_PERMISSION_PRINCIPAL_REF_ENV} for a host-injected grant."
         ),
     }
-}
-
-// Function rationale: one diagnostic keeps effect-state path, evidence, and repairs together.
-fn effect_state_diagnostic(env: &BTreeMap<String, String>, cwd: &Path) -> DoctorDiagnostic {
-    if env_contains_non_empty(env, RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV) {
-        let hosted_status = hosted_effect_state_backend_is_supported(env);
-        let mut evidence = authority_evidence(
-            &[
-                RUNX_EFFECT_STATE_PATH_ENV,
-                RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV,
-            ],
-            true,
-            None,
-        );
-        if matches!(hosted_status, Ok(true)) {
-            evidence.insert(
-                "backend".to_owned(),
-                JsonValue::String("hosted_transactional".to_owned()),
-            );
-            evidence.insert(
-                "transport".to_owned(),
-                JsonValue::String("configured".to_owned()),
-            );
-            return DoctorDiagnostic {
-                id: "runx.authority.effect_state".to_owned(),
-                instance_id: "runx:doctor-authority:runx.authority.effect_state".to_owned(),
-                severity: DoctorDiagnosticSeverity::Info,
-                title: "Hosted effect state transport".to_owned(),
-                message: format!(
-                    "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} is configured with a hosted transactional transport."
-                ),
-                target: object([
-                    ("kind", string_value("authority")),
-                    ("ref", string_value("runx.authority.effect_state")),
-                ]),
-                location: DoctorLocation {
-                    path: "environment".to_owned(),
-                    json_pointer: None,
-                },
-                evidence: Some(evidence),
-                repairs: Vec::new(),
-            };
-        }
-        evidence.insert(
-            "consequence".to_owned(),
-            JsonValue::String(
-                "Native runx refuses incomplete hosted transactional effect-state descriptors before local file fallback.".to_owned(),
-            ),
-        );
-        if let Err(error) = hosted_status {
-            evidence.insert("error".to_owned(), JsonValue::String(error.to_string()));
-        }
-        return DoctorDiagnostic {
-            id: "runx.authority.effect_state".to_owned(),
-            instance_id: "runx:doctor-authority:runx.authority.effect_state".to_owned(),
-            severity: DoctorDiagnosticSeverity::Error,
-            title: "Effect state path".to_owned(),
-            message: format!(
-                "{RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV} is configured without a complete hosted effect-state transport. Unset it for local file-backed execution, or pass endpoint_url, bearer_token, and allowed_families from the hosted runtime service."
-            ),
-            target: object([
-                ("kind", string_value("authority")),
-                ("ref", string_value("runx.authority.effect_state")),
-            ]),
-            location: DoctorLocation {
-                path: "environment".to_owned(),
-                json_pointer: None,
-            },
-            evidence: Some(evidence),
-            repairs: vec![manual_env_repair(
-                "runx.authority.effect_state.configure_hosted_transport",
-                &[RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON_ENV],
-                "Pass a complete native-hosted effect-state transport descriptor, or unset RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON for local file-backed execution.",
-                DoctorRepairRisk::High,
-            )],
-        };
-    }
-    let configured = env_contains_non_empty(env, RUNX_EFFECT_STATE_PATH_ENV);
-    let resolved_path = resolve_effect_state_path(env, cwd);
-    let mut evidence = authority_evidence(&[RUNX_EFFECT_STATE_PATH_ENV], configured, None);
-    let message = match resolved_path.as_ref() {
-        Some(path) if configured => {
-            let path = path.display();
-            evidence.insert(
-                "resolved_path".to_owned(),
-                JsonValue::String(path.to_string()),
-            );
-            format!("Effect state path configured; resolved path: {path}.")
-        }
-        Some(path) => {
-            let path = path.display();
-            evidence.insert(
-                "resolved_path".to_owned(),
-                JsonValue::String(path.to_string()),
-            );
-            evidence.insert(
-                "consequence".to_owned(),
-                JsonValue::String(effect_state_unset_consequence().to_owned()),
-            );
-            format!(
-                "Effect state path not configured; set {RUNX_EFFECT_STATE_PATH_ENV}. \
-                 {consequence} Current fallback resolves to: {path}.",
-                consequence = effect_state_unset_consequence()
-            )
-        }
-        None => {
-            evidence.insert(
-                "consequence".to_owned(),
-                JsonValue::String(effect_state_unset_consequence().to_owned()),
-            );
-            format!(
-                "Effect state path not configured; set {RUNX_EFFECT_STATE_PATH_ENV}. {}",
-                effect_state_unset_consequence()
-            )
-        }
-    };
-    DoctorDiagnostic {
-        id: "runx.authority.effect_state".to_owned(),
-        instance_id: "runx:doctor-authority:runx.authority.effect_state".to_owned(),
-        severity: if configured {
-            DoctorDiagnosticSeverity::Info
-        } else {
-            DoctorDiagnosticSeverity::Warning
-        },
-        title: "Effect state path".to_owned(),
-        message,
-        target: object([
-            ("kind", string_value("authority")),
-            ("ref", string_value("runx.authority.effect_state")),
-        ]),
-        location: DoctorLocation {
-            path: "environment".to_owned(),
-            json_pointer: None,
-        },
-        evidence: Some(evidence),
-        repairs: if configured {
-            Vec::new()
-        } else {
-            vec![manual_env_repair(
-                "runx.authority.effect_state.configure_env",
-                &[RUNX_EFFECT_STATE_PATH_ENV],
-                "Set RUNX_EFFECT_STATE_PATH to a durable writable state file for cross-run effect accounting.",
-                DoctorRepairRisk::Low,
-            )]
-        },
-    }
-}
-
-fn effect_state_unset_consequence() -> &'static str {
-    "Cross-run spend caps, payment idempotency, and effect replay recovery are not durable without a configured state path."
 }
 
 fn manual_env_repair(

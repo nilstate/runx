@@ -1,280 +1,36 @@
 skill: refund
-version: "0.5.0"
-catalog:
-  kind: graph
-  audience: operator
-  visibility: public
-  role: canonical
-  execution: execute
-  completion: provider_readback
-  requires_adapter: true
-  approval: required
-input_definitions:
-  original_receipt_ref:
-    type: string
-    required: true
-    description: Opaque sealed charge receipt reference.
-    schema: { minLength: 1, maxLength: 512, pattern: '^\S+$' }
-  refund_request:
-    type: json
-    packet: runx.payment.refund_request.v1
-    required: true
-    description: Positive minor-unit amount, bounded reason, and optional recorded payer check.
-  parent_payment_authority:
-    type: json
-    packet: runx.authority_term.v1
-    required: true
-    description: Full typed parent refund AuthorityTerm; a reference alone is refused.
+version: "0.6.0"
+catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   refund:
     default: true
     type: graph
     inputs:
-      original_receipt_ref: { definition: original_receipt_ref }
-      refund_request: { definition: refund_request }
-      parent_payment_authority: { definition: parent_payment_authority }
-      settlement_family:
-        type: string
-        required: true
-        description: Settlement family recorded by the original payment and bounded by the supplied authority.
-        schema: { enum: [mpp, stripe] }
+      original_receipt_ref: { type: string, required: true, description: Opaque sealed charge receipt reference. }
+      refund_request: { type: json, required: true, description: Bounded refund amount and reason. }
+      parent_payment_authority: { type: json, required: true, description: Full parent refund authority term. }
+      settlement_family: { type: string, required: true, description: Settlement family recorded by the charge receipt. }
+      idempotency_key: { type: string, required: true, description: Stable refund idempotency key. }
     graph:
-      name: refund-execute
-      result_from: [mpp-readback, stripe-readback]
+      name: refund-hosted
+      result_from: [readback]
       steps:
-        - id: select-mpp
-          tool: data.compare
-          inputs: { actual: $input.settlement_family, expected: mpp }
-        - id: mpp-plan
-          when: { field: select-mpp.comparison.data.equal, equals: true }
-          skill: .
-          runner: mpp
-          inputs:
-            original_receipt_ref: $input.original_receipt_ref
-            refund_request: $input.refund_request
-            parent_payment_authority: $input.parent_payment_authority
-        - id: mpp-refund
-          when: { field: select-mpp.comparison.data.equal, equals: true }
+        - id: refund
           tool: provider.mutate
           mutation: true
           idempotency_key: $input.idempotency_key
           scopes: [payment.refund]
-          policy:
-            provider_permission: { verb: write }
+          policy: { provider_permission: { verb: write } }
           inputs:
             operation: payment.refund
+            target: $input.original_receipt_ref
             expected_provider: $input.settlement_family
+            idempotency_key: $input.idempotency_key
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
-            expected_result:
-              original_receipt_ref: $input.original_receipt_ref
-              amount_minor: $input.refund_request.amount_minor
-          context:
-            target: mpp-plan.refund_plan.data.adapter_handoff.original_money_movement_id
-            idempotency_key: mpp-plan.refund_plan.data.adapter_handoff.idempotency_key
-            input: mpp-plan.refund_plan.data
-        - id: mpp-readback
-          when: { field: select-mpp.comparison.data.equal, equals: true }
+            input: { original_receipt_ref: $input.original_receipt_ref, refund_request: $input.refund_request, parent_payment_authority: $input.parent_payment_authority }
+        - id: readback
           tool: provider.read
           scopes: [payment.refund.read]
-          policy:
-            provider_permission: { verb: read }
-          inputs:
-            operation: payment.refund.read
-            expected_provider: $input.settlement_family
-            result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
-          context:
-            target: mpp-plan.refund_plan.data.adapter_handoff.original_money_movement_id
-            input: mpp-refund.provider_operation.data.result
-            expected_result: mpp-refund.provider_operation.data.result
-
-        - id: select-stripe
-          tool: data.compare
-          inputs: { actual: $input.settlement_family, expected: stripe }
-        - id: stripe-plan
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          skill: .
-          runner: stripe
-          inputs:
-            original_receipt_ref: $input.original_receipt_ref
-            refund_request: $input.refund_request
-            parent_payment_authority: $input.parent_payment_authority
-        - id: stripe-refund
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          tool: provider.mutate
-          mutation: true
-          idempotency_key: $input.idempotency_key
-          scopes: [payment.refund]
-          policy:
-            provider_permission: { verb: write }
-          inputs:
-            operation: payment.refund
-            expected_provider: $input.settlement_family
-            result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
-            expected_result:
-              original_receipt_ref: $input.original_receipt_ref
-              amount_minor: $input.refund_request.amount_minor
-          context:
-            target: stripe-plan.refund_plan.data.adapter_handoff.original_money_movement_id
-            idempotency_key: stripe-plan.refund_plan.data.adapter_handoff.idempotency_key
-            input: stripe-plan.refund_plan.data
-        - id: stripe-readback
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          tool: provider.read
-          scopes: [payment.refund.read]
-          policy:
-            provider_permission: { verb: read }
-          inputs:
-            operation: payment.refund.read
-            expected_provider: $input.settlement_family
-            result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
-          context:
-            target: stripe-plan.refund_plan.data.adapter_handoff.original_money_movement_id
-            input: stripe-refund.provider_operation.data.result
-            expected_result: stripe-refund.provider_operation.data.result
-
-  mock:
-    type: graph
-    inputs:
-      original_receipt_ref:
-        definition: original_receipt_ref
-      refund_request:
-        definition: refund_request
-      parent_payment_authority:
-        definition: parent_payment_authority
-    examples:
-      - original_receipt_ref: receipt:charge:demo-001
-        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
-        parent_payment_authority:
-          term_id: refund-demo
-          principal_ref: { type: principal, uri: runx:principal:operator }
-          resource_ref: { type: target, uri: payer:demo }
-          resource_family: effect
-          verbs: [reverse]
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels: [mock, mpp, stripe]
-                realm: test
-                peer: payer:demo
-                operation: refund
-                authorization_form: single_use_capability
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-          conditions: []
-          approvals: []
-          capabilities: [effect_single_use_capability]
-          issued_by_ref: { type: grant, uri: runx:grant:payment }
-    graph:
-      name: refund-mock-plan
-      result_from: [prepare]
-      steps:
-        - id: prepare
-          tool: payment.refund_plan
-          inputs:
-            original_receipt_ref: $input.original_receipt_ref
-            refund_request: $input.refund_request
-            settlement_family: mock
-            parent_payment_authority: $input.parent_payment_authority
-  mpp:
-    default: false
-    type: graph
-    inputs:
-      original_receipt_ref:
-        definition: original_receipt_ref
-      refund_request:
-        definition: refund_request
-      parent_payment_authority:
-        definition: parent_payment_authority
-    examples:
-      - original_receipt_ref: receipt:charge:demo-001
-        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
-        parent_payment_authority:
-          term_id: refund-demo
-          principal_ref: { type: principal, uri: runx:principal:operator }
-          resource_ref: { type: target, uri: payer:demo }
-          resource_family: effect
-          verbs: [reverse]
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels: [mock, mpp, stripe]
-                realm: test
-                peer: payer:demo
-                operation: refund
-                authorization_form: single_use_capability
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-          conditions: []
-          approvals: []
-          capabilities: [effect_single_use_capability]
-          issued_by_ref: { type: grant, uri: runx:grant:payment }
-    graph:
-      name: refund-mpp-plan
-      result_from: [prepare]
-      steps:
-        - id: prepare
-          tool: payment.refund_plan
-          inputs:
-            original_receipt_ref: $input.original_receipt_ref
-            refund_request: $input.refund_request
-            settlement_family: mpp
-            parent_payment_authority: $input.parent_payment_authority
-  stripe:
-    default: false
-    type: graph
-    inputs:
-      original_receipt_ref:
-        definition: original_receipt_ref
-      refund_request:
-        definition: refund_request
-      parent_payment_authority:
-        definition: parent_payment_authority
-    examples:
-      - original_receipt_ref: receipt:charge:demo-001
-        refund_request: { amount_minor: 100, reason: operator_refund, requested_counterparty: payer:demo }
-        parent_payment_authority:
-          term_id: refund-demo
-          principal_ref: { type: principal, uri: runx:principal:operator }
-          resource_ref: { type: target, uri: payer:demo }
-          resource_family: effect
-          verbs: [reverse]
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels: [mock, mpp, stripe]
-                realm: test
-                peer: payer:demo
-                operation: refund
-                authorization_form: single_use_capability
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-          conditions: []
-          approvals: []
-          capabilities: [effect_single_use_capability]
-          issued_by_ref: { type: grant, uri: runx:grant:payment }
-    graph:
-      name: refund-stripe-plan
-      result_from: [prepare]
-      steps:
-        - id: prepare
-          tool: payment.refund_plan
-          inputs:
-            original_receipt_ref: $input.original_receipt_ref
-            refund_request: $input.refund_request
-            settlement_family: stripe
-            parent_payment_authority: $input.parent_payment_authority
+          policy: { provider_permission: { verb: read } }
+          inputs: { operation: payment.refund.read, target: $input.original_receipt_ref, expected_provider: $input.settlement_family, result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status] }
+          context: { input: refund.provider_operation.data.result, expected_result: refund.provider_operation.data.result }

@@ -22,6 +22,11 @@
       "type": ["object", "null"],
       "additionalProperties": true
     },
+    "mutations": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "object", "additionalProperties": true }
+    },
     "diff_summary": {
       "type": "array",
       "items": { "type": "object", "additionalProperties": true }
@@ -39,6 +44,7 @@
     "resource_selector",
     "resources_touched",
     "mutation",
+    "mutations",
     "diff_summary",
     "provider_operation",
     "scope_used",

@@ -70,7 +70,7 @@ Actions should be small named lanes:
 
 - `ledger.query`
 - `receipt.verify`
-- `payment.quote`
+- `payment.spend`
 - `payment.refund`
 - `payment.payout`
 - `send.plan`

@@ -14,7 +14,7 @@ const args = [
   "--manifest-path",
   path.join(workspaceRoot, "crates", "Cargo.toml"),
   "-p",
-  "runx-pay",
+  "runx-contracts",
   "--bin",
   "runx-schema-artifacts",
   "--",

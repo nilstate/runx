@@ -16,7 +16,7 @@ Extract structured JSON from a bounded HTML or plain-text source inside the
 skill package, validate the result against a declared JSON Schema, and emit a
 digest-bound provenance packet. The runner is deterministic: it reads local
 fixture bytes, extracts headings, useful paragraphs, and HTTP/API terms, checks
-the packet against `schemas/extraction.schema.json`, and returns
+the packet against `packets/extraction.schema.json`, and returns
 `runx.structured_extraction.result.v1`.
 
 This is not a scraper or crawler. Network fetch belongs in a separate governed
@@ -128,7 +128,7 @@ Extract a compact evidence packet from the packaged RFC 9110 fixture:
 runx skill "$PWD" \
   --runner extract \
   --input input_path=fixtures/rfc9110-http-semantics.html \
-  --input schema_path=schemas/extraction.schema.json \
+  --input schema_path=packets/extraction.schema.json \
   --input source_url=https://www.rfc-editor.org/rfc/rfc9110.html \
   --input content_type=text/html \
   --input max_items=18 \

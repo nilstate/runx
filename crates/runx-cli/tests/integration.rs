@@ -32,4 +32,3 @@ mod skill;
 mod support;
 mod tool;
 mod verify;
-mod x402_native_dogfood;

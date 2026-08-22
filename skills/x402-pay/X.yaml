@@ -1,148 +1,34 @@
 skill: x402-pay
-version: "0.5.0"
-catalog:
-  kind: graph
-  audience: operator
-  visibility: public
-  role: branded
-  canonical_skill: runx/spend
-  provider: x402
-  runtime_path: x402
-  execution: execute
-  completion: provider_readback
-  requires_adapter: true
-  approval: required
+version: "0.6.0"
+catalog: { kind: graph, audience: operator, visibility: public, role: branded, canonical_skill: runx/spend, provider: x402, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   pay:
     default: true
     type: graph
     inputs:
-      payment_signal:
-        type: json
-        packet: runx.payment.signal.v1
-        required: true
-      parent_payment_authority:
-        type: json
-        packet: runx.authority_term.v1
-        required: true
-      realm: { type: string, required: false }
-      idempotency_seed: { type: string, required: true }
+      payment_signal: { type: json, required: true, description: Exact x402 payment challenge. }
+      parent_payment_authority: { type: json, required: true, description: Full parent spend authority term. }
+      idempotency_seed: { type: string, required: true, description: Stable purchase idempotency material. }
     graph:
-      name: x402-pay-execute
+      name: x402-pay-hosted
       result_from: [readback]
       steps:
-        - id: plan
-          skill: .
-          runner: x402
-          inputs:
-            payment_signal: $input.payment_signal
-            parent_payment_authority: $input.parent_payment_authority
-            realm: $input.realm
-            idempotency_seed: $input.idempotency_seed
         - id: pay
           tool: provider.mutate
           mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.x402]
-          policy:
-            provider_permission: { verb: write }
+          policy: { provider_permission: { verb: write } }
           inputs:
             operation: payment.x402
             target: $input.payment_signal.counterparty
             expected_provider: x402
             idempotency_key: $input.idempotency_seed
             result_fields: [payment_ref, challenge_id, amount_minor, currency, status]
-            expected_result:
-              challenge_id: $input.payment_signal.challenge_id
-              amount_minor: $input.payment_signal.amount_minor
-              currency: $input.payment_signal.currency
-            input:
-              payment_signal: $input.payment_signal
-              payment_quote: $input.payment_quote
-          context:
-            payment_quote: plan.payment_quote_packet.data
+            input: { payment_signal: $input.payment_signal, parent_payment_authority: $input.parent_payment_authority }
         - id: readback
           tool: provider.read
           scopes: [payment.x402.read]
-          policy:
-            provider_permission: { verb: read }
-          inputs:
-            operation: payment.x402.read
-            target: $input.payment_signal.counterparty
-            expected_provider: x402
-            result_fields: [payment_ref, challenge_id, amount_minor, currency, status]
-          context:
-            input: pay.provider_operation.data.result
-            expected_result: pay.provider_operation.data.result
-
-  x402:
-    type: graph
-    inputs:
-      payment_signal:
-        type: json
-        packet: runx.payment.signal.v1
-        required: true
-        description: Payment-required signal or challenge.
-      parent_payment_authority:
-        type: json
-        packet: runx.authority_term.v1
-        required: true
-        description: Full typed parent payment AuthorityTerm; a reference alone is refused.
-      realm:
-        type: string
-        required: false
-        description: Authority realm.
-      idempotency_seed:
-        type: string
-        required: true
-        description: Stable caller-owned idempotency material.
-    examples:
-      - payment_signal:
-          signal_type: effect_required
-          challenge_id: ch_x402_001
-          amount_minor: 125
-          currency: USD
-          rail: x402
-          counterparty: merchant:demo
-          operation: search.paid
-          realm: test
-        parent_payment_authority:
-          term_id: authority-term:payment:demo-001
-          principal_ref: { type: host, uri: principal:operator:test }
-          resource_ref: { type: surface, uri: merchant:demo }
-          resource_family: effect
-          verbs: [prepare, commit]
-          bounds:
-            effect_limits:
-              - family: payment
-                unit: USD
-                max_per_call_units: 125
-                max_per_run_units: 125
-                channels: [x402]
-                realm: test
-                peer: merchant:demo
-                operation: search.paid
-                idempotency_required: true
-                recovery_required: true
-                receipt_before_success: true
-                single_use_capability: true
-                authorization_form: single_use_capability
-          conditions: []
-          approvals: []
-          capabilities: [effect_single_use_capability]
-          issued_by_ref: { type: host, uri: authority:payment:test }
-        realm: test
-        idempotency_seed: demo-x402-001
-    graph:
-      name: x402-pay
-      result_from: [spend]
-      steps:
-        - id: spend
-          skill: ../spend
-          runner: plan
-          inputs:
-            payment_signal: $input.payment_signal
-            parent_payment_authority: $input.parent_payment_authority
-            rail_preferences: [x402]
-            realm: $input.realm
-            idempotency_seed: $input.idempotency_seed
+          policy: { provider_permission: { verb: read } }
+          inputs: { operation: payment.x402.read, target: $input.payment_signal.counterparty, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status] }
+          context: { input: pay.provider_operation.data.result, expected_result: pay.provider_operation.data.result }

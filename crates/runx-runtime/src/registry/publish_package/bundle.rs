@@ -2,6 +2,7 @@
 //! digest-bound package without rewriting the source execution profile.
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use super::RegistryPublishPackageError;
@@ -20,12 +21,19 @@ pub(super) fn collect_bundle_files(
     cwd: &Path,
 ) -> Result<Vec<RegistryPackageFile>, RegistryPublishPackageError> {
     let root = canonical_directory(&loaded.package_root, "publish package root")?;
-    let root_packet_ids = closure.packages.get(&root).ok_or_else(|| {
-        RegistryPublishPackageError::invalid("publish execution closure omitted its root package")
-    })?;
+    let no_packet_ids = BTreeSet::new();
+    let root_packet_ids = match closure.packages.get(&root) {
+        Some(packet_ids) => packet_ids,
+        None if loaded.manifest().is_none() && closure.packages.is_empty() => &no_packet_ids,
+        None => {
+            return Err(RegistryPublishPackageError::invalid(
+                "publish execution closure omitted its root package",
+            ));
+        }
+    };
     let root_files =
         super::files::collect_publish_package_files(loaded, env, cwd, root_packet_ids)?;
-    if closure.packages.len() == 1 {
+    if closure.packages.len() <= 1 {
         return Ok(root_files);
     }
     if loaded

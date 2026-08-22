@@ -1,0 +1,26 @@
+name: refund-hosted-contract
+kind: skill
+target: ..
+runner: refund
+operator_journeys:
+  - { mode: standalone, confusors: [charge, spend], request: Refund this sealed charge., expected_outcome: Require hosted refund authority and return provider readback. }
+  - mode: composed
+    request: Continue this admitted refund.
+    expected_outcome: Reuse supplied charge and refund authority evidence.
+    prior_evidence: [The sealed charge and refund authority supplied by the caller.]
+    must_not_repeat: [Do not mint a second refund identity.]
+inputs:
+  original_receipt_ref: "receipt:test:charge-001"
+  refund_request: { amount_minor: 125, currency: USD, reason: test }
+  parent_payment_authority: { term_id: "authority:test" }
+  settlement_family: mpp
+  idempotency_key: refund-test-001
+caller:
+  approvals: { "provider-effect:sha256:dfe014508fcd0012b22277a22606688883aeea32c4edc766d5f7954cab377d43": true }
+  provider_responses:
+    principal_id: refund-fixture
+    grants: [{ grant_id: refund-fixture, provider: mpp, scopes: [payment.refund, payment.refund.read] }]
+    operations:
+      - { grant_id: refund-fixture, operation: payment.refund, target: "receipt:test:charge-001", access: mutate, result: { refund_ref: refund_test_001, original_receipt_ref: "receipt:test:charge-001", amount_minor: 125, currency: USD, status: refunded } }
+      - { grant_id: refund-fixture, operation: payment.refund.read, target: "receipt:test:charge-001", access: read, result: { refund_ref: refund_test_001, original_receipt_ref: "receipt:test:charge-001", amount_minor: 125, currency: USD, status: refunded } }
+expect: { status: sealed, receipt: { schema: runx.receipt.v1 } }

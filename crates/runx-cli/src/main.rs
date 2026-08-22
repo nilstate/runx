@@ -99,7 +99,6 @@ fn dispatch_command(action: RouterAction, workspace: &runx_runtime::WorkspaceEnv
         RouterAction::RunMcp(plan) => runx_cli::mcp::run_native_mcp_with_workspace(plan, workspace),
         RouterAction::RunHarness(plan) => run_native_harness(plan, workspace),
         RouterAction::RunKernel(plan) => runx_cli::kernel::run_native_kernel(plan, workspace),
-        RouterAction::RunPayment(plan) => runx_cli::payment::run_native_payment(plan, workspace),
         RouterAction::RunParser(plan) => runx_cli::parser::run_native_parser(plan, workspace),
         RouterAction::RunConfig(plan) => run_native_config(plan, workspace),
         RouterAction::RunConnect(plan) => runx_cli::connect::run_native_connect(plan, workspace),
@@ -292,14 +291,6 @@ fn run_standalone_harness(
         };
         match orchestrator.run_harness_fixture(&request) {
             Ok(output) => {
-                if let Err(error) =
-                    runx_cli::runtime::persist_payment_ledger_projection(&output, workspace.env())
-                {
-                    let _ignored = write_stderr_line(&format!(
-                        "runx: payment ledger projection failed: {error}"
-                    ));
-                    return ExitCode::from(1);
-                }
                 outputs.push(
                     match serde_json::to_value(&output.receipt)
                         .and_then(serde_json::from_value::<runx_contracts::JsonValue>)

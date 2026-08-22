@@ -240,13 +240,6 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         options: &["--input <file|->", "--json  Required"],
     },
     CommandSpec {
-        name: "payment",
-        top_level_usage: &[],
-        usage: &["runx payment admission issue --input <file|-> --json"],
-        notes: &["Issues a signed payment admission from a JSON request."],
-        options: &["--input <file|->", "--json  Required"],
-    },
-    CommandSpec {
         name: "parser",
         top_level_usage: &[],
         usage: &["runx parser eval --input <file|-> --json"],

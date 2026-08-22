@@ -8,8 +8,8 @@
   },
   {
     "skill_id": "runx/agency",
-    "version": "sha-9bbb3e80772f",
-    "digest": "c8336182bc863044f7ccf16e99883c0bf2fdddb569b9758a6fdb216769e9a430",
+    "version": "sha-d775c99d8021",
+    "digest": "2c5e1c0bcf57bed49f301c2fda99c98219fab9dc4baa651f1fd1455ee134b9cf",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -43,8 +43,8 @@
   },
   {
     "skill_id": "runx/charge",
-    "version": "sha-05ac27e14120",
-    "digest": "593e65e82d35ba7f3926d1623c73245b80e1597216aa423a966083f8363264eb",
+    "version": "sha-dbf3378339fe",
+    "digest": "efb60b85fff54de0ffe63308bf62b16a53166e02a69d697cab626e19e2823706",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -127,8 +127,8 @@
   },
   {
     "skill_id": "runx/extract",
-    "version": "sha-a01211bbb608",
-    "digest": "2f35b36a441ae48d706a88644f1dd47b257ceca08ea0917d065a79957d904486",
+    "version": "sha-38fb0318d493",
+    "digest": "5e4b7c095b71bc233fee9dfc64b149838cc6f8d173e32de5005786e0353830ed",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -253,22 +253,22 @@
   },
   {
     "skill_id": "runx/mock-charge",
-    "version": "sha-e90553887a62",
-    "digest": "40f9cb0afba40701cc11d3f66259207f166d7b58a5a10e058c00b18935d07bec",
+    "version": "sha-d9279b9fe7dd",
+    "digest": "7a3601d549b84046aa8f09940a1605973b041f653173a7fec9dd66265e2d9d4c",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
   {
     "skill_id": "runx/mock-pay",
-    "version": "sha-b7be7d73a8b0",
-    "digest": "d07f071fb2750e549d7509a73400ca1bcb3e3f861c23681990354602b9604d60",
+    "version": "sha-1949fb27b5e8",
+    "digest": "b9abd8813e73cceba16c0d540c7585cc1adcd0b16383f83bd0e0078078ef7251",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
   {
     "skill_id": "runx/mock-refund",
-    "version": "sha-e57f6bb42cca",
-    "digest": "d26ecb63db16eb71b50a2e972f5a73b013ff7fd8e9e08842d29056f76f5b0584",
+    "version": "sha-b5643e1827be",
+    "digest": "8037df7647cf979788776fba424c4f62cf5fe8bd185e740cc2e08557d9dab015",
     "catalog_visibility": "internal",
     "catalog_role": "harness-fixture"
   },
@@ -278,27 +278,6 @@
     "digest": "1295db650b43311cefa2dfe470afa6b2fa00911f474175d68d4702dd50620480",
     "catalog_visibility": "public",
     "catalog_role": "context"
-  },
-  {
-    "skill_id": "runx/mpp-charge",
-    "version": "sha-f0a25651f9ff",
-    "digest": "2fde12e2a17a9293bcde4b7b678d32ba52e9cb4acf861f9ad04f6835ce928214",
-    "catalog_visibility": "internal",
-    "catalog_role": "runtime-path"
-  },
-  {
-    "skill_id": "runx/mpp-pay",
-    "version": "sha-fe7b324fe2bf",
-    "digest": "9fb232c26b5d8c5bc94b2fdf2f0e8521b4c6d599fa6fc7e8f2f4ce36eba3d0a0",
-    "catalog_visibility": "internal",
-    "catalog_role": "runtime-path"
-  },
-  {
-    "skill_id": "runx/mpp-refund",
-    "version": "sha-15b6da590a11",
-    "digest": "f799a44a9c6f6f893b111472c36e296a6d329bba5e7838db2faa2a40ce7618d4",
-    "catalog_visibility": "internal",
-    "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/n8n-handoff",
@@ -337,7 +316,7 @@
   },
   {
     "skill_id": "runx/ops-desk",
-    "version": "sha-054396ef5d84",
+    "version": "sha-b86c2a2c2b9b",
     "digest": "188a8eb83313863180d9c4637e51261e08a5019038ab19625863c414a6b9c379",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
@@ -393,8 +372,8 @@
   },
   {
     "skill_id": "runx/refund",
-    "version": "sha-c3055046eb9a",
-    "digest": "737df2675292ef3e61a498513683d0020e011c169652aa602af90947c2be5acc",
+    "version": "sha-f0a6fac353a0",
+    "digest": "e490d9ce899d26c5347b5041df989f37030beb46ad1f3f1db68fb4a773b2e2d1",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -449,8 +428,8 @@
   },
   {
     "skill_id": "runx/settle-invoice",
-    "version": "sha-6433fb9cd0dd",
-    "digest": "c2c0d3992c7f9dfd1cdb2cd6e5d1903b42057d14fb206f4645de008eaa8c198a",
+    "version": "sha-257bfdc09ee0",
+    "digest": "6ffa4fdec7e7115c642d9dad2f8ef7d20f8c0405d51e70dba21eb6fbf9006a2c",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -491,8 +470,8 @@
   },
   {
     "skill_id": "runx/spend",
-    "version": "sha-5068dc41cc4a",
-    "digest": "add056456c397733bfbb6d1775b143b0c6aa1c15a3c9e76909d61441595ddda0",
+    "version": "sha-88923300a3b9",
+    "digest": "45b448c7edf38044353930ea76a9befc7d2d661ff6c730d1360c9a60e77fa1d9",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -504,25 +483,11 @@
     "catalog_role": "context"
   },
   {
-    "skill_id": "runx/stripe-charge",
-    "version": "sha-ece6cbefdd59",
-    "digest": "f511e18de56dbf0360961147049e0bb34d8a527b04681ba53df99a5a4c4788fd",
-    "catalog_visibility": "internal",
-    "catalog_role": "runtime-path"
-  },
-  {
     "skill_id": "runx/stripe-pay",
-    "version": "sha-0e1587aa6d18",
-    "digest": "efbfe5a40d0f247f6e1c8ed4ba23da7567314272ad62736eed2dde50e0ea55c5",
+    "version": "sha-7e73c107560a",
+    "digest": "04e40b838bee86c963334c19a08032abce8e7cf35399a1f16364b8c23ecd217a",
     "catalog_visibility": "public",
     "catalog_role": "branded"
-  },
-  {
-    "skill_id": "runx/stripe-refund",
-    "version": "sha-38d2954c3765",
-    "digest": "4f0a281e2767b666645751fe3f551731e9517a33f0bed2c68d9b91f96a8726f5",
-    "catalog_visibility": "internal",
-    "catalog_role": "runtime-path"
   },
   {
     "skill_id": "runx/taste-profile",
@@ -582,8 +547,8 @@
   },
   {
     "skill_id": "runx/x402-pay",
-    "version": "sha-decbbf9220ef",
-    "digest": "01a310d4f74b89373823ef5bdba7a7c1570e24275f71d680627c3517e20b9bef",
+    "version": "sha-e4e33d5c0b98",
+    "digest": "7e9dd90184a0130585abf8b27f888d56fa85a3ea3d3bd154dfabd9c0113562cd",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },

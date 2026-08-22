@@ -268,7 +268,7 @@ CLI release may stamp and publish only:
 - `crates/runx-cli/Cargo.toml` and the `runx-cli` lockfile entry
 
 Do not publish `runx-cli` or internal Rust crates (`runx-core`, `runx-runtime`,
-`runx-parser`, `runx-contracts`, `runx-pay`, `runx-receipts`, `runx-sdk`, or
+`runx-parser`, `runx-contracts`, `runx-receipts`, `runx-sdk`, or
 `runx-contracts-derive`) during a CLI release. Cargo publication requires an
 explicit, coordinated library-crate release because the CLI consumes those
 internal APIs.

@@ -1,78 +1,31 @@
 ---
 name: charge
-description: Verify and settle a provider-side paid-call credential through a configured adapter; use a named rail runner explicitly for challenge planning only.
+description: Verify and settle one provider-side paid call through Runx Hosted with approval and provider readback.
 runx:
   category: payments
 ---
 
 # Charge
 
-`charge` is the canonical seller-side settlement boundary for a paid tool call. It binds one
-requested operation to provider pricing policy, emits a replay-safe payment
-challenge, validates an opaque returned credential reference against that exact
-challenge, and prepares the verifier and forwarding handoff.
+`charge` is the public seller-side contract for a paid operation. Its OSS graph
+is deliberately thin: it submits the exact tool call, hosted pricing policy,
+opaque returned credential reference, verification capability reference, and
+idempotency seed to the approved Runx Hosted payment operation, then requires a
+provider readback before the run can close.
 
-The default selects a real `mpp` or `stripe` planning lane, sends its exact
-verification request to a configured seller-side adapter after approval, and
-requires settlement readback. The named `mpp`, `stripe`, and test-only `mock`
-runners remain plan-only. Missing adapter authority blocks; it never becomes a
-mock settlement or permission to release the paid operation.
+Runx Hosted owns pricing validation, challenge and credential semantics,
+settlement admission, provider credentials, rail execution, idempotency,
+recovery, and the private payment ledger. The OSS runtime owns the generic
+provider-effect gate and receipt envelope. It does not implement a payment rail
+or infer settlement from caller input.
 
-## When to use it
+## Operator guide
 
-Use `charge` when Runx is acting as the provider of a paid operation and needs a
-deterministic price/challenge/verifier plan. Use `spend` on the buyer side and
-`refund` to reverse a previously sealed provider charge. Do not use this skill
-as evidence that a caller paid merely because it returned a credential ref.
+Use this skill when Runx is the provider of a paid operation. Use `spend` on the
+buyer side and `refund` for a receipt-linked reversal. A hosted connector and
+grants for `payment.charge` and `payment.charge.read` are required.
 
-## How it works
-
-1. `charge-price` validates the structured tool call and provider policy, then
-   binds amount, currency, counterparty, operation, accepted settlement family,
-   expiry, and requested authority.
-2. `charge-challenge` turns that price into a deterministic, replay-safe
-   challenge whose idempotency binding requires receipt-before-forward.
-3. `charge-verify` validates the *reference and handoff shape* for the returned
-   credential and a single-use verifier capability. It does not manufacture a
-   successful provider verification.
-4. Native `payment.charge_plan` assembles the exact price, challenge, and
-   verifier request into the adapter handoff.
-5. A future or configured provider rail must verify settlement, seal evidence,
-   and authorize forwarding under the same bindings.
-
-The public runners select `mock`, `mpp`, or `stripe` policy families. There is
-no seller-side x402 runner here; buyer-side x402 support in `spend` does not
-implicitly create a provider charge contract.
-
-## Inputs and result
-
-- `mcp_tool_call` identifies the exact paid operation and bounded arguments.
-- `provider_policy` supplies the price and accepted family; there is no default
-  price.
-- `returned_credential` names the settlement family and one opaque reference,
-  never raw rail material.
-- `verify_capability_ref` is the bounded single-use verification capability.
-- `idempotency_seed` stabilizes the challenge and replay decision.
-
-The plan contains price, requested authority, challenge, idempotency packet,
-credential binding, and exact provider-verifier handoff. It explicitly records
-that settlement, receipt sealing, and forwarding remain outstanding.
-
-## Stop conditions
-
-- Stop when provider policy, price, operation, counterparty, family, or stable
-  idempotency material is missing or ambiguous.
-- Refuse family, amount, currency, challenge, or counterparty drift.
-- Refuse raw credentials, unrestricted verifier tokens, or caller-authored
-  “verified” flags.
-- Treat replay as unresolved unless the same sealed provider result can be
-  proven under the same idempotency binding.
-- Never forward the paid call or report settlement from a local plan.
-
-## Example
-
-A provider prices `search.paid` at `125 USD` minor units and accepts Stripe. The
-skill can produce the exact Stripe challenge and verifier request bound to that
-operation. If the caller returns an MPP reference or a different amount, the
-plan stops. Even a matching Stripe reference remains unpaid until the Stripe
-adapter verifies it, seals evidence, and releases the call.
+Stop on missing or ambiguous policy, credential reference, capability,
+counterparty, or idempotency material. Refuse raw card, wallet, provider-key, or
+bearer material. Never release the paid operation unless hosted execution and
+readback agree on a terminal successful charge.

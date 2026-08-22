@@ -2427,7 +2427,6 @@ dependencies = [
  "ring",
  "runx-contracts",
  "runx-parser",
- "runx-pay",
  "runx-receipts",
  "runx-runtime",
  "rusqlite",
@@ -2498,23 +2497,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_norway",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "runx-pay"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "ring",
- "runx-contracts",
- "runx-core",
- "runx-parser",
- "runx-receipts",
- "runx-runtime",
- "serde",
- "serde_json",
- "tempfile",
  "thiserror 2.0.20",
 ]
 

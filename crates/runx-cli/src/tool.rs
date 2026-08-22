@@ -68,7 +68,7 @@ fn run_search(
     let query = plan
         .ref_or_query
         .ok_or_else(|| ToolCliError::Usage("runx tool search requires a query".to_owned()))?;
-    let effects = crate::runtime::payment_effect_registry(env).map_err(|error| {
+    let effects = crate::runtime::runtime_effect_registry().map_err(|error| {
         ToolCliError::Internal(format!("failed to initialize runtime effects: {error}"))
     })?;
     let report = search_tools_with_effects(
@@ -105,7 +105,7 @@ fn run_inspect(
     let tool_roots = env_value(env, "RUNX_TOOL_ROOTS")
         .map(|value| split_env_paths(&value))
         .unwrap_or_default();
-    let effects = crate::runtime::payment_effect_registry(env).map_err(|error| {
+    let effects = crate::runtime::runtime_effect_registry().map_err(|error| {
         ToolCliError::Internal(format!("failed to initialize runtime effects: {error}"))
     })?;
     let report = inspect_tool_with_effects(

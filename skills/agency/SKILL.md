@@ -76,8 +76,9 @@ The done-check and the limit-check are measurable first. `advance` folds cumulat
 totals (acts, spend) and the trusted planner overrides the model when a cap is
 breached: an over-cap turn fails regardless of what `ops-desk` proposed. The narrative
 judgment from `ops-desk` chooses the move within the caps; it never widens them.
-Spend caps tracked in the projection are the v1 path; routing spend through `spend`
-and runx-pay reservations is the stronger enforcement.
+Spend caps tracked in the projection govern agency planning. Real money movement
+must route through the hosted `spend` contract, where the private payment runtime
+performs authoritative reservation and aggregate-limit enforcement.
 
 ## Contention
 

@@ -1,76 +1,26 @@
 ---
 name: refund
-description: Execute a sealed-receipt-linked refund through a configured adapter with bounded authority, approval, idempotency, and provider readback.
+description: Refund one sealed payment through Runx Hosted with bounded authority, approval, idempotency, and readback.
 runx:
   category: payments
 ---
 
 # Refund
 
-Execute one refund against a real, sealed provider charge without losing the
-lineage that makes a reversal auditable. A refund is not a negative spend and it
-is not justified by an order id alone: the plan must link the original money
-movement, provider proof, prior refunds, selected rail, payer, amount, and
-single-use refund authority.
+`refund` is the public reversal contract. It sends an opaque original receipt
+reference, bounded refund request, complete parent authority, settlement family,
+and stable idempotency key to Runx Hosted, then requires provider readback.
 
-The default builds the verified plan for a real `mpp` or `stripe` family,
-performs one approved provider reversal, and requires stable readback before a
-receipt can say the refund settled. The named family runners remain explicit
-plan surfaces; `mock` is never selected by default.
+Runx Hosted resolves and verifies the original settlement, accounts for prior
+refunds, attenuates authority, holds provider credentials, executes the reversal,
+handles ambiguous outcomes, and records the private ledger. OSS contains none of
+that implementation; it only governs the generic provider mutation and seals the
+returned evidence.
 
-## When to use it
+## Operator guide
 
-Use `refund` after a charge or payment receipt has sealed provider evidence and
-the caller has a bounded refund `AuthorityTerm`. Use `dispute-respond` for a
-provider dispute packet and `spend` for a new outbound payment. Do not use a
-refund to compensate for missing original settlement proof.
-
-## How it works
-
-1. Resolve the opaque original receipt reference through Runx's configured,
-   proof-verifying receipt store.
-2. Verify the original amount, currency, payer, rail, provider proof refs, and
-   money-movement status.
-3. Discover and verify every receipt linked to that charge, then account for
-   prior refunds so the request cannot exceed the remaining refundable ceiling.
-4. Validate a complete typed, single-use refund authority for the same payer,
-   currency, rail, realm, and operation.
-5. Produce the exact adapter handoff and idempotency binding for the selected
-   `mock`, `mpp`, or `stripe` path.
-
-References and redacted evidence are deliberately separate: the reference
-finds the receipt, while the verified receipt content proves what may be
-reversed. Caller-authored booleans such as `verified: true` have no authority.
-
-## Inputs and result
-
-The caller supplies only the opaque original receipt ref, requested amount and
-reason, selected rail, requested counterparty, and full parent refund
-authority. Runx resolves the original receipt and refund history itself and
-derives idempotency from those verified receipts plus the exact authority and
-request. Caller-supplied receipt bodies, refunded totals, sealing flags, and
-idempotency seeds are not accepted.
-
-The result is a provider-refund plan and exact adapter handoff with original
-receipt binding, remaining ceiling, authority validation, redactions, and
-`provider_status: not_called`. It is not a settled-refund receipt.
-
-## Stop conditions
-
-- Refuse an unsealed, reference-only, proofless, wrong-payer, wrong-rail, or
-  wrong-currency original charge.
-- Refuse a refund above the original amount or remaining amount after prior
-  reversals.
-- Refuse incomplete, expired, wildcard, reference-only, or reusable authority.
-- Stop on amount, payer, counterparty, rail, operation, or idempotency drift.
-- Do not expose raw provider credentials or claim money moved without provider
-  execution and readback.
-
-## Example
-
-A sealed Stripe charge proves `5000 AUD` moved and prior refund evidence shows
-`1000 AUD` already reversed. A bounded authority permits one additional refund
-to the original payer. The skill may prepare a `2000 AUD` Stripe handoff; it
-must block `4500 AUD`, a different payer, or a receipt with no settlement proof.
-The successful plan still says no money moved until the Stripe adapter proves
-the reversal.
+Use this skill only for a real, sealed original payment. Grants for
+`payment.refund` and `payment.refund.read` are required. Stop on missing receipt
+lineage, amount/currency/payer/rail drift, incomplete authority, reused
+idempotency, or unavailable readback. Never accept raw provider credentials or
+claim a refund from a request acknowledgement alone.

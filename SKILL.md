@@ -11,7 +11,7 @@ links:
   doctrine: https://runx.ai/doctrine
   what: https://runx.ai/what
   source: https://github.com/runxhq/runx
-license: MIT
+license: Apache-2.0
 ---
 
 # runx
@@ -247,5 +247,5 @@ Consequential run pattern:
 - source: <https://github.com/runxhq/runx>
 - credentials: <https://github.com/runxhq/runx/blob/main/oss/docs/credentials.md>
 
-Open source. MIT licensed. Self-hostable. Works with local agents and hosted
+Open source. Apache-2.0 licensed. Self-hostable. Works with local agents and hosted
 surfaces because the skill contract, authority model, and receipts are portable.

@@ -276,7 +276,7 @@ function validatePacket(packet, schema) {
   checks.push({
     name: "json_schema_validation",
     passed: schemaErrors.length === 0,
-    detail: schemaErrors.length === 0 ? "output validates against schemas/extraction.schema.json" : schemaErrors.slice(0, 6).join("; "),
+    detail: schemaErrors.length === 0 ? "output validates against packets/extraction.schema.json" : schemaErrors.slice(0, 6).join("; "),
   });
   packet.validation.valid = checks.every((check) => check.passed);
   return {

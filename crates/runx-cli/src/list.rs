@@ -58,14 +58,14 @@ impl From<serde_json::Error> for ListCliError {
 
 pub fn run_list_command(
     plan: &ListPlan,
-    env: &BTreeMap<String, String>,
+    _env: &BTreeMap<String, String>,
     cwd: &Path,
 ) -> Result<String, ListCliError> {
     let options = RunxListOptions {
         root: cwd.to_path_buf(),
         requested_kind: requested_kind(plan.kind),
     };
-    let effects = crate::runtime::payment_effect_registry(env)?;
+    let effects = crate::runtime::runtime_effect_registry()?;
     let mut report = list_authoring_primitives_with_effects(&options, &effects)?;
     report
         .items
@@ -166,8 +166,8 @@ mod tests {
         )
         .map_err(runtime_io("writing package fixture"))?;
         fs::write(
-            root.join("packets/payment.quote.json"),
-            r#"{"x-runx-packet-id":"runx.payment.quote.v1"}"#,
+            root.join("packets/example.result.json"),
+            r#"{"x-runx-packet-id":"runx.example.result.v1"}"#,
         )
         .map_err(runtime_io("writing packet fixture"))?;
 
@@ -184,7 +184,7 @@ mod tests {
         let report = serde_json::from_str::<TestListReport>(&output)?;
         assert_eq!(report.schema, "runx.list.v1");
         assert_eq!(report.items[0].kind, "packet");
-        assert_eq!(report.items[0].name, "runx.payment.quote.v1");
+        assert_eq!(report.items[0].name, "runx.example.result.v1");
 
         fs::remove_dir_all(root).map_err(runtime_io("removing packet fixture"))?;
         Ok(())

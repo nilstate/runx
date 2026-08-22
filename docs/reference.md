@@ -33,23 +33,13 @@ Then inspect the emitted receipt. The full walkthrough is in
 [skill-to-graph.md](skill-to-graph.md).
 For governed code changes, see [issue-to-pr.md](issue-to-pr.md).
 
-## Zero-Funded Payment Dogfood
+## Payment Boundary Proof
 
-Run the local payment dogfood lane without a funded wallet, hosted account, or
-provider keys:
-
-```bash
-pnpm x402:dogfood:local
-```
-
-This proves runx payment authority, refusal, receipt signing, offline receipt
-verification, and the documented x402 upstream/x402-rs/CDP/Stripe SPT preflight
-shape. It does not claim real x402 settlement or a real Stripe charge; live
-conformance lanes require dedicated funded testnet wallets or provider test
-credentials. No-secret preflight reports use `can_run: false` and `missing_env`
-to name live blockers without printing secret values. See
-[docs/demos.md](demos.md#payment-demo-gate) for the full split between
-local dogfood and live protocol conformance.
+Run `runx harness skills/mock-pay` for deterministic local simulation and
+`runx harness skills/spend/fixtures/hosted-contract.yaml` for the public hosted
+contract. The former always records `money_moved: false`; the latter uses
+fixture provider responses and does not prove live settlement. Real rail
+dogfood, credentials, ledger state, recovery, and finality live in Runx Hosted.
 
 ## Requirements
 

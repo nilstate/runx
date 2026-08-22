@@ -1,97 +1,53 @@
 skill: mock-charge
-version: "0.3.1"
+version: "0.5.0"
 catalog:
   kind: graph
-  audience: operator
+  audience: builder
   visibility: internal
   role: harness-fixture
-  part_of:
-    - runx/charge
+  part_of: [runx/charge]
+  execution: read
+  completion: runtime_receipt
+  requires_adapter: false
+  approval: none
 harness:
   cases:
-    - name: mock-charge-mock-path
-      runner: mock
+    - name: mock-charge-remains-local
       inputs:
-        mcp_tool_call:
-          tool: search.paid
-          arguments:
-            query: runx
-        provider_policy:
-          policy_ref: policy:provider-demo
-          price_minor: 125
-          currency: USD
-          accepted_settlement_families:
-            - mock
-          counterparty: provider:demo
-          realm: test
-        returned_credential:
-          family: mock
-          credential_ref: credential:mock:paid-search-001
-        verify_capability_ref: capability:charge-verify:paid-search-001
-        idempotency_seed: paid-search-001
+        mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+        provider_policy: { price_minor: 125, currency: USD, counterparty: provider:demo }
+        idempotency_seed: mock-charge-001
       expect:
         status: sealed
-        steps:
-          - charge
+        steps: [simulate]
         step_outputs:
-          charge:
+          simulate:
             subset:
-              charge_plan:
-                data:
-                  decision: ready_for_provider_verification
-                  provider_status: not_called
-                  receipt_status: not_sealed
-                  forwarding_status: not_forwarded
-        receipt:
-          schema: runx.receipt.v1
-          state: sealed
-          disposition: closed
+              charge_result:
+                data: { status: simulated, settlement_family: mock, amount_minor: 125, currency: USD }
+        receipt: { schema: runx.receipt.v1 }
 runners:
   mock:
     default: true
     type: graph
     inputs:
-      mcp_tool_call:
-        type: json
-        packet: runx.payment.tool_call.v1
-        required: true
-        description: Inbound MCP operation request.
-      provider_policy:
-        type: json
-        packet: runx.payment.charge_policy.v1
-        required: true
-        description: Provider-owned price and settlement-family policy.
-      returned_credential:
-        type: json
-        packet: runx.payment.credential_reference.v1
-        required: true
-        description: Opaque mock credential family and reference.
-      verify_capability_ref:
-        type: string
-        required: true
-        description: Single-use verifier capability reference.
-      idempotency_seed:
-        type: string
-        required: true
-        description: Stable caller-owned challenge seed.
+      mcp_tool_call: { type: json, required: true }
+      provider_policy: { type: json, required: true }
+      idempotency_seed: { type: string, required: true }
     graph:
-      name: mock-charge
-      result_from: [charge]
+      name: mock-charge-local
+      result_from: [simulate]
       steps:
-        - id: charge
-          skill: ../charge
-          runner: mock
+        - id: simulate
           inputs:
             mcp_tool_call: $input.mcp_tool_call
             provider_policy: $input.provider_policy
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
             idempotency_seed: $input.idempotency_seed
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: plan
-        resource_family: effect
-        settlement_family: mock
-        receipt_before_forward_required: true
-        runtime_forwarding_enabled: false
+          run:
+            type: javascript
+            module: mock-charge.mjs
+            export: simulateCharge
+            outputs:
+              charge_result: object
+          artifacts:
+            named_emits: { charge_result: charge_result }

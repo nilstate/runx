@@ -3,7 +3,7 @@
   "version": "0.8.2",
   "description": "Runx CLI - native governed runtime for agent skills, tools, graphs, and packets.",
   "private": false,
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "engines": {
     "node": ">=18"

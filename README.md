@@ -3,7 +3,7 @@
 <p align="center"><strong>the governed runtime for agent skills</strong></p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square"></a>
+  <a href="LICENSE"><img alt="license: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-111111?style=flat-square"></a>
   <a href="https://www.npmjs.com/package/@runxhq/cli"><img alt="npm @runxhq/cli" src="https://img.shields.io/npm/v/@runxhq/cli?style=flat-square&color=cb3837&label=%40runxhq%2Fcli"></a>
   <a href="https://github.com/runxhq/runx/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/runxhq/runx/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://runx.ai/x"><img alt="catalog" src="https://img.shields.io/badge/catalog-runx.ai%2Fx-ff2e88?style=flat-square"></a>
@@ -309,13 +309,6 @@ claims:
 | `examples/github-mcp-hero` | Governed read succeeds and an out-of-scope write is refused | `sh examples/github-mcp-hero/run.sh` |
 | `examples/http-graph` | Native governed HTTP executes against a local fixture | `sh examples/http-graph/run.sh` |
 | `examples/openapi-graph` | An OpenAPI operation uses the external-adapter lane | `sh examples/openapi-graph/run.sh` |
-| `examples/governed-spend/skills/overspend-refused` | Spend above authority is refused before rail execution | `runx harness examples/governed-spend/skills/overspend-refused` |
-
-For deterministic payment dogfood without funded wallets or provider keys:
-
-```bash
-pnpm demos:check
-```
 
 See [Demos](docs/demos.md).
 
@@ -384,8 +377,8 @@ notes explain how the repository arrived here but do not override it.
 
 Setup, focused test selection, and sign-off rules are in
 [CONTRIBUTING.md](CONTRIBUTING.md). Security policy:
-[SECURITY.md](SECURITY.md). Runx is MIT licensed; see [LICENSE](LICENSE).
+[SECURITY.md](SECURITY.md). Runx is Apache-2.0 licensed; see [LICENSE](LICENSE).
 
 ---
 
-<p align="center"><sub>built in Rust &middot; MIT &middot; <a href="https://runx.ai">runx.ai</a></sub></p>
+<p align="center"><sub>built in Rust &middot; Apache-2.0 &middot; <a href="https://runx.ai">runx.ai</a></sub></p>

@@ -8,20 +8,19 @@ settlement health, and payment reconciliation.
 Money state changes only after rail proof becomes a receipt/effect. UI state,
 provider optimism, local API success, or agent narration is not settlement.
 
-The ops desk spine is rail-neutral. It selects the governed payment family and
-the configured rail adapter, then stops at the right approval or signature gate.
-Rail-specific funding, wallet, webhook, dispute, and settlement details belong
-in the rail adapter skill or the product-owned operator skill that owns that rail.
+The ops desk spine is rail-neutral. It selects a public payment contract and
+stops at the right approval gate. Real payment execution always requires Runx
+Hosted. Rail-specific funding, wallet, webhook, dispute, settlement, recovery,
+and ledger details stay in the private hosted implementation.
 
 ## Common Lanes
 
-- `payment.quote`: read-only or proposal; no approval.
-- `payment.reserve`: authority reservation or cap check; may require approval.
-- `payment.fund`: money movement; approval or payer signature required.
-- `payment.payout`: money movement; approval required.
+- `payment.charge`: hosted seller-side settlement; approval required.
+- `payment.spend`: hosted buyer-side settlement; approval required.
+- `payment.invoice.settle`: hosted invoice settlement; approval required.
+- `payment.x402`: hosted x402 settlement; approval required.
 - `payment.refund`: money movement; approval required.
-- `payment.target_update`: rail configuration; approval required.
-- `payment.reconcile`: read-only unless it creates corrections.
+- matching `.read` operations: provider readback; no mutation approval.
 - `payment.dispute_response`: customer/provider communication; approval
   depends on whether it submits externally.
 
@@ -29,7 +28,7 @@ in the rail adapter skill or the product-owned operator skill that owns that rai
 
 A payment rail adapter must make these fields explicit before settlement:
 
-- operation: quote, reserve, fund, payout, refund, dispute, or reconcile;
+- operation: charge, spend, invoice settlement, x402, refund, dispute, or readback;
 - amount and currency;
 - payer, payee, counterparty, or refund target;
 - network, rail, account, asset, or processor path;

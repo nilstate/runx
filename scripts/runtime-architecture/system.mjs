@@ -245,7 +245,6 @@ export function checkTypedCapabilityPlane(findings) {
   const roots = [
     "crates/runx-runtime/src/tool_catalogs/native",
     "crates/runx-runtime/src/effects",
-    "crates/runx-pay/src/planning",
   ];
   const forbidden = [
     /\bstruct\s+NativeInput\b/u,

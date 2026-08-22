@@ -112,11 +112,11 @@ describe("registry skill native fetch", () => {
     try {
       await mkdir(projectDir, { recursive: true });
       const registryDir = path.join(tempDir, "registry");
-      const lockEntry = await officialSkillLock("runx/spend");
+      const lockEntry = await officialSkillLock("runx/agency");
       publishLocalRegistrySkill({
         registryDir,
-        subject: path.resolve("skills/spend/SKILL.md"),
-        profile: path.resolve("skills/spend/X.yaml"),
+        subject: path.resolve("skills/agency/SKILL.md"),
+        profile: path.resolve("skills/agency/X.yaml"),
         owner: "acme",
         version: lockEntry.version,
         env,
@@ -124,15 +124,15 @@ describe("registry skill native fetch", () => {
 
       const result = runNativeSkill(env, [
         "inspect",
-        `acme/spend@${lockEntry.version}`,
+        `acme/agency@${lockEntry.version}`,
         "--registry",
         registryDir,
         "--json",
       ]);
       const output = parseJsonOutput(result, 0);
       expect((output as { status?: string }).status).toBe("ok");
-      const skillPath = findRegistrySkillCachePath(globalHomeDir, "acme/spend");
-      for (const stage of ["pay-quote", "pay-reserve", "pay-fulfill-rail"]) {
+      const skillPath = findRegistrySkillCachePath(globalHomeDir, "acme/agency");
+      for (const stage of ["plan", "reduce"]) {
         expect(
           (await stat(
             path.join(skillPath, "graph", stage, "X.yaml"),

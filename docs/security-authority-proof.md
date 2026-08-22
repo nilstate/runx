@@ -95,45 +95,18 @@ the operator grant as a typed `runx:grant:*` reference under
 admitted the effect; it is not a credential body and does not carry provider
 token material.
 
-## Payment Aggregate Spend Caps
+## Hosted Payment Authority
 
-Spend-class payment authority must carry an aggregate cap (`max_per_run_units`
-or `max_per_period_units`) in addition to any per-call cap. Both aggregate caps
-are enforced by the runtime spend ledger.
+OSS payment skills cross the same generic provider-permission effect boundary
+as other hosted operations. Their receipts record the grant that admitted the
+hosted call and the provider evidence returned to the graph. They do not prove
+the private payment runtime's internal reservation or ledger state.
 
-Per-run: each run's reserved spend is bounded by the smaller of the two
-declared caps, because a run never spans more than one period.
-
-Per-period: when the authority also declares a `period` of `daily`, `weekly`,
-or `monthly`, every spend is additionally reserved against a durable
-calendar-window ledger in the effect state file (`RUNX_EFFECT_STATE_PATH` or
-`<receipt dir>/effect-state.json`), so the cap holds across runs inside one
-UTC window. An unrecognized `period` value fails closed at admission instead
-of becoming an unenforced annotation. A period cap declared without a `period`
-is enforced only as the run-level clamp, and the period ledger only exists
-when an effect state path is configured — operators who want cross-run spend
-bounds must configure a stable state path.
-
-Period ledgers are bounded during the same locked state transaction that
-records the reservation. For each family/authority/currency/period tuple, the
-runtime retains at least the active reservation window and the immediately
-previous window, keeps any newer windows already present, and prunes older
-period-ledger rows. Idempotency entries, finality records, finality events,
-consumed capabilities, and run-spend ledgers are not pruned by this retention
-pass. Out-of-order reservations remain safe because retention is computed
-relative to the reservation being recorded, not relative to the newest window
-currently present in the file.
-
-When a payment effect is admitted, the sealed step receipt records authority
-evidence under `receipt.authority.grant_refs`: the admitted payment authority
-reference and the spend-capability reference. Replay receipts preserve those
-same authority references so a replayed sealed effect remains verifiable
-against the same admitted authority boundary.
-
-Payment supervisor proofs bind the original settlement evidence through
-`evidence_digest`. Rebinding a stored proof to a re-sealed receipt first
-re-verifies that the stored evidence still hashes to the sealed digest, so
-evidence altered after issuance is rejected instead of silently re-blessed.
+Runx Hosted owns payment-specific attenuation, aggregate caps, reservations,
+single-use capabilities, idempotency, recovery, finality, and private ledger
+state. A hosted payment operation must fail closed before calling a rail when
+those checks cannot be proven. OSS never substitutes local effect state or a
+caller-authored settlement claim for hosted admission and provider readback.
 
 ## Offline Receipt Verification
 
@@ -179,10 +152,6 @@ view before exercising privileged effects. It reports:
   `RUNX_RECEIPT_SIGN_ISSUER_TYPE`
 - receipt verification readiness and whether it resolves from the explicit
   `RUNX_RECEIPT_VERIFY_*` pair or the complete signing identity
-- the resolved effect-state path when configured
-- the consequence when `RUNX_EFFECT_STATE_PATH` is unset: cross-run spend caps,
-  payment idempotency, and effect replay recovery are not durable without a
-  configured state path
 - provider-permission grant readiness, reporting either authenticated Connect
   discovery or the complete host-injected `RUNX_PROVIDER_PERMISSION_GRANT_ID`,
   JSON-array `RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES`, and

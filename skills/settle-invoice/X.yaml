@@ -1,14 +1,6 @@
 skill: settle-invoice
-version: "0.4.0"
-catalog:
-  kind: graph
-  audience: public
-  visibility: public
-  role: canonical
-  execution: execute
-  completion: provider_readback
-  requires_adapter: true
-  approval: required
+version: "0.5.0"
+catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   settle-invoice:
     default: true
@@ -17,142 +9,32 @@ runners:
       invoice_ref: { type: string, required: true }
       amount_minor: { type: number, required: true }
       currency: { type: string, required: true }
-      payee:
-        type: object
-        required: true
-        schema:
-          required: [name, party_ref]
-          additionalProperties: false
-          properties:
-            name: { type: string, minLength: 1, maxLength: 256 }
-            party_ref: { type: string, minLength: 1, maxLength: 512 }
-            settlement_ref: { type: string, minLength: 1, maxLength: 512 }
-            settlement_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-          oneOf:
-            - required: [settlement_ref]
-              not: { required: [settlement_digest] }
-            - required: [settlement_digest]
-              not: { required: [settlement_ref] }
-      rail:
-        type: string
-        required: true
-        description: Real configured settlement rail; mock remains available only from the explicit plan runner and spend test runner.
-        schema: { enum: [mpp, stripe-spt] }
+      payee: { type: object, required: true }
+      rail: { type: string, required: true }
       rail_profile_ref: { type: string, required: true }
-      parent_payment_authority:
-        type: json
-        packet: runx.authority_term.v1
-        required: true
+      parent_payment_authority: { type: json, required: true }
       idempotency_seed: { type: string, required: true }
       realm: { type: string, required: false }
-      payment_admission: { type: object, required: false }
     graph:
-      name: settle-invoice-execute
-      result_from: [spend]
+      name: settle-invoice-hosted
+      result_from: [readback]
       steps:
-        - id: prepare
-          tool: payment.invoice_plan
-          inputs:
-            invoice_ref: $input.invoice_ref
-            amount_minor: $input.amount_minor
-            currency: $input.currency
-            payee: $input.payee
-            rail: $input.rail
-            rail_profile_ref: $input.rail_profile_ref
-            parent_payment_authority: $input.parent_payment_authority
-            idempotency_seed: $input.idempotency_seed
-            realm: $input.realm
-            payment_admission: $input.payment_admission
-        - id: spend
-          when:
-            field: prepare.settlement_plan.data.decision
-            equals: ready_for_spend
-          skill: ../spend
-          runner: spend
+        - id: settle
+          tool: provider.mutate
           mutation: true
+          idempotency_key: $input.idempotency_seed
+          scopes: [payment.invoice.settle]
+          policy: { provider_permission: { verb: write } }
           inputs:
-            rail: $input.rail
-          context:
-            payment_signal: prepare.settlement_plan.data.downstream.inputs.payment_signal
-            parent_payment_authority: prepare.settlement_plan.data.downstream.inputs.parent_payment_authority
-            rail_profile_ref: prepare.settlement_plan.data.downstream.inputs.rail_profile_ref
-            idempotency_seed: prepare.settlement_plan.data.downstream.inputs.idempotency_seed
-            realm: prepare.settlement_plan.data.downstream.inputs.realm
-            payment_admission: prepare.settlement_plan.data.downstream.inputs.payment_admission
-
-  plan:
-    type: graph
-    inputs:
-      invoice_ref:
-        type: string
-        required: true
-        description: Stable opaque invoice reference.
-      amount_minor:
-        type: number
-        required: true
-        description: Positive invoice amount in minor currency units.
-      currency:
-        type: string
-        required: true
-        description: Uppercase ISO 4217 currency code.
-      payee:
-        type: object
-        required: true
-        description: Payee name, party_ref, and exactly one opaque settlement_ref or sha256 settlement_digest.
-        schema:
-          required: [name, party_ref]
-          additionalProperties: false
-          properties:
-            name: { type: string, minLength: 1, maxLength: 256 }
-            party_ref: { type: string, minLength: 1, maxLength: 512 }
-            settlement_ref: { type: string, minLength: 1, maxLength: 512 }
-            settlement_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-          oneOf:
-            - required: [settlement_ref]
-              not: { required: [settlement_digest] }
-            - required: [settlement_digest]
-              not: { required: [settlement_ref] }
-      rail:
-        type: string
-        required: true
-        description: "Executable canonical spend rail: mock, mpp, or stripe-spt."
-      rail_profile_ref:
-        type: string
-        required: true
-        description: Configured profile reference for the selected rail.
-      parent_payment_authority:
-        type: json
-        packet: runx.authority_term.v1
-        required: true
-        description: Full typed parent payment AuthorityTerm; a reference alone is refused.
-      idempotency_seed:
-        type: string
-        required: true
-        description: Stable caller-owned settlement seed.
-      realm:
-        type: string
-        required: false
-        description: Expected payment realm.
-      payment_admission:
-        type: object
-        required: false
-        description: Bounded hosted admission and settlement identity.
-        schema:
-          additionalProperties: true
-    graph:
-      name: settle-invoice
-      result_from: [prepare]
-      steps:
-        - id: prepare
-          tool: payment.invoice_plan
-          inputs:
-            invoice_ref: $input.invoice_ref
-            amount_minor: $input.amount_minor
-            currency: $input.currency
-            payee: $input.payee
-            rail: $input.rail
-            rail_profile_ref: $input.rail_profile_ref
-            parent_payment_authority: $input.parent_payment_authority
-            idempotency_seed: $input.idempotency_seed
-            realm: $input.realm
-            payment_admission: $input.payment_admission
+            operation: payment.invoice.settle
+            target: $input.invoice_ref
+            expected_provider: $input.rail
+            idempotency_key: $input.idempotency_seed
+            result_fields: [payment_ref, invoice_ref, amount_minor, currency, status]
+            input: { invoice_ref: $input.invoice_ref, amount_minor: $input.amount_minor, currency: $input.currency, payee: $input.payee, rail_profile_ref: $input.rail_profile_ref, parent_payment_authority: $input.parent_payment_authority, realm: $input.realm }
+        - id: readback
+          tool: provider.read
+          scopes: [payment.invoice.read]
+          policy: { provider_permission: { verb: read } }
+          inputs: { operation: payment.invoice.read, target: $input.invoice_ref, expected_provider: $input.rail, result_fields: [payment_ref, invoice_ref, amount_minor, currency, status] }
+          context: { input: settle.provider_operation.data.result, expected_result: settle.provider_operation.data.result }

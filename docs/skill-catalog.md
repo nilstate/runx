@@ -146,7 +146,7 @@ evidence, not copied into the repo by default.
 | `data` | `data-store`, `run-history`, `sql-analyst` |
 | `growth` | `crm-cleanup`, `lead-enrichment`, `lead-router`, `nitrosend` |
 | `ops` | `github-sync`, `governed-outbound`, `chief-of-staff`, `issue-intake`, `issue-triage`, `n8n-handoff`, `ops-desk`, `postmortem-maker`, `send-as`, `zapier-handoff` |
-| `payments` | `charge`, `dispute-respond`, `mock-pay`, `mock-refund`, `mpp-pay`, `mpp-refund`, `purchase-approval`, `refund`, `settle-invoice`, `spend`, `stripe-pay`, `stripe-refund`, `x402-pay` |
+| `payments` | `charge`, `dispute-respond`, `mock-charge`, `mock-pay`, `mock-refund`, `purchase-approval`, `refund`, `settle-invoice`, `spend`, `stripe-pay`, `x402-pay` |
 | `research` | `ecosystem-brief`, `research` |
 | `security` | `cve-audit`, `sbom-maker`, `vuln-triage`, `vuln-disclosure`, `data-subject-request`, `least-privilege`, `audit-receipt`, `redact-pii`, `sign-receipt`, `vault-unseal` |
 

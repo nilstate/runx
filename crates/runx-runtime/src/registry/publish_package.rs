@@ -176,6 +176,28 @@ mod tests {
     };
 
     #[test]
+    fn publish_package_accepts_a_manual_only_registry_listing()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        fs::write(
+            temp.path().join("SKILL.md"),
+            "---\nname: manual-only\ndescription: Manual-only registry fixture.\n---\n# Manual only\n",
+        )?;
+
+        let package = prepare_registry_publish_package(RegistryPublishPackageRequest {
+            subject: temp.path().to_str().ok_or("temporary path is not UTF-8")?,
+            profile: None,
+            env: &BTreeMap::new(),
+            cwd: temp.path(),
+        })?;
+
+        assert!(package.profile_document().is_none());
+        assert!(package.package_files().is_empty());
+        assert_eq!(package.metadata().name, "manual-only");
+        Ok(())
+    }
+
+    #[test]
     fn publish_package_projects_validated_source_without_a_second_walk()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;

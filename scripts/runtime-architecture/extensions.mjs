@@ -23,12 +23,7 @@ export function checkExternalAdapterOwnership(findings) {
     }
   }
 
-  const standaloneSidecars = new Map([
-    [
-      "skills/spend/graph/pay-fulfill-rail/tools/stripe-spt-fulfill-adapter.mjs",
-      "runx-architecture-allow: portable-external-adapter-sidecar",
-    ],
-  ]);
+  const standaloneSidecars = new Map();
   for (const root of ["examples", "scripts", "skills"]) {
     const absoluteRoot = path.join(workspaceRoot, root);
     for (const filePath of existsSync(absoluteRoot) ? walk(absoluteRoot) : []) {
@@ -120,7 +115,6 @@ export function checkGeneratedMirrorOwnership(findings) {
     "packages/cli/skills",
     "packages/cli/tools",
     "scripts/registry-publish-summary.ts",
-    "examples/governed-spend/verify.mjs",
     "scripts/generate-runtime-catalog-adapter-oracles.ts",
     "scripts/generate-runtime-mcp-oracles.ts",
     "scripts/generate-a2a-adapter-fixtures.ts",

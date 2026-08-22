@@ -10,7 +10,7 @@ fn every_official_runner_prepares_through_the_cli_runtime() -> Result<(), Box<dy
 {
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let skills_root = repo_root.join("skills");
-    let effects = runx_cli::runtime::payment_effect_registry(&BTreeMap::new())?;
+    let effects = runx_cli::runtime::runtime_effect_registry()?;
     let mut failures = Vec::new();
     let mut directories = fs::read_dir(&skills_root)?
         .filter_map(Result::ok)

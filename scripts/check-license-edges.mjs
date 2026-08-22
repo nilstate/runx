@@ -140,7 +140,7 @@ function checkManifestComplete() {
     if (!entry) {
       fail(`crate ${crateName} is missing from crate_classes`);
     }
-    if (!["mit-oss", "private"].includes(entry.class)) {
+    if (!["apache-oss", "private"].includes(entry.class)) {
       fail(`crate ${crateName} has invalid class ${entry.class}`);
     }
     if (!entry.decision || !entry.phase1_state) {
@@ -210,7 +210,7 @@ function scanRoots(manifest) {
   }
   const dirs = packageDirsByName();
   return Object.entries(manifest.crate_classes ?? {})
-    .filter(([, entry]) => entry.class === "mit-oss")
+    .filter(([, entry]) => entry.class === "apache-oss")
     .map(([crateName]) => dirs.get(crateName))
     .filter(Boolean)
     .flatMap((crateDir) => [path.join(crateDir, "src"), path.join(crateDir, "tests")])
@@ -257,7 +257,7 @@ function checkEdges() {
   const violations = [];
   for (const node of metadata.resolve?.nodes ?? []) {
     const pkg = packagesById.get(node.id);
-    if (!pkg || classByName.get(pkg.name) !== "mit-oss") continue;
+    if (!pkg || classByName.get(pkg.name) !== "apache-oss") continue;
     for (const dependency of node.deps ?? []) {
       const depPkg = packagesById.get(dependency.pkg);
       if (depPkg && privateCrates.has(depPkg.name)) {

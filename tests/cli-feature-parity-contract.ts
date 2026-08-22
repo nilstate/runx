@@ -70,7 +70,6 @@ const commandAnnotations: Readonly<Record<string, CommandAnnotation>> = {
   policy: annotation("none", ["policy", "cli-presentation"], ["policy.inspect.validate", "policy.lint.validate"]),
   publish: annotation("external-stub", ["receipts", "cli-presentation"], ["publish.validate"]),
   kernel: annotation("local-runtime", ["graph-runtime", "cli-presentation"], ["kernel.validate"]),
-  payment: annotation("local-runtime", ["authority", "cli-presentation"], ["payment.validate"]),
   parser: annotation("local-runtime", ["parser", "cli-presentation"], ["parser.validate"]),
   doctor: annotation("filesystem", ["doctor", "cli-presentation"], ["doctor.validate"]),
   data: annotation("filesystem", ["data", "cli-presentation"], ["data.validate"]),

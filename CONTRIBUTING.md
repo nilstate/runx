@@ -4,7 +4,7 @@ Thanks for considering a contribution. This document covers the contribution wor
 
 ## Licensing
 
-runx is licensed under the MIT License, Copyright (c) 2026 nilstate. By contributing, you agree that your contributions will be licensed under the same license. See [LICENSE](./LICENSE) for the full text.
+runx is licensed under the Apache License, Version 2.0, Copyright 2026 nilstate. By contributing, you agree that your contributions will be licensed under the same license. See [LICENSE](./LICENSE) for the full text.
 
 ## Developer Certificate of Origin (DCO)
 

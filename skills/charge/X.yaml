@@ -1,344 +1,36 @@
 skill: charge
-version: "0.5.0"
-catalog:
-  kind: graph
-  audience: operator
-  visibility: public
-  role: canonical
-  execution: execute
-  completion: provider_readback
-  requires_adapter: true
-  approval: required
-input_definitions:
-  mcp_tool_call:
-    type: json
-    packet: runx.payment.tool_call.v1
-    required: true
-    description: Inbound MCP operation request.
-  provider_policy:
-    type: json
-    packet: runx.payment.charge_policy.v1
-    required: true
-    description: Provider-owned price and settlement-family policy.
-  returned_credential:
-    type: json
-    packet: runx.payment.credential_reference.v1
-    required: true
-    description: Settlement family and one opaque credential reference.
-  verify_capability_ref:
-    type: string
-    required: true
-    description: Single-use provider verification capability reference.
-    schema: { minLength: 1, maxLength: 512 }
-  idempotency_seed:
-    type: string
-    required: true
-    description: Stable caller-owned challenge idempotency material.
-    schema: { minLength: 1, maxLength: 256 }
+version: "0.6.0"
+catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   charge:
     default: true
     type: graph
     inputs:
-      mcp_tool_call: { definition: mcp_tool_call }
-      provider_policy: { definition: provider_policy }
-      returned_credential: { definition: returned_credential }
-      verify_capability_ref: { definition: verify_capability_ref }
-      idempotency_seed: { definition: idempotency_seed }
+      mcp_tool_call: { type: json, required: true, description: Inbound paid operation request. }
+      provider_policy: { type: json, required: true, description: Hosted charge policy. }
+      returned_credential: { type: json, required: true, description: Opaque hosted settlement credential reference. }
+      verify_capability_ref: { type: string, required: true, description: Single-use hosted verification capability reference. }
+      idempotency_seed: { type: string, required: true, description: Stable caller-owned idempotency material. }
     graph:
-      name: charge-settle
-      result_from: [mpp-readback, stripe-readback]
+      name: charge-hosted
+      result_from: [readback]
       steps:
-        - id: select-mpp
-          tool: data.compare
-          inputs: { actual: $input.returned_credential.family, expected: mpp }
-        - id: mpp-plan
-          when: { field: select-mpp.comparison.data.equal, equals: true }
-          skill: .
-          runner: mpp
-          inputs:
-            mcp_tool_call: $input.mcp_tool_call
-            provider_policy: $input.provider_policy
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
-            idempotency_seed: $input.idempotency_seed
-        - id: mpp-settle
-          when: { field: select-mpp.comparison.data.equal, equals: true }
+        - id: settle
           tool: provider.mutate
           mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.charge]
-          policy:
-            provider_permission: { verb: write }
+          policy: { provider_permission: { verb: write } }
           inputs:
             operation: payment.charge
             target: $input.provider_policy.counterparty
             expected_provider: $input.returned_credential.family
             idempotency_key: $input.idempotency_seed
             result_fields: [charge_ref, settlement_family, status, credential_ref]
-            expected_result: { settlement_family: mpp, status: settled }
-            input:
-              settlement_family: mpp
-              charge_plan: $input.mpp_charge_plan
-          context:
-            mpp_charge_plan: mpp-plan.charge_plan.data
-        - id: mpp-readback
-          when: { field: select-mpp.comparison.data.equal, equals: true }
+            input: { mcp_tool_call: $input.mcp_tool_call, provider_policy: $input.provider_policy, credential_ref: $input.returned_credential.credential_ref, verify_capability_ref: $input.verify_capability_ref }
+        - id: readback
           tool: provider.read
           scopes: [payment.charge.read]
-          policy:
-            provider_permission: { verb: read }
-          inputs:
-            operation: payment.charge.read
-            target: $input.provider_policy.counterparty
-            expected_provider: $input.returned_credential.family
-            result_fields: [charge_ref, settlement_family, status, credential_ref]
-          context:
-            input: mpp-settle.provider_operation.data.result
-            expected_result: mpp-settle.provider_operation.data.result
-
-        - id: select-stripe
-          tool: data.compare
-          inputs: { actual: $input.returned_credential.family, expected: stripe }
-        - id: stripe-plan
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          skill: .
-          runner: stripe
-          inputs:
-            mcp_tool_call: $input.mcp_tool_call
-            provider_policy: $input.provider_policy
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
-            idempotency_seed: $input.idempotency_seed
-        - id: stripe-settle
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          tool: provider.mutate
-          mutation: true
-          idempotency_key: $input.idempotency_seed
-          scopes: [payment.charge]
-          policy:
-            provider_permission: { verb: write }
-          inputs:
-            operation: payment.charge
-            target: $input.provider_policy.counterparty
-            expected_provider: $input.returned_credential.family
-            idempotency_key: $input.idempotency_seed
-            result_fields: [charge_ref, settlement_family, status, credential_ref]
-            expected_result: { settlement_family: stripe, status: settled }
-            input:
-              settlement_family: stripe
-              charge_plan: $input.stripe_charge_plan
-          context:
-            stripe_charge_plan: stripe-plan.charge_plan.data
-        - id: stripe-readback
-          when: { field: select-stripe.comparison.data.equal, equals: true }
-          tool: provider.read
-          scopes: [payment.charge.read]
-          policy:
-            provider_permission: { verb: read }
-          inputs:
-            operation: payment.charge.read
-            target: $input.provider_policy.counterparty
-            expected_provider: $input.returned_credential.family
-            result_fields: [charge_ref, settlement_family, status, credential_ref]
-          context:
-            input: stripe-settle.provider_operation.data.result
-            expected_result: stripe-settle.provider_operation.data.result
-
-  mock:
-    type: graph
-    inputs:
-      mcp_tool_call:
-        definition: mcp_tool_call
-      provider_policy:
-        definition: provider_policy
-      returned_credential:
-        definition: returned_credential
-      verify_capability_ref:
-        definition: verify_capability_ref
-      idempotency_seed:
-        definition: idempotency_seed
-    examples:
-      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
-        provider_policy:
-          price_minor: 125
-          currency: USD
-          accepted_settlement_families: [mock]
-          counterparty: provider:demo
-          realm: test
-        returned_credential: { family: mock, credential_ref: credential:mock:paid-search-001 }
-        verify_capability_ref: capability:charge-verify:paid-search-001
-        idempotency_seed: paid-search-001
-    graph:
-      name: charge-mock-plan
-      result_from: [finalize]
-      steps:
-        - id: price
-          skill: graph/charge-price
-          runner: price
-          inputs:
-            mcp_tool_call: $input.mcp_tool_call
-            provider_policy: $input.provider_policy
-        - id: challenge
-          skill: graph/charge-challenge
-          runner: challenge
-          inputs:
-            idempotency_seed: $input.idempotency_seed
-          context:
-            charge_price_packet: price.charge_price_packet.data
-        - id: verify
-          skill: graph/charge-verify
-          runner: verify
-          inputs:
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
-            settlement_family: mock
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: finalize
-          tool: payment.charge_plan
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            charge_verification_request: verify.charge_verification_request.data
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: plan
-        settlement_family: mock
-        receipt_before_forward_required: true
-        runtime_forwarding_enabled: false
-  mpp:
-    default: false
-    type: graph
-    inputs:
-      mcp_tool_call:
-        definition: mcp_tool_call
-      provider_policy:
-        definition: provider_policy
-      returned_credential:
-        definition: returned_credential
-      verify_capability_ref:
-        definition: verify_capability_ref
-      idempotency_seed:
-        definition: idempotency_seed
-    examples:
-      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
-        provider_policy:
-          price_minor: 125
-          currency: USD
-          accepted_settlement_families: [mpp]
-          counterparty: provider:demo
-          realm: test
-        returned_credential: { family: mpp, credential_ref: credential:mpp:paid-search-001 }
-        verify_capability_ref: capability:charge-verify:paid-search-001
-        idempotency_seed: paid-search-001
-    graph:
-      name: charge-mpp-plan
-      result_from: [finalize]
-      steps:
-        - id: price
-          skill: graph/charge-price
-          runner: price
-          inputs:
-            mcp_tool_call: $input.mcp_tool_call
-            provider_policy: $input.provider_policy
-        - id: challenge
-          skill: graph/charge-challenge
-          runner: challenge
-          inputs:
-            idempotency_seed: $input.idempotency_seed
-          context:
-            charge_price_packet: price.charge_price_packet.data
-        - id: verify
-          skill: graph/charge-verify
-          runner: verify
-          inputs:
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
-            settlement_family: mpp
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: finalize
-          tool: payment.charge_plan
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            charge_verification_request: verify.charge_verification_request.data
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: plan
-        settlement_family: mpp
-        receipt_before_forward_required: true
-        runtime_forwarding_enabled: false
-  stripe:
-    default: false
-    type: graph
-    inputs:
-      mcp_tool_call:
-        definition: mcp_tool_call
-      provider_policy:
-        definition: provider_policy
-      returned_credential:
-        definition: returned_credential
-      verify_capability_ref:
-        definition: verify_capability_ref
-      idempotency_seed:
-        definition: idempotency_seed
-    examples:
-      - mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
-        provider_policy:
-          price_minor: 125
-          currency: USD
-          accepted_settlement_families: [stripe]
-          counterparty: provider:demo
-          realm: test
-        returned_credential: { family: stripe, credential_ref: credential:stripe:paid-search-001 }
-        verify_capability_ref: capability:charge-verify:paid-search-001
-        idempotency_seed: paid-search-001
-    graph:
-      name: charge-stripe-plan
-      result_from: [finalize]
-      steps:
-        - id: price
-          skill: graph/charge-price
-          runner: price
-          inputs:
-            mcp_tool_call: $input.mcp_tool_call
-            provider_policy: $input.provider_policy
-        - id: challenge
-          skill: graph/charge-challenge
-          runner: challenge
-          inputs:
-            idempotency_seed: $input.idempotency_seed
-          context:
-            charge_price_packet: price.charge_price_packet.data
-        - id: verify
-          skill: graph/charge-verify
-          runner: verify
-          inputs:
-            returned_credential: $input.returned_credential
-            verify_capability_ref: $input.verify_capability_ref
-            settlement_family: stripe
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            idempotency: challenge.charge_challenge_packet.data.idempotency
-        - id: finalize
-          tool: payment.charge_plan
-          context:
-            charge_price_packet: price.charge_price_packet.data
-            charge_challenge_packet: challenge.charge_challenge_packet.data
-            charge_verification_request: verify.charge_verification_request.data
-    runx:
-      payment_authority:
-        direction: provider_charge
-        phase: plan
-        settlement_family: stripe
-        receipt_before_forward_required: true
-        runtime_forwarding_enabled: false
+          policy: { provider_permission: { verb: read } }
+          inputs: { operation: payment.charge.read, target: $input.provider_policy.counterparty, expected_provider: $input.returned_credential.family, result_fields: [charge_ref, settlement_family, status, credential_ref] }
+          context: { input: settle.provider_operation.data.result, expected_result: settle.provider_operation.data.result }

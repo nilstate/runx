@@ -60,21 +60,6 @@ const steps = [
     ],
   },
   {
-    label: "prove rust payment runtime",
-    command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-pay", "--test", "integration", "--", "execution"],
-  },
-  {
-    label: "prove rust Stripe SPT payment runtime",
-    command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-pay", "--test", "integration", "--", "stripe_spt"],
-  },
-  {
-    label: "prove native x402 mock dogfood CLI",
-    command: cargo,
-    args: ["test", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-cli", "--test", "integration", "--", "x402_native_dogfood"],
-  },
-  {
     label: "build workspace packages",
     command: pnpm,
     args: ["build"],
@@ -85,7 +70,7 @@ const steps = [
     args: ["doctor", "--json"],
   },
   {
-    label: "prove payment skill profiles",
+    label: "prove hosted payment boundary and local simulators",
     command: pnpm,
     args: ["exec", "vitest", "run", "tests/payment-skill-profile-validation.test.ts"],
   },

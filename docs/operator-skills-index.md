@@ -147,9 +147,8 @@ Refer to the ["Add A Project Operator Skill Only When"](./operator-skills.md) se
 
 ## Mock vs. Live Lanes
 
-The internal packages `mock-charge`, `mock-pay`, `mock-refund`, `mpp-charge`,
-`mpp-pay`, `mpp-refund`, `stripe-charge`, and `stripe-refund` are deterministic
-or rail-specific runtime paths. `reflect-digest` is internal skill-improvement
-plumbing. They remain executable by exact graph reference and visible in
-receipts, but are excluded from ordinary operator discovery. Public skills own
-the terminal capability and select these paths explicitly.
+The internal packages `mock-charge`, `mock-pay`, and `mock-refund` are
+deterministic local harness fixtures. They never move money and remain excluded
+from ordinary operator discovery. Public payment skills are thin contracts that
+require Runx Hosted for real execution; no private rail package remains in OSS.
+`reflect-digest` is internal skill-improvement plumbing.

@@ -31,13 +31,15 @@ pnpm test:fast
 `test:fast` uses `vitest.fast.config.ts`. It includes package tests plus
 coverage for surviving TypeScript package boundaries.
 
-For canonical local runtime behavior, prefer the Rust lane directly. Payment,
-authority, receipt, harness, dogfood, registry, and policy-config changes need
-Rust coverage or a TS-free Rust CLI fixture:
+For canonical local runtime behavior, prefer the Rust lane directly. Authority,
+receipt, harness, registry, and policy-config changes need Rust coverage. The
+real-payment boundary is proved as hosted provider contracts; deterministic
+local payment behavior is limited to the three mock skill packages:
 
 ```bash
-cargo test --manifest-path crates/Cargo.toml -p runx-pay --test integration
-cargo test --manifest-path crates/Cargo.toml -p runx-cli --test integration -- x402_native_dogfood
+cargo test --manifest-path crates/Cargo.toml -p runx-cli --test integration
+runx harness skills/mock-pay
+runx harness skills/spend/fixtures/hosted-contract.yaml
 ```
 
 For one file:

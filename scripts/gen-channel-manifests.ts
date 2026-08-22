@@ -86,7 +86,7 @@ class Runx < Formula
   desc "${m.description}"
   homepage "${m.homepage}"
   version "${m.version}"
-  license "MIT"
+  license "Apache-2.0"
 
   on_macos do
     on_arm do
@@ -127,7 +127,7 @@ function renderScoop(m: Manifest): string {
     version: m.version,
     description: m.description,
     homepage: m.homepage,
-    license: "MIT",
+    license: "Apache-2.0",
     architecture: {
       "64bit": {
         url: archiveUrl(m, TARGETS.winX64),
@@ -173,7 +173,7 @@ PackageVersion: ${m.version}
 PackageLocale: en-US
 PackageName: runx
 Publisher: runxhq
-License: MIT
+License: Apache-2.0
 ShortDescription: ${m.description}
 PackageUrl: ${m.homepage}
 ManifestType: defaultLocale
@@ -211,7 +211,7 @@ pkgrel=1
 pkgdesc="${m.description}"
 arch=('x86_64' 'aarch64')
 url="${m.homepage}"
-license=('MIT')
+license=('Apache-2.0')
 provides=('runx')
 conflicts=('runx')
 source_x86_64=("${archiveUrl(m, TARGETS.linuxX64)}")

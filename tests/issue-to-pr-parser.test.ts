@@ -49,19 +49,25 @@ describe("operator-first issue-to-PR contract", () => {
     expect(stepIds(manifest.runners.host)).toEqual([
       "host-work",
       "admit-host-result",
-      "publish",
-      "finalize-hold",
+      "verify-publication",
+      "publish-pr",
+      "finalize-published",
+      "verify-local",
+      "finalize-local",
       "finalize-blocked",
     ]);
     expect(stepIds(manifest.runners.resume)).toEqual([
       "admit-host-result",
-      "publish",
-      "finalize-hold",
+      "verify-publication",
+      "publish-pr",
+      "finalize-published",
+      "verify-local",
+      "finalize-local",
       "finalize-blocked",
     ]);
     expect(stepIds(manifest.runners.publish)).toEqual([
+      "verify",
       "publish-pr",
-      "readback-pr",
       "finalize",
     ]);
 
@@ -73,8 +79,8 @@ describe("operator-first issue-to-PR contract", () => {
       outputs: { host_result: "object" },
     });
     expect(graph(manifest.runners.publish).steps).toMatchObject([
+      { id: "verify", skill: ".", runner: "verify" },
       { id: "publish-pr", tool: "provider.mutate" },
-      { id: "readback-pr", tool: "provider.read" },
       { id: "finalize", run: { type: "javascript" } },
     ]);
 

@@ -1,0 +1,26 @@
+name: charge-hosted-contract
+kind: skill
+target: ..
+runner: charge
+operator_journeys:
+  - { mode: standalone, confusors: [spend, refund], request: Charge this exact paid call., expected_outcome: Require hosted settlement and return provider readback. }
+  - mode: composed
+    request: Continue this admitted charge.
+    expected_outcome: Reuse supplied policy and idempotency evidence.
+    prior_evidence: [The admitted charge policy supplied by the caller.]
+    must_not_repeat: [Do not mint a second charge identity.]
+inputs:
+  mcp_tool_call: { tool: search.paid, arguments: { query: runx } }
+  provider_policy: { price_minor: 125, currency: USD, counterparty: "provider:demo" }
+  returned_credential: { family: mpp, credential_ref: "credential:test" }
+  verify_capability_ref: "capability:test"
+  idempotency_seed: charge-test-001
+caller:
+  approvals: { "provider-effect:sha256:94b9afa39ef2dd2d133a289c8e4f079a65e869bb0107b43e4e72858f44b8c029": true }
+  provider_responses:
+    principal_id: charge-fixture
+    grants: [{ grant_id: charge-fixture, provider: mpp, scopes: [payment.charge, payment.charge.read] }]
+    operations:
+      - { grant_id: charge-fixture, operation: payment.charge, target: "provider:demo", access: mutate, result: { charge_ref: charge_test_001, settlement_family: mpp, status: settled, credential_ref: "credential:test" } }
+      - { grant_id: charge-fixture, operation: payment.charge.read, target: "provider:demo", access: read, result: { charge_ref: charge_test_001, settlement_family: mpp, status: settled, credential_ref: "credential:test" } }
+expect: { status: sealed, receipt: { schema: runx.receipt.v1 } }

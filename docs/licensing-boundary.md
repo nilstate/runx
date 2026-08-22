@@ -8,7 +8,8 @@ OSS crates may consume local credential material, enforce declared authority,
 redact credential references, write receipt-safe observations, and act as a
 credential-free client of the hosted grant and provider-operation API. OSS
 crates must not broker third-party OAuth, custody hosted secrets, issue verified
-hosted grants, or implement a provider gateway.
+hosted grants, implement a provider gateway, or implement real payment planning,
+reservation, rails, ledgers, refunds, recovery, or finality.
 
 The local credential path is intentionally small: a skill declares provider,
 auth modes, and delivery names; OSS resolves an explicit profile, project
@@ -31,12 +32,15 @@ brokerage and hosted credential custody.
   hosted grant lifecycle; it does not perform OAuth brokerage. `runx credential`
   stores local profiles and non-secret bindings.
 - `runx-sdk` does not expose hosted connect-list APIs.
+- Public payment skills keep only thin v1 hosted operation contracts. Internal
+  `mock-*` packages are deterministic simulators and always report that no money
+  moved. There is no `runx-pay` crate or real payment rail in OSS.
 
 ## Denied OSS Surface
 
 The manifest at `docs/license-boundary.manifest.json` is the machine-readable
 guard input. It blocks hosted connect client identifiers, legacy connection
-keys, and private provider implementation names in MIT Rust crates, with the
+keys, and private provider implementation names in Apache-2.0 Rust crates, with the
 single negative fixture allowlist required by the guard tests.
 
 For TypeScript/JavaScript, `scripts/check-boundaries.mjs` additionally blocks
@@ -50,6 +54,12 @@ resolution, issuance, and revocation live in `../cloud/packages/auth` and the
 cloud/API wiring that depends on it. Public OSS documentation may describe the
 provider-neutral client contract but not private provider implementation
 details.
+
+Real payment admission, SDK integrations, rail calls, reservations, ledgers,
+refund accounting, recovery, and finality live in Runx Cloud payment packages.
+The OSS public contract and the private hosted operation use the same v1 Runx
+operation names; greenfield contracts are changed in place rather than forked
+into internal v2 variants.
 
 The complete public behavior is documented in
 [Credential Resolution](./credentials.md).

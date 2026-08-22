@@ -3,54 +3,49 @@
   "inventory_command": "rg -n 'oauth|RUNX_CONNECT|connection_id|material_ref|credential|auth' crates --glob '*.rs'",
   "crate_classes": {
     "runx-cli": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Keep MIT. The OSS CLI does not perform hosted connect brokerage."
+      "decision": "Keep Apache-2.0. The OSS CLI does not perform hosted connect brokerage or private payment execution."
     },
     "runx-contracts": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Provider-neutral contracts and credential-delivery envelope stay MIT."
+      "decision": "Provider-neutral contracts and credential-delivery envelope stay Apache-2.0."
     },
     "runx-contracts-derive": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Provider-neutral schema derivation stays MIT; no brokerage or provider calls."
+      "decision": "Provider-neutral schema derivation stays Apache-2.0; no brokerage or provider calls."
     },
     "runx-core": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Policy and authority enforcement stay MIT; no brokerage or provider calls."
+      "decision": "Policy and authority enforcement stay Apache-2.0; no brokerage or provider calls."
     },
     "runx-js-worker": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "The resource-bounded deterministic JavaScript worker stays MIT; it has no host or provider capabilities."
-    },
-    "runx-pay": {
-      "class": "mit-oss",
-      "phase1_state": "keep",
-      "decision": "Native payment governance and deterministic test effect helpers stay MIT; real rails, secrets, and provider calls remain hosted."
+      "decision": "The resource-bounded deterministic JavaScript worker stays Apache-2.0; it has no host or provider capabilities."
     },
     "runx-parser": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Skill parsing stays MIT."
+      "decision": "Skill parsing stays Apache-2.0."
     },
     "runx-receipts": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Receipt verification stays MIT."
+      "decision": "Receipt verification stays Apache-2.0."
     },
     "runx-runtime": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Keep MIT. Runtime owns local credential consumption, resolved delivery, process supervision, and redaction only."
+      "decision": "Keep Apache-2.0. Runtime owns local credential consumption, resolved delivery, process supervision, and redaction only."
     },
     "runx-sdk": {
-      "class": "mit-oss",
+      "class": "apache-oss",
       "phase1_state": "keep",
-      "decision": "Keep MIT. Hosted connect-list APIs are not exposed from the OSS SDK."
+      "decision": "Keep Apache-2.0. Hosted connect-list APIs are not exposed from the OSS SDK."
     }
   },
   "private_crate_names": [],
@@ -59,7 +54,17 @@
     "follow_up_spec": "cloud-connect-auth-private-home-v1",
     "notes": "Private broker for hosted provider OAuth, hosted connect HTTP, BYO custody, grant issuance, and grant revocation."
   },
+  "payment_private_home": {
+    "path": "../cloud/packages",
+    "notes": "Private payment admission, provider SDKs, rails, reservations, ledgers, refunds, recovery, and finality."
+  },
   "banned_identifiers": [
+    "runx_pay",
+    "PaymentEffect",
+    "PaymentFinality",
+    "PaymentLedger",
+    "RUNX_EFFECT_STATE_PATH",
+    "RUNX_HOSTED_EFFECT_STATE_BACKEND_JSON",
     "oauth_required",
     "oauth_poll",
     "authorize_url",
