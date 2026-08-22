@@ -76,8 +76,8 @@ fn parses_harness_graph_fixture_contract() -> Result<(), Box<dyn std::error::Err
     assert_eq!(
         receipt.child_receipt_refs,
         vec![
-            "runx:receipt:sha256:4b385acccfe98969da954185a43194ea5afaa457e35e966a87cc9b1f15131f0c",
-            "runx:receipt:sha256:c83da853972888f1066075b5f076ec3182731ce9d512cb4aee0cd0c4ea164e64"
+            "runx:receipt:sha256:f887483acb542dd8da0759fe2edaade15c52e2dfef7ea4bf535a19eafad3d1d4",
+            "runx:receipt:sha256:966a3a96a8e07fe46f6426543559cd8880fa700a1b6c18d464ea635b0341d033"
         ]
     );
     Ok(())

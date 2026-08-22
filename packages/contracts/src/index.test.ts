@@ -39,6 +39,9 @@ import {
   resolutionRequestSchema,
   resolutionResponseSchema,
   receiptV1Schema,
+  receiptClassSchema,
+  receiptPaidInvocationBindingSchema,
+  receiptEvidenceSchema,
   runSummaryV1Schema,
   runxContractSchemas,
   runxAuxiliarySchemas,
@@ -133,6 +136,9 @@ describe("@runxhq/contracts", () => {
     expect(externalAdapterHostResolutionFrameV1Schema).toBe(runxContractSchemas.externalAdapterHostResolution);
     expect(externalAdapterCancellationFrameV1Schema).toBe(runxContractSchemas.externalAdapterCancellation);
     expect(receiptV1Schema).toBe(runxContractSchemas.receipt);
+    expect(receiptClassSchema).toBeDefined();
+    expect(receiptPaidInvocationBindingSchema).toBeDefined();
+    expect(receiptEvidenceSchema).toBeDefined();
     expect(effectFinalityReceiptV1Schema).toBe(runxContractSchemas.effectFinalityReceipt);
     expect(doctorV1Schema).toBe(runxContractSchemas.doctor);
     expect(devV1Schema).toBe(runxContractSchemas.dev);
@@ -830,6 +836,7 @@ describe("@runxhq/contracts", () => {
         trigger_fingerprint: "sha256:trigger",
         content_hash: "sha256:content",
       },
+      class: "executed",
       subject: {
         kind: "skill",
         ref: { type: "harness", uri: "runx:harness:local-cli" },

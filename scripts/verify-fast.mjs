@@ -37,12 +37,21 @@ const rustX402FixturesBin = path.join(
   "debug",
   process.platform === "win32" ? "runx-x402-fixtures.exe" : "runx-x402-fixtures",
 );
+const rustReceiptCompositionFixturesBin = path.join(
+  cargoTargetDir,
+  "debug",
+  "examples",
+  process.platform === "win32"
+    ? "runx-receipt-composition-fixtures.exe"
+    : "runx-receipt-composition-fixtures",
+);
 
 const evalBinEnv = {
   RUNX_RUST_CLI_BIN: rustKernelBin,
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
   RUNX_SCHEMA_ARTIFACTS_BIN: rustSchemaArtifactsBin,
   RUNX_PAID_INVOCATION_FIXTURES_BIN: rustPaidInvocationFixturesBin,
+  RUNX_RECEIPT_COMPOSITION_FIXTURES_BIN: rustReceiptCompositionFixturesBin,
   RUNX_X402_FIXTURES_BIN: rustX402FixturesBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "verify-fast-test-key",
   RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
@@ -97,6 +106,8 @@ const rustBuild = await runStep(
     "runx-js-worker",
     "-p",
     "runx-contracts",
+    "-p",
+    "runx-receipts",
     "--features",
     "runx-runtime/cli-tool",
     "--bin",
@@ -109,6 +120,8 @@ const rustBuild = await runStep(
     "runx-schema-artifacts",
     "--bin",
     "runx-paid-invocation-fixtures",
+    "--example",
+    "runx-receipt-composition-fixtures",
     "--bin",
     "runx-x402-fixtures",
   ]),

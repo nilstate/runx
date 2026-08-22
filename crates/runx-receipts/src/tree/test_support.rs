@@ -1,6 +1,10 @@
 use std::collections::BTreeSet;
 
-use runx_contracts::{Receipt, ReceiptIssuer, Reference, ReferenceType};
+use runx_contracts::{
+    OfferRevisionRef, ParentInvocationBinding, PrincipalReference, Receipt, ReceiptClass,
+    ReceiptEvidence, ReceiptIssuer, ReceiptPaidInvocationBinding, Reference, ReferenceType,
+    Sha256Digest,
+};
 use serde::Deserialize;
 
 use super::{ReceiptProofContextProvider, ReceiptResolveResult, ReceiptResolver, ResolvedReceipt};
@@ -60,6 +64,64 @@ pub(super) fn proof_child(id: &str) -> Result<Receipt, serde_json::Error> {
     child_refs_mut(&mut receipt).clear();
     refresh_proof_digest_and_signature(&mut receipt)?;
     Ok(receipt)
+}
+
+pub(super) fn proof_composition_pair() -> Result<(Receipt, Receipt), serde_json::Error> {
+    let mut outer = proof_root()?;
+    child_refs_mut(&mut outer).clear();
+    outer.class = ReceiptClass::Mediated;
+    outer.subject.paid_invocation = Some(paid_binding("paid_outer", '7', None)?);
+
+    let parent_binding = ParentInvocationBinding {
+        invocation_id: "paid_outer".into(),
+        execution_digest: digest('7')?,
+    };
+    let expected = paid_binding("paid_inner", '8', Some(parent_binding))?;
+    let mut inner = proof_child("paid_inner_receipt")?;
+    inner.class = ReceiptClass::Executed;
+    inner.subject.paid_invocation = Some(expected.clone());
+    refresh_proof_digest_and_signature(&mut inner)?;
+
+    let mut receipt_ref = Reference::runx(ReferenceType::Receipt, &inner.id);
+    receipt_ref.locator = Some(inner.digest.clone());
+    outer.evidence = vec![ReceiptEvidence::InnerReceipt {
+        receipt_ref,
+        expected,
+    }];
+    refresh_proof_digest_and_signature(&mut outer)?;
+    Ok((outer, inner))
+}
+
+fn paid_binding(
+    invocation_id: &str,
+    package: char,
+    parent_binding: Option<ParentInvocationBinding>,
+) -> Result<ReceiptPaidInvocationBinding, serde_json::Error> {
+    let vendor_ref = PrincipalReference::new(Reference::runx(ReferenceType::Principal, "vendor-1"))
+        .ok_or_else(|| fixture_error("fixture principal reference is invalid"))?;
+    Ok(ReceiptPaidInvocationBinding {
+        invocation_id: invocation_id.into(),
+        vendor_ref,
+        offer_revision: OfferRevisionRef {
+            offer_id: "ocr-v1".into(),
+            revision: "2026-08-22.1".into(),
+            revision_digest: digest('4')?,
+            input_schema_digest: digest('2')?,
+            output_schema_digest: digest('3')?,
+        },
+        package_digest: digest(package)?,
+        input_digest: digest('1')?,
+        parent_binding,
+    })
+}
+
+pub(super) fn digest(value: char) -> Result<Sha256Digest, serde_json::Error> {
+    Sha256Digest::new(format!("sha256:{}", value.to_string().repeat(64)))
+        .ok_or_else(|| fixture_error("fixture digest is invalid"))
+}
+
+fn fixture_error(message: &str) -> serde_json::Error {
+    serde_json::Error::io(std::io::Error::other(message))
 }
 
 pub(super) fn link_child_digest(

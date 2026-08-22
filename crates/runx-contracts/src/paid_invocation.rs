@@ -331,6 +331,10 @@ pub enum PaidInvocationOutcomeGate {
 pub struct PaidInvocation {
     pub invocation_id: NonEmptyString,
     pub principal: PrincipalReference,
+    /// Authenticated principal that owns the sold execution capability.
+    /// This is distinct from `counterparty`, which identifies the endpoint or
+    /// payment-side resource used for this transaction leg.
+    pub vendor_ref: PrincipalReference,
     pub counterparty: PaymentReference,
     pub offer_revision: OfferRevisionRef,
     pub package_digest: Sha256Digest,
@@ -388,6 +392,8 @@ pub type PaidInvocationRefusalReason = BoundedString<512>;
 #[runx_schema(id = "runx.payment.quote_paid_invocation.request.v1")]
 pub struct QuotePaidInvocationRequest {
     pub principal: PrincipalReference,
+    /// Authenticated principal that owns the sold execution capability.
+    pub vendor_ref: PrincipalReference,
     pub counterparty: PaymentReference,
     pub offer_revision: OfferRevisionRef,
     pub package_digest: Sha256Digest,

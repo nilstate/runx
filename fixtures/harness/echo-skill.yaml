@@ -10,8 +10,8 @@ expect:
       message: hello from harness
   receipt:
     schema: runx.receipt.v1
-    body_digest: sha256:241eef460b2874a93faa907ffd50b2d25ee09c8361deec73284aabaacaef317b
-    receipt_digest: sha256:b76412293fc8e168854a122a31c7449edb40053c503118bb4a68e3a670c5dd6e
+    body_digest: sha256:0cba09f2805a73afd42284711d5fea023b9c7a8a6d8875564274d96d44505954
+    receipt_digest: sha256:25afa7219d9a8ae9fb03bb9d45263950bcb8b6c2131fe6895383c596f6f16017
     harness_id: hrn_echo-skill_default
     state: sealed
     disposition: closed

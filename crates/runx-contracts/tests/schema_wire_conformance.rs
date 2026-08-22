@@ -14,6 +14,7 @@ mod support;
 
 use corpora::set_field;
 use covered::covered;
+use runx_contracts::Receipt;
 use runx_contracts::policy_proof::{AuthorityProofCredentialMaterial, CredentialEnvelope};
 use serde_json::{Value, json};
 use support::{SchemaDirRetriever, committed_dir};
@@ -62,6 +63,27 @@ fn authority_proof_credential_material_rejects_legacy_provider_shaped_wire_key()
         json!("provider-ref-1"),
     );
     assert!(serde_json::from_value::<AuthorityProofCredentialMaterial>(legacy).is_err());
+}
+
+#[test]
+fn receipt_requires_an_exact_explicit_class() -> Result<(), String> {
+    let valid = corpora::receipt_corpus()
+        .into_iter()
+        .find_map(|(label, value)| (label == "minimal valid").then_some(value))
+        .ok_or("receipt corpus must contain a minimal valid case")?;
+    assert!(serde_json::from_value::<Receipt>(valid.clone()).is_ok());
+
+    let mut missing = valid.clone();
+    missing
+        .as_object_mut()
+        .ok_or("receipt corpus value must be an object")?
+        .remove("class");
+    assert!(serde_json::from_value::<Receipt>(missing).is_err());
+
+    let mut unknown = valid;
+    unknown["class"] = json!("legacy");
+    assert!(serde_json::from_value::<Receipt>(unknown).is_err());
+    Ok(())
 }
 
 fn legacy_provider_reference_key() -> String {

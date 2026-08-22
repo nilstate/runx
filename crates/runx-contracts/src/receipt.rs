@@ -21,7 +21,8 @@ use serde::{Deserialize, Serialize};
 use crate::schema::{IsoDateTime, NonEmptyString, RunxSchema};
 use crate::{
     ActForm, AuthorityAttenuation, AuthorityTerm, Closure, ClosureDisposition, CriterionBinding,
-    Decision, HashAlgorithm, Intent, JsonObject, Reference, RevisionDetails, VerificationDetails,
+    Decision, HashAlgorithm, Intent, JsonObject, OfferRevisionRef, ParentInvocationBinding,
+    PrincipalReference, Reference, RevisionDetails, Sha256Digest, VerificationDetails,
 };
 
 /// Logical schema name for the governance receipt.
@@ -156,6 +157,34 @@ pub struct ReceiptInputContext {
     pub value_hash: NonEmptyString,
 }
 
+/// What relationship this receipt proves for its subject outcome.
+///
+/// This class is orthogonal to the observed runner boundary in
+/// `ReceiptEnforcement`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ReceiptClass {
+    Executed,
+    Mediated,
+}
+
+/// Atomic paid-execution provenance signed into a receipt subject.
+///
+/// The grouped shape prevents partial vendor/package/input provenance. The
+/// paid `input_digest` is authoritative for the purchased business input;
+/// generic receipt commitments may describe other representations.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReceiptPaidInvocationBinding {
+    pub invocation_id: NonEmptyString,
+    pub vendor_ref: PrincipalReference,
+    pub offer_revision: OfferRevisionRef,
+    pub package_digest: Sha256Digest,
+    pub input_digest: Sha256Digest,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_binding: Option<ParentInvocationBinding>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Subject {
@@ -169,6 +198,19 @@ pub struct Subject {
     pub input_context: Option<ReceiptInputContext>,
     #[serde(default)]
     pub commitments: Vec<ReceiptCommitment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paid_invocation: Option<ReceiptPaidInvocationBinding>,
+}
+
+/// Signed receipt-to-receipt evidence. Generic execution lineage remains in
+/// `Lineage`; marketplace composition uses this typed evidence edge only.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ReceiptEvidence {
+    InnerReceipt {
+        receipt_ref: Reference,
+        expected: ReceiptPaidInvocationBinding,
+    },
 }
 
 /// Enforcement profile is hashed; the granted authority stays readable.
@@ -320,7 +362,7 @@ pub struct ReceiptSignature {
 /// `decisions[]` (the reasoning, with `proposed_intent` + `justification`) and
 /// `acts[]` (intent, success criteria, criterion bindings) are inline: the proof
 /// and the training signal are the same artifact. `metadata` is a runtime-local
-/// read aid (legacy skill name, source type, actor labels for local projection)
+/// read aid (display skill name, source type, actor labels for local projection)
 /// and is NOT part of the canonical signed body (the canonicalizer strips it).
 /// It is non-authoritative and must never be the source of a trust-bearing
 /// identity label. Display identity comes from signed fields:
@@ -338,6 +380,7 @@ pub struct Receipt {
     pub signature: ReceiptSignature,
     pub digest: NonEmptyString,
     pub idempotency: ReceiptIdempotency,
+    pub class: ReceiptClass,
     pub subject: Subject,
     pub authority: ReceiptAuthority,
     /// Inbound triggers for this run: `runx:signal:` references whose
@@ -348,6 +391,8 @@ pub struct Receipt {
     pub decisions: Vec<Decision>,
     #[serde(default)]
     pub acts: Vec<ReceiptAct>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<ReceiptEvidence>,
     pub seal: Seal,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage: Option<Lineage>,

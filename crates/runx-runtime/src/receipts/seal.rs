@@ -17,8 +17,8 @@ use runx_contracts::{
     ClosureDisposition, CredentialDeliveryObservation, CriterionBinding, CriterionStatus, Decision,
     DecisionChoice, DecisionInputs, DecisionJustification, FanoutReceiptSyncPoint, Intent,
     JsonObject, JsonValue, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct,
-    ReceiptAuthority, ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer, ReceiptSchema,
-    Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
+    ReceiptAuthority, ReceiptClass, ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer,
+    ReceiptSchema, Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
     json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
@@ -223,6 +223,7 @@ fn step_receipt_with_disposition_projection_authority_and_policy(
     );
     let mut receipt = build_unsealed_receipt(BuildReceipt {
         id: step_receipt_id(graph_name, step_id, attempt),
+        class: ReceiptClass::Executed,
         graph_name,
         node_id: step_id,
         kind: receipt_subject_kind::SKILL.into(),
@@ -786,6 +787,7 @@ fn build_graph_receipt(
     let child_identity = graph_child_identity(&children);
     let mut receipt = build_unsealed_receipt(BuildReceipt {
         id: format!("hrn_rcpt_{graph_name}"),
+        class: ReceiptClass::Executed,
         graph_name,
         node_id: "graph",
         kind: receipt_subject_kind::GRAPH.into(),
@@ -902,6 +904,7 @@ fn step_reason_code(disposition: &ClosureDisposition) -> String {
 
 struct BuildReceipt<'a> {
     id: String,
+    class: ReceiptClass,
     graph_name: &'a str,
     node_id: &'a str,
     kind: NonEmptyString,
@@ -951,6 +954,7 @@ impl UnsealedReceipt {
 fn build_unsealed_receipt(parts: BuildReceipt<'_>) -> UnsealedReceipt {
     let BuildReceipt {
         id,
+        class,
         graph_name,
         node_id,
         kind,
@@ -982,12 +986,14 @@ fn build_unsealed_receipt(parts: BuildReceipt<'_>) -> UnsealedReceipt {
         signature: placeholder_signature(),
         digest: "sha256:runtime-skeleton".into(),
         idempotency: idempotency(graph_name, node_id),
+        class,
         subject: subject(graph_name, node_id, kind),
         authority: authority_override
             .unwrap_or_else(|| authority(authority_grant_refs, authority_scope_refs)),
         signals,
         decisions,
         acts,
+        evidence: Vec::new(),
         seal,
         lineage: Some(lineage),
         metadata: None,
@@ -1055,6 +1061,7 @@ fn subject(graph_name: &str, node_id: &str, kind: NonEmptyString) -> Subject {
         ),
         input_context: None,
         commitments: Vec::new(),
+        paid_invocation: None,
     }
 }
 
@@ -1261,6 +1268,7 @@ pub(crate) fn domain_act_receipt(
     );
     let receipt = build_unsealed_receipt(BuildReceipt {
         id: step_receipt_id(graph_name, step_id, 1),
+        class: ReceiptClass::Executed,
         graph_name,
         node_id: step_id,
         kind: receipt_subject_kind::SKILL.into(),

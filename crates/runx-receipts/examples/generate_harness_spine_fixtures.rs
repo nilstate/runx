@@ -14,14 +14,15 @@ use runx_contracts::schema::NonEmptyString;
 use runx_contracts::{
     ActForm, AuthorityAttenuation, Closure, ClosureDisposition, CriterionBinding, CriterionStatus,
     Decision, DecisionChoice, DecisionInputs, DecisionJustification, HashAlgorithm, Intent,
-    Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority, ReceiptCommitment,
-    ReceiptCommitmentScope, ReceiptEnforcement, ReceiptIdempotency, ReceiptInputContext,
-    ReceiptIssuer, ReceiptIssuerType, ReceiptSchema, ReceiptSignature, Reference, ReferenceType,
-    Seal, SignatureAlgorithm, Subject, SuccessCriterion, receipt_subject_kind,
+    JsonValue, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct, ReceiptAuthority,
+    ReceiptCommitment, ReceiptCommitmentScope, ReceiptEnforcement, ReceiptIdempotency,
+    ReceiptInputContext, ReceiptIssuer, ReceiptIssuerType, ReceiptSchema, ReceiptSignature,
+    Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
+    receipt_subject_kind,
 };
 use runx_receipts::{
     canonical_receipt_body_digest, canonical_receipt_digest, canonical_receipt_json,
-    content_addressed_receipt_id,
+    canonical_stable_json, content_addressed_receipt_id,
 };
 use serde_json::{Value, json};
 
@@ -59,11 +60,7 @@ fn main() {
             oracle_case("receipt-abnormal", "harness-spine/receipt-abnormal.json", &abnormal),
         ],
     });
-    fs::write(
-        canonical.join("runx-receipt-c14n-v1.oracles.json"),
-        format!("{}\n", serde_json::to_string_pretty(&oracle).unwrap()),
-    )
-    .unwrap();
+    write_canonical_json(&canonical.join("runx-receipt-c14n-v1.oracles.json"), oracle);
 
     // Remove the retired old-shape oracle.
 
@@ -78,9 +75,14 @@ fn write_fixture(path: &Path, name: &str, description: &str, kind: &str, receipt
         "scope": "harness-spine",
         "expected": serde_json::to_value(receipt).unwrap(),
     });
+    write_canonical_json(path, wrapper);
+}
+
+fn write_canonical_json(path: &Path, value: Value) {
+    let value = serde_json::from_value::<JsonValue>(value).unwrap();
     fs::write(
         path,
-        format!("{}\n", serde_json::to_string_pretty(&wrapper).unwrap()),
+        format!("{}\n", canonical_stable_json(&value).unwrap()),
     )
     .unwrap();
 }
@@ -125,6 +127,7 @@ fn base(id: &str, kind: NonEmptyString, subject_id: &str) -> Receipt {
             trigger_fingerprint: format!("sha256:{}", "2".repeat(64)).into(),
             content_hash: format!("sha256:{}", "3".repeat(64)).into(),
         },
+        class: runx_contracts::ReceiptClass::Executed,
         subject: Subject {
             kind,
             reference: Reference::runx(ReferenceType::Harness, subject_id),
@@ -139,6 +142,7 @@ fn base(id: &str, kind: NonEmptyString, subject_id: &str) -> Receipt {
                 value: format!("sha256:{}", "4".repeat(64)).into(),
                 canonicalization: "runx.stable-json.v1".into(),
             }],
+            paid_invocation: None,
         },
         authority: ReceiptAuthority {
             actor_ref: Reference::runx(ReferenceType::Principal, "local_runtime"),
@@ -162,6 +166,7 @@ fn base(id: &str, kind: NonEmptyString, subject_id: &str) -> Receipt {
         signals: Vec::new(),
         decisions: Vec::new(),
         acts: Vec::new(),
+        evidence: Vec::new(),
         seal: Seal {
             disposition: ClosureDisposition::Closed,
             reason_code: "process_closed".into(),

@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use runx_contracts::{JsonObject, JsonValue, Receipt, ReferenceType};
+use runx_receipts::receipt_edge_references;
 
 use super::MAX_TREE_RECEIPTS;
 use crate::receipts::RuntimeReceiptSignaturePolicy;
@@ -14,11 +15,7 @@ pub(super) fn load_children(
     let mut children = Vec::new();
     let mut findings = Vec::new();
     let mut seen = BTreeSet::new();
-    let mut pending = root
-        .lineage
-        .as_ref()
-        .map(|lineage| lineage.children.clone())
-        .unwrap_or_default();
+    let mut pending = receipt_edge_references(root).cloned().collect::<Vec<_>>();
     while let Some(reference) = pending.pop() {
         if children.len() >= MAX_TREE_RECEIPTS {
             finding(
@@ -49,9 +46,7 @@ pub(super) fn load_children(
         }
         match store.read_exact_with_policy(receipt_id, policy) {
             Ok(receipt) => {
-                if let Some(lineage) = &receipt.lineage {
-                    pending.extend(lineage.children.clone());
-                }
+                pending.extend(receipt_edge_references(&receipt).cloned());
                 children.push(receipt);
             }
             Err(error) => finding(

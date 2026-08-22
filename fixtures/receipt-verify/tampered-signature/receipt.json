@@ -65,6 +65,7 @@
     "terms": []
   },
   "canonicalization": "runx.receipt.c14n.v1",
+  "class": "executed",
   "created_at": "2026-06-10T00:00:00Z",
   "decisions": [
     {
@@ -100,8 +101,8 @@
       "selected_harness_ref": null
     }
   ],
-  "digest": "sha256:e843a3e47631146b1dac7abae3c40adffc32b1ef3c167ed317b1d163afdb41a4",
-  "id": "sha256:fc1bb8c2027c1b0a76d8095a1d6c112e37a4f4d144991be4d505ec21314ccd39",
+  "digest": "sha256:5eda2427b84b8fbb97c1e6b5fc75ce65858d2d15cdd273567b1ad0245c713930",
+  "id": "sha256:19d4c3ef22caf1ac8e6f4bbaaefe4867c2424382970f20b3422d3c3f0e908b27",
   "idempotency": {
     "content_hash": "sha256:receipt-verify-production-verified-content",
     "intent_key": "sha256:receipt-verify-production-verified-intent",
@@ -109,7 +110,7 @@
   },
   "issuer": {
     "kid": "runx-cli-verify-fixture-key",
-    "public_key_sha256": "sha256:63ed95d660e07cb98ff0e163db81e165d32e0ff9717c6c430a477d6946c99614",
+    "public_key_sha256": "sha256:87ee73837d4ba020e074790b42767a34f435e8ef60f2d4c9daa773b7c4251a40",
     "type": "hosted"
   },
   "lineage": {
@@ -136,7 +137,7 @@
   "signals": [],
   "signature": {
     "alg": "Ed25519",
-    "value": "base64:eA_ArVNbtVLzPGXyAyhO6c9Ibd623vu5VSGFtoBTZaJAX4syLrbnr46DOLhhZh-KHe8bF1SYPFM8RXxHF_xCBA"
+    "value": "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
   },
   "subject": {
     "commitments": [],

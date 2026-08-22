@@ -20,7 +20,7 @@ pub use runx_contracts::{
 };
 pub use tree::{
     ReceiptProofContextProvider, ReceiptResolveResult, ReceiptResolver, ReceiptTreeConfig,
-    ResolvedReceipt, validate_receipt_tree, validate_receipt_tree_proof,
+    ResolvedReceipt, receipt_edge_references, validate_receipt_tree, validate_receipt_tree_proof,
     validate_receipt_tree_proof_with_resolver, validate_receipt_tree_with_resolver,
     verify_receipt_tree, verify_receipt_tree_proof, verify_receipt_tree_proof_with_resolver,
     verify_receipt_tree_with_resolver,

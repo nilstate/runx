@@ -2,8 +2,8 @@
 use std::collections::BTreeSet;
 
 use runx_contracts::{
-    ActForm, AuthorityAttenuation, Decision, ProofKind, Receipt, ReceiptAct, ReceiptCommitment,
-    Reference, ReferenceType, Seal,
+    ActForm, AuthorityAttenuation, Decision, ProofKind, Receipt, ReceiptAct, ReceiptClass,
+    ReceiptCommitment, ReceiptEvidence, Reference, ReferenceType, Seal,
 };
 
 mod finding;
@@ -71,10 +71,72 @@ impl Verifier {
         if let Some(lineage) = &receipt.lineage {
             self.check_child_receipt_refs("lineage.children", &lineage.children);
         }
+        self.check_marketplace_contract(receipt);
         self.check_effect_grant_evidence(receipt);
         self.check_acts(&receipt.acts);
         self.check_decisions(&receipt.decisions, &receipt.acts);
         self.check_seal_criteria(receipt, &receipt.seal);
+    }
+
+    fn check_marketplace_contract(&mut self, receipt: &Receipt) {
+        if !receipt.evidence.is_empty() && receipt.class != ReceiptClass::Mediated {
+            self.push(
+                ReceiptFindingCode::ReceiptEvidenceClassInvalid,
+                "evidence",
+                "inner receipt evidence is valid only on mediated receipts",
+            );
+        }
+        if !receipt.evidence.is_empty() && receipt.subject.paid_invocation.is_none() {
+            self.push(
+                ReceiptFindingCode::ReceiptPaidBindingMissing,
+                "subject.paid_invocation",
+                "composite receipts require the outer paid invocation binding",
+            );
+        }
+
+        let lineage_children = receipt
+            .lineage
+            .as_ref()
+            .map_or(&[][..], |lineage| lineage.children.as_slice());
+        let mut evidence_uris = BTreeSet::new();
+        for (index, evidence) in receipt.evidence.iter().enumerate() {
+            let ReceiptEvidence::InnerReceipt {
+                receipt_ref,
+                expected,
+            } = evidence;
+            let path = format!("evidence[{index}]");
+            if receipt_ref.reference_type != ReferenceType::Receipt {
+                self.push(
+                    ReceiptFindingCode::ChildReceiptRefInvalid,
+                    format!("{path}.receipt_ref.type"),
+                    "inner receipt evidence must use a receipt reference",
+                );
+            }
+            if !evidence_uris.insert(receipt_ref.uri.as_str()) {
+                self.push(
+                    ReceiptFindingCode::DuplicateReceiptEvidence,
+                    format!("{path}.receipt_ref"),
+                    "inner receipt evidence refs must be unique",
+                );
+            }
+            if lineage_children
+                .iter()
+                .any(|child| child.uri == receipt_ref.uri)
+            {
+                self.push(
+                    ReceiptFindingCode::InnerReceiptLineageConflict,
+                    format!("{path}.receipt_ref"),
+                    "a composite pair must use the evidence edge, not a duplicate lineage edge",
+                );
+            }
+            if expected.parent_binding.is_none() {
+                self.push(
+                    ReceiptFindingCode::InnerReceiptParentBindingMissing,
+                    format!("{path}.expected.parent_binding"),
+                    "inner receipt evidence must bind the outer paid invocation",
+                );
+            }
+        }
     }
 
     fn check_authority_attenuation(&mut self, path: &str, attenuation: &AuthorityAttenuation) {

@@ -277,7 +277,13 @@ export {
 
 export {
   receiptV1Schema,
+  receiptClassSchema,
+  receiptPaidInvocationBindingSchema,
+  receiptEvidenceSchema,
   type ReceiptContract,
+  type ReceiptClassContract,
+  type ReceiptPaidInvocationBindingContract,
+  type ReceiptEvidenceContract,
   validateReceiptContract,
   RECEIPT_CANONICALIZATION,
 } from "./schemas/receipt.js";

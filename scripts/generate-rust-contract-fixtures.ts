@@ -76,6 +76,7 @@ type ContractScope =
   | "execution"
   | "host-protocol"
   | "paid-invocation"
+  | "receipt-composition"
   | "x402-v2";
 
 const selectedScope = scopeArg();
@@ -88,6 +89,7 @@ if (
   && selectedScope !== "execution"
   && selectedScope !== "host-protocol"
   && selectedScope !== "paid-invocation"
+  && selectedScope !== "receipt-composition"
   && selectedScope !== "x402-v2"
 ) {
   throw new Error(`unsupported contract fixture scope: ${selectedScope}`);
@@ -115,8 +117,36 @@ if (selectedScope === undefined || selectedScope === "host-protocol") {
 if (selectedScope === undefined || selectedScope === "paid-invocation") {
   runPaidInvocationFixtures();
 }
+if (selectedScope === undefined || selectedScope === "receipt-composition") {
+  runReceiptCompositionFixtures();
+}
 if (selectedScope === undefined || selectedScope === "x402-v2") {
   runX402Fixtures();
+}
+
+function runReceiptCompositionFixtures(): void {
+  const outputRoot = path.join(fixtureRoot, "receipt-composition");
+  const configured = process.env.RUNX_RECEIPT_COMPOSITION_FIXTURES_BIN;
+  const command = configured || (process.platform === "win32" ? "cargo.exe" : "cargo");
+  const args = configured
+    ? ["--out", outputRoot]
+    : [
+        "run",
+        "--quiet",
+        "--manifest-path",
+        path.join(workspaceRoot, "crates", "Cargo.toml"),
+        "-p",
+        "runx-receipts",
+        "--example",
+        "runx-receipt-composition-fixtures",
+        "--",
+        "--out",
+        outputRoot,
+      ];
+  if (check) args.push("--check");
+  const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });
+  if (result.error) throw result.error;
+  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
 }
 
 function runPaidInvocationFixtures(): void {

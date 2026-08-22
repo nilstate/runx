@@ -409,7 +409,8 @@ fn quote_request(idempotency_key: &str, parent: Option<Value>) -> Value {
         "input_digest": digest('1'),
         "offer_revision": offer_revision(),
         "package_digest": digest('7'),
-        "principal": reference("principal", "runx:principal:buyer-1")
+        "principal": reference("principal", "runx:principal:buyer-1"),
+        "vendor_ref": reference("principal", "runx:principal:vendor-1")
     });
     if let Some(parent) = parent
         && let Some(object) = value.as_object_mut()
@@ -453,6 +454,7 @@ fn invocation(
         "package_digest": digest('7'),
         "payment_state": payment_state,
         "principal": reference("principal", "runx:principal:buyer-1"),
+        "vendor_ref": reference("principal", "runx:principal:vendor-1"),
         "updated_at": "2026-08-22T09:01:00Z"
     });
     if settled && let Some(object) = value.as_object_mut() {
@@ -620,7 +622,6 @@ fn manifest(options: &Options, vectors: &[Vector]) -> io::Result<Value> {
         })
         .collect::<io::Result<Vec<_>>>()?;
     Ok(json!({
-        "compatibility": "strict_v1",
         "deny_unknown_fields": true,
         "schema": "runx.payment.paid_invocation.fixtures.v1",
         "schemas": schemas,

@@ -288,11 +288,13 @@ fn base(id: &str) -> Receipt {
             trigger_fingerprint: format!("sha256:{}", "2".repeat(64)).into(),
             content_hash: format!("sha256:{}", "3".repeat(64)).into(),
         },
+        class: runx_contracts::ReceiptClass::Executed,
         subject: Subject {
             kind: receipt_subject_kind::SKILL.into(),
             reference: Reference::runx(ReferenceType::Harness, id),
             input_context: None,
             commitments: Vec::new(),
+            paid_invocation: None,
         },
         authority: ReceiptAuthority {
             actor_ref: Reference::runx(ReferenceType::Principal, "local_runtime"),
@@ -316,6 +318,7 @@ fn base(id: &str) -> Receipt {
         signals: Vec::new(),
         decisions: Vec::new(),
         acts: Vec::new(),
+        evidence: Vec::new(),
         seal: Seal {
             disposition: ClosureDisposition::Closed,
             reason_code: "closed".into(),

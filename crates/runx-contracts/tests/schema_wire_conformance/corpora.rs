@@ -1237,6 +1237,7 @@ pub(super) fn receipt_corpus() -> Vec<(&'static str, Value)> {
             "trigger_fingerprint": "sha256:trigger",
             "content_hash": "sha256:content",
         },
+        "class": "executed",
         "subject": {
             "kind": "skill",
             "ref": a_ref(),
@@ -1305,6 +1306,7 @@ pub(super) fn receipt_corpus() -> Vec<(&'static str, Value)> {
         ("missing id", drop_field(valid.clone(), "id")),
         ("missing seal", drop_field(valid.clone(), "seal")),
         ("missing digest", drop_field(valid.clone(), "digest")),
+        ("missing class", drop_field(valid.clone(), "class")),
         (
             "empty id rejected",
             set_field(valid.clone(), "id", json!("")),

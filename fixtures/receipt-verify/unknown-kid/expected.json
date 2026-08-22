@@ -1,31 +1,36 @@
 {
-  "schema": "runx.verify_verdict.v1",
-  "receipt_id": "sha256:2c3b94c6be1f20464433c981aa0f4785da797f9907a31bf6e161479e778ffa29",
-  "valid": false,
-  "digest": {
-    "status": "valid",
-    "expected": "sha256:92b8d2e1173da811fdb12a72b0ddc444d91e7c907d087b503e3ccc1c723264a6",
-    "actual": "sha256:92b8d2e1173da811fdb12a72b0ddc444d91e7c907d087b503e3ccc1c723264a6"
-  },
   "content_address": {
-    "status": "valid",
-    "expected": "sha256:2c3b94c6be1f20464433c981aa0f4785da797f9907a31bf6e161479e778ffa29",
-    "actual": "sha256:2c3b94c6be1f20464433c981aa0f4785da797f9907a31bf6e161479e778ffa29"
+    "actual": "sha256:19d4c3ef22caf1ac8e6f4bbaaefe4867c2424382970f20b3422d3c3f0e908b27",
+    "expected": "sha256:bcd8b6072bf219ff004fd524287cf0e276da3eb8d44e6f97b0e90900a88b251e",
+    "status": "invalid"
   },
-  "signature": {
-    "mode": "production",
-    "status": "invalid",
-    "kid": "runx-cli-verify-unknown-key"
-  },
-  "lineage": {
-    "status": "unverified",
-    "message": "single receipt verification cannot prove receipt-tree lineage"
+  "digest": {
+    "actual": "sha256:5eda2427b84b8fbb97c1e6b5fc75ce65858d2d15cdd273567b1ad0245c713930",
+    "expected": "sha256:fb428c8ac7ebc0a34e1be38ebc5f0fef438ce5a648d7da5335a40c790d05360c",
+    "status": "invalid"
   },
   "findings": [
     {
+      "code": "seal_digest_mismatch",
+      "message": "receipt digest must match the canonical receipt body commitment",
+      "path": "digest"
+    },
+    {
       "code": "signature_key_missing",
-      "path": "issuer",
-      "message": "signature verifier could not resolve the issuer key"
+      "message": "signature verifier could not resolve the issuer key",
+      "path": "issuer"
     }
-  ]
+  ],
+  "lineage": {
+    "message": "single receipt verification cannot prove receipt-tree lineage",
+    "status": "unverified"
+  },
+  "receipt_id": "sha256:19d4c3ef22caf1ac8e6f4bbaaefe4867c2424382970f20b3422d3c3f0e908b27",
+  "schema": "runx.verify_verdict.v1",
+  "signature": {
+    "kid": "unknown-fixture-key",
+    "mode": "production",
+    "status": "invalid"
+  },
+  "valid": false
 }

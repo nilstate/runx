@@ -8,9 +8,37 @@ use crate::ReceiptFindingCode;
 
 use super::test_support::{
     DuplicateIdResolver, FixtureProofContexts, HiddenChildResolver, ResolverErrorResolver,
-    assert_finding, child_refs_mut, link_child_digest, proof_child, proof_root, reference,
-    refresh_proof_digest_and_signature,
+    assert_finding, child_refs_mut, link_child_digest, proof_child, proof_composition_pair,
+    proof_root, reference, refresh_proof_digest_and_signature,
 };
+
+#[test]
+fn strict_proof_accepts_digest_bound_composite() -> Result<(), serde_json::Error> {
+    let (outer, inner) = proof_composition_pair()?;
+    let proof_contexts = FixtureProofContexts::default();
+
+    let verification = verify_receipt_tree_proof(&outer, &[inner], &proof_contexts);
+
+    assert!(verification.valid, "{:?}", verification.findings);
+    Ok(())
+}
+
+#[test]
+fn strict_proof_rejects_swapped_inner_digest() -> Result<(), serde_json::Error> {
+    let (outer, mut inner) = proof_composition_pair()?;
+    inner.acts[0].summary = "alternate valid execution".into();
+    refresh_proof_digest_and_signature(&mut inner)?;
+    let proof_contexts = FixtureProofContexts::default();
+
+    let verification = verify_receipt_tree_proof(&outer, &[inner], &proof_contexts);
+
+    assert_finding(
+        &verification,
+        ReceiptFindingCode::ChildReceiptDigestMismatch,
+        "children[0].locator",
+    );
+    Ok(())
+}
 
 #[test]
 fn strict_tree_proof_accepts_root_and_child() -> Result<(), serde_json::Error> {
@@ -59,7 +87,7 @@ fn strict_tree_proof_rejects_extra_child() -> Result<(), serde_json::Error> {
 }
 
 #[test]
-fn strict_tree_proof_rejects_legacy_exact_id_child_ref() -> Result<(), serde_json::Error> {
+fn strict_tree_proof_rejects_untyped_exact_id_child_ref() -> Result<(), serde_json::Error> {
     let mut root = proof_root()?;
     let child = proof_child("hrn_rcpt_child_1")?;
     link_child_digest(&mut root, 0, &child)?;

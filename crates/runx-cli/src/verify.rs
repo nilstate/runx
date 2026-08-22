@@ -1,4 +1,4 @@
-// Module rationale: verify owns legacy receipt-tree checks plus the new single-receipt machine verdict.
+// Module rationale: verify owns receipt-directory tree checks plus the single-receipt machine verdict.
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt;
@@ -12,7 +12,8 @@ use ring::signature::{ED25519, UnparsedPublicKey};
 use runx_contracts::{Receipt, Reference, ReferenceType, sha256_prefixed};
 use runx_receipts::{
     ReceiptProofContext, ReceiptVerifySignatureMode, ReceiptVerifyVerdict,
-    SignatureVerificationFailure, SignatureVerifier, verify_receipt_document_verdict,
+    SignatureVerificationFailure, SignatureVerifier, receipt_edge_references,
+    verify_receipt_document_verdict,
 };
 use runx_runtime::{
     Ed25519ReceiptVerifier, RUNX_RECEIPT_VERIFY_ED25519_PUBLIC_KEY_BASE64_ENV,
@@ -242,8 +243,8 @@ pub fn run_verify_command_with_stdin<R: Read>(
     })
 }
 
-// Function rationale: verify accepts legacy receipt-tree flags and
-// the single-receipt machine surface in one mutually-exclusive parser.
+// Function rationale: verify accepts receipt-directory flags and the
+// single-receipt machine surface in one mutually-exclusive parser.
 fn parse_verify_args(args: &[OsString]) -> Result<ParsedVerifyArgs, VerifyCliError> {
     let mut parsed = ParsedVerifyArgs::default();
     let mut iter = args.iter().skip(1);
@@ -973,8 +974,9 @@ fn group_trees(receipts: &[Receipt]) -> Vec<ReceiptTree> {
         .iter()
         .map(|receipt| (receipt.id.as_str(), receipt))
         .collect();
-    // Runtime receipts form an immutable parent -> child DAG. Keep accepting
-    // legacy child -> parent links, but never require them to discover a tree.
+    // Runtime receipts form an immutable parent -> child DAG. Signed
+    // child-to-parent lineage links are valid input, but are never required to
+    // discover a tree.
     // A child may be shared by more than one root, so each root owns its own
     // reachable member set instead of forcing every receipt into one group.
     let (children_by_parent, parents_by_child) = receipt_tree_edges(receipts);
@@ -997,29 +999,29 @@ fn receipt_tree_edges(
     let mut children_by_parent: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut parents_by_child: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for receipt in receipts {
-        if let Some(lineage) = &receipt.lineage {
-            for child in &lineage.children {
-                if let Some(child_id) = referenced_receipt_id(child) {
-                    children_by_parent
-                        .entry(receipt.id.to_string())
-                        .or_default()
-                        .insert(child_id.to_owned());
-                    parents_by_child
-                        .entry(child_id.to_owned())
-                        .or_default()
-                        .insert(receipt.id.to_string());
-                }
-            }
-            if let Some(parent_id) = lineage.parent.as_ref().and_then(referenced_receipt_id) {
+        for child in receipt_edge_references(receipt) {
+            if let Some(child_id) = referenced_receipt_id(child) {
                 children_by_parent
-                    .entry(parent_id.to_owned())
-                    .or_default()
-                    .insert(receipt.id.to_string());
-                parents_by_child
                     .entry(receipt.id.to_string())
                     .or_default()
-                    .insert(parent_id.to_owned());
+                    .insert(child_id.to_owned());
+                parents_by_child
+                    .entry(child_id.to_owned())
+                    .or_default()
+                    .insert(receipt.id.to_string());
             }
+        }
+        if let Some(lineage) = &receipt.lineage
+            && let Some(parent_id) = lineage.parent.as_ref().and_then(referenced_receipt_id)
+        {
+            children_by_parent
+                .entry(parent_id.to_owned())
+                .or_default()
+                .insert(receipt.id.to_string());
+            parents_by_child
+                .entry(receipt.id.to_string())
+                .or_default()
+                .insert(parent_id.to_owned());
         }
     }
     (children_by_parent, parents_by_child)
@@ -1266,6 +1268,12 @@ mod tests {
         signature_mode: String,
     }
 
+    #[derive(Debug, Deserialize)]
+    struct ReceiptCompositionFixture {
+        outer: Receipt,
+        inner_receipts: Vec<Receipt>,
+    }
+
     #[test]
     fn verifies_production_signed_receipt_store_from_verifier_or_signer_environment()
     -> Result<(), io::Error> {
@@ -1377,6 +1385,64 @@ mod tests {
             BTreeSet::from([root.id.to_string(), child.id.to_string()])
         );
         assert!(trees[0].parent_missing.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn groups_and_verifies_composite_receipt_evidence() -> Result<(), io::Error> {
+        let fixture: ReceiptCompositionFixture = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../fixtures/contracts/receipt-composition/marketplace-composite.json"
+        )))
+        .map_err(io::Error::other)?;
+        let mut receipts = vec![fixture.outer.clone()];
+        receipts.extend(fixture.inner_receipts.clone());
+
+        let trees = group_trees(&receipts);
+
+        assert_eq!(trees.len(), 1);
+        assert_eq!(trees[0].root.id, fixture.outer.id);
+        assert_eq!(
+            trees[0].member_ids,
+            receipts
+                .iter()
+                .map(|receipt| receipt.id.to_string())
+                .collect::<BTreeSet<_>>()
+        );
+
+        let temp = tempfile_dir()?;
+        let receipt_dir = temp.join("receipts");
+        fs::create_dir_all(&receipt_dir)?;
+        for receipt in &receipts {
+            let digest = receipt
+                .id
+                .strip_prefix("sha256:")
+                .ok_or_else(|| io::Error::other("fixture receipt id is not content-addressed"))?;
+            fs::write(
+                receipt_dir.join(format!("sha256-{digest}.json")),
+                serde_json::to_vec(receipt).map_err(io::Error::other)?,
+            )?;
+        }
+        let result = run_verify_command(
+            &[
+                "verify".into(),
+                "--receipt-dir".into(),
+                receipt_dir.into_os_string(),
+                "--allow-local-development-signatures".into(),
+                "--json".into(),
+            ],
+            &BTreeMap::new(),
+            &temp,
+        )
+        .map_err(|error| io::Error::other(error.to_string()))?;
+        assert!(!result.failed, "{}", result.output);
+        let report: JsonValue = serde_json::from_str(&result.output).map_err(io::Error::other)?;
+        assert_eq!(report["valid"], JsonValue::Bool(true));
+        assert!(
+            report["trees"].as_array().is_some_and(
+                |trees| trees.len() == 1 && trees[0]["findings"] == test_json::json!([])
+            )
+        );
         Ok(())
     }
 

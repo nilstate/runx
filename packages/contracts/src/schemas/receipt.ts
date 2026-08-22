@@ -42,11 +42,42 @@ export type ReceiptInputContextContract = DeepReadonly<{
   value_hash: string;
 }>;
 
+export type ReceiptClassContract = "executed" | "mediated";
+
+export type ReceiptOfferRevisionContract = DeepReadonly<{
+  offer_id: string;
+  revision: string;
+  revision_digest: string;
+  input_schema_digest: string;
+  output_schema_digest: string;
+}>;
+
+export type ReceiptParentInvocationBindingContract = DeepReadonly<{
+  invocation_id: string;
+  execution_digest: string;
+}>;
+
+export type ReceiptPaidInvocationBindingContract = DeepReadonly<{
+  invocation_id: string;
+  vendor_ref: ReferenceContract;
+  offer_revision: ReceiptOfferRevisionContract;
+  package_digest: string;
+  input_digest: string;
+  parent_binding?: ReceiptParentInvocationBindingContract;
+}>;
+
+export type ReceiptEvidenceContract = DeepReadonly<{
+  type: "inner_receipt";
+  receipt_ref: ReferenceContract;
+  expected: ReceiptPaidInvocationBindingContract;
+}>;
+
 export type ReceiptSubjectContract = DeepReadonly<{
-  kind: "skill" | "graph";
+  kind: string;
   ref: ReferenceContract;
   input_context?: ReceiptInputContextContract;
   commitments: readonly ReceiptCommitmentContract[];
+  paid_invocation?: ReceiptPaidInvocationBindingContract;
 }>;
 
 export type ReceiptEnforcementContract = DeepReadonly<{
@@ -123,17 +154,24 @@ export type ReceiptContract = DeepReadonly<{
   signature: ReceiptSignatureContract;
   digest: string;
   idempotency: ReceiptIdempotencyContract;
+  class: ReceiptClassContract;
   subject: ReceiptSubjectContract;
   authority: ReceiptAuthorityContract;
   signals: readonly ReferenceContract[];
   decisions: readonly DecisionContract[];
   acts: readonly ReceiptActContract[];
+  evidence?: readonly ReceiptEvidenceContract[];
   seal: ReceiptSealContract;
   lineage?: ReceiptLineageContract;
   metadata?: UnknownRecord;
 }>;
 
 export const receiptV1Schema = generatedSchema<ReceiptContract>("receipt.schema.json");
+export const receiptClassSchema = generatedSchemaAt<ReceiptClassContract>(
+  receiptV1Schema,
+  ["properties", "class"],
+  "receipt.class",
+);
 export const receiptCommitmentSchema = generatedSchemaAt<ReceiptCommitmentContract>(
   receiptV1Schema,
   ["properties", "subject", "properties", "commitments", "items"],
@@ -148,6 +186,17 @@ export const receiptSubjectSchema = generatedSchemaAt<ReceiptSubjectContract>(
   receiptV1Schema,
   ["properties", "subject"],
   "receipt.subject",
+);
+export const receiptPaidInvocationBindingSchema =
+  generatedSchemaAt<ReceiptPaidInvocationBindingContract>(
+    receiptV1Schema,
+    ["properties", "subject", "properties", "paid_invocation"],
+    "receipt.subject.paid_invocation",
+  );
+export const receiptEvidenceSchema = generatedSchemaAt<ReceiptEvidenceContract>(
+  receiptV1Schema,
+  ["properties", "evidence", "items"],
+  "receipt.evidence[]",
 );
 export const receiptEnforcementSchema = generatedSchemaAt<ReceiptEnforcementContract>(
   receiptV1Schema,

@@ -1,31 +1,31 @@
 {
-  "schema": "runx.verify_verdict.v1",
-  "receipt_id": null,
-  "valid": false,
-  "digest": {
-    "status": "not_evaluated",
-    "expected": null,
-    "actual": null
-  },
   "content_address": {
-    "status": "not_evaluated",
+    "actual": null,
     "expected": null,
-    "actual": null
+    "status": "not_evaluated"
   },
-  "signature": {
-    "mode": "local-development",
-    "status": "not_evaluated",
-    "kid": null
-  },
-  "lineage": {
-    "status": "unverified",
-    "message": "single receipt verification cannot prove receipt-tree lineage"
+  "digest": {
+    "actual": null,
+    "expected": null,
+    "status": "not_evaluated"
   },
   "findings": [
     {
       "code": "receipt_parse_error",
-      "path": "$",
-      "message": "EOF while parsing a value at line 1 column 28"
+      "message": "EOF while parsing a value at line 1 column 28",
+      "path": "$"
     }
-  ]
+  ],
+  "lineage": {
+    "message": "single receipt verification cannot prove receipt-tree lineage",
+    "status": "unverified"
+  },
+  "receipt_id": null,
+  "schema": "runx.verify_verdict.v1",
+  "signature": {
+    "kid": null,
+    "mode": "local-development",
+    "status": "not_evaluated"
+  },
+  "valid": false
 }

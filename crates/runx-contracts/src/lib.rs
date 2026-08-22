@@ -224,9 +224,10 @@ pub use receipt::{
     EFFECT_FINALITY_RECEIPT_SCHEMA, EffectFinalityPhase, EffectFinalityReceipt,
     EffectFinalityReceiptSchema, FanoutReceiptDecision, FanoutReceiptStrategy,
     FanoutReceiptSyncPoint, Lineage, RECEIPT_CANONICALIZATION, RECEIPT_SCHEMA, Receipt, ReceiptAct,
-    ReceiptAuthority, ReceiptCommitment, ReceiptCommitmentScope, ReceiptEnforcement,
-    ReceiptIdempotency, ReceiptInputContext, ReceiptIssuer, ReceiptIssuerType, ReceiptSchema,
-    ReceiptSignature, RunnerProvenance, Seal, SignatureAlgorithm, Subject, receipt_subject_kind,
+    ReceiptAuthority, ReceiptClass, ReceiptCommitment, ReceiptCommitmentScope, ReceiptEnforcement,
+    ReceiptEvidence, ReceiptIdempotency, ReceiptInputContext, ReceiptIssuer, ReceiptIssuerType,
+    ReceiptPaidInvocationBinding, ReceiptSchema, ReceiptSignature, RunnerProvenance, Seal,
+    SignatureAlgorithm, Subject, receipt_subject_kind,
 };
 pub use redaction::{HashAlgorithm, HashCommitment, REDACTION_SCHEMA, Redaction, RedactionSchema};
 pub use reference::{ActRef, ProofKind, Reference, ReferenceLink, ReferenceType};
