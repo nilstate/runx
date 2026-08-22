@@ -80,13 +80,43 @@ export function checkRetiredRuntimeSurfaces(findings) {
   }
 
   const domainTokens = new Set(["payment", "settlement", "spend", "x402", "rail"]);
+  const paidInvocationContractOwner = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/paid_invocation.rs",
+  );
+  const paidInvocationFixtureProducer = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/bin/runx-paid-invocation-fixtures.rs",
+  );
+  const contractsLib = path.join(workspaceRoot, "crates/runx-contracts/src/lib.rs");
   for (const root of [
     "crates/runx-runtime/src",
     "crates/runx-core/src",
     "crates/runx-contracts/src",
   ]) {
     for (const filePath of rustFiles(root)) {
-      const lines = readFileSync(filePath, "utf8").split(/\r?\n/u);
+      let source = readFileSync(filePath, "utf8");
+      if (filePath === paidInvocationContractOwner) {
+        const forbiddenRuntimeMarker = [
+          /\bstd::fs\b/u,
+          /\bstd::net\b/u,
+          /\bstd::process\b/u,
+          /\b(?:reqwest|hyper|axum|sqlx|diesel|aws_sdk|stripe|coinbase)\b/u,
+        ].find((pattern) => pattern.test(source));
+        if (forbiddenRuntimeMarker) {
+          findings.push(
+            `${relative(filePath)} crosses the inert public-contract boundary with ${forbiddenRuntimeMarker}`,
+          );
+        }
+        continue;
+      }
+      if (filePath === paidInvocationFixtureProducer) continue;
+      if (filePath === contractsLib) {
+        source = source
+          .replace(/pub mod paid_invocation;\s*/gu, "")
+          .replace(/pub use paid_invocation::\{[\s\S]*?\};\s*/gu, "");
+      }
+      const lines = source.split(/\r?\n/u);
       lines.forEach((line, index) => {
         for (const token of line.matchAll(/[A-Za-z_][A-Za-z0-9_]*/gu)) {
           const banned = splitIdentifierParts(token[0]).find((part) => domainTokens.has(part));

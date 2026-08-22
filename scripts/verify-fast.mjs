@@ -20,10 +20,24 @@ const rustHarnessFixtureOracleBin = path.join(
   "debug",
   process.platform === "win32" ? "runx-harness-fixture-oracles.exe" : "runx-harness-fixture-oracles",
 );
+const rustSchemaArtifactsBin = path.join(
+  cargoTargetDir,
+  "debug",
+  process.platform === "win32" ? "runx-schema-artifacts.exe" : "runx-schema-artifacts",
+);
+const rustPaidInvocationFixturesBin = path.join(
+  cargoTargetDir,
+  "debug",
+  process.platform === "win32"
+    ? "runx-paid-invocation-fixtures.exe"
+    : "runx-paid-invocation-fixtures",
+);
 
 const evalBinEnv = {
   RUNX_RUST_CLI_BIN: rustKernelBin,
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
+  RUNX_SCHEMA_ARTIFACTS_BIN: rustSchemaArtifactsBin,
+  RUNX_PAID_INVOCATION_FIXTURES_BIN: rustPaidInvocationFixturesBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "verify-fast-test-key",
   RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
     process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64 ?? "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
@@ -73,6 +87,8 @@ const rustBuild = await runStep(
     "runx-runtime",
     "-p",
     "runx-js-worker",
+    "-p",
+    "runx-contracts",
     "--features",
     "runx-runtime/cli-tool",
     "--bin",
@@ -81,6 +97,10 @@ const rustBuild = await runStep(
     "runx-harness-fixture-oracles",
     "--bin",
     "runx-js-worker",
+    "--bin",
+    "runx-schema-artifacts",
+    "--bin",
+    "runx-paid-invocation-fixtures",
   ]),
   rustBuildEnv,
 );
@@ -98,6 +118,8 @@ if (rustBuild.status === 0) {
       step("fixtures:kernel:check", "pnpm", ["fixtures:kernel:check"]),
       step("fixtures:kernel:keys", "pnpm", ["fixtures:kernel:keys"]),
       step("fixtures:parser:check", "pnpm", ["fixtures:parser:check"]),
+      step("contracts:schemas:check", "pnpm", ["contracts:schemas:check"]),
+      step("packet contracts", "pnpm", ["packet-schemas:check"]),
       step("fixtures:contracts:check", "pnpm", ["fixtures:contracts:check"]),
       step("fixtures:contracts:keys", "pnpm", ["fixtures:contracts:keys"]),
       step("fixtures:harness:check", "pnpm", ["fixtures:harness:check"]),
@@ -106,7 +128,6 @@ if (rustBuild.status === 0) {
       step("fixtures:doctor:check", "pnpm", ["fixtures:doctor:check"]),
       step("fixtures:fanout:check", "pnpm", ["fixtures:fanout:check"]),
       step("fixtures:tool-catalog:check", "pnpm", ["fixtures:tool-catalog:check"]),
-      step("packet contracts", "pnpm", ["packet-schemas:check"]),
       step("docs:api:check", "pnpm", ["docs:api:check"]),
       step("docs:exit-codes", "pnpm", ["docs:exit-codes"]),
       step("doctor json", rustKernelBin, ["doctor", "--json"]),

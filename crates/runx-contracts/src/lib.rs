@@ -33,6 +33,7 @@ pub mod operational_proposal;
 pub mod orchestrator_handoff;
 pub mod output;
 pub mod packet_index;
+pub mod paid_invocation;
 pub mod policy_proof;
 pub mod provider_operation;
 pub mod receipt;
@@ -191,6 +192,23 @@ pub use output::{
     validate_output_value,
 };
 pub use packet_index::{PacketIndex, PacketIndexEntry, PacketIndexSchema};
+pub use paid_invocation::{
+    CANCEL_PAID_INVOCATION, CANCEL_PAID_INVOCATION_REQUEST_SCHEMA,
+    CANCEL_PAID_INVOCATION_RESULT_SCHEMA, CancelPaidInvocationRequest, CancelPaidInvocationResult,
+    CurrencyCode, EXECUTE_PAID_INVOCATION, EXECUTE_PAID_INVOCATION_REQUEST_SCHEMA,
+    EXECUTE_PAID_INVOCATION_RESULT_SCHEMA, ExecutePaidInvocationRequest,
+    ExecutePaidInvocationResult, GET_PAID_INVOCATION, GET_PAID_INVOCATION_REQUEST_SCHEMA,
+    GET_PAID_INVOCATION_RESULT_SCHEMA, GetPaidInvocationRequest, GetPaidInvocationResult,
+    OFFER_REVISION_REF_SCHEMA, OfferRevisionRef, PAID_INVOCATION_SCHEMA,
+    PARENT_INVOCATION_BINDING_SCHEMA, PaidInvocation, PaidInvocationAdmission,
+    PaidInvocationCanonicalizerVersion, PaidInvocationExecutionState, PaidInvocationOutcomeGate,
+    PaidInvocationPaymentChallenge, PaidInvocationPaymentState, PaidInvocationRefusalCode,
+    PaidInvocationRefusalReason, ParentInvocationBinding, PaymentIdempotencyBinding,
+    PaymentReference, PrincipalReference, QUOTE_PAID_INVOCATION,
+    QUOTE_PAID_INVOCATION_REQUEST_SCHEMA, QUOTE_PAID_INVOCATION_RESULT_SCHEMA,
+    QuotePaidInvocationAdmission, QuotePaidInvocationRequest, QuotePaidInvocationResult,
+    SettlementFamilies, SettlementFamily, Sha256Digest,
+};
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,
     AuthorityProofApprovalDecisionValue, AuthorityProofCredentialMaterial,

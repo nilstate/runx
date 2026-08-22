@@ -1,0 +1,730 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+use runx_contracts::{
+    CancelPaidInvocationRequest, CancelPaidInvocationResult, ExecutePaidInvocationRequest,
+    ExecutePaidInvocationResult, GetPaidInvocationRequest, GetPaidInvocationResult,
+    QuotePaidInvocationRequest, QuotePaidInvocationResult, sha256_prefixed,
+};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
+
+const SCHEMAS: &[(&str, &str)] = &[
+    (
+        "runx.payment.paid_invocation.v1",
+        "paid-invocation.schema.json",
+    ),
+    (
+        "runx.payment.offer_revision_ref.v1",
+        "offer-revision-ref.schema.json",
+    ),
+    (
+        "runx.payment.parent_invocation_binding.v1",
+        "parent-invocation-binding.schema.json",
+    ),
+    (
+        "runx.payment.quote_paid_invocation.request.v1",
+        "quote-paid-invocation-request.schema.json",
+    ),
+    (
+        "runx.payment.quote_paid_invocation.result.v1",
+        "quote-paid-invocation-result.schema.json",
+    ),
+    (
+        "runx.payment.execute_paid_invocation.request.v1",
+        "execute-paid-invocation-request.schema.json",
+    ),
+    (
+        "runx.payment.execute_paid_invocation.result.v1",
+        "execute-paid-invocation-result.schema.json",
+    ),
+    (
+        "runx.payment.get_paid_invocation.request.v1",
+        "get-paid-invocation-request.schema.json",
+    ),
+    (
+        "runx.payment.get_paid_invocation.result.v1",
+        "get-paid-invocation-result.schema.json",
+    ),
+    (
+        "runx.payment.cancel_paid_invocation.request.v1",
+        "cancel-paid-invocation-request.schema.json",
+    ),
+    (
+        "runx.payment.cancel_paid_invocation.result.v1",
+        "cancel-paid-invocation-result.schema.json",
+    ),
+];
+
+struct Options {
+    out_dir: PathBuf,
+    schema_dir: PathBuf,
+    packet_dir: PathBuf,
+    check: bool,
+}
+
+struct Vector {
+    file: &'static str,
+    description: &'static str,
+    operation: &'static str,
+    schema_id: &'static str,
+    expectation: &'static str,
+    payload: Value,
+    authority_mapping: Option<Value>,
+}
+
+fn main() -> io::Result<()> {
+    let options = parse_args()?;
+    let vectors = vectors()?;
+    reconcile_vectors(&options, &vectors)?;
+    let manifest = manifest(&options, &vectors)?;
+    reconcile_file(
+        &options.out_dir.join("manifest.json"),
+        canonical_bytes(&manifest)?,
+        options.check,
+    )?;
+    reject_orphan_vectors(&options, &vectors)?;
+    Ok(())
+}
+
+fn parse_args() -> io::Result<Options> {
+    let mut out_dir = None;
+    let mut schema_dir = None;
+    let mut packet_dir = None;
+    let mut check = false;
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--out" => out_dir = args.next().map(PathBuf::from),
+            "--schema-dir" => schema_dir = args.next().map(PathBuf::from),
+            "--packet-dir" => packet_dir = args.next().map(PathBuf::from),
+            "--check" => check = true,
+            other => return Err(io::Error::other(format!("unsupported argument: {other}"))),
+        }
+    }
+    Ok(Options {
+        out_dir: out_dir.ok_or_else(|| io::Error::other("--out is required"))?,
+        schema_dir: schema_dir.ok_or_else(|| io::Error::other("--schema-dir is required"))?,
+        packet_dir: packet_dir.ok_or_else(|| io::Error::other("--packet-dir is required"))?,
+        check,
+    })
+}
+
+fn vectors() -> io::Result<Vec<Vector>> {
+    let parent = parent_binding();
+    let direct = invocation("paid_direct", "settled", "queued", "open", None, true);
+    let replay = invocation("paid_direct", "settled", "queued", "open", None, true);
+    let outer_parent = quote_request("idem_parent", Some(parent.clone()));
+    let inner_parent = invocation(
+        "paid_child",
+        "settled",
+        "succeeded",
+        "fulfilment_won",
+        Some(parent),
+        true,
+    );
+    let challenge_payload = json!({
+        "authorization": "opaque-provider-payload",
+        "resource": "runx:offer:transcribe-v1"
+    });
+    let challenge_digest = digest_value(&challenge_payload)?;
+
+    Ok(vec![
+        valid::<QuotePaidInvocationResult>(
+            "quote-direct-admission.json",
+            "A direct quote admits one commercial invocation and an opaque, digest-bound challenge.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            json!({
+                "status": "admitted",
+                "value": {
+                    "challenge": challenge(challenge_payload, challenge_digest),
+                    "invocation": direct.clone()
+                }
+            }),
+        )?,
+        valid::<QuotePaidInvocationResult>(
+            "quote-same-term-replay.json",
+            "The same idempotency binding and terms resolve to the same commercial invocation.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            json!({
+                "status": "admitted",
+                "value": {
+                    "challenge": challenge(json!({"authorization": "opaque-provider-payload", "resource": "runx:offer:transcribe-v1"}), challenge_digest_for_default()?),
+                    "invocation": replay
+                }
+            }),
+        )?,
+        valid::<QuotePaidInvocationRequest>(
+            "quote-independent-purchase.json",
+            "The same input digest with another idempotency binding remains a distinct purchase intent.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            quote_request("idem_independent", None),
+        )?,
+        valid::<QuotePaidInvocationRequest>(
+            "quote-outer-parent-binding.json",
+            "A child quote binds its parent commercial invocation and execution digest.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            outer_parent,
+        )?,
+        valid::<QuotePaidInvocationResult>(
+            "quote-terms-changed.json",
+            "A term revision is a typed domain refusal.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            refusal("terms_changed", "The offer revision no longer matches."),
+        )?,
+        valid::<QuotePaidInvocationResult>(
+            "quote-replay-conflict.json",
+            "Reusing an idempotency key for different terms is a typed domain refusal.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            refusal(
+                "replay_conflict",
+                "The idempotency binding commits to other terms.",
+            ),
+        )?,
+        valid::<QuotePaidInvocationResult>(
+            "quote-expired.json",
+            "An expired quote remains a valid typed domain refusal.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            refusal("quote_expired", "The quote has expired."),
+        )?,
+        valid_with_authority::<ExecutePaidInvocationRequest>(
+            "execute-authority-values.json",
+            "Execution carries values directly comparable with the generic payment AuthorityEffectLimit.",
+            "ExecutePaidInvocation",
+            "runx.payment.execute_paid_invocation.request.v1",
+            execute_request(),
+            json!({
+                "effect_limit": {
+                    "channels": ["hosted"],
+                    "family": "payment",
+                    "idempotency_required": true,
+                    "max_per_call_units": 1250,
+                    "operation": "ExecutePaidInvocation",
+                    "peer": "https://vendor.example/offers/transcribe-v1",
+                    "unit": "USD"
+                },
+                "idempotency_binding": idempotency("execute_direct")
+            }),
+        )?,
+        valid::<ExecutePaidInvocationResult>(
+            "execute-admitted.json",
+            "Payment authorization admits execution without exposing a provider rail payload.",
+            "ExecutePaidInvocation",
+            "runx.payment.execute_paid_invocation.result.v1",
+            admitted(direct),
+        )?,
+        valid::<GetPaidInvocationResult>(
+            "get-inner-parent-fulfilment-won.json",
+            "The child record carries its parent binding and the fulfilment winner.",
+            "GetPaidInvocation",
+            "runx.payment.get_paid_invocation.result.v1",
+            admitted(inner_parent),
+        )?,
+        valid::<GetPaidInvocationResult>(
+            "get-refund-won.json",
+            "The refund winner is orthogonal to terminal execution observation.",
+            "GetPaidInvocation",
+            "runx.payment.get_paid_invocation.result.v1",
+            admitted(invocation(
+                "paid_refund",
+                "refunded",
+                "failed",
+                "refund_won",
+                None,
+                true,
+            )),
+        )?,
+        valid::<GetPaidInvocationRequest>(
+            "get-request.json",
+            "Lookup names only the commercial invocation.",
+            "GetPaidInvocation",
+            "runx.payment.get_paid_invocation.request.v1",
+            json!({"invocation_id": "paid_direct"}),
+        )?,
+        valid::<CancelPaidInvocationRequest>(
+            "cancel-request.json",
+            "Cancellation is idempotently bound to the commercial invocation.",
+            "CancelPaidInvocation",
+            "runx.payment.cancel_paid_invocation.request.v1",
+            json!({"idempotency": idempotency("cancel_direct"), "invocation_id": "paid_direct"}),
+        )?,
+        valid::<CancelPaidInvocationResult>(
+            "cancel-before-settlement.json",
+            "Cancellation before settlement leaves the payment unpaid.",
+            "CancelPaidInvocation",
+            "runx.payment.cancel_paid_invocation.result.v1",
+            admitted(invocation(
+                "paid_cancel_early",
+                "unpaid",
+                "cancelled",
+                "open",
+                None,
+                false,
+            )),
+        )?,
+        valid::<CancelPaidInvocationResult>(
+            "cancel-after-settlement.json",
+            "Cancellation after settlement does not imply a refund transition.",
+            "CancelPaidInvocation",
+            "runx.payment.cancel_paid_invocation.result.v1",
+            admitted(invocation(
+                "paid_cancel_late",
+                "settled",
+                "cancelled",
+                "open",
+                None,
+                true,
+            )),
+        )?,
+        invalid(
+            "invalid-unknown-field.json",
+            "V1 request objects reject additive fields.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            with_field(
+                quote_request("idem_unknown", None),
+                "unexpected",
+                json!(true),
+            )?,
+        ),
+        invalid(
+            "invalid-malformed-digest.json",
+            "Digest values are lowercase prefixed SHA-256 only.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            with_field(
+                quote_request("idem_digest", None),
+                "input_digest",
+                json!("sha256:no"),
+            )?,
+        ),
+        invalid(
+            "invalid-non-principal.json",
+            "The principal reference cannot name another reference type.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            with_field(
+                quote_request("idem_principal", None),
+                "principal",
+                reference("artifact", "runx:artifact:not-a-principal"),
+            )?,
+        ),
+        invalid(
+            "invalid-expiry.json",
+            "Quote expiry must use the shared UTC ISO datetime shape.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.result.v1",
+            with_pointer_value(
+                admitted(invocation(
+                    "paid_expiry",
+                    "unpaid",
+                    "unstarted",
+                    "open",
+                    None,
+                    false,
+                )),
+                "/value/invocation/expires_at",
+                json!("tomorrow"),
+            )?,
+        ),
+        invalid(
+            "invalid-response-status-mismatch.json",
+            "An admitted status cannot carry refusal fields.",
+            "ExecutePaidInvocation",
+            "runx.payment.execute_paid_invocation.result.v1",
+            json!({"code": "payment_not_authorized", "reason": "No authority.", "status": "admitted"}),
+        ),
+    ])
+}
+
+fn valid<T: DeserializeOwned + Serialize>(
+    file: &'static str,
+    description: &'static str,
+    operation: &'static str,
+    schema_id: &'static str,
+    payload: Value,
+) -> io::Result<Vector> {
+    let typed: T = serde_json::from_value(payload).map_err(io::Error::other)?;
+    let payload = serde_json::to_value(typed).map_err(io::Error::other)?;
+    Ok(Vector {
+        file,
+        description,
+        operation,
+        schema_id,
+        expectation: "valid",
+        payload,
+        authority_mapping: None,
+    })
+}
+
+fn valid_with_authority<T: DeserializeOwned + Serialize>(
+    file: &'static str,
+    description: &'static str,
+    operation: &'static str,
+    schema_id: &'static str,
+    payload: Value,
+    authority_mapping: Value,
+) -> io::Result<Vector> {
+    let mut vector = valid::<T>(file, description, operation, schema_id, payload)?;
+    vector.authority_mapping = Some(authority_mapping);
+    Ok(vector)
+}
+
+fn invalid(
+    file: &'static str,
+    description: &'static str,
+    operation: &'static str,
+    schema_id: &'static str,
+    payload: Value,
+) -> Vector {
+    Vector {
+        file,
+        description,
+        operation,
+        schema_id,
+        expectation: "invalid",
+        payload,
+        authority_mapping: None,
+    }
+}
+
+fn quote_request(idempotency_key: &str, parent: Option<Value>) -> Value {
+    let mut value = json!({
+        "accepted_settlement_families": ["mock", "hosted"],
+        "amount_minor": 1250,
+        "canonicalizer_version": "runx.receipt.c14n.v1",
+        "counterparty": reference("external_url", "https://vendor.example/offers/transcribe-v1"),
+        "currency": "USD",
+        "idempotency": idempotency(idempotency_key),
+        "input_digest": digest('1'),
+        "offer_revision": offer_revision(),
+        "principal": reference("principal", "runx:principal:buyer-1")
+    });
+    if let Some(parent) = parent
+        && let Some(object) = value.as_object_mut()
+    {
+        object.insert("parent".to_owned(), parent);
+    }
+    value
+}
+
+fn execute_request() -> Value {
+    json!({
+        "idempotency": idempotency("execute_direct"),
+        "invocation_id": "paid_direct",
+        "payment_ref": reference("receipt", "runx:receipt:payment-proof-1"),
+        "settlement_family": "hosted"
+    })
+}
+
+fn invocation(
+    invocation_id: &str,
+    payment_state: &str,
+    execution_state: &str,
+    outcome_gate: &str,
+    parent: Option<Value>,
+    settled: bool,
+) -> Value {
+    let mut value = json!({
+        "accepted_settlement_families": ["mock", "hosted"],
+        "amount_minor": 1250,
+        "canonicalizer_version": "runx.receipt.c14n.v1",
+        "counterparty": reference("external_url", "https://vendor.example/offers/transcribe-v1"),
+        "created_at": "2026-08-22T09:00:00Z",
+        "currency": "USD",
+        "execution_state": execution_state,
+        "expires_at": "2026-08-22T09:05:00Z",
+        "idempotency": idempotency("quote_direct"),
+        "input_digest": digest('1'),
+        "invocation_id": invocation_id,
+        "offer_revision": offer_revision(),
+        "outcome_gate": outcome_gate,
+        "payment_state": payment_state,
+        "principal": reference("principal", "runx:principal:buyer-1"),
+        "updated_at": "2026-08-22T09:01:00Z"
+    });
+    if settled && let Some(object) = value.as_object_mut() {
+        object.insert("settlement_family".to_owned(), json!("hosted"));
+        object.insert(
+            "payment_ref".to_owned(),
+            reference("receipt", "runx:receipt:payment-proof-1"),
+        );
+    }
+    if execution_state != "unstarted"
+        && let Some(object) = value.as_object_mut()
+    {
+        object.insert(
+            "execution_ref".to_owned(),
+            reference("act", &format!("runx:act:{invocation_id}")),
+        );
+    }
+    if let Some(parent) = parent
+        && let Some(object) = value.as_object_mut()
+    {
+        object.insert("parent".to_owned(), parent);
+    }
+    value
+}
+
+fn offer_revision() -> Value {
+    json!({
+        "input_schema_digest": digest('2'),
+        "offer_id": "transcribe-v1",
+        "output_schema_digest": digest('3'),
+        "revision": "2026-08-22.1",
+        "revision_digest": digest('4')
+    })
+}
+
+fn parent_binding() -> Value {
+    json!({
+        "execution_digest": digest('5'),
+        "invocation_id": "paid_parent"
+    })
+}
+
+fn idempotency(key: &str) -> Value {
+    json!({"binding_digest": digest('6'), "key": key})
+}
+
+fn reference(reference_type: &str, uri: &str) -> Value {
+    json!({"type": reference_type, "uri": uri})
+}
+
+fn challenge(payload: Value, payload_digest: String) -> Value {
+    json!({
+        "media_type": "application/vnd.vendor.payment+json",
+        "payload": payload,
+        "payload_digest": payload_digest,
+        "protocol_version": "2026-08-01",
+        "quote_expires_at": "2026-08-22T09:05:00Z",
+        "quote_ref": reference("receipt", "runx:receipt:quote-1"),
+        "settlement_family": "hosted"
+    })
+}
+
+fn challenge_digest_for_default() -> io::Result<String> {
+    digest_value(&json!({
+        "authorization": "opaque-provider-payload",
+        "resource": "runx:offer:transcribe-v1"
+    }))
+}
+
+fn digest_value(value: &Value) -> io::Result<String> {
+    Ok(sha256_prefixed(
+        serde_json::to_string(value)
+            .map_err(io::Error::other)?
+            .as_bytes(),
+    ))
+}
+
+fn digest(fill: char) -> String {
+    format!("sha256:{}", fill.to_string().repeat(64))
+}
+
+fn admitted(invocation: Value) -> Value {
+    json!({"status": "admitted", "value": {"invocation": invocation}})
+}
+
+fn refusal(code: &str, reason: &str) -> Value {
+    json!({"code": code, "reason": reason, "status": "refused"})
+}
+
+fn with_field(mut value: Value, name: &str, field: Value) -> io::Result<Value> {
+    value
+        .as_object_mut()
+        .ok_or_else(|| io::Error::other("fixture payload must be an object"))?
+        .insert(name.to_owned(), field);
+    Ok(value)
+}
+
+fn with_pointer_value(mut value: Value, pointer: &str, field: Value) -> io::Result<Value> {
+    let target = value
+        .pointer_mut(pointer)
+        .ok_or_else(|| io::Error::other(format!("fixture pointer does not exist: {pointer}")))?;
+    *target = field;
+    Ok(value)
+}
+
+fn reconcile_vectors(options: &Options, vectors: &[Vector]) -> io::Result<()> {
+    if !options.check {
+        fs::create_dir_all(&options.out_dir)?;
+    }
+    for vector in vectors {
+        let mut document = json!({
+            "description": vector.description,
+            "expectation": vector.expectation,
+            "operation": vector.operation,
+            "payload": vector.payload,
+            "schema_id": vector.schema_id
+        });
+        if let Some(authority_mapping) = &vector.authority_mapping {
+            document
+                .as_object_mut()
+                .ok_or_else(|| io::Error::other("fixture envelope must be an object"))?
+                .insert("authority_mapping".to_owned(), authority_mapping.clone());
+        }
+        reconcile_file(
+            &options.out_dir.join(vector.file),
+            canonical_bytes(&document)?,
+            options.check,
+        )?;
+    }
+    Ok(())
+}
+
+fn manifest(options: &Options, vectors: &[Vector]) -> io::Result<Value> {
+    let packets = packets_by_id(&options.packet_dir)?;
+    let schemas = SCHEMAS
+        .iter()
+        .map(|(schema_id, schema_file)| {
+            let schema_path = options.schema_dir.join(schema_file);
+            let schema_bytes = fs::read(&schema_path)?;
+            let packet_path = packets.get(*schema_id).ok_or_else(|| {
+                io::Error::other(format!("missing packet projection for {schema_id}"))
+            })?;
+            let packet_bytes = fs::read(packet_path)?;
+            Ok(json!({
+                "packet_digest": sha256_prefixed(&packet_bytes),
+                "packet_file": packet_path.file_name().and_then(|name| name.to_str()).ok_or_else(|| io::Error::other("packet filename is not UTF-8"))?,
+                "schema_digest": sha256_prefixed(&schema_bytes),
+                "schema_file": schema_file,
+                "schema_id": schema_id
+            }))
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    let vector_entries = vectors
+        .iter()
+        .map(|vector| {
+            let bytes = fs::read(options.out_dir.join(vector.file))?;
+            Ok(json!({
+                "expectation": vector.expectation,
+                "file": vector.file,
+                "operation": vector.operation,
+                "payload_pointer": "/payload",
+                "schema_id": vector.schema_id,
+                "vector_digest": sha256_prefixed(&bytes)
+            }))
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    Ok(json!({
+        "compatibility": "strict_v1",
+        "deny_unknown_fields": true,
+        "schema": "runx.payment.paid_invocation.fixtures.v1",
+        "schemas": schemas,
+        "vectors": vector_entries
+    }))
+}
+
+fn packets_by_id(packet_dir: &Path) -> io::Result<BTreeMap<String, PathBuf>> {
+    let mut packets = BTreeMap::new();
+    for entry in fs::read_dir(packet_dir)? {
+        let path = entry?.path();
+        if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+            continue;
+        }
+        let document: Value =
+            serde_json::from_slice(&fs::read(&path)?).map_err(io::Error::other)?;
+        let Some(packet_id) = document.get("x-runx-packet-id").and_then(Value::as_str) else {
+            continue;
+        };
+        if packets.insert(packet_id.to_owned(), path).is_some() {
+            return Err(io::Error::other(format!(
+                "multiple packet projections declare {packet_id}"
+            )));
+        }
+    }
+    Ok(packets)
+}
+
+fn canonical_bytes(value: &Value) -> io::Result<Vec<u8>> {
+    reject_noncanonical_value(value, "$")?;
+    let mut bytes = serde_json::to_vec(value).map_err(io::Error::other)?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn reject_noncanonical_value(value: &Value, path: &str) -> io::Result<()> {
+    match value {
+        Value::Number(number) if !number.is_i64() && !number.is_u64() => {
+            Err(io::Error::other(format!("floating-point value at {path}")))
+        }
+        Value::Array(values) => {
+            for (index, value) in values.iter().enumerate() {
+                reject_noncanonical_value(value, &format!("{path}/{index}"))?;
+            }
+            Ok(())
+        }
+        Value::Object(values) => {
+            for (key, value) in values {
+                if !key.is_ascii() {
+                    return Err(io::Error::other(format!(
+                        "non-ASCII object key at {path}/{key}"
+                    )));
+                }
+                reject_noncanonical_value(value, &format!("{path}/{key}"))?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn reconcile_file(path: &Path, expected: Vec<u8>, check: bool) -> io::Result<()> {
+    if check {
+        let actual = fs::read(path).map_err(|error| {
+            io::Error::other(format!(
+                "missing generated fixture {}: {error}",
+                path.display()
+            ))
+        })?;
+        if actual != expected {
+            return Err(io::Error::other(format!(
+                "generated fixture is stale: {}",
+                path.display()
+            )));
+        }
+    } else {
+        fs::write(path, expected)?;
+    }
+    Ok(())
+}
+
+fn reject_orphan_vectors(options: &Options, vectors: &[Vector]) -> io::Result<()> {
+    let expected = vectors
+        .iter()
+        .map(|vector| vector.file)
+        .chain(std::iter::once("manifest.json"))
+        .collect::<BTreeSet<_>>();
+    for entry in fs::read_dir(&options.out_dir)? {
+        let path = entry?.path();
+        if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+            continue;
+        }
+        let file_name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| io::Error::other("fixture filename is not UTF-8"))?;
+        if expected.contains(file_name) {
+            continue;
+        }
+        if options.check {
+            return Err(io::Error::other(format!(
+                "orphan paid-invocation fixture: {}",
+                path.display()
+            )));
+        }
+        fs::remove_file(path)?;
+    }
+    Ok(())
+}

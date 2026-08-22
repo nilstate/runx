@@ -8,25 +8,29 @@ const schemaArtifactsPath = path.join(workspaceRoot, "packages", "contracts", "s
 const check = process.argv.includes("--check");
 const cargo = process.platform === "win32" ? "cargo.exe" : "cargo";
 
-const args = [
-  "run",
-  "--quiet",
-  "--manifest-path",
-  path.join(workspaceRoot, "crates", "Cargo.toml"),
-  "-p",
-  "runx-contracts",
-  "--bin",
-  "runx-schema-artifacts",
-  "--",
-  "--out",
-  schemasDir,
-];
+const prebuilt = process.env.RUNX_SCHEMA_ARTIFACTS_BIN;
+const command = prebuilt || cargo;
+const args = prebuilt
+  ? ["--out", schemasDir]
+  : [
+      "run",
+      "--quiet",
+      "--manifest-path",
+      path.join(workspaceRoot, "crates", "Cargo.toml"),
+      "-p",
+      "runx-contracts",
+      "--bin",
+      "runx-schema-artifacts",
+      "--",
+      "--out",
+      schemasDir,
+    ];
 
 if (check) {
   args.push("--check");
 }
 
-const result = spawnSync(cargo, args, {
+const result = spawnSync(command, args, {
   cwd: workspaceRoot,
   env: process.env,
   stdio: "inherit",

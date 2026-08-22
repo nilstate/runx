@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,6 +71,7 @@ const workspaceRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url))
 const skillsRoot = path.join(workspaceRoot, "skills");
 const packetRoot = path.join(workspaceRoot, "dist", "packets");
 const check = process.argv.includes("--check");
+ensureCurrentNativeRunx();
 const contracts = new Map<string, PacketContract>();
 const ownedContracts = await ownedPacketContracts();
 const manualContracts: PacketContract[] = [];
@@ -221,6 +223,32 @@ console.log(
     !check && staleGenerated.length > 0 ? `; removed ${staleGenerated.length} stale generated artifact(s)` : ""
   }`,
 );
+
+// Packet declarations come from the native typed tool catalog. Standalone
+// generation must not inspect the workspace with a stale CLI; verify:fast
+// supplies its unified prebuilt binary and skips this fallback build.
+function ensureCurrentNativeRunx(): void {
+  if (process.env.RUNX_RUST_CLI_BIN) return;
+  const cargo = process.platform === "win32" ? "cargo.exe" : "cargo";
+  const result = spawnSync(
+    cargo,
+    [
+      "build",
+      "--quiet",
+      "--manifest-path",
+      path.join(workspaceRoot, "crates", "Cargo.toml"),
+      "-p",
+      "runx-cli",
+      "--bin",
+      "runx",
+    ],
+    { cwd: workspaceRoot, env: process.env, stdio: "inherit" },
+  );
+  if (result.error) throw result.error;
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`failed to build the native Runx catalog owner (exit ${result.status ?? 1})`);
+  }
+}
 
 function collectManifestContracts(manifest: RunnerManifest, profile: string): void {
   for (const [runnerName, runner] of Object.entries(manifest.runners)) {

@@ -8,20 +8,23 @@ use crate::schema::RunxSchema;
 use crate::{
     Act, ActAssignment, ActResultEnvelope, AgentActInvocation, AgentContextEnvelope,
     ApprovalDecisionPacket, ApprovalGate, Artifact, Authority, AuthorityProof,
-    AuthoritySubsetProof, AuthorityTerm, CredentialDeliveryObservation, CredentialDeliveryProfile,
-    CredentialDeliveryRequest, CredentialDeliveryResponse, CredentialEnvelope, DataOperationResult,
-    Decision, DevReport, DoctorReport, EffectFinalityReceipt, ExternalAdapterCancellationFrame,
-    ExternalAdapterCredentialRequest, ExternalAdapterHostResolutionFrame,
-    ExternalAdapterInvocation, ExternalAdapterManifest, ExternalAdapterResponse,
-    ExternalReceiptVerification, Fixture, GitBlobDigest, HandoffSignal, HandoffState, LedgerEntry,
-    LocalArtifact, LocalArtifactPage, OperationalPolicy, OperationalProposal,
-    OrchestratorExecutionContext, OrchestratorHandoffContext, Output, PacketIndex,
-    ProviderOperationPacket, Question, Receipt, Redaction, Reference, ReferenceLink,
-    RegistryBinding, ResolutionRequest, ResolutionResponse, ReviewReceiptOutput, RunSummary,
-    RunxListReport, ScopeAdmission, Signal, SkillApplyResult, SkillArchitectureDecision,
-    SkillArchitecturePlan, SkillChangeBundle, SkillChangeDraft, SkillValidationResult,
-    SourcePacket, SuppressionRecord, ThreadOutboxProviderFetch, ThreadOutboxProviderManifest,
-    ThreadOutboxProviderObservation, ThreadOutboxProviderPush, ToolManifest, Verification,
+    AuthoritySubsetProof, AuthorityTerm, CancelPaidInvocationRequest, CancelPaidInvocationResult,
+    CredentialDeliveryObservation, CredentialDeliveryProfile, CredentialDeliveryRequest,
+    CredentialDeliveryResponse, CredentialEnvelope, DataOperationResult, Decision, DevReport,
+    DoctorReport, EffectFinalityReceipt, ExecutePaidInvocationRequest, ExecutePaidInvocationResult,
+    ExternalAdapterCancellationFrame, ExternalAdapterCredentialRequest,
+    ExternalAdapterHostResolutionFrame, ExternalAdapterInvocation, ExternalAdapterManifest,
+    ExternalAdapterResponse, ExternalReceiptVerification, Fixture, GetPaidInvocationRequest,
+    GetPaidInvocationResult, GitBlobDigest, HandoffSignal, HandoffState, LedgerEntry,
+    LocalArtifact, LocalArtifactPage, OfferRevisionRef, OperationalPolicy, OperationalProposal,
+    OrchestratorExecutionContext, OrchestratorHandoffContext, Output, PacketIndex, PaidInvocation,
+    ParentInvocationBinding, ProviderOperationPacket, Question, QuotePaidInvocationRequest,
+    QuotePaidInvocationResult, Receipt, Redaction, Reference, ReferenceLink, RegistryBinding,
+    ResolutionRequest, ResolutionResponse, ReviewReceiptOutput, RunSummary, RunxListReport,
+    ScopeAdmission, Signal, SkillApplyResult, SkillArchitectureDecision, SkillArchitecturePlan,
+    SkillChangeBundle, SkillChangeDraft, SkillValidationResult, SourcePacket, SuppressionRecord,
+    ThreadOutboxProviderFetch, ThreadOutboxProviderManifest, ThreadOutboxProviderObservation,
+    ThreadOutboxProviderPush, ToolManifest, Verification,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -123,6 +126,31 @@ pub fn generated_schema_artifacts() -> Vec<SchemaArtifact> {
         schema_artifact::<RegistryBinding>("registry-binding.schema.json"),
         public_packet_artifact::<ProviderOperationPacket>("provider-operation.schema.json"),
         schema_artifact::<ReviewReceiptOutput>("review-receipt-output.schema.json"),
+        public_packet_artifact::<PaidInvocation>("paid-invocation.schema.json"),
+        public_packet_artifact::<OfferRevisionRef>("offer-revision-ref.schema.json"),
+        public_packet_artifact::<ParentInvocationBinding>("parent-invocation-binding.schema.json"),
+        public_packet_artifact::<QuotePaidInvocationRequest>(
+            "quote-paid-invocation-request.schema.json",
+        ),
+        public_packet_artifact::<QuotePaidInvocationResult>(
+            "quote-paid-invocation-result.schema.json",
+        ),
+        public_packet_artifact::<ExecutePaidInvocationRequest>(
+            "execute-paid-invocation-request.schema.json",
+        ),
+        public_packet_artifact::<ExecutePaidInvocationResult>(
+            "execute-paid-invocation-result.schema.json",
+        ),
+        public_packet_artifact::<GetPaidInvocationRequest>(
+            "get-paid-invocation-request.schema.json",
+        ),
+        public_packet_artifact::<GetPaidInvocationResult>("get-paid-invocation-result.schema.json"),
+        public_packet_artifact::<CancelPaidInvocationRequest>(
+            "cancel-paid-invocation-request.schema.json",
+        ),
+        public_packet_artifact::<CancelPaidInvocationResult>(
+            "cancel-paid-invocation-result.schema.json",
+        ),
     ]
 }
 

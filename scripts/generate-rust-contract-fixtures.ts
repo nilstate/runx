@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -69,7 +70,7 @@ type ExecutionFixtureKind =
   | "receipt_surface_ref";
 type GovernanceControlFixtureKind = "governance_control_set";
 type ContractFixtureKind = HostFixtureKind | ExecutionFixtureKind | GovernanceControlFixtureKind;
-type ContractScope = "act-assignment" | "governance-control" | "execution" | "host-protocol";
+type ContractScope = "act-assignment" | "governance-control" | "execution" | "host-protocol" | "paid-invocation";
 
 const selectedScope = scopeArg();
 const check = process.argv.includes("--check");
@@ -80,6 +81,7 @@ if (
   && selectedScope !== "governance-control"
   && selectedScope !== "execution"
   && selectedScope !== "host-protocol"
+  && selectedScope !== "paid-invocation"
 ) {
   throw new Error(`unsupported contract fixture scope: ${selectedScope}`);
 }
@@ -102,6 +104,38 @@ if (selectedScope === undefined || selectedScope === "host-protocol") {
     ),
     path.join(sdkFixtureRoot, "host-protocol"),
   );
+}
+if (selectedScope === undefined || selectedScope === "paid-invocation") {
+  runPaidInvocationFixtures();
+}
+
+function runPaidInvocationFixtures(): void {
+  const outputRoot = path.join(fixtureRoot, "paid-invocation");
+  const configured = process.env.RUNX_PAID_INVOCATION_FIXTURES_BIN;
+  const command = configured || (process.platform === "win32" ? "cargo.exe" : "cargo");
+  const args = configured
+    ? ["--out", outputRoot, "--schema-dir", path.join(workspaceRoot, "schemas"), "--packet-dir", path.join(workspaceRoot, "dist", "packets")]
+    : [
+        "run",
+        "--quiet",
+        "--manifest-path",
+        path.join(workspaceRoot, "crates", "Cargo.toml"),
+        "-p",
+        "runx-contracts",
+        "--bin",
+        "runx-paid-invocation-fixtures",
+        "--",
+        "--out",
+        outputRoot,
+        "--schema-dir",
+        path.join(workspaceRoot, "schemas"),
+        "--packet-dir",
+        path.join(workspaceRoot, "dist", "packets"),
+      ];
+  if (check) args.push("--check");
+  const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });
+  if (result.error) throw result.error;
+  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
 }
 
 async function writeFixtures(fixtures: readonly ContractFixture[], directory: string): Promise<void> {
