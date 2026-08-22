@@ -1,0 +1,1 @@
+{"expectation":"valid","header":null,"kind":"settle-response","payload":{"errorReason":"insufficient_funds","network":"eip155:84532","payer":"0x857b06519E91e3A54538791bDbb0E22373e36b66","success":false,"transaction":""},"provenance":"x402 specification v2 HTTP transport failure example","schema_id":"https://schemas.runx.ai/external/x402/v2/settle-response.schema.json"}

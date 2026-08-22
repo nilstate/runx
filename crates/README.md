@@ -56,10 +56,13 @@ before they may be added to `deny.toml`.
   enables `async-http`; defaults keep the runtime dependency-light.
 - `runx-sdk`: blocking CLI-backed Rust SDK v0. Depends on `runx-contracts`
   only; explicit non-dep on `runx-core` and `runx-runtime`.
+- `runx-x402`: pure x402 v2 presentation, bounded header codecs, and exact
+  Runx invocation-echo validation. Depends on `runx-contracts` only and owns
+  no provider verification, settlement, credentials, network, or runtime I/O.
 
 Pure crates (`runx-contracts`, `runx-core`, `runx-parser`, `runx-receipts`,
-and the v0 `runx-sdk`) carry no async, HTTP, or process-spawn dependencies.
-The runtime crate owns those.
+the v0 `runx-sdk`, and `runx-x402`) carry no async, HTTP, or process-spawn
+dependencies. The runtime crate owns those.
 
 For kernel parity, run `pnpm rust:check` from `oss/` or
 `node ../scripts/check-rust-kernel-parity.mjs` from `oss/crates/`. Install

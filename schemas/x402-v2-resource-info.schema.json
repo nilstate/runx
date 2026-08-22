@@ -1,0 +1,76 @@
+{
+  "$id": "https://schemas.runx.ai/external/x402/v2/resource-info.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "iconUrl": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mimeType": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "serviceName": {
+      "anyOf": [
+        {
+          "maxLength": 32,
+          "minLength": 1,
+          "pattern": "^[\\x20-\\x7e]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tags": {
+      "anyOf": [
+        {
+          "items": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[\\x20-\\x7e]+$",
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "url": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "type": "object"
+}

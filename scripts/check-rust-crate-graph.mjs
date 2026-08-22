@@ -15,6 +15,7 @@ const expectedMembers = [
   "runx-receipts",
   "runx-runtime",
   "runx-sdk",
+  "runx-x402",
 ];
 
 const apiBearingPublishedCrates = new Set([
@@ -23,6 +24,7 @@ const apiBearingPublishedCrates = new Set([
   "runx-parser",
   "runx-receipts",
   "runx-runtime",
+  "runx-x402",
 ]);
 
 const reservationVersionCrates = new Set([
@@ -44,6 +46,7 @@ const allowedRunxDeps = new Map([
   ["runx-receipts", new Set(["runx-contracts"])],
   ["runx-runtime", new Set(["runx-contracts", "runx-core", "runx-parser", "runx-receipts"])],
   ["runx-sdk", new Set(["runx-contracts"])],
+  ["runx-x402", new Set(["runx-contracts"])],
 ]);
 
 const requiredRunxDeps = new Map([
@@ -53,6 +56,7 @@ const requiredRunxDeps = new Map([
   ["runx-receipts", new Set(["runx-contracts"])],
   ["runx-runtime", new Set(["runx-contracts", "runx-core", "runx-parser", "runx-receipts"])],
   ["runx-sdk", new Set(["runx-contracts"])],
+  ["runx-x402", new Set(["runx-contracts"])],
 ]);
 
 const pureCrateNames = new Set([
@@ -61,6 +65,7 @@ const pureCrateNames = new Set([
   "runx-parser",
   "runx-receipts",
   "runx-sdk",
+  "runx-x402",
 ]);
 
 const workspaceDisallowedDeps = [

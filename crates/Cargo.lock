@@ -2572,6 +2572,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "runx-x402"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "runx-contracts",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "rusqlite"
 version = "0.40.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

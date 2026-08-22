@@ -88,6 +88,15 @@ export function checkRetiredRuntimeSurfaces(findings) {
     workspaceRoot,
     "crates/runx-contracts/src/bin/runx-paid-invocation-fixtures.rs",
   );
+  const x402ContractOwner = path.join(workspaceRoot, "crates/runx-contracts/src/x402.rs");
+  const x402FixtureProducer = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/bin/runx-x402-fixtures.rs",
+  );
+  const schemaArtifactsProjection = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/schema_artifacts.rs",
+  );
   const contractsLib = path.join(workspaceRoot, "crates/runx-contracts/src/lib.rs");
   for (const root of [
     "crates/runx-runtime/src",
@@ -96,7 +105,7 @@ export function checkRetiredRuntimeSurfaces(findings) {
   ]) {
     for (const filePath of rustFiles(root)) {
       let source = readFileSync(filePath, "utf8");
-      if (filePath === paidInvocationContractOwner) {
+      if (filePath === paidInvocationContractOwner || filePath === x402ContractOwner) {
         const forbiddenRuntimeMarker = [
           /\bstd::fs\b/u,
           /\bstd::net\b/u,
@@ -110,11 +119,18 @@ export function checkRetiredRuntimeSurfaces(findings) {
         }
         continue;
       }
-      if (filePath === paidInvocationFixtureProducer) continue;
+      if (filePath === paidInvocationFixtureProducer || filePath === x402FixtureProducer) continue;
       if (filePath === contractsLib) {
         source = source
           .replace(/pub mod paid_invocation;\s*/gu, "")
-          .replace(/pub use paid_invocation::\{[\s\S]*?\};\s*/gu, "");
+          .replace(/pub use paid_invocation::\{[\s\S]*?\};\s*/gu, "")
+          .replace(/pub mod x402;\s*/gu, "")
+          .replace(/pub use x402::\{[\s\S]*?\};\s*/gu, "");
+      }
+      if (filePath === schemaArtifactsProjection) {
+        source = source
+          .replace(/X402[A-Za-z0-9_]*/gu, "ExternalContract")
+          .replace(/x402[-_.A-Za-z0-9/]*/gu, "external-contract");
       }
       const lines = source.split(/\r?\n/u);
       lines.forEach((line, index) => {
@@ -125,6 +141,21 @@ export function checkRetiredRuntimeSurfaces(findings) {
           }
         }
       });
+    }
+  }
+
+  for (const filePath of rustFiles("crates/runx-x402/src")) {
+    const source = readFileSync(filePath, "utf8");
+    const forbiddenRuntimeMarker = [
+      /\bstd::fs\b/u,
+      /\bstd::net\b/u,
+      /\bstd::process\b/u,
+      /\b(?:reqwest|hyper|axum|sqlx|diesel|aws_sdk|stripe|coinbase|tokio)\b/u,
+    ].find((pattern) => pattern.test(source));
+    if (forbiddenRuntimeMarker) {
+      findings.push(
+        `${relative(filePath)} crosses the inert x402 presentation boundary with ${forbiddenRuntimeMarker}`,
+      );
     }
   }
 

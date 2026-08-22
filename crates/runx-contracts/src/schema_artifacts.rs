@@ -21,10 +21,12 @@ use crate::{
     ParentInvocationBinding, ProviderOperationPacket, Question, QuotePaidInvocationRequest,
     QuotePaidInvocationResult, Receipt, Redaction, Reference, ReferenceLink, RegistryBinding,
     ResolutionRequest, ResolutionResponse, ReviewReceiptOutput, RunSummary, RunxListReport,
-    ScopeAdmission, Signal, SkillApplyResult, SkillArchitectureDecision, SkillArchitecturePlan,
-    SkillChangeBundle, SkillChangeDraft, SkillValidationResult, SourcePacket, SuppressionRecord,
-    ThreadOutboxProviderFetch, ThreadOutboxProviderManifest, ThreadOutboxProviderObservation,
-    ThreadOutboxProviderPush, ToolManifest, Verification,
+    RunxX402InvocationExtensionInfo, ScopeAdmission, Signal, SkillApplyResult,
+    SkillArchitectureDecision, SkillArchitecturePlan, SkillChangeBundle, SkillChangeDraft,
+    SkillValidationResult, SourcePacket, SuppressionRecord, ThreadOutboxProviderFetch,
+    ThreadOutboxProviderManifest, ThreadOutboxProviderObservation, ThreadOutboxProviderPush,
+    ToolManifest, Verification, X402PaymentPayload, X402PaymentRequired, X402PaymentRequirements,
+    X402ResourceInfo, X402SettleResponse,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -150,6 +152,14 @@ pub fn generated_schema_artifacts() -> Vec<SchemaArtifact> {
         ),
         public_packet_artifact::<CancelPaidInvocationResult>(
             "cancel-paid-invocation-result.schema.json",
+        ),
+        schema_artifact::<X402ResourceInfo>("x402-v2-resource-info.schema.json"),
+        schema_artifact::<X402PaymentRequirements>("x402-v2-payment-requirements.schema.json"),
+        schema_artifact::<X402PaymentRequired>("x402-v2-payment-required.schema.json"),
+        schema_artifact::<X402PaymentPayload>("x402-v2-payment-payload.schema.json"),
+        schema_artifact::<X402SettleResponse>("x402-v2-settle-response.schema.json"),
+        schema_artifact::<RunxX402InvocationExtensionInfo>(
+            "runx-x402-invocation-extension-v1.schema.json",
         ),
     ]
 }

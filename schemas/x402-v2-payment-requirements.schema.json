@@ -1,0 +1,52 @@
+{
+  "$id": "https://schemas.runx.ai/external/x402/v2/payment-requirements.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "amount": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "asset": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "extra": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "maxTimeoutSeconds": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "network": {
+      "minLength": 3,
+      "pattern": "^.*:.*$",
+      "type": "string"
+    },
+    "payTo": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "scheme": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "scheme",
+    "network",
+    "amount",
+    "asset",
+    "payTo",
+    "maxTimeoutSeconds"
+  ],
+  "type": "object"
+}

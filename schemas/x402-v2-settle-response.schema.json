@@ -1,0 +1,86 @@
+{
+  "$id": "https://schemas.runx.ai/external/x402/v2/settle-response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "amount": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "errorMessage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "errorReason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "extensions": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "extra": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "network": {
+      "minLength": 3,
+      "pattern": "^.*:.*$",
+      "type": "string"
+    },
+    "payer": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "transaction": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "success",
+    "transaction",
+    "network"
+  ],
+  "type": "object"
+}

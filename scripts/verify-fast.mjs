@@ -32,12 +32,18 @@ const rustPaidInvocationFixturesBin = path.join(
     ? "runx-paid-invocation-fixtures.exe"
     : "runx-paid-invocation-fixtures",
 );
+const rustX402FixturesBin = path.join(
+  cargoTargetDir,
+  "debug",
+  process.platform === "win32" ? "runx-x402-fixtures.exe" : "runx-x402-fixtures",
+);
 
 const evalBinEnv = {
   RUNX_RUST_CLI_BIN: rustKernelBin,
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
   RUNX_SCHEMA_ARTIFACTS_BIN: rustSchemaArtifactsBin,
   RUNX_PAID_INVOCATION_FIXTURES_BIN: rustPaidInvocationFixturesBin,
+  RUNX_X402_FIXTURES_BIN: rustX402FixturesBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "verify-fast-test-key",
   RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64:
     process.env.RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64 ?? "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
@@ -53,6 +59,8 @@ await runParallelGroup("source checks", [
   step("readiness structural guard", "node", ["scripts/check-readiness-structural.mjs"]),
   step("demo inventory guard", "node", ["scripts/check-demo-inventory.mjs"]),
   step("boundary:check", "pnpm", ["boundary:check"]),
+  step("license manifest", "node", ["scripts/check-license-edges.mjs", "--check", "manifest-complete"]),
+  step("license identifiers", "node", ["scripts/check-license-edges.mjs", "--check", "identifiers"]),
   step("runtime architecture", "pnpm", ["runtime:architecture-check"]),
   step("test:boundary", "pnpm", ["test:boundary"]),
   step("typecheck", "pnpm", ["typecheck"]),
@@ -101,6 +109,8 @@ const rustBuild = await runStep(
     "runx-schema-artifacts",
     "--bin",
     "runx-paid-invocation-fixtures",
+    "--bin",
+    "runx-x402-fixtures",
   ]),
   rustBuildEnv,
 );
@@ -120,6 +130,7 @@ if (rustBuild.status === 0) {
       step("fixtures:parser:check", "pnpm", ["fixtures:parser:check"]),
       step("contracts:schemas:check", "pnpm", ["contracts:schemas:check"]),
       step("packet contracts", "pnpm", ["packet-schemas:check"]),
+      step("x402 contract conformance", "pnpm", ["x402:contract-conformance"]),
       step("fixtures:contracts:check", "pnpm", ["fixtures:contracts:check"]),
       step("fixtures:contracts:keys", "pnpm", ["fixtures:contracts:keys"]),
       step("fixtures:harness:check", "pnpm", ["fixtures:harness:check"]),

@@ -53283,6 +53283,417 @@ export const runxSchemaArtifacts = {
     "type": "object",
     "x-runx-schema": "runx.run-summary.v1"
   } as JsonSchema,
+  "runx-x402-invocation-extension-v1.schema.json": {
+    "$id": "https://schemas.runx.ai/runx/x402/invocation-extension/v1.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "anyOf": [
+      {
+        "additionalProperties": false,
+        "properties": {
+          "offer_revision": {
+            "$id": "https://schemas.runx.ai/runx/payment/offer-revision-ref/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "input_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "offer_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "output_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "revision_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "schema": {
+                "const": "runx.payment.offer_revision_ref.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "offer_id",
+              "revision",
+              "revision_digest",
+              "input_schema_digest",
+              "output_schema_digest"
+            ],
+            "type": "object",
+            "x-runx-schema": "runx.payment.offer_revision_ref.v1"
+          },
+          "package_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "discovery",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "offer_revision",
+          "package_digest"
+        ],
+        "type": "object"
+      },
+      {
+        "additionalProperties": false,
+        "properties": {
+          "canonicalizer_version": {
+            "anyOf": [
+              {
+                "const": "runx.receipt.c14n.v1",
+                "type": "string"
+              }
+            ]
+          },
+          "idempotency": {
+            "additionalProperties": false,
+            "properties": {
+              "binding_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "key": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "binding_digest"
+            ],
+            "type": "object"
+          },
+          "input_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "invocation_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "offer_revision": {
+            "$id": "https://schemas.runx.ai/runx/payment/offer-revision-ref/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "input_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "offer_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "output_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "revision_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "schema": {
+                "const": "runx.payment.offer_revision_ref.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "offer_id",
+              "revision",
+              "revision_digest",
+              "input_schema_digest",
+              "output_schema_digest"
+            ],
+            "type": "object",
+            "x-runx-schema": "runx.payment.offer_revision_ref.v1"
+          },
+          "package_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "parent": {
+            "$id": "https://schemas.runx.ai/runx/payment/parent-invocation-binding/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "execution_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "invocation_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "schema": {
+                "const": "runx.payment.parent_invocation_binding.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "invocation_id",
+              "execution_digest"
+            ],
+            "type": "object",
+            "x-runx-schema": "runx.payment.parent_invocation_binding.v1"
+          },
+          "purpose": {
+            "const": "invocation",
+            "type": "string"
+          },
+          "quote_ref": {
+            "$id": "https://schemas.runx.ai/runx/reference/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "locator": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "observed_at": {
+                "minLength": 1,
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$",
+                "type": "string"
+              },
+              "proof_kind": {
+                "anyOf": [
+                  {
+                    "const": "effect_evidence",
+                    "type": "string"
+                  },
+                  {
+                    "const": "effect_finality",
+                    "type": "string"
+                  },
+                  {
+                    "const": "credential_resolution",
+                    "type": "string"
+                  }
+                ]
+              },
+              "provider": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "schema": {
+                "const": "runx.reference.v1",
+                "type": "string"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "const": "github_issue",
+                    "type": "string"
+                  },
+                  {
+                    "const": "github_pull_request",
+                    "type": "string"
+                  },
+                  {
+                    "const": "github_repo",
+                    "type": "string"
+                  },
+                  {
+                    "const": "slack_thread",
+                    "type": "string"
+                  },
+                  {
+                    "const": "sentry_event",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider_thread",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider_event",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider_comment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "tracking_item",
+                    "type": "string"
+                  },
+                  {
+                    "const": "change_request",
+                    "type": "string"
+                  },
+                  {
+                    "const": "repository",
+                    "type": "string"
+                  },
+                  {
+                    "const": "support_ticket",
+                    "type": "string"
+                  },
+                  {
+                    "const": "signal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "act",
+                    "type": "string"
+                  },
+                  {
+                    "const": "receipt",
+                    "type": "string"
+                  },
+                  {
+                    "const": "graph_receipt",
+                    "type": "string"
+                  },
+                  {
+                    "const": "artifact",
+                    "type": "string"
+                  },
+                  {
+                    "const": "verification",
+                    "type": "string"
+                  },
+                  {
+                    "const": "harness",
+                    "type": "string"
+                  },
+                  {
+                    "const": "host",
+                    "type": "string"
+                  },
+                  {
+                    "const": "deployment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "surface",
+                    "type": "string"
+                  },
+                  {
+                    "const": "target",
+                    "type": "string"
+                  },
+                  {
+                    "const": "opportunity",
+                    "type": "string"
+                  },
+                  {
+                    "const": "thesis_assessment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "selection",
+                    "type": "string"
+                  },
+                  {
+                    "const": "skill_binding",
+                    "type": "string"
+                  },
+                  {
+                    "const": "target_transition_entry",
+                    "type": "string"
+                  },
+                  {
+                    "const": "selection_cycle",
+                    "type": "string"
+                  },
+                  {
+                    "const": "decision",
+                    "type": "string"
+                  },
+                  {
+                    "const": "reflection_entry",
+                    "type": "string"
+                  },
+                  {
+                    "const": "feed_entry",
+                    "type": "string"
+                  },
+                  {
+                    "const": "principal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "authority_proof",
+                    "type": "string"
+                  },
+                  {
+                    "const": "scope_admission",
+                    "type": "string"
+                  },
+                  {
+                    "const": "grant",
+                    "type": "string"
+                  },
+                  {
+                    "const": "mandate",
+                    "type": "string"
+                  },
+                  {
+                    "const": "credential",
+                    "type": "string"
+                  },
+                  {
+                    "const": "webhook_delivery",
+                    "type": "string"
+                  },
+                  {
+                    "const": "redaction_policy",
+                    "type": "string"
+                  },
+                  {
+                    "const": "external_url",
+                    "type": "string"
+                  }
+                ]
+              },
+              "uri": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "uri"
+            ],
+            "type": "object",
+            "x-runx-schema": "runx.reference.v1"
+          }
+        },
+        "required": [
+          "purpose",
+          "invocation_id",
+          "quote_ref",
+          "offer_revision",
+          "package_digest",
+          "input_digest",
+          "canonicalizer_version",
+          "idempotency"
+        ],
+        "type": "object"
+      }
+    ],
+    "x-runx-schema": "runx.x402.invocation_extension.v1"
+  } as JsonSchema,
   "scope-admission.schema.json": {
     "$id": "https://runx.ai/spec/scope-admission.schema.json",
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -68540,6 +68951,557 @@ export const runxSchemaArtifacts = {
     ],
     "type": "object",
     "x-runx-schema": "runx.verification.v1"
+  } as JsonSchema,
+  "x402-v2-payment-payload.schema.json": {
+    "$id": "https://schemas.runx.ai/external/x402/v2/payment-payload.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {
+      "accepted": {
+        "$id": "https://schemas.runx.ai/external/x402/v2/payment-requirements.schema.json",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "properties": {
+          "amount": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "asset": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "extra": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxTimeoutSeconds": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "network": {
+            "minLength": 3,
+            "pattern": "^.*:.*$",
+            "type": "string"
+          },
+          "payTo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "scheme": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme",
+          "network",
+          "amount",
+          "asset",
+          "payTo",
+          "maxTimeoutSeconds"
+        ],
+        "type": "object"
+      },
+      "extensions": {
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "payload": {
+        "additionalProperties": {},
+        "type": "object"
+      },
+      "resource": {
+        "anyOf": [
+          {
+            "$id": "https://schemas.runx.ai/external/x402/v2/resource-info.schema.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": true,
+            "properties": {
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "iconUrl": {
+                "anyOf": [
+                  {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "mimeType": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "serviceName": {
+                "anyOf": [
+                  {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "pattern": "^[\\x20-\\x7e]+$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tags": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "maxLength": 32,
+                      "minLength": 1,
+                      "pattern": "^[\\x20-\\x7e]+$",
+                      "type": "string"
+                    },
+                    "maxItems": 5,
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "url": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "x402Version": {
+        "const": 2,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "x402Version",
+      "accepted",
+      "payload"
+    ],
+    "type": "object"
+  } as JsonSchema,
+  "x402-v2-payment-required.schema.json": {
+    "$id": "https://schemas.runx.ai/external/x402/v2/payment-required.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {
+      "accepts": {
+        "items": {
+          "$id": "https://schemas.runx.ai/external/x402/v2/payment-requirements.schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "additionalProperties": true,
+          "properties": {
+            "amount": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "asset": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "extra": {
+              "anyOf": [
+                {
+                  "additionalProperties": {},
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxTimeoutSeconds": {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            "network": {
+              "minLength": 3,
+              "pattern": "^.*:.*$",
+              "type": "string"
+            },
+            "payTo": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "scheme": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "scheme",
+            "network",
+            "amount",
+            "asset",
+            "payTo",
+            "maxTimeoutSeconds"
+          ],
+          "type": "object"
+        },
+        "minItems": 1,
+        "type": "array"
+      },
+      "error": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "extensions": {
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "resource": {
+        "$id": "https://schemas.runx.ai/external/x402/v2/resource-info.schema.json",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iconUrl": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mimeType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serviceName": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^[\\x20-\\x7e]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "pattern": "^[\\x20-\\x7e]+$",
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "x402Version": {
+        "const": 2,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "x402Version",
+      "resource",
+      "accepts"
+    ],
+    "type": "object"
+  } as JsonSchema,
+  "x402-v2-payment-requirements.schema.json": {
+    "$id": "https://schemas.runx.ai/external/x402/v2/payment-requirements.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {
+      "amount": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "asset": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "extra": {
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxTimeoutSeconds": {
+        "exclusiveMinimum": 0,
+        "type": "number"
+      },
+      "network": {
+        "minLength": 3,
+        "pattern": "^.*:.*$",
+        "type": "string"
+      },
+      "payTo": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "scheme": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "scheme",
+      "network",
+      "amount",
+      "asset",
+      "payTo",
+      "maxTimeoutSeconds"
+    ],
+    "type": "object"
+  } as JsonSchema,
+  "x402-v2-resource-info.schema.json": {
+    "$id": "https://schemas.runx.ai/external/x402/v2/resource-info.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "iconUrl": {
+        "anyOf": [
+          {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "mimeType": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "serviceName": {
+        "anyOf": [
+          {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[\\x20-\\x7e]+$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "tags": {
+        "anyOf": [
+          {
+            "items": {
+              "maxLength": 32,
+              "minLength": 1,
+              "pattern": "^[\\x20-\\x7e]+$",
+              "type": "string"
+            },
+            "maxItems": 5,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "url": {
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "url"
+    ],
+    "type": "object"
+  } as JsonSchema,
+  "x402-v2-settle-response.schema.json": {
+    "$id": "https://schemas.runx.ai/external/x402/v2/settle-response.schema.json",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": true,
+    "properties": {
+      "amount": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "errorMessage": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "errorReason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "extensions": {
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "extra": {
+        "anyOf": [
+          {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "network": {
+        "minLength": 3,
+        "pattern": "^.*:.*$",
+        "type": "string"
+      },
+      "payer": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "transaction": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "success",
+      "transaction",
+      "network"
+    ],
+    "type": "object"
   } as JsonSchema
 } as const satisfies Record<string, JsonSchema>;
 

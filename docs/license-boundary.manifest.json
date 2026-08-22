@@ -46,6 +46,11 @@
       "class": "apache-oss",
       "phase1_state": "keep",
       "decision": "Keep Apache-2.0. Hosted connect-list APIs are not exposed from the OSS SDK."
+    },
+    "runx-x402": {
+      "class": "apache-oss",
+      "phase1_state": "keep",
+      "decision": "Effect-free x402 v2 presentation and Runx invocation binding stay Apache-2.0; provider verification, settlement, credentials, and rails remain outside this crate."
     }
   },
   "private_crate_names": [],

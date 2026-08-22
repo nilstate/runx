@@ -21,3 +21,4 @@ mod reference;
 mod schema_validation;
 mod schema_wire_conformance;
 mod thread_outbox_provider_fixtures;
+mod x402;

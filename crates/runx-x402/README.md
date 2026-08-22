@@ -1,0 +1,11 @@
+# runx-x402
+
+Effect-free x402 v2 presentation for Runx contracts.
+
+This crate assembles complete `PaymentRequired` values, encodes and decodes the
+three standard HTTP headers, binds an assembled challenge to the rail-neutral
+Runx paid-invocation contract, and validates retry echoes before any payment
+verification may occur.
+
+It contains no HTTP client/server, async runtime, facilitator, credential,
+storage, settlement, or provider behavior.

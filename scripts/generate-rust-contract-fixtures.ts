@@ -70,7 +70,13 @@ type ExecutionFixtureKind =
   | "receipt_surface_ref";
 type GovernanceControlFixtureKind = "governance_control_set";
 type ContractFixtureKind = HostFixtureKind | ExecutionFixtureKind | GovernanceControlFixtureKind;
-type ContractScope = "act-assignment" | "governance-control" | "execution" | "host-protocol" | "paid-invocation";
+type ContractScope =
+  | "act-assignment"
+  | "governance-control"
+  | "execution"
+  | "host-protocol"
+  | "paid-invocation"
+  | "x402-v2";
 
 const selectedScope = scopeArg();
 const check = process.argv.includes("--check");
@@ -82,6 +88,7 @@ if (
   && selectedScope !== "execution"
   && selectedScope !== "host-protocol"
   && selectedScope !== "paid-invocation"
+  && selectedScope !== "x402-v2"
 ) {
   throw new Error(`unsupported contract fixture scope: ${selectedScope}`);
 }
@@ -108,6 +115,9 @@ if (selectedScope === undefined || selectedScope === "host-protocol") {
 if (selectedScope === undefined || selectedScope === "paid-invocation") {
   runPaidInvocationFixtures();
 }
+if (selectedScope === undefined || selectedScope === "x402-v2") {
+  runX402Fixtures();
+}
 
 function runPaidInvocationFixtures(): void {
   const outputRoot = path.join(fixtureRoot, "paid-invocation");
@@ -131,6 +141,33 @@ function runPaidInvocationFixtures(): void {
         path.join(workspaceRoot, "schemas"),
         "--packet-dir",
         path.join(workspaceRoot, "dist", "packets"),
+      ];
+  if (check) args.push("--check");
+  const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });
+  if (result.error) throw result.error;
+  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
+}
+
+function runX402Fixtures(): void {
+  const outputRoot = path.join(fixtureRoot, "x402-v2");
+  const configured = process.env.RUNX_X402_FIXTURES_BIN;
+  const command = configured || (process.platform === "win32" ? "cargo.exe" : "cargo");
+  const args = configured
+    ? ["--out", outputRoot, "--schema-dir", path.join(workspaceRoot, "schemas")]
+    : [
+        "run",
+        "--quiet",
+        "--manifest-path",
+        path.join(workspaceRoot, "crates", "Cargo.toml"),
+        "-p",
+        "runx-contracts",
+        "--bin",
+        "runx-x402-fixtures",
+        "--",
+        "--out",
+        outputRoot,
+        "--schema-dir",
+        path.join(workspaceRoot, "schemas"),
       ];
   if (check) args.push("--check");
   const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });

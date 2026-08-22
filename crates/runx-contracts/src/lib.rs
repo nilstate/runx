@@ -52,6 +52,7 @@ pub mod suppression;
 pub mod thread_outbox_provider;
 pub mod tools;
 pub mod verification;
+pub mod x402;
 
 pub use act::assignment::{
     ActAssignment, ActAssignmentActor, ActAssignmentHost, ActAssignmentHostKind,
@@ -283,4 +284,16 @@ pub use tools::{
 pub use verification::{
     ReceiptVerificationSummary, VERIFICATION_SCHEMA, Verification, VerificationCheck,
     VerificationSchema, VerificationStatus,
+};
+pub use x402::{
+    RUNX_INVOCATION_EXTENSION_KEY, RUNX_X402_INVOCATION_EXTENSION_SCHEMA,
+    RunxX402InvocationExtension, RunxX402InvocationExtensionInfo, X402_PAYMENT_PAYLOAD_SCHEMA_ID,
+    X402_PAYMENT_REQUIRED_HEADER, X402_PAYMENT_REQUIRED_SCHEMA_ID,
+    X402_PAYMENT_REQUIREMENTS_SCHEMA_ID, X402_PAYMENT_RESPONSE_HEADER,
+    X402_PAYMENT_SIGNATURE_HEADER, X402_PROTOCOL_VERSION, X402_RESOURCE_INFO_SCHEMA_ID,
+    X402_SETTLE_RESPONSE_SCHEMA_ID, X402_UPSTREAM_COMMIT, X402_UPSTREAM_PACKAGE,
+    X402_UPSTREAM_PACKAGE_VERSION, X402AcceptedRequirements, X402IconUrl, X402Network,
+    X402PaymentPayload, X402PaymentRequired, X402PaymentRequirements, X402PositiveNumber,
+    X402ResourceInfo, X402ServiceName, X402SettleResponse, X402Tag, X402Tags, X402Version2,
+    parse_runx_invocation_extension, runx_invocation_extension_value,
 };
