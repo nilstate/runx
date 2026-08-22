@@ -68,6 +68,9 @@ pub struct HistoryFilter {
     pub until: Option<String>,
     pub limit: Option<usize>,
     pub include_harness: bool,
+    /// Include graph-internal step receipts. The default history surface is
+    /// one row per top-level run; use this only for diagnostics.
+    pub include_internal: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -281,11 +284,21 @@ pub fn list_local_history_with_checkpoints_and_policy(
     let label = safe_receipt_store_label(store.root(), workspace_base, project_runx_dir);
     let filter = ResolvedHistoryFilter::parse(filter)?;
     let all_rows = match store.list_without_proof_for_history() {
-        Ok(receipts) => receipts
-            .iter()
-            .filter(|receipt| filter.include_harness || !is_harness_receipt(receipt))
-            .map(|receipt| history_row_with_policy(receipt, signature_policy))
-            .collect::<Vec<_>>(),
+        Ok(receipts) => {
+            let internal_ids = if filter.include_internal {
+                BTreeSet::new()
+            } else {
+                internal_receipt_ids(&receipts)
+            };
+            receipts
+                .iter()
+                .filter(|receipt| filter.include_harness || !is_harness_receipt(receipt))
+                .filter(|receipt| {
+                    filter.include_internal || !internal_ids.contains(receipt.id.as_ref())
+                })
+                .map(|receipt| history_row_with_policy(receipt, signature_policy))
+                .collect::<Vec<_>>()
+        }
         Err(ReceiptStoreError::MissingStore { .. }) => Vec::new(),
         Err(error) => return Err(error.into()),
     };
@@ -574,6 +587,7 @@ struct ResolvedHistoryFilter {
     until: Option<Timestamp>,
     limit: Option<usize>,
     include_harness: bool,
+    include_internal: bool,
 }
 
 impl ResolvedHistoryFilter {
@@ -589,8 +603,19 @@ impl ResolvedHistoryFilter {
             until: parse_date_filter("until", &filter.until)?,
             limit: filter.limit,
             include_harness: filter.include_harness,
+            include_internal: filter.include_internal,
         })
     }
+}
+
+fn internal_receipt_ids(receipts: &[Receipt]) -> BTreeSet<String> {
+    receipts
+        .iter()
+        .flat_map(|receipt| receipt.lineage.as_ref())
+        .flat_map(|lineage| lineage.children.iter())
+        .filter_map(|reference| reference.uri.strip_prefix(RECEIPT_REF_PREFIX))
+        .map(str::to_owned)
+        .collect()
 }
 
 fn parse_date_filter(

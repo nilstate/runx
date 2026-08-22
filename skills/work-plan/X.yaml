@@ -1,5 +1,5 @@
 skill: work-plan
-version: "0.2.4"
+version: "0.2.5"
 catalog:
   kind: graph
   audience: builder
@@ -390,6 +390,8 @@ runners:
           inputs:
             objective: $input.objective
             thread_locator: $input.thread_locator
+            thread: $input.thread
+            project_context: $input.project_context
             change_set: $input.change_set
             harness_context: $input.harness_context
           context:

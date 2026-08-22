@@ -528,6 +528,36 @@ where
         Ok(execution.finish(graph, receipt))
     }
 
+    pub(crate) fn seal_deferred_graph_checkpoint_with_host(
+        &self,
+        graph: ExecutionGraph,
+        checkpoint: GraphCheckpoint,
+        step_id: &str,
+        reason_code: impl Into<String>,
+        summary: impl Into<String>,
+        host: &mut dyn Host,
+    ) -> Result<GraphRun, RuntimeError> {
+        let mut execution = GraphExecution::from_checkpoint(&graph, checkpoint)?;
+        let receipt = graph_receipt_with_disposition_and_policy(
+            &graph.name,
+            &mut execution.runs,
+            &execution.sync_points,
+            &self.options.created_at,
+            crate::receipts::GraphClosure {
+                disposition: ClosureDisposition::Deferred,
+                reason_code: reason_code.into(),
+                summary: summary.into(),
+            },
+            self.options.effects.clone(),
+            self.options.signature_policy(),
+        )?;
+        execution.record_lifecycle(
+            host,
+            LifecycleEvent::graph_deferred(&graph.name, step_id, &receipt),
+        )?;
+        Ok(execution.finish(graph, receipt))
+    }
+
     pub(crate) fn seal_failed_graph_checkpoint_with_host(
         &self,
         graph: ExecutionGraph,
@@ -678,13 +708,11 @@ pub(crate) fn graph_run_trace(run: &GraphRun) -> JsonValue {
     );
     trace.insert(
         "status".to_owned(),
-        JsonValue::String(
-            if run.receipt.seal.disposition == ClosureDisposition::Blocked {
-                "blocked".to_owned()
-            } else {
-                format!("{:?}", run.state.status).to_ascii_lowercase()
-            },
-        ),
+        JsonValue::String(match run.receipt.seal.disposition {
+            ClosureDisposition::Blocked => "blocked".to_owned(),
+            ClosureDisposition::Deferred => "deferred".to_owned(),
+            _ => format!("{:?}", run.state.status).to_ascii_lowercase(),
+        }),
     );
     let mut step_summaries = Vec::new();
     for step in &run.steps {

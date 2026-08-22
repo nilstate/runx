@@ -117,8 +117,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/github-sync",
-        version: "sha-c8d2b97ad77d",
-        digest: "2ebf53406127cf05616a9fe98860f08f58dde17e2449d96f286e4efe68062656",
+        version: "sha-ce7df931aef8",
+        digest: "f131f6a81074e91e75d256942ed8e74426af9431d99211f527aa867d85ea148b",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/google-analytics",
@@ -422,8 +422,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/work-plan",
-        version: "sha-8eac5e83418f",
-        digest: "0c4b3cbe546a009c917a9fb4b3fd380db7c147c816438f742b46b3ec3c7ae6eb",
+        version: "sha-e703be0f3100",
+        digest: "fbd52df58519912f55968c849fe041fd94b70edd05064977e4fd9dc4b501b5fc",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/x402-pay",

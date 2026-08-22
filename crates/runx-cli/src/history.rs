@@ -204,6 +204,13 @@ fn parse_history_args(args: &[OsString]) -> Result<ParsedHistoryArgs, HistoryCli
                 parsed.filter.include_harness = true;
                 index += 1;
             }
+            "--include-internal" => {
+                if inline_value.is_some() {
+                    return Err(invalid_args("--include-internal does not take a value"));
+                }
+                parsed.filter.include_internal = true;
+                index += 1;
+            }
             "--receipt-dir" => {
                 let (value, next_index) =
                     cli_args::flag_value(args, index, flag, inline_value, "history")
@@ -296,6 +303,7 @@ fn has_non_query_filters(filter: &HistoryFilter) -> bool {
         || filter.until.is_some()
         || filter.limit.is_some()
         || filter.include_harness
+        || filter.include_internal
 }
 
 fn render_history(

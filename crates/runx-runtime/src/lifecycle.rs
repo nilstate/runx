@@ -124,6 +124,15 @@ impl LifecycleEvent {
         }
     }
 
+    pub(crate) fn graph_deferred(graph_name: &str, step_id: &str, receipt: &Receipt) -> Self {
+        Self::AbnormalSeal {
+            receipt_id: receipt.id.to_string(),
+            harness_id: receipt.subject.reference.uri.clone().into_string(),
+            disposition: receipt.seal.disposition.clone(),
+            message: format!("graph {graph_name} deferred at {step_id}"),
+        }
+    }
+
     // Function rationale: each lifecycle variant maps to
     // exactly one host-facing event shape; splitting the match would hide
     // exhaustiveness across the lifecycle vocabulary.

@@ -102,6 +102,7 @@ fn history_filter(inputs: &ReceiptQueryInput, limit: usize) -> Result<HistoryFil
         until: optional_string(inputs.until.as_deref()),
         limit: Some(limit),
         include_harness: false,
+        include_internal: false,
     })
 }
 

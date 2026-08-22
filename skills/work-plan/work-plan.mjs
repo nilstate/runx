@@ -35,7 +35,11 @@ export default function validateWorkPlan(inputs) {
     open_questions: normalized.open_questions,
     evidence: {
       source_change_set_preserved: normalized.source_change_set_preserved,
+      source_change_set_status: normalized.source_context_available
+        ? (normalized.source_change_set_preserved ? "preserved" : "drifted")
+        : "not_supplied",
       source_thread_locator_preserved: normalized.source_thread_locator_preserved,
+      source_context_available: normalized.source_context_available,
       catalog_skills: normalized.catalog_skills,
     },
     validation: {
@@ -51,29 +55,54 @@ function validateDraft(value, state) {
   const decision = enumValue(value.decision, ["ready", "blocked"], "decision");
   const planKind = enumValue(value.plan_kind, ["workspace_change", "skill_package"], "plan_kind");
   const changeSet = requiredRecord(value.change_set, "change_set");
-  const suppliedChangeSet = isRecord(inputs.change_set) ? inputs.change_set : null;
-  const sourceChangeSetPreserved = suppliedChangeSet ? equalJson(changeSet, suppliedChangeSet) : false;
-  if (suppliedChangeSet && !sourceChangeSetPreserved) {
+  const sourceChangeSet = sourceChangeSetFromInputs(inputs);
+  const sourceContextExpected = isRecord(inputs.change_set)
+    || isRecord(inputs.thread)
+    || Boolean(optionalString(inputs.thread_locator));
+  if (sourceContextExpected && !sourceChangeSet) {
+    findings.push({
+      code: "change_set.source_missing",
+      path: "change_set",
+      message: "The caller supplied source context, but no source change set was available to preserve.",
+    });
+  }
+  const sourceChangeSetPreserved = sourceChangeSet ? equalJson(changeSet, sourceChangeSet) : false;
+  if (sourceChangeSet && !sourceChangeSetPreserved) {
     findings.push({ code: "change_set.drift", path: "change_set", message: "A supplied issue-intake change set must be preserved exactly." });
   }
-  if (suppliedChangeSet && suppliedChangeSet.action_decision !== "proceed_to_plan") {
+  if (sourceChangeSet && sourceChangeSet.action_decision !== "proceed_to_plan") {
     findings.push({ code: "change_set.not_plannable", path: "change_set.action_decision", message: "The supplied change set does not authorize a planning lane." });
   }
-  if (suppliedChangeSet && suppliedChangeSet.commence_decision !== "approve") {
+  if (sourceChangeSet && sourceChangeSet.commence_decision !== "approve") {
     findings.push({ code: "change_set.not_commenced", path: "change_set.commence_decision", message: "The supplied change set has not approved commencement." });
   }
 
-  const inputThread = optionalString(inputs.thread_locator);
+  const inputThread = optionalString(inputs.thread_locator)
+    || optionalString(record(inputs.thread).thread_locator)
+    || optionalString(sourceChangeSet?.thread_locator);
   const changeSetThread = optionalString(changeSet.thread_locator);
-  const sourceThreadLocatorPreserved = !inputThread || inputThread === changeSetThread;
+  const sourceThreadLocatorPreserved = !sourceChangeSet || !inputThread || inputThread === changeSetThread;
   if (!sourceThreadLocatorPreserved) {
     findings.push({ code: "thread_locator.drift", path: "change_set.thread_locator", message: "The source thread locator changed during planning." });
   }
 
   const objectiveSummary = requiredString(value.objective_summary, "objective_summary");
-  const plan = validateWorkspacePlan(value.workspace_change_plan, changeSet, objectiveSummary, findings);
+  const plan = validateWorkspacePlan(value.workspace_change_plan, changeSet, objectiveSummary, findings, {
+    sourceChangeSet,
+    projectContext: optionalString(inputs.project_context),
+  });
   const requiredSkills = validateRequiredSkills(value.required_skills, catalogNames, findings);
   const steps = validateOrchestration(value.orchestration_steps, requiredSkills, catalogNames, findings);
+  const routedSkills = new Set(steps.map((step) => normalizedSkillName(step.skill)));
+  for (const required of requiredSkills) {
+    if (required.name !== "approval" && !routedSkills.has(required.name)) {
+      findings.push({
+        code: "catalog.required_skill_unrouted",
+        path: "required_skills",
+        message: `Required skill '${required.name}' is declared but no orchestration step routes to it.`,
+      });
+    }
+  }
   if (planKind === "skill_package" && !steps.some((step) => normalizedSkillName(step.skill) === "skill-lab")) {
     findings.push({ code: "skill_package.skill_lab_required", path: "orchestration_steps", message: "Runx skill-package authoring must use the canonical skill-lab lane." });
   }
@@ -94,14 +123,15 @@ function validateDraft(value, state) {
     orchestration_steps: steps,
     required_skills: requiredSkills,
     open_questions: openQuestions,
-    source_change_set_preserved: suppliedChangeSet ? sourceChangeSetPreserved : false,
+    source_change_set_preserved: sourceChangeSet ? sourceChangeSetPreserved : false,
     source_thread_locator_preserved: sourceThreadLocatorPreserved,
+    source_context_available: Boolean(sourceChangeSet),
     catalog_skills: [...new Set(steps.map((step) => normalizedSkillName(step.skill)).filter((name) => name && name !== "approval"))].sort(),
     objective,
   };
 }
 
-function validateWorkspacePlan(value, changeSet, objectiveSummary, findings) {
+function validateWorkspacePlan(value, changeSet, objectiveSummary, findings, context) {
   const plan = requiredRecord(value, "workspace_change_plan");
   requiredString(plan.plan_id, "workspace_change_plan.plan_id");
   const changeSetId = requiredString(changeSet.change_set_id, "change_set.change_set_id");
@@ -121,6 +151,10 @@ function validateWorkspacePlan(value, changeSet, objectiveSummary, findings) {
   }
 
   const phases = records(plan.phases, "workspace_change_plan.phases");
+  const targetSurfaces = new Set(
+    records(changeSet.target_surfaces, "change_set.target_surfaces")
+      .map((surface, index) => requiredString(surface.surface, `change_set.target_surfaces[${index}].surface`)),
+  );
   const phaseIds = new Set();
   const requestIds = new Set();
   for (const [phaseIndex, phase] of phases.entries()) {
@@ -142,10 +176,21 @@ function validateWorkspacePlan(value, changeSet, objectiveSummary, findings) {
         if (!requestIds.has(dependency)) findings.push({ code: "repo_request.unknown_dependency", path: `${requestPath}.depends_on[${dependencyIndex}]`, message: "A repo request may depend only on an earlier request." });
       }
       const repo = requiredString(request.repo, `${requestPath}.repo`);
+      if (targetSurfaces.size > 0 && !targetSurfaces.has(repo)) {
+        findings.push({ code: "repo_request.target_not_declared", path: `${requestPath}.repo`, message: "A repo change request must target a surface declared by the source change set." });
+      }
+      if (!context.sourceChangeSet && isSyntheticTarget(repo)) {
+        findings.push({ code: "repo_request.synthetic_target", path: `${requestPath}.repo`, message: "A repo change request may not invent a placeholder or synthetic repository." });
+      }
       requiredString(request.task_id, `${requestPath}.task_id`);
       requiredString(request.objective, `${requestPath}.objective`);
       strings(request.shared_context_refs, `${requestPath}.shared_context_refs`);
-      strings(request.validation_commands, `${requestPath}.validation_commands`);
+      const validationCommands = strings(request.validation_commands, `${requestPath}.validation_commands`);
+      for (const [commandIndex, command] of validationCommands.entries()) {
+        if (isPlaceholderCommand(command)) {
+          findings.push({ code: "repo_request.placeholder_validation", path: `${requestPath}.validation_commands[${commandIndex}]`, message: "Validation commands must be concrete executable commands, not placeholders." });
+        }
+      }
       const mutating = requiredBoolean(request.mutating, `${requestPath}.mutating`);
       if (phase.parallelizable === true && mutating && repos.has(repo)) {
         findings.push({ code: "phase.shared_mutation_target", path: requestPath, message: "Parallel requests may not mutate the same repo." });
@@ -158,6 +203,7 @@ function validateWorkspacePlan(value, changeSet, objectiveSummary, findings) {
 
   const integrationChecks = strings(plan.integration_checks, "workspace_change_plan.integration_checks");
   if (integrationChecks.length === 0) findings.push({ code: "plan.integration_checks_empty", path: "workspace_change_plan.integration_checks", message: "A ready plan needs at least one integration check." });
+  validateCanonicalEndpoints(plan, context.sourceChangeSet, findings);
   return {
     ...plan,
     shared_invariants: invariants,
@@ -223,7 +269,63 @@ function emptyPlan() {
     source_change_set_preserved: false,
     source_thread_locator_preserved: false,
     catalog_skills: [],
+    source_context_available: false,
   };
+}
+
+function sourceChangeSetFromInputs(inputs) {
+  if (isRecord(inputs.change_set) && Object.keys(inputs.change_set).length > 0) return inputs.change_set;
+  const thread = record(inputs.thread);
+  if (isRecord(thread.change_set) && Object.keys(thread.change_set).length > 0) return thread.change_set;
+  return null;
+}
+
+function isSyntheticTarget(value) {
+  return /^(?:repo|repository|repo[-_][a-z0-9]+|example|synthetic)(?:[-_].*)?$/iu.test(value.trim());
+}
+
+function isPlaceholderCommand(value) {
+  return /<[^>]+>|\b(?:TODO|TBD|CHANGEME|PLACEHOLDER)\b|example\.com|\.\.\./iu.test(value);
+}
+
+function validateCanonicalEndpoints(plan, sourceChangeSet, findings) {
+  if (!sourceChangeSet) return;
+  const sourceUrls = collectStrings(sourceChangeSet)
+    .map(parseUrl)
+    .filter(Boolean);
+  if (sourceUrls.length === 0) return;
+  const sourceHosts = new Set(sourceUrls.map((url) => url.hostname.toLowerCase()));
+  const planUrls = collectStrings(plan)
+    .map(parseUrl)
+    .filter(Boolean);
+  for (const url of planUrls) {
+    const hostname = url.hostname.toLowerCase();
+    const sameDomain = sourceUrls.some((source) => registrableSuffix(source.hostname) === registrableSuffix(hostname));
+    if (sameDomain && !sourceHosts.has(hostname)) {
+      findings.push({ code: "endpoint.canonical_drift", path: "workspace_change_plan", message: `Endpoint host '${hostname}' differs from the source canonical host.` });
+      return;
+    }
+  }
+}
+
+function collectStrings(value) {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(collectStrings);
+  if (isRecord(value)) return Object.values(value).flatMap(collectStrings);
+  return [];
+}
+
+function parseUrl(value) {
+  try {
+    return /^https?:\/\//iu.test(value) ? new URL(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function registrableSuffix(hostname) {
+  const parts = hostname.toLowerCase().split(".").filter(Boolean);
+  return parts.slice(-2).join(".");
 }
 
 function normalizedSkillName(value) {

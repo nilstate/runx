@@ -324,6 +324,31 @@ pub(super) fn execute_graph_skill_run(
                     cause: GraphTerminalCause::Blocked,
                 });
             }
+            Err(error @ RuntimeError::ProviderReadbackPending { .. }) => {
+                let step_id = error
+                    .graph_step_id()
+                    .unwrap_or("provider-readback")
+                    .to_owned();
+                let summary = format!(
+                    "graph {} deferred at {step_id}: the provider mutation may be applied, but independent readback is unavailable; reconcile before retrying",
+                    graph.name
+                );
+                return seal_terminal_graph_skill_run(TerminalGraphSkillRun {
+                    request,
+                    workspace,
+                    receipts,
+                    manifest,
+                    runner_name: &runner.name,
+                    graph: graph.clone(),
+                    checkpoint: previous_checkpoint,
+                    run_id: &run_id,
+                    runtime: &runtime,
+                    step_id: &step_id,
+                    reason_code: "provider_readback_pending",
+                    summary,
+                    cause: GraphTerminalCause::Deferred(error),
+                });
+            }
             #[cfg(feature = "agent")]
             Err(RuntimeError::ManagedAgentResolution {
                 step_id,
@@ -496,6 +521,7 @@ fn missing_required_graph_input_request(
 
 enum GraphTerminalCause {
     Blocked,
+    Deferred(RuntimeError),
     Failed(RuntimeError),
 }
 
@@ -520,7 +546,7 @@ fn seal_terminal_graph_skill_run(
 ) -> Result<JsonValue, SkillRunError> {
     let mut final_host = SkillRunGraphHost::new(ResolutionAnswers::default());
     let failure_result = match &context.cause {
-        GraphTerminalCause::Failed(error) => {
+        GraphTerminalCause::Deferred(error) | GraphTerminalCause::Failed(error) => {
             Some(JsonValue::Object(error.public_failure_projection()))
         }
         GraphTerminalCause::Blocked => None,
@@ -534,6 +560,16 @@ fn seal_terminal_graph_skill_run(
             context.summary,
             &mut final_host,
         )?,
+        GraphTerminalCause::Deferred(_) => {
+            context.runtime.seal_deferred_graph_checkpoint_with_host(
+                context.graph,
+                context.checkpoint,
+                context.step_id,
+                context.reason_code,
+                context.summary,
+                &mut final_host,
+            )?
+        }
         GraphTerminalCause::Failed(error) => {
             context.runtime.seal_failed_graph_checkpoint_with_host(
                 context.graph,
@@ -1306,7 +1342,7 @@ steps:
             &temp.path().join(".runx"),
             &HistoryFilter::default(),
         )?;
-        assert_eq!(history.receipts.len(), 2);
+        assert_eq!(history.receipts.len(), 1);
         assert!(
             history
                 .receipts
@@ -1314,6 +1350,16 @@ steps:
                 .all(|receipt| receipt.status == "failed")
         );
         assert!(history.pending_runs.is_empty());
+        let diagnostic_history = list_local_history(
+            &LocalReceiptStore::new(&receipt_dir),
+            temp.path(),
+            &temp.path().join(".runx"),
+            &HistoryFilter {
+                include_internal: true,
+                ..HistoryFilter::default()
+            },
+        )?;
+        assert_eq!(diagnostic_history.receipts.len(), 2);
         Ok(())
     }
 

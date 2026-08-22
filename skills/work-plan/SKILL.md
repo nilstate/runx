@@ -41,6 +41,11 @@ validation:
 
 `workspace_change_plan` contains `plan_id`, `change_set_id`, `objective_summary`, shared invariants, success criteria, ordered phases, integration checks, and open questions. Each phase contains ordered repo change requests with dependencies, validation commands, and mutation declarations.
 
+`evidence.source_change_set_status` is `preserved`, `drifted`, or
+`not_supplied`; `source_change_set_preserved: false` is never a successful
+preservation claim. When a caller supplies source context, drift or loss blocks
+the plan.
+
 Inputs are `objective`, optional `project_context`, `thread_locator`, `thread`, `change_set`, and `harness_context`. `harness_context` is passed through from the caller; the agent does not reconstruct or advance it.
 
 ## Agent task contracts

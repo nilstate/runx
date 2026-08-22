@@ -65,7 +65,7 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         name: "history",
         top_level_usage: &[],
         usage: &[
-            "runx history [query] [--detail] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--limit n] [--include-harness] [--receipt-dir dir] [--json]",
+            "runx history [query] [--detail] [--skill s] [--status s] [--source s] [--actor a] [--artifact-type t] [--since iso] [--until iso] [--limit n] [--include-harness] [--include-internal] [--receipt-dir dir] [--json]",
         ],
         notes: &[],
         options: &[
@@ -78,6 +78,7 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
             "--until iso",
             "--limit n",
             "--include-harness  Include harness and trial receipts",
+            "--include-internal Include graph-internal step receipts (diagnostics)",
             "--receipt-dir dir",
             "-j, --json",
         ],

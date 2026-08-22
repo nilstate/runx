@@ -575,8 +575,8 @@
   },
   {
     "skill_id": "runx/work-plan",
-    "version": "sha-8eac5e83418f",
-    "digest": "0c4b3cbe546a009c917a9fb4b3fd380db7c147c816438f742b46b3ec3c7ae6eb",
+    "version": "sha-e703be0f3100",
+    "digest": "fbd52df58519912f55968c849fe041fd94b70edd05064977e4fd9dc4b501b5fc",
     "catalog_visibility": "public",
     "catalog_role": "context"
   },
