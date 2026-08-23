@@ -32,6 +32,13 @@ const rustPaidInvocationFixturesBin = path.join(
     ? "runx-paid-invocation-fixtures.exe"
     : "runx-paid-invocation-fixtures",
 );
+const rustPrincipalIdFixturesBin = path.join(
+  cargoTargetDir,
+  "debug",
+  process.platform === "win32"
+    ? "runx-principal-id-fixtures.exe"
+    : "runx-principal-id-fixtures",
+);
 const rustX402FixturesBin = path.join(
   cargoTargetDir,
   "debug",
@@ -51,6 +58,7 @@ const evalBinEnv = {
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
   RUNX_SCHEMA_ARTIFACTS_BIN: rustSchemaArtifactsBin,
   RUNX_PAID_INVOCATION_FIXTURES_BIN: rustPaidInvocationFixturesBin,
+  RUNX_PRINCIPAL_ID_FIXTURES_BIN: rustPrincipalIdFixturesBin,
   RUNX_RECEIPT_COMPOSITION_FIXTURES_BIN: rustReceiptCompositionFixturesBin,
   RUNX_X402_FIXTURES_BIN: rustX402FixturesBin,
   RUNX_RECEIPT_SIGN_KID: process.env.RUNX_RECEIPT_SIGN_KID ?? "verify-fast-test-key",
@@ -120,6 +128,8 @@ const rustBuild = await runStep(
     "runx-schema-artifacts",
     "--bin",
     "runx-paid-invocation-fixtures",
+    "--bin",
+    "runx-principal-id-fixtures",
     "--example",
     "runx-receipt-composition-fixtures",
     "--bin",

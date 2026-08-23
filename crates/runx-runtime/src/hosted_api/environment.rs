@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::Path;
 
+use runx_contracts::RunxPrincipalId;
 use serde::Deserialize;
 use url::{Host, Url};
 
@@ -33,7 +34,7 @@ pub struct HostedApiEnvironment {
 pub struct AuthenticatedHostedApiEnvironment {
     base_url: String,
     token: String,
-    principal_id: String,
+    principal_id: RunxPrincipalId,
 }
 
 impl fmt::Debug for HostedApiEnvironment {
@@ -170,24 +171,24 @@ impl HostedApiEnvironment {
         }
         let profile = serde_json::from_str::<PrincipalProfile>(&response.body)
             .map_err(|error| HostedApiError::InvalidPrincipal(error.to_string()))?;
-        let principal_id = profile.principal.principal_id.trim();
-        if profile.status != "success" || principal_id.is_empty() {
+        if profile.status != "success" {
             return Err(HostedApiError::InvalidPrincipal(
                 "response did not identify a successful principal".to_owned(),
             ));
         }
+        let principal_id = parse_runx_principal_id(profile.principal.principal_id)?;
         if let Some(expected) = self.expected_principal_id.as_deref()
-            && expected != principal_id
+            && expected != principal_id.as_str()
         {
             return Err(HostedApiError::PrincipalMismatch {
                 expected: expected.to_owned(),
-                actual: principal_id.to_owned(),
+                actual: principal_id.as_str().to_owned(),
             });
         }
         Ok(AuthenticatedHostedApiEnvironment {
             base_url: self.base_url.clone(),
             token: token.to_owned(),
-            principal_id: principal_id.to_owned(),
+            principal_id,
         })
     }
 }
@@ -205,6 +206,11 @@ impl AuthenticatedHostedApiEnvironment {
 
     #[must_use]
     pub fn principal_id(&self) -> &str {
+        self.principal_id.as_str()
+    }
+
+    #[must_use]
+    pub(crate) fn runx_principal_id(&self) -> &RunxPrincipalId {
         &self.principal_id
     }
 }
@@ -216,6 +222,7 @@ pub fn store_authenticated_hosted_environment(
     principal_id: &str,
     token: &str,
 ) -> Result<(), HostedApiError> {
+    let principal_id = parse_runx_principal_id(principal_id)?;
     let config_dir = resolve_runx_home_dir(env, cwd);
     let config_path = config_dir.join("config.json");
     let config = load_runx_config_file(&config_path)?;
@@ -225,7 +232,7 @@ pub fn store_authenticated_hosted_environment(
         normalize_hosted_base_url(Some(base_url))?
             .unwrap_or_else(|| DEFAULT_HOSTED_API_BASE_URL.to_owned()),
     );
-    public.principal_id = non_empty(Some(principal_id));
+    public.principal_id = Some(principal_id.into_string());
     write_runx_config_file(&config_path, &next)?;
     Ok(())
 }
@@ -297,6 +304,14 @@ fn non_empty(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+fn parse_runx_principal_id(value: impl Into<String>) -> Result<RunxPrincipalId, HostedApiError> {
+    RunxPrincipalId::new(value).ok_or_else(|| {
+        HostedApiError::InvalidPrincipal(
+            "principal_id must match ^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$".to_owned(),
+        )
+    })
 }
 
 fn truthy_env(value: &str) -> bool {

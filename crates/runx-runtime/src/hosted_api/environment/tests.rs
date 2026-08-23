@@ -13,11 +13,39 @@ fn debug_output_never_exposes_hosted_api_tokens() {
     let authenticated = AuthenticatedHostedApiEnvironment {
         base_url: "https://api.runx.test".to_owned(),
         token: "rxk_super_secret".to_owned(),
-        principal_id: "operator:test".to_owned(),
+        principal_id: RunxPrincipalId::new("operator:test").expect("valid principal id"),
     };
 
     assert!(!format!("{resolved:?}").contains("rxk_super_secret"));
     assert!(!format!("{authenticated:?}").contains("rxk_super_secret"));
+}
+
+#[test]
+fn authenticated_principal_id_remains_typed_at_the_auth_boundary() {
+    let authenticated = AuthenticatedHostedApiEnvironment {
+        base_url: "https://api.runx.test".to_owned(),
+        token: "rxk_super_secret".to_owned(),
+        principal_id: RunxPrincipalId::new("operator:test").expect("valid principal id"),
+    };
+
+    assert_eq!(authenticated.principal_id(), "operator:test");
+    assert_eq!(authenticated.runx_principal_id().as_str(), "operator:test");
+}
+
+#[test]
+fn storing_a_hosted_environment_rejects_noncanonical_principal_ids() {
+    let workspace = tempfile::tempdir().expect("workspace");
+
+    let error = store_authenticated_hosted_environment(
+        &BTreeMap::new(),
+        workspace.path(),
+        "https://api.runx.test",
+        " operator:test ",
+        "rxk_super_secret",
+    )
+    .expect_err("principal ids are never trimmed or rewritten");
+
+    assert!(error.to_string().contains("principal_id must match"));
 }
 
 #[test]

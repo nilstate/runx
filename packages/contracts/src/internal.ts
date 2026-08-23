@@ -49,6 +49,17 @@ export const RUNX_CONTRACT_IDS = {
   suppressionRecord: `${RUNX_SCHEMA_BASE_URL}/runx/suppression-record/v1.json`,
   operationalPolicy: `${RUNX_SCHEMA_BASE_URL}/runx/operational-policy/v1.json`,
   operationalProposal: `${RUNX_SCHEMA_BASE_URL}/runx/operational-proposal/v1.json`,
+  paidInvocation: `${RUNX_SCHEMA_BASE_URL}/runx/payment/paid-invocation/v1.json`,
+  offerRevisionRef: `${RUNX_SCHEMA_BASE_URL}/runx/payment/offer-revision-ref/v1.json`,
+  parentInvocationBinding: `${RUNX_SCHEMA_BASE_URL}/runx/payment/parent-invocation-binding/v1.json`,
+  quotePaidInvocationRequest: `${RUNX_SCHEMA_BASE_URL}/runx/payment/quote-paid-invocation/request/v1.json`,
+  quotePaidInvocationResult: `${RUNX_SCHEMA_BASE_URL}/runx/payment/quote-paid-invocation/result/v1.json`,
+  executePaidInvocationRequest: `${RUNX_SCHEMA_BASE_URL}/runx/payment/execute-paid-invocation/request/v1.json`,
+  executePaidInvocationResult: `${RUNX_SCHEMA_BASE_URL}/runx/payment/execute-paid-invocation/result/v1.json`,
+  getPaidInvocationRequest: `${RUNX_SCHEMA_BASE_URL}/runx/payment/get-paid-invocation/request/v1.json`,
+  getPaidInvocationResult: `${RUNX_SCHEMA_BASE_URL}/runx/payment/get-paid-invocation/result/v1.json`,
+  cancelPaidInvocationRequest: `${RUNX_SCHEMA_BASE_URL}/runx/payment/cancel-paid-invocation/request/v1.json`,
+  cancelPaidInvocationResult: `${RUNX_SCHEMA_BASE_URL}/runx/payment/cancel-paid-invocation/result/v1.json`,
 } as const;
 
 export const RUNX_LOGICAL_SCHEMAS = {
@@ -92,6 +103,17 @@ export const RUNX_LOGICAL_SCHEMAS = {
   suppressionRecord: "runx.suppression_record.v1",
   operationalPolicy: "runx.operational_policy.v1",
   operationalProposal: "runx.operational_proposal.v1",
+  paidInvocation: "runx.payment.paid_invocation.v1",
+  offerRevisionRef: "runx.payment.offer_revision_ref.v1",
+  parentInvocationBinding: "runx.payment.parent_invocation_binding.v1",
+  quotePaidInvocationRequest: "runx.payment.quote_paid_invocation.request.v1",
+  quotePaidInvocationResult: "runx.payment.quote_paid_invocation.result.v1",
+  executePaidInvocationRequest: "runx.payment.execute_paid_invocation.request.v1",
+  executePaidInvocationResult: "runx.payment.execute_paid_invocation.result.v1",
+  getPaidInvocationRequest: "runx.payment.get_paid_invocation.request.v1",
+  getPaidInvocationResult: "runx.payment.get_paid_invocation.result.v1",
+  cancelPaidInvocationRequest: "runx.payment.cancel_paid_invocation.request.v1",
+  cancelPaidInvocationResult: "runx.payment.cancel_paid_invocation.result.v1",
 } as const;
 
 export const RUNX_CONTROL_SCHEMA_REFS = {

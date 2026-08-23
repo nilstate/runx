@@ -289,6 +289,63 @@ export {
 } from "./schemas/receipt.js";
 
 export {
+  paidInvocationV1Schema,
+  offerRevisionRefV1Schema,
+  parentInvocationBindingV1Schema,
+  quotePaidInvocationRequestV1Schema,
+  quotePaidInvocationResultV1Schema,
+  executePaidInvocationRequestV1Schema,
+  executePaidInvocationResultV1Schema,
+  getPaidInvocationRequestV1Schema,
+  getPaidInvocationResultV1Schema,
+  cancelPaidInvocationRequestV1Schema,
+  cancelPaidInvocationResultV1Schema,
+  paymentIdempotencyBindingSchema,
+  paidInvocationPaymentChallengeSchema,
+  validateRunxPrincipalId,
+  principalReferenceFromRunxPrincipalId,
+  validatePaidInvocationContract,
+  validateOfferRevisionRefContract,
+  validateParentInvocationBindingContract,
+  validatePaymentIdempotencyBindingContract,
+  validatePaidInvocationPaymentChallengeContract,
+  validateQuotePaidInvocationRequestContract,
+  validateQuotePaidInvocationResultContract,
+  validateExecutePaidInvocationRequestContract,
+  validateExecutePaidInvocationResultContract,
+  validateGetPaidInvocationRequestContract,
+  validateGetPaidInvocationResultContract,
+  validateCancelPaidInvocationRequestContract,
+  validateCancelPaidInvocationResultContract,
+  type RunxPrincipalId,
+  type Sha256DigestContract,
+  type CurrencyCodeContract,
+  type SettlementFamilyContract,
+  type PaidInvocationCanonicalizerVersionContract,
+  type PaidInvocationPaymentStateContract,
+  type PaidInvocationExecutionStateContract,
+  type PaidInvocationOutcomeGateContract,
+  type PaidInvocationRefusalCodeContract,
+  type PrincipalReferenceContract,
+  type PaymentReferenceContract,
+  type PaymentIdempotencyBindingContract,
+  type OfferRevisionRefContract,
+  type ParentInvocationBindingContract,
+  type PaidInvocationContract,
+  type PaidInvocationPaymentChallengeContract,
+  type QuotePaidInvocationRequestContract,
+  type PaidInvocationRefusalContract,
+  type QuotePaidInvocationResultContract,
+  type ExecutePaidInvocationRequestContract,
+  type PaidInvocationAdmissionResultContract,
+  type ExecutePaidInvocationResultContract,
+  type GetPaidInvocationRequestContract,
+  type GetPaidInvocationResultContract,
+  type CancelPaidInvocationRequestContract,
+  type CancelPaidInvocationResultContract,
+} from "./schemas/paid-invocation.js";
+
+export {
   operationalPolicySchema,
   operationalPolicySchemaVersion,
   operationalPolicySourceProviders,
@@ -613,6 +670,19 @@ import { ledgerRecordSchema } from "./schemas/ledger.js";
 import { handoffSignalV1Schema, handoffStateV1Schema, suppressionRecordV1Schema } from "./schemas/handoff.js";
 import { operationalPolicySchema } from "./schemas/operational-policy.js";
 import { operationalProposalSchema } from "./schemas/operational-proposal.js";
+import {
+  paidInvocationV1Schema,
+  offerRevisionRefV1Schema,
+  parentInvocationBindingV1Schema,
+  quotePaidInvocationRequestV1Schema,
+  quotePaidInvocationResultV1Schema,
+  executePaidInvocationRequestV1Schema,
+  executePaidInvocationResultV1Schema,
+  getPaidInvocationRequestV1Schema,
+  getPaidInvocationResultV1Schema,
+  cancelPaidInvocationRequestV1Schema,
+  cancelPaidInvocationResultV1Schema,
+} from "./schemas/paid-invocation.js";
 import { dataOperationResultV1Schema } from "./schemas/data-operation.js";
 import { runxSchemaArtifacts } from "./schema-artifacts.js";
 
@@ -675,6 +745,17 @@ export const runxContractSchemas = {
   suppressionRecord: runxSchemaArtifacts["suppression-record.schema.json"],
   operationalPolicy: runxSchemaArtifacts["operational-policy.schema.json"],
   operationalProposal: runxSchemaArtifacts["operational-proposal.schema.json"],
+  paidInvocation: paidInvocationV1Schema,
+  offerRevisionRef: offerRevisionRefV1Schema,
+  parentInvocationBinding: parentInvocationBindingV1Schema,
+  quotePaidInvocationRequest: quotePaidInvocationRequestV1Schema,
+  quotePaidInvocationResult: quotePaidInvocationResultV1Schema,
+  executePaidInvocationRequest: executePaidInvocationRequestV1Schema,
+  executePaidInvocationResult: executePaidInvocationResultV1Schema,
+  getPaidInvocationRequest: getPaidInvocationRequestV1Schema,
+  getPaidInvocationResult: getPaidInvocationResultV1Schema,
+  cancelPaidInvocationRequest: cancelPaidInvocationRequestV1Schema,
+  cancelPaidInvocationResult: cancelPaidInvocationResultV1Schema,
 } as const;
 
 export const runxAuxiliarySchemas = {

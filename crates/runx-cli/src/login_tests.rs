@@ -225,7 +225,7 @@ fn github_cli_login_exchanges_provider_token_without_serializing_it()
 }
 
 #[test]
-fn github_cli_login_rejects_an_unpinned_principal() -> Result<(), Box<dyn std::error::Error>> {
+fn github_cli_login_rejects_a_noncanonical_principal() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
     let transport = StubTransport::with_responses(vec![HttpResponse::new(
@@ -255,7 +255,10 @@ fn github_cli_login_rejects_an_unpinned_principal() -> Result<(), Box<dyn std::e
         return Err("login without a principal must fail closed".into());
     };
 
-    assert!(matches!(error, LoginCliError::MissingPrincipal));
+    assert!(matches!(
+        error,
+        LoginCliError::Environment(ref message) if message.contains("principal_id must match")
+    ));
     assert!(!temp.join("config.json").exists());
     Ok(())
 }

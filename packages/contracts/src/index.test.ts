@@ -42,6 +42,9 @@ import {
   receiptClassSchema,
   receiptPaidInvocationBindingSchema,
   receiptEvidenceSchema,
+  paidInvocationV1Schema,
+  quotePaidInvocationRequestV1Schema,
+  cancelPaidInvocationResultV1Schema,
   runSummaryV1Schema,
   runxContractSchemas,
   runxAuxiliarySchemas,
@@ -106,6 +109,15 @@ describe("@runxhq/contracts", () => {
     expect((toolManifestV1Schema.required as readonly string[])).not.toContain("version");
     const devProperties = runxContractSchemas.dev.properties as Record<string, unknown> | undefined;
     expect(devProperties?.doctor).toMatchObject({ $id: RUNX_CONTRACT_IDS.doctor });
+  });
+
+  it("publishes paid-invocation V1 through the curated contract registry", () => {
+    expect(RUNX_LOGICAL_SCHEMAS.paidInvocation).toBe("runx.payment.paid_invocation.v1");
+    expect(RUNX_CONTRACT_IDS.paidInvocation)
+      .toBe("https://schemas.runx.ai/runx/payment/paid-invocation/v1.json");
+    expect(paidInvocationV1Schema).toBe(runxContractSchemas.paidInvocation);
+    expect(quotePaidInvocationRequestV1Schema).toBe(runxContractSchemas.quotePaidInvocationRequest);
+    expect(cancelPaidInvocationResultV1Schema).toBe(runxContractSchemas.cancelPaidInvocationResult);
   });
 
   it("exports Rust-generated artifacts for control schema facades", () => {

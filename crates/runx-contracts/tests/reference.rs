@@ -1,4 +1,4 @@
-use runx_contracts::{Reference, ReferenceType};
+use runx_contracts::{PrincipalReference, Reference, ReferenceType, RunxPrincipalId};
 
 #[test]
 fn reference_type_as_str_is_stable_snake_case() {
@@ -30,4 +30,55 @@ fn reference_with_uri_preserves_explicit_uri() {
     assert_eq!(reference.reference_type, ReferenceType::Harness);
     assert!(reference.provider.is_none());
     assert!(reference.proof_kind.is_none());
+}
+
+#[test]
+fn runx_principal_id_accepts_only_the_current_hosted_grammar() {
+    for value in [
+        "user_1",
+        "vendor-1",
+        "service.prod",
+        "claim:cr_123",
+        "edge-key:sha256:abcdef0123456789",
+        &"a".repeat(RunxPrincipalId::MAX_LENGTH),
+    ] {
+        assert!(
+            RunxPrincipalId::new(value).is_some(),
+            "expected valid: {value:?}"
+        );
+    }
+
+    for value in [
+        "",
+        ".user",
+        "-user",
+        "_user",
+        ":user",
+        " user",
+        "user ",
+        "user name",
+        "user/name",
+        "user@example",
+        "user+example",
+        "usér",
+        "user\nname",
+        &"a".repeat(RunxPrincipalId::MAX_LENGTH + 1),
+    ] {
+        assert!(
+            RunxPrincipalId::new(value).is_none(),
+            "expected invalid: {value:?}"
+        );
+    }
+}
+
+#[test]
+fn principal_reference_delegates_to_the_canonical_runx_writer() {
+    let reference = RunxPrincipalId::new("edge-key:sha256:abcdef")
+        .map(PrincipalReference::from_runx_principal_id);
+    let expected = Reference::runx(ReferenceType::Principal, "edge-key:sha256:abcdef");
+
+    assert_eq!(
+        reference.as_ref().map(PrincipalReference::as_reference),
+        Some(&expected),
+    );
 }

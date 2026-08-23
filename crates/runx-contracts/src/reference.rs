@@ -3,6 +3,38 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::{IsoDateTime, NonEmptyString, RunxSchema};
 
+/// A hosted Runx principal identifier accepted by the canonical owner-reference
+/// constructor.
+///
+/// This is deliberately narrower than a generic principal reference URI. It
+/// protects the hosted authentication boundary without constraining external
+/// identity schemes carried by [`Reference`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RunxPrincipalId(String);
+
+impl RunxPrincipalId {
+    pub const MAX_LENGTH: usize = 256;
+
+    pub fn new(value: impl Into<String>) -> Option<Self> {
+        let value = value.into();
+        let bytes = value.as_bytes();
+        let valid = (1..=Self::MAX_LENGTH).contains(&bytes.len())
+            && bytes[0].is_ascii_alphanumeric()
+            && bytes[1..].iter().all(|byte| {
+                byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-')
+            });
+        valid.then_some(Self(value))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReferenceType {

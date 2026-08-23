@@ -240,7 +240,7 @@ fn run_provider_token_login_with_transport<T: Transport>(
     if completed.status != "success" || completed.token.trim().is_empty() {
         return Err(LoginCliError::MissingToken);
     }
-    let principal_id = completed.principal_id.trim();
+    let principal_id = completed.principal_id.as_str();
     if principal_id.is_empty() {
         return Err(LoginCliError::MissingPrincipal);
     }

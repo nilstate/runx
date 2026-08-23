@@ -15,7 +15,7 @@ use crate::schema::{
     BoundedString, Identity, IsoDateTime, NonEmptyString, Property, RunxSchema,
     any_of_with_identity, const_string, object_schema,
 };
-use crate::{JsonValue, RECEIPT_CANONICALIZATION, Reference, ReferenceType};
+use crate::{JsonValue, RECEIPT_CANONICALIZATION, Reference, ReferenceType, RunxPrincipalId};
 
 pub const PAID_INVOCATION_SCHEMA: &str = "runx.payment.paid_invocation.v1";
 pub const OFFER_REVISION_REF_SCHEMA: &str = "runx.payment.offer_revision_ref.v1";
@@ -212,6 +212,12 @@ impl PrincipalReference {
 
     pub fn as_reference(&self) -> &Reference {
         &self.0
+    }
+
+    /// Construct the canonical owner reference for an already-validated hosted
+    /// Runx principal identifier.
+    pub fn from_runx_principal_id(value: RunxPrincipalId) -> Self {
+        Self(Reference::runx(ReferenceType::Principal, value.as_str()))
     }
 }
 

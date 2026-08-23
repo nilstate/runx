@@ -76,6 +76,7 @@ type ContractScope =
   | "execution"
   | "host-protocol"
   | "paid-invocation"
+  | "principal-id"
   | "receipt-composition"
   | "x402-v2";
 
@@ -89,6 +90,7 @@ if (
   && selectedScope !== "execution"
   && selectedScope !== "host-protocol"
   && selectedScope !== "paid-invocation"
+  && selectedScope !== "principal-id"
   && selectedScope !== "receipt-composition"
   && selectedScope !== "x402-v2"
 ) {
@@ -116,6 +118,9 @@ if (selectedScope === undefined || selectedScope === "host-protocol") {
 }
 if (selectedScope === undefined || selectedScope === "paid-invocation") {
   runPaidInvocationFixtures();
+}
+if (selectedScope === undefined || selectedScope === "principal-id") {
+  runPrincipalIdFixtures();
 }
 if (selectedScope === undefined || selectedScope === "receipt-composition") {
   runReceiptCompositionFixtures();
@@ -171,6 +176,31 @@ function runPaidInvocationFixtures(): void {
         path.join(workspaceRoot, "schemas"),
         "--packet-dir",
         path.join(workspaceRoot, "dist", "packets"),
+      ];
+  if (check) args.push("--check");
+  const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });
+  if (result.error) throw result.error;
+  if ((result.status ?? 1) !== 0) process.exit(result.status ?? 1);
+}
+
+function runPrincipalIdFixtures(): void {
+  const outputRoot = path.join(fixtureRoot, "principal-id");
+  const configured = process.env.RUNX_PRINCIPAL_ID_FIXTURES_BIN;
+  const command = configured || (process.platform === "win32" ? "cargo.exe" : "cargo");
+  const args = configured
+    ? ["--out", outputRoot]
+    : [
+        "run",
+        "--quiet",
+        "--manifest-path",
+        path.join(workspaceRoot, "crates", "Cargo.toml"),
+        "-p",
+        "runx-contracts",
+        "--bin",
+        "runx-principal-id-fixtures",
+        "--",
+        "--out",
+        outputRoot,
       ];
   if (check) args.push("--check");
   const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });

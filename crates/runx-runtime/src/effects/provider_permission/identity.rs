@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use runx_contracts::JsonObject;
 #[cfg(feature = "catalog")]
-use runx_contracts::{AuthorityVerb, JsonValue};
+use runx_contracts::{AuthorityVerb, JsonValue, PrincipalReference};
 
 use crate::effects::{EffectStepRequest, RuntimeEffectError};
 #[cfg(feature = "catalog")]
@@ -42,6 +42,17 @@ pub(super) struct NativeProviderResolution {
     pub(super) target: String,
     #[cfg(feature = "catalog")]
     pub(super) transport: ProviderTransportSelection,
+}
+
+#[cfg(feature = "catalog")]
+pub(super) fn hosted_principal_reference(
+    environment: &AuthenticatedHostedApiEnvironment,
+) -> String {
+    PrincipalReference::from_runx_principal_id(environment.runx_principal_id().clone())
+        .as_reference()
+        .uri
+        .as_str()
+        .to_owned()
 }
 
 impl NativeProviderResolution {
@@ -232,7 +243,7 @@ impl ProviderPermissionEffect {
         let environment = self
             .authenticated_environment(&resolved, transport.as_ref())
             .map_err(|error| hosted_provider_preflight_denied(verb.clone(), error))?;
-        let principal_ref = format!("runx:principal:{}", environment.principal_id());
+        let principal_ref = hosted_principal_reference(&environment);
         let grants = self
             .hosted_grants(&resolved, &environment, transport.as_ref())
             .map_err(|error| hosted_provider_preflight_denied(verb.clone(), error))?;

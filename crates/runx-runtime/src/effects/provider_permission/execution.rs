@@ -9,7 +9,8 @@ use super::recovery::{
 };
 use super::{
     PROVIDER_PERMISSION_EFFECT_FAMILY, ProviderNativeAccess, ProviderPermissionAdmission,
-    ProviderPermissionEffect, identity::ProviderTransportSelection,
+    ProviderPermissionEffect,
+    identity::{ProviderTransportSelection, hosted_principal_reference},
 };
 use crate::{
     EffectToolRequest, HostedApiEnvironment, ProviderEffectAttempt, ProviderOperationRequest,
@@ -174,7 +175,7 @@ fn invoke_hosted_provider(
     let environment = effect
         .authenticated_environment(&resolved, transport.as_ref())
         .map_err(|error| provider_tool_error(request.tool_ref, error.to_string()))?;
-    let principal_ref = format!("runx:principal:{}", environment.principal_id());
+    let principal_ref = hosted_principal_reference(&environment);
     if input.attempt.resolved().authority().principal_ref() != principal_ref {
         return Err(provider_tool_error(
             request.tool_ref,

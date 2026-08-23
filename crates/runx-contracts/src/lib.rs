@@ -230,7 +230,7 @@ pub use receipt::{
     SignatureAlgorithm, Subject, receipt_subject_kind,
 };
 pub use redaction::{HashAlgorithm, HashCommitment, REDACTION_SCHEMA, Redaction, RedactionSchema};
-pub use reference::{ActRef, ProofKind, Reference, ReferenceLink, ReferenceType};
+pub use reference::{ActRef, ProofKind, Reference, ReferenceLink, ReferenceType, RunxPrincipalId};
 pub use registry_binding::{
     RegistryBinding, RegistryBindingHarness, RegistryBindingRegistry, RegistryBindingSchema,
     RegistryBindingSkill, RegistryBindingState, RegistryBindingUpstream, RegistryHarnessStatus,
