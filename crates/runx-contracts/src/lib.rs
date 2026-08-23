@@ -8,6 +8,7 @@ pub mod act;
 pub mod agent_context;
 pub mod artifact;
 pub mod authority;
+pub mod canonical_json;
 pub mod credential_delivery;
 pub mod decision;
 pub mod dev;
@@ -34,6 +35,7 @@ pub mod orchestrator_handoff;
 pub mod output;
 pub mod packet_index;
 pub mod paid_invocation;
+pub mod paid_invocation_fingerprint;
 pub mod policy_proof;
 pub mod provider_operation;
 pub mod receipt;
@@ -78,6 +80,10 @@ pub use authority::{
     AuthorityEffectGuard, AuthorityEffectGuardKind, AuthorityEffectLimit, AuthorityResourceFamily,
     AuthoritySchema, AuthoritySubsetComparison, AuthoritySubsetProof, AuthoritySubsetRelation,
     AuthoritySubsetResult, AuthorityTerm, AuthorityVerb,
+};
+pub use canonical_json::{
+    CanonicalJsonError, STABLE_JSON_CANONICALIZATION, canonical_stable_json,
+    write_canonical_json_fragment,
 };
 pub use credential_delivery::{
     CredentialDeliveryEnvBinding, CredentialDeliveryHandle, CredentialDeliveryMode,
@@ -205,10 +211,14 @@ pub use paid_invocation::{
     PaidInvocationCanonicalizerVersion, PaidInvocationExecutionState, PaidInvocationOutcomeGate,
     PaidInvocationPaymentChallenge, PaidInvocationPaymentState, PaidInvocationRefusalCode,
     PaidInvocationRefusalReason, ParentInvocationBinding, PaymentIdempotencyBinding,
-    PaymentReference, PrincipalReference, QUOTE_PAID_INVOCATION,
+    PaymentReference, PortableAmountMinor, PrincipalReference, QUOTE_PAID_INVOCATION,
     QUOTE_PAID_INVOCATION_REQUEST_SCHEMA, QUOTE_PAID_INVOCATION_RESULT_SCHEMA,
     QuotePaidInvocationAdmission, QuotePaidInvocationRequest, QuotePaidInvocationResult,
     SettlementFamilies, SettlementFamily, Sha256Digest,
+};
+pub use paid_invocation_fingerprint::{
+    PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, fingerprint_cancel_paid_invocation_request,
+    fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
 };
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,

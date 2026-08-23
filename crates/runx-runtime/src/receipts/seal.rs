@@ -19,12 +19,12 @@ use runx_contracts::{
     JsonObject, JsonValue, Lineage, RECEIPT_CANONICALIZATION, Receipt, ReceiptAct,
     ReceiptAuthority, ReceiptClass, ReceiptEnforcement, ReceiptIdempotency, ReceiptIssuer,
     ReceiptSchema, Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
-    json_string_field, receipt_subject_kind,
+    canonical_stable_json, json_string_field, receipt_subject_kind,
 };
 use runx_receipts::{
     ReceiptProofContext, ReceiptProofContextProvider, ReceiptSignature, ReceiptTreeConfig,
     SignatureVerificationFailure, SignatureVerifier, canonical_receipt_body_digest,
-    canonical_stable_json, content_addressed_receipt_id,
+    content_addressed_receipt_id,
 };
 
 use super::act::{ActOutcome, RuntimeAct};

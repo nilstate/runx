@@ -7,9 +7,9 @@ use crate::path_util::{count_yaml_files, lexical_normalize, project_path};
 use runx_contracts::{
     DoctorDiagnostic, DoctorDiagnosticSeverity, DoctorLocation, DoctorRepair,
     DoctorRepairConfidence, DoctorRepairKind, DoctorRepairRisk, DoctorReport, DoctorReportSchema,
-    DoctorStatus, DoctorSummary, JsonNumber, JsonObject, JsonValue, sha256_prefixed,
+    DoctorStatus, DoctorSummary, JsonNumber, JsonObject, JsonValue, canonical_stable_json,
+    sha256_prefixed,
 };
-use runx_receipts::canonical_stable_json;
 
 // Module rationale: this first doctor slice keeps parity checks and builders together until follow-up diagnostics add natural module boundaries.
 

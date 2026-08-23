@@ -5,7 +5,6 @@
 //! implementations behind this boundary.
 
 use std::collections::BTreeSet;
-use std::num::NonZeroU64;
 
 use serde::de::{self, Deserializer};
 use serde::{Deserialize, Serialize};
@@ -15,7 +14,10 @@ use crate::schema::{
     BoundedString, Identity, IsoDateTime, NonEmptyString, Property, RunxSchema,
     any_of_with_identity, const_string, object_schema,
 };
-use crate::{JsonValue, RECEIPT_CANONICALIZATION, Reference, ReferenceType, RunxPrincipalId};
+use crate::{
+    JsonValue, MAX_PORTABLE_INTEGER, RECEIPT_CANONICALIZATION, Reference, ReferenceType,
+    RunxPrincipalId,
+};
 
 pub const PAID_INVOCATION_SCHEMA: &str = "runx.payment.paid_invocation.v1";
 pub const OFFER_REVISION_REF_SCHEMA: &str = "runx.payment.offer_revision_ref.v1";
@@ -78,6 +80,48 @@ impl RunxSchema for Sha256Digest {
         json!({
             "type": "string",
             "pattern": "^sha256:[0-9a-f]{64}$",
+        })
+    }
+}
+
+/// A positive minor-unit amount that crosses Rust and JavaScript JSON
+/// boundaries without integer precision loss.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[serde(transparent)]
+pub struct PortableAmountMinor(u64);
+
+impl PortableAmountMinor {
+    pub fn new(value: u64) -> Option<Self> {
+        (1..=MAX_PORTABLE_INTEGER)
+            .contains(&value)
+            .then_some(Self(value))
+    }
+
+    pub fn get(self) -> u64 {
+        self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for PortableAmountMinor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = u64::deserialize(deserializer)?;
+        Self::new(value).ok_or_else(|| {
+            de::Error::custom(format!(
+                "amount_minor must be between 1 and {MAX_PORTABLE_INTEGER}"
+            ))
+        })
+    }
+}
+
+impl RunxSchema for PortableAmountMinor {
+    fn json_schema() -> Value {
+        json!({
+            "type": "integer",
+            "minimum": 1,
+            "maximum": MAX_PORTABLE_INTEGER,
         })
     }
 }
@@ -346,7 +390,7 @@ pub struct PaidInvocation {
     pub package_digest: Sha256Digest,
     pub input_digest: Sha256Digest,
     pub canonicalizer_version: PaidInvocationCanonicalizerVersion,
-    pub amount_minor: NonZeroU64,
+    pub amount_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub accepted_settlement_families: SettlementFamilies,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -405,7 +449,7 @@ pub struct QuotePaidInvocationRequest {
     pub package_digest: Sha256Digest,
     pub input_digest: Sha256Digest,
     pub canonicalizer_version: PaidInvocationCanonicalizerVersion,
-    pub amount_minor: NonZeroU64,
+    pub amount_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub accepted_settlement_families: SettlementFamilies,
     pub idempotency: PaymentIdempotencyBinding,

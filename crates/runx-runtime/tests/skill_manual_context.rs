@@ -1,7 +1,8 @@
 use std::fs;
 
-use runx_contracts::{ExecutionEvent, JsonValue, ResolutionRequest, sha256_prefixed};
-use runx_receipts::canonical_stable_json;
+use runx_contracts::{
+    ExecutionEvent, JsonValue, ResolutionRequest, canonical_stable_json, sha256_prefixed,
+};
 #[cfg(feature = "agent")]
 use runx_runtime::adapters::agent::{AgentExecutionTelemetry, AgentResolverError};
 use runx_runtime::{

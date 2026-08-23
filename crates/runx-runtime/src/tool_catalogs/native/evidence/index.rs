@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
-use runx_contracts::{JsonNumber, JsonObject, JsonValue, sha256_prefixed};
-use runx_receipts::canonical_stable_json;
+use runx_contracts::{JsonNumber, JsonObject, JsonValue, canonical_stable_json, sha256_prefixed};
 
 use super::EvidenceIndexInput;
 use super::source::{IndexedSource, unwrap_source_packet};

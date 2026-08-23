@@ -4,9 +4,14 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use runx_contracts::{
-    CancelPaidInvocationRequest, CancelPaidInvocationResult, ExecutePaidInvocationRequest,
-    ExecutePaidInvocationResult, GetPaidInvocationRequest, GetPaidInvocationResult,
-    QuotePaidInvocationRequest, QuotePaidInvocationResult, sha256_prefixed,
+    CANCEL_PAID_INVOCATION, CancelPaidInvocationRequest, CancelPaidInvocationResult,
+    EXECUTE_PAID_INVOCATION, ExecutePaidInvocationRequest, ExecutePaidInvocationResult,
+    GetPaidInvocationRequest, GetPaidInvocationResult, JsonObject, JsonValue as RunxJsonValue,
+    MAX_PORTABLE_INTEGER, PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, QUOTE_PAID_INVOCATION,
+    QuotePaidInvocationRequest, QuotePaidInvocationResult, STABLE_JSON_CANONICALIZATION,
+    canonical_stable_json, fingerprint_cancel_paid_invocation_request,
+    fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
+    sha256_prefixed,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -63,6 +68,7 @@ struct Options {
     out_dir: PathBuf,
     schema_dir: PathBuf,
     packet_dir: PathBuf,
+    oracle_out: PathBuf,
     check: bool,
 }
 
@@ -86,6 +92,11 @@ fn main() -> io::Result<()> {
         canonical_bytes(&manifest)?,
         options.check,
     )?;
+    reconcile_file(
+        &options.oracle_out,
+        canonical_bytes(&fingerprint_oracle()?)?,
+        options.check,
+    )?;
     reject_orphan_vectors(&options, &vectors)?;
     Ok(())
 }
@@ -94,6 +105,7 @@ fn parse_args() -> io::Result<Options> {
     let mut out_dir = None;
     let mut schema_dir = None;
     let mut packet_dir = None;
+    let mut oracle_out = None;
     let mut check = false;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -101,6 +113,7 @@ fn parse_args() -> io::Result<Options> {
             "--out" => out_dir = args.next().map(PathBuf::from),
             "--schema-dir" => schema_dir = args.next().map(PathBuf::from),
             "--packet-dir" => packet_dir = args.next().map(PathBuf::from),
+            "--oracle-out" => oracle_out = args.next().map(PathBuf::from),
             "--check" => check = true,
             other => return Err(io::Error::other(format!("unsupported argument: {other}"))),
         }
@@ -109,6 +122,7 @@ fn parse_args() -> io::Result<Options> {
         out_dir: out_dir.ok_or_else(|| io::Error::other("--out is required"))?,
         schema_dir: schema_dir.ok_or_else(|| io::Error::other("--schema-dir is required"))?,
         packet_dir: packet_dir.ok_or_else(|| io::Error::other("--packet-dir is required"))?,
+        oracle_out: oracle_out.ok_or_else(|| io::Error::other("--oracle-out is required"))?,
         check,
     })
 }
@@ -309,6 +323,17 @@ fn vectors() -> io::Result<Vec<Vector>> {
             )?,
         ),
         invalid(
+            "invalid-amount-above-portable.json",
+            "Minor-unit amounts above the shared portable integer bound are rejected.",
+            "QuotePaidInvocation",
+            "runx.payment.quote_paid_invocation.request.v1",
+            with_field(
+                quote_request("idem_amount", None),
+                "amount_minor",
+                json!(MAX_PORTABLE_INTEGER + 1),
+            )?,
+        ),
+        invalid(
             "invalid-non-principal.json",
             "The principal reference cannot name another reference type.",
             "QuotePaidInvocation",
@@ -499,6 +524,195 @@ fn parent_binding() -> Value {
 
 fn idempotency(key: &str) -> Value {
     json!({"binding_digest": digest('6'), "key": key})
+}
+
+fn fingerprint_oracle() -> io::Result<Value> {
+    let quote = quote_request("fingerprint_quote", None);
+    let quote_cases = [
+        ("quote-base", quote.clone()),
+        (
+            "quote-principal",
+            with_pointer_value(
+                quote.clone(),
+                "/principal/uri",
+                json!("runx:principal:buyer-2"),
+            )?,
+        ),
+        (
+            "quote-vendor-ref",
+            with_pointer_value(
+                quote.clone(),
+                "/vendor_ref/uri",
+                json!("runx:principal:vendor-2"),
+            )?,
+        ),
+        (
+            "quote-counterparty",
+            with_pointer_value(
+                quote.clone(),
+                "/counterparty/uri",
+                json!("https://vendor.example/offers/transcribe-v2"),
+            )?,
+        ),
+        (
+            "quote-offer-revision",
+            with_pointer_value(
+                quote.clone(),
+                "/offer_revision/revision",
+                json!("2026-08-22.2"),
+            )?,
+        ),
+        (
+            "quote-package-digest",
+            with_pointer_value(quote.clone(), "/package_digest", json!(digest('8')))?,
+        ),
+        (
+            "quote-input-digest",
+            with_pointer_value(quote.clone(), "/input_digest", json!(digest('9')))?,
+        ),
+        (
+            "quote-maximum-portable-amount",
+            with_pointer_value(quote.clone(), "/amount_minor", json!(MAX_PORTABLE_INTEGER))?,
+        ),
+        (
+            "quote-currency",
+            with_pointer_value(quote.clone(), "/currency", json!("EUR"))?,
+        ),
+        (
+            "quote-settlement-families",
+            with_pointer_value(
+                quote.clone(),
+                "/accepted_settlement_families",
+                json!(["hosted"]),
+            )?,
+        ),
+        (
+            "quote-idempotency",
+            with_pointer_value(
+                quote.clone(),
+                "/idempotency/binding_digest",
+                json!(digest('a')),
+            )?,
+        ),
+        (
+            "quote-parent",
+            with_field(quote, "parent", parent_binding())?,
+        ),
+    ];
+
+    let execute = execute_request();
+    let execute_cases = [
+        ("execute-base", execute.clone()),
+        (
+            "execute-invocation",
+            with_pointer_value(execute.clone(), "/invocation_id", json!("paid_other"))?,
+        ),
+        (
+            "execute-settlement-family",
+            with_pointer_value(execute.clone(), "/settlement_family", json!("mock"))?,
+        ),
+        (
+            "execute-payment-ref",
+            with_pointer_value(
+                execute.clone(),
+                "/payment_ref/uri",
+                json!("runx:receipt:payment-proof-2"),
+            )?,
+        ),
+        (
+            "execute-idempotency",
+            with_pointer_value(execute, "/idempotency/binding_digest", json!(digest('a')))?,
+        ),
+    ];
+
+    let cancel = json!({
+        "idempotency": idempotency("fingerprint_cancel"),
+        "invocation_id": "paid_direct"
+    });
+    let cancel_cases = [
+        ("cancel-base", cancel.clone()),
+        (
+            "cancel-invocation",
+            with_pointer_value(cancel.clone(), "/invocation_id", json!("paid_other"))?,
+        ),
+        (
+            "cancel-idempotency",
+            with_pointer_value(cancel, "/idempotency/binding_digest", json!(digest('a')))?,
+        ),
+    ];
+
+    let mut cases = Vec::new();
+    for (name, request) in quote_cases {
+        cases.push(fingerprint_case(name, QUOTE_PAID_INVOCATION, request)?);
+    }
+    for (name, request) in execute_cases {
+        cases.push(fingerprint_case(name, EXECUTE_PAID_INVOCATION, request)?);
+    }
+    for (name, request) in cancel_cases {
+        cases.push(fingerprint_case(name, CANCEL_PAID_INVOCATION, request)?);
+    }
+
+    Ok(json!({
+        "canonicalization": STABLE_JSON_CANONICALIZATION,
+        "cases": cases,
+        "schema": "runx.canonical_json_oracle.v1"
+    }))
+}
+
+fn fingerprint_case(name: &str, operation: &str, request: Value) -> io::Result<Value> {
+    let expected_sha256 = match operation {
+        QUOTE_PAID_INVOCATION => fingerprint_quote_paid_invocation_request(
+            &serde_json::from_value::<QuotePaidInvocationRequest>(request.clone())
+                .map_err(io::Error::other)?,
+        ),
+        EXECUTE_PAID_INVOCATION => fingerprint_execute_paid_invocation_request(
+            &serde_json::from_value::<ExecutePaidInvocationRequest>(request.clone())
+                .map_err(io::Error::other)?,
+        ),
+        CANCEL_PAID_INVOCATION => fingerprint_cancel_paid_invocation_request(
+            &serde_json::from_value::<CancelPaidInvocationRequest>(request.clone())
+                .map_err(io::Error::other)?,
+        ),
+        _ => {
+            return Err(io::Error::other(format!(
+                "unsupported operation: {operation}"
+            )));
+        }
+    }
+    .map_err(io::Error::other)?;
+
+    let request_value =
+        serde_json::from_value::<RunxJsonValue>(request.clone()).map_err(io::Error::other)?;
+    let preimage = RunxJsonValue::Object(JsonObject::from([
+        (
+            "canonicalization".to_owned(),
+            RunxJsonValue::String(STABLE_JSON_CANONICALIZATION.to_owned()),
+        ),
+        (
+            "operation".to_owned(),
+            RunxJsonValue::String(operation.to_owned()),
+        ),
+        ("request".to_owned(), request_value),
+        (
+            "schema".to_owned(),
+            RunxJsonValue::String(PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA.to_owned()),
+        ),
+    ]));
+    let canonical_json = canonical_stable_json(&preimage).map_err(io::Error::other)?;
+    if sha256_prefixed(canonical_json.as_bytes()) != expected_sha256 {
+        return Err(io::Error::other(format!(
+            "fingerprint helper and oracle preimage disagree for {name}"
+        )));
+    }
+
+    Ok(json!({
+        "canonical_json": canonical_json,
+        "expected_sha256": expected_sha256,
+        "name": name,
+        "operation": operation,
+        "preimage": serde_json::to_value(preimage).map_err(io::Error::other)?,
+        "request": request
+    }))
 }
 
 fn reference(reference_type: &str, uri: &str) -> Value {

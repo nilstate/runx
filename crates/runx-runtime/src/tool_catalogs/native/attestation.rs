@@ -1,5 +1,4 @@
-use runx_contracts::{JsonObject, JsonValue, sha256_prefixed};
-use runx_receipts::canonical_stable_json;
+use runx_contracts::{JsonObject, JsonValue, canonical_stable_json, sha256_prefixed};
 
 use super::{NativeInvocation, invalid_input};
 use crate::RuntimeError;

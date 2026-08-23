@@ -278,7 +278,7 @@ fn manual_context_entry(
     insert_string(&mut data, "content_kind", "skill-manual");
     insert_string(&mut data, "manual_sha256", manual_digest);
     insert_string(&mut data, "content", manual_markdown);
-    let canonical = runx_receipts::canonical_stable_json(&JsonValue::Object(data.clone()))
+    let canonical = runx_contracts::canonical_stable_json(&JsonValue::Object(data.clone()))
         .map_err(|error| RuntimeError::ReceiptInvalid {
             message: format!("skill context artifact could not be canonicalized: {error}"),
         })?;

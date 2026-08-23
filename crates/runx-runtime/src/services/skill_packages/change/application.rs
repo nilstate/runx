@@ -286,7 +286,7 @@ fn change_bundle_digest(change: &SkillChangeBundle) -> Result<String, RuntimeErr
     let value: JsonValue = serde_json::to_value(change)
         .and_then(serde_json::from_value)
         .map_err(|source| RuntimeError::json("serializing skill change bundle", source))?;
-    let canonical = runx_receipts::canonical_stable_json(&value)
+    let canonical = runx_contracts::canonical_stable_json(&value)
         .map_err(|error| invalid_skill_change(format!("canonicalizing change bundle: {error}")))?;
     Ok(sha256_prefixed(canonical.as_bytes()))
 }

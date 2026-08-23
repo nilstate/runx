@@ -2441,6 +2441,7 @@ name = "runx-contracts"
 version = "0.1.0"
 dependencies = [
  "jsonschema",
+ "proptest",
  "runx-contracts-derive",
  "serde",
  "serde_json",
@@ -2507,7 +2508,6 @@ dependencies = [
  "base64 0.23.1",
  "criterion",
  "jsonschema",
- "proptest",
  "ring",
  "runx-contracts",
  "serde",

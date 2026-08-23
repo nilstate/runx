@@ -84,6 +84,10 @@ export function checkRetiredRuntimeSurfaces(findings) {
     workspaceRoot,
     "crates/runx-contracts/src/paid_invocation.rs",
   );
+  const paidInvocationFingerprintOwner = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/paid_invocation_fingerprint.rs",
+  );
   const paidInvocationFixtureProducer = path.join(
     workspaceRoot,
     "crates/runx-contracts/src/bin/runx-paid-invocation-fixtures.rs",
@@ -105,7 +109,11 @@ export function checkRetiredRuntimeSurfaces(findings) {
   ]) {
     for (const filePath of rustFiles(root)) {
       let source = readFileSync(filePath, "utf8");
-      if (filePath === paidInvocationContractOwner || filePath === x402ContractOwner) {
+      if (
+        filePath === paidInvocationContractOwner
+        || filePath === paidInvocationFingerprintOwner
+        || filePath === x402ContractOwner
+      ) {
         const forbiddenRuntimeMarker = [
           /\bstd::fs\b/u,
           /\bstd::net\b/u,

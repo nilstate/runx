@@ -18,11 +18,11 @@ use runx_contracts::{
     ReceiptCommitment, ReceiptCommitmentScope, ReceiptEnforcement, ReceiptIdempotency,
     ReceiptInputContext, ReceiptIssuer, ReceiptIssuerType, ReceiptSchema, ReceiptSignature,
     Reference, ReferenceType, Seal, SignatureAlgorithm, Subject, SuccessCriterion,
-    receipt_subject_kind,
+    canonical_stable_json, receipt_subject_kind,
 };
 use runx_receipts::{
     canonical_receipt_body_digest, canonical_receipt_digest, canonical_receipt_json,
-    canonical_stable_json, content_addressed_receipt_id,
+    content_addressed_receipt_id,
 };
 use serde_json::{Value, json};
 

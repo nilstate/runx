@@ -61,7 +61,7 @@ jobs:
       - name: Audit official skills and receipt ownership
         run: |
           pnpm core-skills:audit
-          pnpm receipts:canonical-check
+          pnpm canonical:check
           pnpm receipts:importer-audit
 
       - name: Audit Rust dependency advisories

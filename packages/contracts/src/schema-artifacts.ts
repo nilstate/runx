@@ -17054,6 +17054,7 @@ export const runxSchemaArtifacts = {
                     "uniqueItems": true
                   },
                   "amount_minor": {
+                    "maximum": 9007199254740991,
                     "minimum": 1,
                     "type": "integer"
                   },
@@ -25012,6 +25013,7 @@ export const runxSchemaArtifacts = {
                     "uniqueItems": true
                   },
                   "amount_minor": {
+                    "maximum": 9007199254740991,
                     "minimum": 1,
                     "type": "integer"
                   },
@@ -29043,6 +29045,7 @@ export const runxSchemaArtifacts = {
                     "uniqueItems": true
                   },
                   "amount_minor": {
+                    "maximum": 9007199254740991,
                     "minimum": 1,
                     "type": "integer"
                   },
@@ -34885,6 +34888,7 @@ export const runxSchemaArtifacts = {
         "uniqueItems": true
       },
       "amount_minor": {
+        "maximum": 9007199254740991,
         "minimum": 1,
         "type": "integer"
       },
@@ -36047,6 +36051,7 @@ export const runxSchemaArtifacts = {
         "uniqueItems": true
       },
       "amount_minor": {
+        "maximum": 9007199254740991,
         "minimum": 1,
         "type": "integer"
       },
@@ -36811,6 +36816,7 @@ export const runxSchemaArtifacts = {
                     "uniqueItems": true
                   },
                   "amount_minor": {
+                    "maximum": 9007199254740991,
                     "minimum": 1,
                     "type": "integer"
                   },

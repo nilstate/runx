@@ -10,6 +10,12 @@ export {
 } from "./canonical-json.js";
 
 export {
+  fingerprintQuotePaidInvocationRequest,
+  fingerprintExecutePaidInvocationRequest,
+  fingerprintCancelPaidInvocationRequest,
+} from "./paid-invocation-fingerprint.js";
+
+export {
   RUNX_SCHEMA_BASE_URL,
   RUNX_CONTRACT_IDS,
   RUNX_LOGICAL_SCHEMAS,

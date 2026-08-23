@@ -156,10 +156,15 @@ function runReceiptCompositionFixtures(): void {
 
 function runPaidInvocationFixtures(): void {
   const outputRoot = path.join(fixtureRoot, "paid-invocation");
+  const fingerprintOracle = path.join(
+    fixtureRoot,
+    "canonical-json",
+    "runx-paid-invocation-request-fingerprint-v1.oracles.json",
+  );
   const configured = process.env.RUNX_PAID_INVOCATION_FIXTURES_BIN;
   const command = configured || (process.platform === "win32" ? "cargo.exe" : "cargo");
   const args = configured
-    ? ["--out", outputRoot, "--schema-dir", path.join(workspaceRoot, "schemas"), "--packet-dir", path.join(workspaceRoot, "dist", "packets")]
+    ? ["--out", outputRoot, "--schema-dir", path.join(workspaceRoot, "schemas"), "--packet-dir", path.join(workspaceRoot, "dist", "packets"), "--oracle-out", fingerprintOracle]
     : [
         "run",
         "--quiet",
@@ -176,6 +181,8 @@ function runPaidInvocationFixtures(): void {
         path.join(workspaceRoot, "schemas"),
         "--packet-dir",
         path.join(workspaceRoot, "dist", "packets"),
+        "--oracle-out",
+        fingerprintOracle,
       ];
   if (check) args.push("--check");
   const result = spawnSync(command, args, { cwd: workspaceRoot, env: process.env, stdio: "inherit" });

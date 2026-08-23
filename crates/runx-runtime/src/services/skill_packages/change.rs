@@ -46,7 +46,7 @@ pub(crate) fn architecture_digest(
         ),
         ("architecture".to_owned(), architecture),
     ]));
-    let canonical = runx_receipts::canonical_stable_json(&value)
+    let canonical = runx_contracts::canonical_stable_json(&value)
         .map_err(|error| invalid_skill_change(format!("canonicalizing architecture: {error}")))?;
     Ok(sha256_prefixed(canonical.as_bytes()))
 }
