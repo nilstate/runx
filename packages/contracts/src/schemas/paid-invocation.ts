@@ -65,6 +65,14 @@ export type OfferRevisionRefContract = DeepReadonly<{
   output_schema_digest: Sha256DigestContract;
 }>;
 
+export type PaidSkillOfferTermsContract = DeepReadonly<{
+  amount_minor: number;
+  currency: CurrencyCodeContract;
+  accepted_settlement_families: readonly SettlementFamilyContract[];
+  input_schema_digest: Sha256DigestContract;
+  output_schema_digest: Sha256DigestContract;
+}>;
+
 export type PaidSkillRunnerOfferContract = DeepReadonly<{
   offer_revision: OfferRevisionRefContract;
   amount_minor: number;

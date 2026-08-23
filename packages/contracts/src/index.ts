@@ -338,6 +338,7 @@ export {
   type PaymentReferenceContract,
   type PaymentIdempotencyBindingContract,
   type OfferRevisionRefContract,
+  type PaidSkillOfferTermsContract,
   type PaidSkillRunnerOfferContract,
   type PaidSkillListingContract,
   type ParentInvocationBindingContract,
