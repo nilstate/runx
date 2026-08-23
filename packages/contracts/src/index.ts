@@ -20,11 +20,13 @@ export {
   X402_PAYMENT_SIGNATURE_HEADER,
   X402_PAYMENT_RESPONSE_HEADER,
   RUNX_X402_INVOCATION_EXTENSION_KEY,
+  X402_BAZAAR_EXTENSION_KEY,
   X402_JSON_MEDIA_TYPE,
   MAX_X402_HEADER_BYTES,
   MAX_X402_DECODED_BYTES,
   X402PresentationError,
   assembleX402PaymentRequired,
+  x402DiscoveryHttpProjection,
   bindX402PaymentRequiredChallenge,
   x402PaymentRequiredFromChallenge,
   validateX402PaymentRetry,
@@ -37,6 +39,8 @@ export {
   decodeX402PaymentResponseHeader,
   type X402PresentationErrorCode,
   type ValidatedX402Retry,
+  type X402DiscoveryDescriptor,
+  type X402DiscoveryHttpProjection,
 } from "./x402-presentation.js";
 
 export {

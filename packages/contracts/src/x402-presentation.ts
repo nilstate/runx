@@ -14,6 +14,7 @@ import {
   validateX402PaymentRequiredContract,
   validateX402SettleResponseContract,
   type RunxX402ExtensionInfoContract,
+  type RunxX402DiscoveryExtensionInfoContract,
   type RunxX402InvocationExtensionContract,
   type X402PaymentPayloadContract,
   type X402PaymentRequiredContract,
@@ -26,6 +27,7 @@ export const X402_PAYMENT_REQUIRED_HEADER = "PAYMENT-REQUIRED" as const;
 export const X402_PAYMENT_SIGNATURE_HEADER = "PAYMENT-SIGNATURE" as const;
 export const X402_PAYMENT_RESPONSE_HEADER = "PAYMENT-RESPONSE" as const;
 export const RUNX_X402_INVOCATION_EXTENSION_KEY = "runx.invocation" as const;
+export const X402_BAZAAR_EXTENSION_KEY = "bazaar" as const;
 export const X402_JSON_MEDIA_TYPE = "application/json" as const;
 export const MAX_X402_HEADER_BYTES = 65_536 as const;
 export const MAX_X402_DECODED_BYTES = 49_152 as const;
@@ -36,6 +38,8 @@ export type X402PresentationErrorCode =
   | "invalid_payload"
   | "encoding_failed"
   | "reserved_extension"
+  | "missing_discovery_extension"
+  | "invalid_discovery_extension"
   | "missing_runx_invocation"
   | "runx_invocation_schema_mismatch"
   | "resource_mismatch"
@@ -50,6 +54,8 @@ const ERROR_MESSAGES: Readonly<Record<X402PresentationErrorCode, string>> = {
   invalid_payload: "x402 header JSON is malformed or violates its contract",
   encoding_failed: "x402 value could not be encoded",
   reserved_extension: "runx.invocation is reserved and cannot be supplied by a vendor",
+  missing_discovery_extension: "x402 discovery requires a bazaar extension",
+  invalid_discovery_extension: "x402 bazaar extension must use the v2 info/schema declaration",
   missing_runx_invocation: "runx.invocation is absent",
   runx_invocation_schema_mismatch: "runx.invocation does not match its published v1 schema",
   resource_mismatch: "the retry resource does not match the challenge",
@@ -70,6 +76,20 @@ export class X402PresentationError extends Error {
 export type ValidatedX402Retry = Readonly<{
   requirementIndex: number;
   invocation: RunxX402ExtensionInfoContract;
+}>;
+
+export type X402DiscoveryDescriptor = Readonly<{
+  resource: X402ResourceInfoContract;
+  accepts: readonly X402PaymentRequirementsContract[];
+  offerRevision: RunxX402DiscoveryExtensionInfoContract["offer_revision"];
+  packageDigest: RunxX402DiscoveryExtensionInfoContract["package_digest"];
+  extensions: Readonly<Record<string, unknown>>;
+}>;
+
+export type X402DiscoveryHttpProjection = Readonly<{
+  status: 402;
+  body: X402PaymentRequiredContract;
+  headers: Readonly<Record<typeof X402_PAYMENT_REQUIRED_HEADER, string>>;
 }>;
 
 export function assembleX402PaymentRequired(input: Readonly<{
@@ -99,6 +119,34 @@ export function assembleX402PaymentRequired(input: Readonly<{
     },
   } as const;
   return validateX402PaymentRequiredContract(value);
+}
+
+/**
+ * Build the inert, floor-priced discovery response a vendor can mount before
+ * auth or body validation. This function has no clock, store, provider, or
+ * network dependency and therefore cannot create product or payment state.
+ */
+export function x402DiscoveryHttpProjection(
+  descriptor: X402DiscoveryDescriptor,
+): X402DiscoveryHttpProjection {
+  assertBazaarDiscoveryExtension(descriptor.extensions);
+  const body = assembleX402PaymentRequired({
+    resource: descriptor.resource,
+    accepts: descriptor.accepts,
+    invocation: {
+      purpose: "discovery",
+      offer_revision: descriptor.offerRevision,
+      package_digest: descriptor.packageDigest,
+    },
+    extensions: descriptor.extensions,
+  });
+  return {
+    status: 402,
+    body,
+    headers: {
+      [X402_PAYMENT_REQUIRED_HEADER]: encodeX402PaymentRequiredHeader(body),
+    },
+  };
 }
 
 export function bindX402PaymentRequiredChallenge(
@@ -255,6 +303,22 @@ function runxDeclaration(
     throw new X402PresentationError("runx_invocation_schema_mismatch");
   }
   return { info, schema: runxX402InvocationExtensionInfoV1Schema };
+}
+
+function assertBazaarDiscoveryExtension(extensions: Readonly<Record<string, unknown>>): void {
+  const declaration = asUnknownRecord(extensions[X402_BAZAAR_EXTENSION_KEY]);
+  if (!declaration) throw new X402PresentationError("missing_discovery_extension");
+  const keys = Object.keys(declaration).sort();
+  if (keys.length !== 2 || keys[0] !== "info" || keys[1] !== "schema") {
+    throw new X402PresentationError("invalid_discovery_extension");
+  }
+  const info = asUnknownRecord(declaration.info);
+  if (!info || !asUnknownRecord(declaration.schema)) {
+    throw new X402PresentationError("invalid_discovery_extension");
+  }
+  if (Object.hasOwn(info, "discoverable")) {
+    throw new X402PresentationError("invalid_discovery_extension");
+  }
 }
 
 function jsonEquals(left: unknown, right: unknown): boolean {

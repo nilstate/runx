@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   RUNX_X402_INVOCATION_EXTENSION_KEY,
+  X402_BAZAAR_EXTENSION_KEY,
   X402PresentationError,
   X402_SCHEMA_IDS,
   X402_UPSTREAM_COMMIT,
@@ -24,6 +25,7 @@ import {
   validateX402PaymentRequiredContract,
   validateX402PaymentRetry,
   validateX402SettleResponseContract,
+  x402DiscoveryHttpProjection,
   x402PaymentPayloadV2Schema,
   x402PaymentRequiredFromChallenge,
   x402PaymentRequiredV2Schema,
@@ -31,6 +33,7 @@ import {
   x402ResourceInfoV2Schema,
   x402SettleResponseV2Schema,
   type RunxX402ExtensionInfoContract,
+  type RunxX402DiscoveryExtensionInfoContract,
   type X402PaymentPayloadContract,
 } from "./index.js";
 
@@ -189,6 +192,82 @@ describe("x402 v2 TypeScript facade", () => {
       ...challenge,
       payload: { x402Version: 2 },
     }))).toBe("challenge_digest_mismatch");
+  });
+
+  it("projects a deterministic, inert x402 v2 discovery challenge", () => {
+    const official = validateX402PaymentRequiredContract(
+      fixture("official-payment-required.json").payload,
+    );
+    const discovery = fixture("runx-discovery-extension.json")
+      .payload as RunxX402DiscoveryExtensionInfoContract;
+    const bazaar = {
+      info: {
+        input: {
+          type: "object",
+          properties: { document: { type: "string" } },
+          required: ["document"],
+        },
+        output: {
+          type: "object",
+          properties: { text: { type: "string" } },
+          required: ["text"],
+        },
+        resource: {
+          method: "POST",
+          routeTemplate: "/v1/skills/vendor/documents/run",
+        },
+      },
+      schema: { type: "object", additionalProperties: true },
+    } as const;
+    const descriptor = {
+      resource: official.resource,
+      accepts: official.accepts,
+      offerRevision: discovery.offer_revision,
+      packageDigest: discovery.package_digest,
+      extensions: { [X402_BAZAAR_EXTENSION_KEY]: bazaar },
+    } as const;
+
+    const projection = x402DiscoveryHttpProjection(descriptor);
+    expect(x402DiscoveryHttpProjection(descriptor)).toEqual(projection);
+    expect(projection.status).toBe(402);
+    expect(decodeX402PaymentRequiredHeader(
+      projection.headers["PAYMENT-REQUIRED"],
+    )).toEqual(projection.body);
+    expect(projection.body.x402Version).toBe(2);
+    expect(projection.body.accepts).toEqual(official.accepts);
+    expect(projection.body.extensions?.[X402_BAZAAR_EXTENSION_KEY]).toEqual(bazaar);
+    expect(projection.body.extensions?.[RUNX_X402_INVOCATION_EXTENSION_KEY]).toEqual({
+      info: discovery,
+      schema: runxX402InvocationExtensionInfoV1Schema,
+    });
+  });
+
+  it("refuses absent or obsolete Bazaar discovery declarations", () => {
+    const official = validateX402PaymentRequiredContract(
+      fixture("official-payment-required.json").payload,
+    );
+    const discovery = fixture("runx-discovery-extension.json")
+      .payload as RunxX402DiscoveryExtensionInfoContract;
+    const descriptor = {
+      resource: official.resource,
+      accepts: official.accepts,
+      offerRevision: discovery.offer_revision,
+      packageDigest: discovery.package_digest,
+    } as const;
+
+    expect(presentationErrorCode(() => x402DiscoveryHttpProjection({
+      ...descriptor,
+      extensions: {},
+    }))).toBe("missing_discovery_extension");
+    expect(presentationErrorCode(() => x402DiscoveryHttpProjection({
+      ...descriptor,
+      extensions: {
+        [X402_BAZAAR_EXTENSION_KEY]: {
+          info: { discoverable: true },
+          schema: { type: "object" },
+        },
+      },
+    }))).toBe("invalid_discovery_extension");
   });
 
   it("uses bounded standard base64 and never echoes payment material in errors", () => {
