@@ -1,0 +1,207 @@
+import { readFileSync } from "node:fs";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  RUNX_X402_INVOCATION_EXTENSION_KEY,
+  X402PresentationError,
+  X402_SCHEMA_IDS,
+  X402_UPSTREAM_COMMIT,
+  X402_UPSTREAM_PACKAGE,
+  X402_UPSTREAM_PACKAGE_VERSION,
+  assembleX402PaymentRequired,
+  bindX402PaymentRequiredChallenge,
+  decodeX402PaymentRequiredHeader,
+  decodeX402PaymentResponseHeader,
+  decodeX402PaymentSignatureHeader,
+  encodeX402PaymentRequiredHeader,
+  encodeX402PaymentResponseHeader,
+  encodeX402PaymentSignatureHeader,
+  runxGeneratedSchemaArtifacts,
+  runxX402InvocationExtensionInfoV1Schema,
+  validateRunxX402InvocationExtensionInfoContract,
+  validateX402PaymentPayloadContract,
+  validateX402PaymentRequiredContract,
+  validateX402PaymentRetry,
+  validateX402SettleResponseContract,
+  x402PaymentPayloadV2Schema,
+  x402PaymentRequiredFromChallenge,
+  x402PaymentRequiredV2Schema,
+  x402PaymentRequirementsV2Schema,
+  x402ResourceInfoV2Schema,
+  x402SettleResponseV2Schema,
+  type RunxX402ExtensionInfoContract,
+  type X402PaymentPayloadContract,
+} from "./index.js";
+
+interface X402Fixture {
+  readonly expectation: "valid" | "invalid";
+  readonly header: string | null;
+  readonly kind:
+    | "payment-required"
+    | "payment-payload"
+    | "settle-response"
+    | "runx_invocation_extension";
+  readonly payload: unknown;
+  readonly schema_id: string;
+}
+
+const fixtureRoot = new URL("../../../fixtures/contracts/x402-v2/", import.meta.url);
+
+function fixture(file: string): X402Fixture {
+  return JSON.parse(readFileSync(new URL(file, fixtureRoot), "utf8")) as X402Fixture;
+}
+
+function presentationErrorCode(operation: () => unknown): string | undefined {
+  try {
+    operation();
+    return undefined;
+  } catch (error) {
+    return error instanceof X402PresentationError ? error.code : undefined;
+  }
+}
+
+describe("x402 v2 TypeScript facade", () => {
+  it("binds external readers and the strict Runx extension to generated Rust schemas", () => {
+    const bindings = [
+      [x402ResourceInfoV2Schema, "x402-v2-resource-info.schema.json", X402_SCHEMA_IDS.resourceInfo],
+      [x402PaymentRequirementsV2Schema, "x402-v2-payment-requirements.schema.json", X402_SCHEMA_IDS.paymentRequirements],
+      [x402PaymentRequiredV2Schema, "x402-v2-payment-required.schema.json", X402_SCHEMA_IDS.paymentRequired],
+      [x402PaymentPayloadV2Schema, "x402-v2-payment-payload.schema.json", X402_SCHEMA_IDS.paymentPayload],
+      [x402SettleResponseV2Schema, "x402-v2-settle-response.schema.json", X402_SCHEMA_IDS.settleResponse],
+      [runxX402InvocationExtensionInfoV1Schema, "runx-x402-invocation-extension-v1.schema.json", X402_SCHEMA_IDS.runxInvocationExtension],
+    ] as const;
+
+    for (const [schema, file, id] of bindings) {
+      expect(schema).toBe(runxGeneratedSchemaArtifacts[file]);
+      expect(schema.$id).toBe(id);
+    }
+    expect(X402_UPSTREAM_PACKAGE).toBe("@x402/core");
+    expect(X402_UPSTREAM_PACKAGE_VERSION).toBe("2.23.0");
+    expect(X402_UPSTREAM_COMMIT).toHaveLength(40);
+  });
+
+  it("round-trips the pinned official HTTP headers byte for byte", () => {
+    const required = fixture("official-payment-required.json");
+    const signature = fixture("official-payment-payload.json");
+    const response = fixture("official-settle-success.json");
+    expect(required.header).not.toBeNull();
+    expect(signature.header).not.toBeNull();
+    expect(response.header).not.toBeNull();
+
+    expect(encodeX402PaymentRequiredHeader(
+      decodeX402PaymentRequiredHeader(required.header!),
+    )).toBe(required.header);
+    expect(encodeX402PaymentSignatureHeader(
+      decodeX402PaymentSignatureHeader(signature.header!),
+    )).toBe(signature.header);
+    expect(encodeX402PaymentResponseHeader(
+      decodeX402PaymentResponseHeader(response.header!),
+    )).toBe(response.header);
+  });
+
+  it("validates every pinned vector through its single generated facade", () => {
+    const manifest = JSON.parse(
+      readFileSync(new URL("manifest.json", fixtureRoot), "utf8"),
+    ) as { readonly vectors: readonly { readonly file: string }[] };
+    const validators = {
+      "payment-required": validateX402PaymentRequiredContract,
+      "payment-payload": validateX402PaymentPayloadContract,
+      "settle-response": validateX402SettleResponseContract,
+      runx_invocation_extension: validateRunxX402InvocationExtensionInfoContract,
+    } as const;
+
+    for (const vector of manifest.vectors) {
+      const item = fixture(vector.file);
+      const validate = validators[item.kind];
+      if (item.expectation === "valid") {
+        expect(validate(item.payload)).toBe(item.payload);
+      } else {
+        expect(() => validate(item.payload)).toThrow();
+      }
+    }
+  });
+
+  it("assembles the reserved Runx binding and rejects changed retry commitments", () => {
+    const officialRequired = validateX402PaymentRequiredContract(
+      fixture("official-payment-required.json").payload,
+    );
+    const invocation = fixture("runx-invocation-extension.json")
+      .payload as RunxX402ExtensionInfoContract;
+    const challenge = assembleX402PaymentRequired({
+      resource: officialRequired.resource,
+      accepts: officialRequired.accepts,
+      invocation,
+      extensions: { "vendor.example": { future: true } },
+    });
+    expect(challenge.extensions?.["vendor.example"]).toEqual({ future: true });
+    expect(challenge.extensions?.[RUNX_X402_INVOCATION_EXTENSION_KEY]).toEqual({
+      info: invocation,
+      schema: runxX402InvocationExtensionInfoV1Schema,
+    });
+
+    const retry: X402PaymentPayloadContract = {
+      x402Version: 2,
+      resource: challenge.resource,
+      accepted: challenge.accepts[0]!,
+      payload: { signature: "opaque" },
+      extensions: challenge.extensions,
+    };
+    expect(validateX402PaymentRetry(challenge, retry)).toEqual({
+      requirementIndex: 0,
+      invocation,
+    });
+
+    const changedAmount = structuredClone(retry);
+    (changedAmount.accepted as { amount: string }).amount = "10001";
+    expect(presentationErrorCode(() => validateX402PaymentRetry(challenge, changedAmount)))
+      .toBe("requirement_mismatch");
+
+    const changedResource = structuredClone(retry);
+    (changedResource.resource as { url: string }).url = "https://api.example.com/other";
+    expect(presentationErrorCode(() => validateX402PaymentRetry(challenge, changedResource)))
+      .toBe("resource_mismatch");
+
+    expect(() => assembleX402PaymentRequired({
+      resource: challenge.resource,
+      accepts: challenge.accepts,
+      invocation,
+      extensions: { [RUNX_X402_INVOCATION_EXTENSION_KEY]: { attacker: true } },
+    })).toThrow("reserved");
+  });
+
+  it("binds and recovers a rail-neutral challenge while detecting tampering", () => {
+    const official = validateX402PaymentRequiredContract(
+      fixture("official-payment-required.json").payload,
+    );
+    const challenge = bindX402PaymentRequiredChallenge(
+      official,
+      { type: "receipt", uri: "runx:receipt:quote-1" },
+      "2026-08-24T10:00:00Z",
+    );
+    expect(x402PaymentRequiredFromChallenge(challenge)).toBe(official);
+
+    expect(presentationErrorCode(() => x402PaymentRequiredFromChallenge({
+      ...challenge,
+      protocol_version: "3",
+    }))).toBe("challenge_kind_mismatch");
+    expect(presentationErrorCode(() => x402PaymentRequiredFromChallenge({
+      ...challenge,
+      payload: { x402Version: 2 },
+    }))).toBe("challenge_digest_mismatch");
+  });
+
+  it("uses bounded standard base64 and never echoes payment material in errors", () => {
+    const secret = "do-not-echo";
+    for (const encoded of ["not a signature!", "eyJwYXlsb2FkIjoi" + secret]) {
+      try {
+        decodeX402PaymentSignatureHeader(encoded);
+        throw new Error("expected decoding to fail");
+      } catch (error) {
+        expect(String(error)).not.toContain(secret);
+      }
+    }
+    expect(presentationErrorCode(() => decodeX402PaymentSignatureHeader("-_")))
+      .toBe("invalid_base64");
+  });
+});

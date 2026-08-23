@@ -16,6 +16,30 @@ export {
 } from "./paid-invocation-fingerprint.js";
 
 export {
+  X402_PAYMENT_REQUIRED_HEADER,
+  X402_PAYMENT_SIGNATURE_HEADER,
+  X402_PAYMENT_RESPONSE_HEADER,
+  RUNX_X402_INVOCATION_EXTENSION_KEY,
+  X402_JSON_MEDIA_TYPE,
+  MAX_X402_HEADER_BYTES,
+  MAX_X402_DECODED_BYTES,
+  X402PresentationError,
+  assembleX402PaymentRequired,
+  bindX402PaymentRequiredChallenge,
+  x402PaymentRequiredFromChallenge,
+  validateX402PaymentRetry,
+  selectedX402Requirement,
+  encodeX402PaymentRequiredHeader,
+  decodeX402PaymentRequiredHeader,
+  encodeX402PaymentSignatureHeader,
+  decodeX402PaymentSignatureHeader,
+  encodeX402PaymentResponseHeader,
+  decodeX402PaymentResponseHeader,
+  type X402PresentationErrorCode,
+  type ValidatedX402Retry,
+} from "./x402-presentation.js";
+
+export {
   RUNX_SCHEMA_BASE_URL,
   RUNX_CONTRACT_IDS,
   RUNX_LOGICAL_SCHEMAS,
@@ -355,6 +379,35 @@ export {
   type CancelPaidInvocationRequestContract,
   type CancelPaidInvocationResultContract,
 } from "./schemas/paid-invocation.js";
+
+export {
+  X402_PROTOCOL_VERSION,
+  X402_UPSTREAM_PACKAGE,
+  X402_UPSTREAM_PACKAGE_VERSION,
+  X402_UPSTREAM_COMMIT,
+  X402_SCHEMA_IDS,
+  x402ResourceInfoV2Schema,
+  x402PaymentRequirementsV2Schema,
+  x402PaymentRequiredV2Schema,
+  x402PaymentPayloadV2Schema,
+  x402SettleResponseV2Schema,
+  runxX402InvocationExtensionInfoV1Schema,
+  validateX402ResourceInfoContract,
+  validateX402PaymentRequirementsContract,
+  validateX402PaymentRequiredContract,
+  validateX402PaymentPayloadContract,
+  validateX402SettleResponseContract,
+  validateRunxX402InvocationExtensionInfoContract,
+  type X402ResourceInfoContract,
+  type X402PaymentRequirementsContract,
+  type X402PaymentRequiredContract,
+  type X402PaymentPayloadContract,
+  type X402SettleResponseContract,
+  type RunxX402DiscoveryExtensionInfoContract,
+  type RunxX402InvocationExtensionInfoContract,
+  type RunxX402ExtensionInfoContract,
+  type RunxX402InvocationExtensionContract,
+} from "./schemas/x402.js";
 
 export {
   operationalPolicySchema,
