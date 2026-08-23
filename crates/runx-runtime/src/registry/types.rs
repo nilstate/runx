@@ -1,8 +1,8 @@
 // Module rationale: registry wire/domain types are kept together so
 // local, hosted, install, publish, trust, and signed-manifest envelopes evolve
 // under one serialization contract.
-use runx_contracts::JsonValue;
 use runx_contracts::maturity::MaturityTier;
+use runx_contracts::{JsonValue, PaidSkillListing};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,6 +189,8 @@ pub struct RegistrySkillVersion {
     pub package_files: Vec<RegistryPackageFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paid_listing: Option<PaidSkillListing>,
     pub runner_names: Vec<String>,
     pub source_type: String,
     pub trust_tier: TrustTier,
@@ -248,6 +250,8 @@ pub struct RegistrySkillResolution {
     pub package_files: Vec<RegistryPackageFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paid_listing: Option<PaidSkillListing>,
     pub runner_names: Vec<String>,
     pub skill_id: String,
     pub name: String,
@@ -352,6 +356,8 @@ pub struct RegistrySkillDetail {
     pub package_files: Vec<RegistryPackageFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paid_listing: Option<PaidSkillListing>,
     pub runner_names: Vec<String>,
     pub source_type: String,
     pub trust_tier: TrustTier,
@@ -383,6 +389,8 @@ pub struct AcquiredRegistrySkill {
     pub package_files: Vec<RegistryPackageFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paid_listing: Option<PaidSkillListing>,
     pub runner_names: Vec<String>,
     pub trust_tier: TrustTier,
     pub publisher: RegistryPublisher,

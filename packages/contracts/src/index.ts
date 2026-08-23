@@ -295,6 +295,7 @@ export {
 } from "./schemas/receipt.js";
 
 export {
+  paidSkillListingV1Schema,
   paidInvocationV1Schema,
   offerRevisionRefV1Schema,
   parentInvocationBindingV1Schema,
@@ -310,6 +311,7 @@ export {
   paidInvocationPaymentChallengeSchema,
   validateRunxPrincipalId,
   principalReferenceFromRunxPrincipalId,
+  validatePaidSkillListingContract,
   validatePaidInvocationContract,
   validateOfferRevisionRefContract,
   validateParentInvocationBindingContract,
@@ -336,6 +338,8 @@ export {
   type PaymentReferenceContract,
   type PaymentIdempotencyBindingContract,
   type OfferRevisionRefContract,
+  type PaidSkillRunnerOfferContract,
+  type PaidSkillListingContract,
   type ParentInvocationBindingContract,
   type PaidInvocationContract,
   type PaidInvocationPaymentChallengeContract,
@@ -677,6 +681,7 @@ import { handoffSignalV1Schema, handoffStateV1Schema, suppressionRecordV1Schema 
 import { operationalPolicySchema } from "./schemas/operational-policy.js";
 import { operationalProposalSchema } from "./schemas/operational-proposal.js";
 import {
+  paidSkillListingV1Schema,
   paidInvocationV1Schema,
   offerRevisionRefV1Schema,
   parentInvocationBindingV1Schema,
@@ -751,6 +756,7 @@ export const runxContractSchemas = {
   suppressionRecord: runxSchemaArtifacts["suppression-record.schema.json"],
   operationalPolicy: runxSchemaArtifacts["operational-policy.schema.json"],
   operationalProposal: runxSchemaArtifacts["operational-proposal.schema.json"],
+  paidSkillListing: paidSkillListingV1Schema,
   paidInvocation: paidInvocationV1Schema,
   offerRevisionRef: offerRevisionRefV1Schema,
   parentInvocationBinding: parentInvocationBindingV1Schema,

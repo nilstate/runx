@@ -2,7 +2,12 @@
 // validation, binding metadata, and registry-version projection in one atomic
 // build boundary.
 use runx_contracts::maturity::MaturityTier;
-use runx_contracts::{JsonObject, JsonValue, sha256_hex};
+use runx_contracts::schema::NonEmptyString;
+use runx_contracts::{
+    JsonObject, JsonValue, OfferRevisionRef, PaidSkillListing, PaidSkillOfferTerms,
+    PaidSkillOffers, PaidSkillRunnerOffer, PrincipalReference, RunxPrincipalId, Sha256Digest,
+    sha256_hex,
+};
 use serde::Deserialize;
 
 use super::super::package_files::{
@@ -47,6 +52,15 @@ pub(super) fn build_registry_skill_version(
         options,
     );
     let skill_id = build_skill_id(&defaults.owner, &skill.name)?;
+    let paid_listing = resolve_paid_listing(
+        &metadata.marketplace_offers,
+        &skill_id,
+        &defaults.version,
+        &digest,
+        profile_digest.as_deref(),
+        package_digest.as_deref(),
+        &defaults.publisher,
+    )?;
     Ok(RegistrySkillVersion {
         skill_id,
         owner: defaults.owner,
@@ -62,6 +76,7 @@ pub(super) fn build_registry_skill_version(
         profile_digest,
         package_files,
         package_digest,
+        paid_listing,
         runner_names: metadata.runner_names,
         source_type: metadata.source_type,
         trust_tier: defaults.trust_tier,
@@ -109,6 +124,98 @@ fn registry_package_digests(
             .map(|document| sha256_hex(document.as_bytes())),
         package_digest: registry_package_digest(package_files),
     }
+}
+
+fn resolve_paid_listing(
+    offers: &std::collections::BTreeMap<String, PaidSkillOfferTerms>,
+    skill_id: &str,
+    version: &str,
+    skill_digest: &str,
+    profile_digest: Option<&str>,
+    package_digest: Option<&str>,
+    publisher: &RegistryPublisher,
+) -> Result<Option<PaidSkillListing>, LocalRegistryError> {
+    if offers.is_empty() {
+        return Ok(None);
+    }
+    let profile_digest = required_paid_digest(profile_digest, "profile_digest")?;
+    let package_digest = required_paid_digest(package_digest, "package_digest")?;
+    let skill_digest = registry_sha256(skill_digest, "skill_digest")?;
+    let principal_id = RunxPrincipalId::new(publisher.id.clone()).ok_or_else(|| {
+        invalid_paid_listing(format!(
+            "publisher id '{}' cannot identify a seller principal",
+            publisher.id
+        ))
+    })?;
+    let runner_offers = offers
+        .iter()
+        .map(|(runner, terms)| {
+            (
+                runner.clone(),
+                PaidSkillRunnerOffer::from_terms(
+                    OfferRevisionRef {
+                        offer_id: NonEmptyString::from(format!("{skill_id}#{runner}")),
+                        revision: NonEmptyString::from(version.to_owned()),
+                        revision_digest: profile_digest.clone(),
+                        input_schema_digest: terms.input_schema_digest.clone(),
+                        output_schema_digest: terms.output_schema_digest.clone(),
+                    },
+                    terms,
+                ),
+            )
+        })
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let offers = PaidSkillOffers::new(runner_offers)
+        .ok_or_else(|| invalid_paid_listing("offers must contain non-empty runner names"))?;
+    Ok(Some(PaidSkillListing {
+        skill_id: NonEmptyString::from(skill_id.to_owned()),
+        version: NonEmptyString::from(version.to_owned()),
+        skill_digest,
+        profile_digest,
+        package_digest,
+        vendor_ref: PrincipalReference::from_runx_principal_id(principal_id),
+        offers,
+    }))
+}
+
+fn required_paid_digest(
+    value: Option<&str>,
+    field: &str,
+) -> Result<Sha256Digest, LocalRegistryError> {
+    value
+        .ok_or_else(|| invalid_paid_listing(format!("paid offers require {field}")))
+        .and_then(|value| registry_sha256(value, field))
+}
+
+fn registry_sha256(value: &str, field: &str) -> Result<Sha256Digest, LocalRegistryError> {
+    let value = if value.starts_with("sha256:") {
+        value.to_owned()
+    } else {
+        format!("sha256:{value}")
+    };
+    Sha256Digest::new(value)
+        .ok_or_else(|| invalid_paid_listing(format!("{field} must be a lowercase SHA-256 digest")))
+}
+
+fn invalid_paid_listing(message: impl Into<String>) -> LocalRegistryError {
+    LocalRegistryError::InvalidVersionPayload {
+        field: "registry_version.paid_listing".to_owned(),
+        message: message.into(),
+    }
+}
+
+fn normalize_profile_digest(
+    profile_document: Option<&str>,
+    declared: Option<&str>,
+) -> Result<Option<String>, LocalRegistryError> {
+    let computed = profile_document.map(|document| sha256_hex(document.as_bytes()));
+    if declared.is_some() && declared != computed.as_deref() {
+        return Err(LocalRegistryError::InvalidVersionPayload {
+            field: "registry_version.profile_digest".to_owned(),
+            message: "does not match profile_document".to_owned(),
+        });
+    }
+    Ok(computed)
 }
 
 struct RegistryVersionDefaults {
@@ -192,22 +299,51 @@ pub(super) fn normalize_registry_skill_version(
     let source_category = payload
         .source_category
         .or_else(|| package.skill.category.clone());
+    let skill_id = required_string(payload.skill_id, "registry_version.skill_id")?;
+    let version = required_string(payload.version, "registry_version.version")?;
+    let digest = required_string(payload.digest, "registry_version.digest")?;
+    let profile_digest = normalize_profile_digest(
+        payload.profile_document.as_deref(),
+        payload.profile_digest.as_deref(),
+    )?;
+    let package_digest = payload.package_digest.or(computed_package_digest);
+    let metadata = project_registry_package_metadata(&package.skill, package.root_manifest());
+    let paid_listing = resolve_paid_listing(
+        &metadata.marketplace_offers,
+        &skill_id,
+        &version,
+        &sha256_hex(markdown.as_bytes()),
+        profile_digest.as_deref(),
+        package_digest.as_deref(),
+        &governance.publisher,
+    )?;
+    if payload
+        .paid_listing
+        .as_ref()
+        .is_some_and(|declared| Some(declared) != paid_listing.as_ref())
+    {
+        return Err(LocalRegistryError::InvalidVersionPayload {
+            field: "registry_version.paid_listing".to_owned(),
+            message: "does not match the parser-resolved immutable listing".to_owned(),
+        });
+    }
 
     Ok(RegistrySkillVersion {
-        skill_id: required_string(payload.skill_id, "registry_version.skill_id")?,
+        skill_id,
         owner: governance.owner,
         name: required_string(payload.name, "registry_version.name")?,
         description: payload.description,
         category,
         source_category,
-        version: required_string(payload.version, "registry_version.version")?,
-        digest: required_string(payload.digest, "registry_version.digest")?,
+        version,
+        digest,
         signed_manifest: payload.signed_manifest,
         markdown,
         profile_document: payload.profile_document,
-        profile_digest: payload.profile_digest,
+        profile_digest,
         package_files,
-        package_digest: payload.package_digest.or(computed_package_digest),
+        package_digest,
+        paid_listing,
         runner_names: payload.runner_names.unwrap_or_default(),
         source_type: required_string(payload.source_type, "registry_version.source_type")?,
         trust_tier: governance.trust_tier,
@@ -340,6 +476,7 @@ pub(super) struct RegistrySkillVersionPayload {
     profile_digest: Option<String>,
     package_files: Option<Vec<RegistryPackageFile>>,
     package_digest: Option<String>,
+    paid_listing: Option<PaidSkillListing>,
     runner_names: Option<Vec<String>>,
     source_type: Option<String>,
     trust_tier: Option<TrustTier>,

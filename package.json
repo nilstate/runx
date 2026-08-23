@@ -17,6 +17,7 @@
     "build": "pnpm schemas:generate && node scripts/build-workspace.mjs --pack",
     "build:pack": "pnpm schemas:generate && node scripts/build-workspace.mjs --pack",
     "schemas:generate": "tsx scripts/generate-contract-schemas.ts",
+    "schemas:check": "pnpm contracts:schemas:check",
     "contracts:schemas:generate": "pnpm schemas:generate",
     "contracts:schemas:check": "tsx scripts/generate-contract-schemas.ts --check",
     "cli:link-global": "pnpm build && node scripts/link-global-cli.mjs",

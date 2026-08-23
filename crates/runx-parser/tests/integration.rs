@@ -11,6 +11,7 @@ mod parser_dev_fixture;
 mod parser_fixtures;
 mod parser_graph_allowed_tools;
 mod parser_graph_context_edges;
+mod parser_marketplace;
 mod parser_packet;
 mod parser_rejections;
 mod parser_skill_package;

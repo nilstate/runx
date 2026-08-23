@@ -1,0 +1,182 @@
+{
+  "$id": "https://schemas.runx.ai/runx/marketplace/paid-skill-listing/v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "offers": {
+      "additionalProperties": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_settlement_families": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "amount_minor": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "type": "string"
+          },
+          "offer_revision": {
+            "$id": "https://schemas.runx.ai/runx/payment/offer-revision-ref/v1.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "additionalProperties": false,
+            "properties": {
+              "input_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "offer_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "output_schema_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "revision_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "schema": {
+                "const": "runx.payment.offer_revision_ref.v1",
+                "type": "string"
+              }
+            },
+            "required": [
+              "offer_id",
+              "revision",
+              "revision_digest",
+              "input_schema_digest",
+              "output_schema_digest"
+            ],
+            "type": "object",
+            "x-runx-schema": "runx.payment.offer_revision_ref.v1"
+          }
+        },
+        "required": [
+          "offer_revision",
+          "amount_minor",
+          "currency",
+          "accepted_settlement_families"
+        ],
+        "type": "object"
+      },
+      "maxProperties": 64,
+      "minProperties": 1,
+      "propertyNames": {
+        "minLength": 1
+      },
+      "type": "object"
+    },
+    "package_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "profile_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema": {
+      "const": "runx.marketplace.paid_skill_listing.v1",
+      "type": "string"
+    },
+    "skill_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "skill_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "vendor_ref": {
+      "$id": "https://schemas.runx.ai/runx/reference/v1.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "locator": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "observed_at": {
+          "minLength": 1,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$",
+          "type": "string"
+        },
+        "proof_kind": {
+          "anyOf": [
+            {
+              "const": "effect_evidence",
+              "type": "string"
+            },
+            {
+              "const": "effect_finality",
+              "type": "string"
+            },
+            {
+              "const": "credential_resolution",
+              "type": "string"
+            }
+          ]
+        },
+        "provider": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema": {
+          "const": "runx.reference.v1",
+          "type": "string"
+        },
+        "type": {
+          "const": "principal",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "uri"
+      ],
+      "type": "object",
+      "x-runx-schema": "runx.reference.v1"
+    },
+    "version": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "skill_id",
+    "version",
+    "skill_digest",
+    "profile_digest",
+    "package_digest",
+    "vendor_ref",
+    "offers"
+  ],
+  "type": "object",
+  "x-runx-packet": true,
+  "x-runx-schema": "runx.marketplace.paid_skill_listing.v1"
+}

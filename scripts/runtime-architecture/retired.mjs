@@ -88,6 +88,10 @@ export function checkRetiredRuntimeSurfaces(findings) {
     workspaceRoot,
     "crates/runx-contracts/src/paid_invocation_fingerprint.rs",
   );
+  const paidSkillListingContractOwner = path.join(
+    workspaceRoot,
+    "crates/runx-contracts/src/paid_skill_listing.rs",
+  );
   const paidInvocationFixtureProducer = path.join(
     workspaceRoot,
     "crates/runx-contracts/src/bin/runx-paid-invocation-fixtures.rs",
@@ -112,6 +116,7 @@ export function checkRetiredRuntimeSurfaces(findings) {
       if (
         filePath === paidInvocationContractOwner
         || filePath === paidInvocationFingerprintOwner
+        || filePath === paidSkillListingContractOwner
         || filePath === x402ContractOwner
       ) {
         const forbiddenRuntimeMarker = [
@@ -132,6 +137,8 @@ export function checkRetiredRuntimeSurfaces(findings) {
         source = source
           .replace(/pub mod paid_invocation;\s*/gu, "")
           .replace(/pub use paid_invocation::\{[\s\S]*?\};\s*/gu, "")
+          .replace(/pub mod paid_skill_listing;\s*/gu, "")
+          .replace(/pub use paid_skill_listing::\{[\s\S]*?\};\s*/gu, "")
           .replace(/pub mod x402;\s*/gu, "")
           .replace(/pub use x402::\{[\s\S]*?\};\s*/gu, "");
       }

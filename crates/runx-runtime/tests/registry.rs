@@ -485,6 +485,7 @@ fn acquisition(
         profile_digest: None,
         package_files: Vec::new(),
         package_digest: None,
+        paid_listing: None,
         runner_names: Vec::new(),
         trust_tier: TrustTier::Verified,
         publisher: RegistryPublisher {

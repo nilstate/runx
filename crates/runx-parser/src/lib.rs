@@ -44,7 +44,8 @@ pub use packet::{
     PACKET_ID_FIELD, PacketSchemaError, ValidatedPacketSchema, parse_packet_schema_document,
 };
 pub use runner::{
-    RawRunnerManifestIr, SkillRunnerManifest, parse_runner_manifest_yaml, validate_runner_manifest,
+    MarketplaceManifest, RawRunnerManifestIr, SkillRunnerManifest, parse_runner_manifest_yaml,
+    validate_runner_manifest,
 };
 pub use skill::{
     ActDeclaration, ArtifactPageFraming, ArtifactPageSource, CatalogApproval, CatalogAudience,

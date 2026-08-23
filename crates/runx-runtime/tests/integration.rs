@@ -44,6 +44,7 @@ mod receipt_tree;
 mod registry;
 mod registry_client;
 mod registry_install;
+mod registry_paid_listing;
 mod skill_author_runtime_fixtures;
 mod skill_issue_intake;
 mod skill_manual_context;

@@ -7,17 +7,21 @@ use runx_contracts::{
     CANCEL_PAID_INVOCATION, CancelPaidInvocationRequest, CancelPaidInvocationResult,
     EXECUTE_PAID_INVOCATION, ExecutePaidInvocationRequest, ExecutePaidInvocationResult,
     GetPaidInvocationRequest, GetPaidInvocationResult, JsonObject, JsonValue as RunxJsonValue,
-    MAX_PORTABLE_INTEGER, PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, QUOTE_PAID_INVOCATION,
-    QuotePaidInvocationRequest, QuotePaidInvocationResult, STABLE_JSON_CANONICALIZATION,
-    canonical_stable_json, fingerprint_cancel_paid_invocation_request,
-    fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
-    sha256_prefixed,
+    MAX_PORTABLE_INTEGER, PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, PaidSkillListing,
+    QUOTE_PAID_INVOCATION, QuotePaidInvocationRequest, QuotePaidInvocationResult,
+    STABLE_JSON_CANONICALIZATION, canonical_stable_json,
+    fingerprint_cancel_paid_invocation_request, fingerprint_execute_paid_invocation_request,
+    fingerprint_quote_paid_invocation_request, sha256_prefixed,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 const SCHEMAS: &[(&str, &str)] = &[
+    (
+        "runx.marketplace.paid_skill_listing.v1",
+        "paid-skill-listing.schema.json",
+    ),
     (
         "runx.payment.paid_invocation.v1",
         "paid-invocation.schema.json",
@@ -147,6 +151,13 @@ fn vectors() -> io::Result<Vec<Vector>> {
     let challenge_digest = digest_value(&challenge_payload)?;
 
     Ok(vec![
+        valid::<PaidSkillListing>(
+            "paid-skill-listing-multi-rail.json",
+            "One ordinary skill runner advertises provider-neutral compatible settlement families.",
+            "PaidSkillListing",
+            "runx.marketplace.paid_skill_listing.v1",
+            paid_skill_listing(),
+        )?,
         valid::<QuotePaidInvocationResult>(
             "quote-direct-admission.json",
             "A direct quote admits one commercial invocation and an opaque, digest-bound challenge.",
@@ -301,6 +312,17 @@ fn vectors() -> io::Result<Vec<Vector>> {
             )),
         )?,
         invalid(
+            "invalid-paid-skill-listing-provider-field.json",
+            "Provider-specific commercial fields cannot enter the marketplace listing contract.",
+            "PaidSkillListing",
+            "runx.marketplace.paid_skill_listing.v1",
+            with_field(
+                paid_skill_listing(),
+                "stripe_price_id",
+                json!("price_private"),
+            )?,
+        ),
+        invalid(
             "invalid-unknown-field.json",
             "V1 request objects reject additive fields.",
             "QuotePaidInvocation",
@@ -443,6 +465,29 @@ fn quote_request(idempotency_key: &str, parent: Option<Value>) -> Value {
         object.insert("parent".to_owned(), parent);
     }
     value
+}
+
+fn paid_skill_listing() -> Value {
+    json!({
+        "skill_id": "acme/transcribe",
+        "version": "1.0.0",
+        "skill_digest": digest('8'),
+        "profile_digest": digest('9'),
+        "package_digest": digest('a'),
+        "vendor_ref": reference("principal", "runx:principal:vendor-1"),
+        "offers": {"transcribe": {
+            "offer_revision": {
+                "offer_id": "acme/transcribe#transcribe",
+                "revision": "1.0.0",
+                "revision_digest": digest('9'),
+                "input_schema_digest": digest('2'),
+                "output_schema_digest": digest('3')
+            },
+            "amount_minor": 1250,
+            "currency": "USD",
+            "accepted_settlement_families": ["x402", "stripe-spt"]
+        }}
+    })
 }
 
 fn execute_request() -> Value {

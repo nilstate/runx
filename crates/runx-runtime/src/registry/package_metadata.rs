@@ -1,4 +1,6 @@
-use runx_contracts::{JsonObject, JsonValue};
+use std::collections::BTreeMap;
+
+use runx_contracts::{JsonObject, JsonValue, PaidSkillOfferTerms};
 use runx_parser::{CatalogMetadata, SkillRunnerManifest, ValidatedSkill};
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +24,8 @@ pub struct RegistryPackageMetadata {
     pub catalog_audience: String,
     pub catalog_visibility: String,
     pub required_scopes: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub marketplace_offers: BTreeMap<String, PaidSkillOfferTerms>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime: Option<JsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,6 +63,10 @@ pub(crate) fn project_registry_package_metadata(
         catalog_audience: catalog.audience.as_str().to_owned(),
         catalog_visibility: catalog.visibility.as_str().to_owned(),
         required_scopes: registry_required_scopes(manifest),
+        marketplace_offers: manifest
+            .and_then(|manifest| manifest.marketplace.as_ref())
+            .map(|marketplace| marketplace.offers.clone())
+            .unwrap_or_default(),
         runtime: registry_runtime(manifest),
         auth: selected_registry_runner(manifest).and_then(|runner| runner.auth.clone()),
         risk: registry_risk(manifest),

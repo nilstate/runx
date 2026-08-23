@@ -42,6 +42,7 @@ import {
   receiptClassSchema,
   receiptPaidInvocationBindingSchema,
   receiptEvidenceSchema,
+  paidSkillListingV1Schema,
   paidInvocationV1Schema,
   quotePaidInvocationRequestV1Schema,
   cancelPaidInvocationResultV1Schema,
@@ -112,6 +113,11 @@ describe("@runxhq/contracts", () => {
   });
 
   it("publishes paid-invocation V1 through the curated contract registry", () => {
+    expect(RUNX_LOGICAL_SCHEMAS.paidSkillListing)
+      .toBe("runx.marketplace.paid_skill_listing.v1");
+    expect(RUNX_CONTRACT_IDS.paidSkillListing)
+      .toBe("https://schemas.runx.ai/runx/marketplace/paid-skill-listing/v1.json");
+    expect(paidSkillListingV1Schema).toBe(runxContractSchemas.paidSkillListing);
     expect(RUNX_LOGICAL_SCHEMAS.paidInvocation).toBe("runx.payment.paid_invocation.v1");
     expect(RUNX_CONTRACT_IDS.paidInvocation)
       .toBe("https://schemas.runx.ai/runx/payment/paid-invocation/v1.json");

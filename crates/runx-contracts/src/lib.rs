@@ -36,6 +36,7 @@ pub mod output;
 pub mod packet_index;
 pub mod paid_invocation;
 pub mod paid_invocation_fingerprint;
+pub mod paid_skill_listing;
 pub mod policy_proof;
 pub mod provider_operation;
 pub mod receipt;
@@ -219,6 +220,10 @@ pub use paid_invocation::{
 pub use paid_invocation_fingerprint::{
     PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, fingerprint_cancel_paid_invocation_request,
     fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
+};
+pub use paid_skill_listing::{
+    PAID_SKILL_LISTING_SCHEMA, PaidSkillListing, PaidSkillOfferTerms, PaidSkillOffers,
+    PaidSkillRunnerOffer,
 };
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,

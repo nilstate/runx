@@ -13,6 +13,7 @@ import {
   getPaidInvocationResultV1Schema,
   offerRevisionRefV1Schema,
   paidInvocationPaymentChallengeSchema,
+  paidSkillListingV1Schema,
   paidInvocationV1Schema,
   parentInvocationBindingV1Schema,
   paymentIdempotencyBindingSchema,
@@ -30,6 +31,7 @@ import {
   validateOfferRevisionRefContract,
   validatePaidInvocationContract,
   validatePaidInvocationPaymentChallengeContract,
+  validatePaidSkillListingContract,
   validateParentInvocationBindingContract,
   validatePaymentIdempotencyBindingContract,
   validateQuotePaidInvocationRequestContract,
@@ -72,6 +74,7 @@ const principalFixture = JSON.parse(
 ) as PrincipalIdFixture;
 
 const validatorsBySchemaId = {
+  "runx.marketplace.paid_skill_listing.v1": validatePaidSkillListingContract,
   "runx.payment.quote_paid_invocation.request.v1": validateQuotePaidInvocationRequestContract,
   "runx.payment.quote_paid_invocation.result.v1": validateQuotePaidInvocationResultContract,
   "runx.payment.execute_paid_invocation.request.v1": validateExecutePaidInvocationRequestContract,
@@ -105,6 +108,7 @@ function quoteResultMarker(result: QuotePaidInvocationResultContract): string {
 describe("paid-invocation V1 contract facade", () => {
   it("binds every top-level schema to the exact Rust-generated artifact", () => {
     const bindings = [
+      [paidSkillListingV1Schema, "paid-skill-listing.schema.json", "paidSkillListing"],
       [paidInvocationV1Schema, "paid-invocation.schema.json", "paidInvocation"],
       [offerRevisionRefV1Schema, "offer-revision-ref.schema.json", "offerRevisionRef"],
       [parentInvocationBindingV1Schema, "parent-invocation-binding.schema.json", "parentInvocationBinding"],
@@ -124,6 +128,36 @@ describe("paid-invocation V1 contract facade", () => {
       expect(schema.$id).toBe(RUNX_CONTRACT_IDS[registryKey]);
       expect(schema["x-runx-schema"]).toBe(RUNX_LOGICAL_SCHEMAS[registryKey]);
     }
+  });
+
+  it("keeps marketplace listings rail-neutral while advertising compatible families", () => {
+    const digest = (character: string): `sha256:${string}` =>
+      `sha256:${character.repeat(64)}`;
+    const listing = {
+      skill_id: "acme/transcribe",
+      version: "1.0.0",
+      skill_digest: digest("a"),
+      profile_digest: digest("b"),
+      package_digest: digest("c"),
+      vendor_ref: { type: "principal", uri: "runx:principal:acme" },
+      offers: { transcribe: {
+        offer_revision: {
+          offer_id: "acme/transcribe#transcribe",
+          revision: "1.0.0",
+          revision_digest: digest("b"),
+          input_schema_digest: digest("d"),
+          output_schema_digest: digest("e"),
+        },
+        amount_minor: 125,
+        currency: "USD",
+        accepted_settlement_families: ["x402", "stripe-spt"],
+      } },
+    } as const;
+    expect(validatePaidSkillListingContract(listing)).toBe(listing);
+    expect(() => validatePaidSkillListingContract({
+      ...listing,
+      stripe_price_id: "price_private",
+    })).toThrow();
   });
 
   it("binds nested values through exact generated fragments without new ids", () => {

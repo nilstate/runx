@@ -65,6 +65,23 @@ export type OfferRevisionRefContract = DeepReadonly<{
   output_schema_digest: Sha256DigestContract;
 }>;
 
+export type PaidSkillRunnerOfferContract = DeepReadonly<{
+  offer_revision: OfferRevisionRefContract;
+  amount_minor: number;
+  currency: CurrencyCodeContract;
+  accepted_settlement_families: readonly SettlementFamilyContract[];
+}>;
+
+export type PaidSkillListingContract = DeepReadonly<{
+  skill_id: string;
+  version: string;
+  skill_digest: Sha256DigestContract;
+  profile_digest: Sha256DigestContract;
+  package_digest: Sha256DigestContract;
+  vendor_ref: PrincipalReferenceContract;
+  offers: Readonly<Record<string, PaidSkillRunnerOfferContract>>;
+}>;
+
 export type ParentInvocationBindingContract = DeepReadonly<{
   invocation_id: string;
   execution_digest: Sha256DigestContract;
@@ -161,6 +178,8 @@ export type CancelPaidInvocationResultContract = PaidInvocationAdmissionResultCo
 
 export const paidInvocationV1Schema =
   generatedSchema<PaidInvocationContract>("paid-invocation.schema.json");
+export const paidSkillListingV1Schema =
+  generatedSchema<PaidSkillListingContract>("paid-skill-listing.schema.json");
 export const offerRevisionRefV1Schema =
   generatedSchema<OfferRevisionRefContract>("offer-revision-ref.schema.json");
 export const parentInvocationBindingV1Schema =
@@ -222,6 +241,10 @@ export function principalReferenceFromRunxPrincipalId(
 
 export function validatePaidInvocationContract(value: unknown, label = "paid_invocation") {
   return validateContractSchema(paidInvocationV1Schema, value, label);
+}
+
+export function validatePaidSkillListingContract(value: unknown, label = "paid_skill_listing") {
+  return validateContractSchema(paidSkillListingV1Schema, value, label);
 }
 
 export function validateOfferRevisionRefContract(value: unknown, label = "offer_revision") {

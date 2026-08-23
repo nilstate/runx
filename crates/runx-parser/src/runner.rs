@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use runx_contracts::{
     ExecutionCredentialRequirement, ExecutionRequirements, JsonObject, JsonValue,
+    PaidSkillOfferTerms,
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +26,7 @@ const MANIFEST_FIELDS: &[&str] = &[
     "catalog",
     "credentials",
     "input_definitions",
+    "marketplace",
     "runners",
     "harness",
 ];
@@ -55,10 +57,21 @@ pub struct SkillRunnerManifest {
     /// expanded during parsing, so runtime consumers never resolve them again.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub input_definitions: BTreeMap<String, crate::skill::SkillInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub marketplace: Option<MarketplaceManifest>,
     pub runners: BTreeMap<String, SkillRunnerDefinition>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub harness: Option<RunnerHarnessManifest>,
     pub raw: RawRunnerManifestIr,
+}
+
+/// Optional commercial terms for ordinary skill runners. The registry owns
+/// seller identity and immutable listing resolution; this parser-owned value
+/// contains author declarations only.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketplaceManifest {
+    pub offers: BTreeMap<String, PaidSkillOfferTerms>,
 }
 
 impl SkillRunnerManifest {
@@ -130,6 +143,7 @@ pub fn validate_runner_manifest(
     let credentials = validate_credential_requirements(raw.document.get("credentials"))?;
     validate_runner_credential_references(&runners, &credentials)?;
     validate_credential_environment_separation(&runners, &credentials)?;
+    let marketplace = validate_marketplace(raw.document.get("marketplace"), &runners)?;
 
     let harness = validate_harness_manifest(
         FIELDS.optional_object(raw.document.get("harness"), "harness")?,
@@ -150,10 +164,44 @@ pub fn validate_runner_manifest(
         catalog,
         credentials,
         input_definitions,
+        marketplace,
         runners,
         harness,
         raw,
     })
+}
+
+fn validate_marketplace(
+    value: Option<&JsonValue>,
+    runners: &BTreeMap<String, SkillRunnerDefinition>,
+) -> Result<Option<MarketplaceManifest>, ValidationError> {
+    let Some(marketplace) = FIELDS.optional_object(value, "marketplace")? else {
+        return Ok(None);
+    };
+    FIELDS.reject_unknown_fields(&marketplace, "marketplace", &["offers"])?;
+    let raw_offers = FIELDS.required_object(marketplace.get("offers"), "marketplace.offers")?;
+    if raw_offers.is_empty() {
+        return Err(FIELDS.validation_error("marketplace.offers must not be empty."));
+    }
+
+    let mut offers = BTreeMap::new();
+    for (runner, value) in raw_offers {
+        if !runners.contains_key(runner) {
+            return Err(FIELDS.validation_error(format!(
+                "marketplace.offers.{runner} references an undeclared runner."
+            )));
+        }
+        let serialized = serde_json::to_value(value).map_err(|error| {
+            FIELDS.validation_error(format!(
+                "marketplace.offers.{runner} could not be materialized: {error}"
+            ))
+        })?;
+        let terms = serde_json::from_value::<PaidSkillOfferTerms>(serialized).map_err(|error| {
+            FIELDS.validation_error(format!("marketplace.offers.{runner} is invalid: {error}"))
+        })?;
+        offers.insert(runner.clone(), terms);
+    }
+    Ok(Some(MarketplaceManifest { offers }))
 }
 
 fn expand_input_definitions(

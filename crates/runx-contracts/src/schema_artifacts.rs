@@ -18,15 +18,15 @@ use crate::{
     GetPaidInvocationResult, GitBlobDigest, HandoffSignal, HandoffState, LedgerEntry,
     LocalArtifact, LocalArtifactPage, OfferRevisionRef, OperationalPolicy, OperationalProposal,
     OrchestratorExecutionContext, OrchestratorHandoffContext, Output, PacketIndex, PaidInvocation,
-    ParentInvocationBinding, ProviderOperationPacket, Question, QuotePaidInvocationRequest,
-    QuotePaidInvocationResult, Receipt, Redaction, Reference, ReferenceLink, RegistryBinding,
-    ResolutionRequest, ResolutionResponse, ReviewReceiptOutput, RunSummary, RunxListReport,
-    RunxX402InvocationExtensionInfo, ScopeAdmission, Signal, SkillApplyResult,
-    SkillArchitectureDecision, SkillArchitecturePlan, SkillChangeBundle, SkillChangeDraft,
-    SkillValidationResult, SourcePacket, SuppressionRecord, ThreadOutboxProviderFetch,
-    ThreadOutboxProviderManifest, ThreadOutboxProviderObservation, ThreadOutboxProviderPush,
-    ToolManifest, Verification, X402PaymentPayload, X402PaymentRequired, X402PaymentRequirements,
-    X402ResourceInfo, X402SettleResponse,
+    PaidSkillListing, ParentInvocationBinding, ProviderOperationPacket, Question,
+    QuotePaidInvocationRequest, QuotePaidInvocationResult, Receipt, Redaction, Reference,
+    ReferenceLink, RegistryBinding, ResolutionRequest, ResolutionResponse, ReviewReceiptOutput,
+    RunSummary, RunxListReport, RunxX402InvocationExtensionInfo, ScopeAdmission, Signal,
+    SkillApplyResult, SkillArchitectureDecision, SkillArchitecturePlan, SkillChangeBundle,
+    SkillChangeDraft, SkillValidationResult, SourcePacket, SuppressionRecord,
+    ThreadOutboxProviderFetch, ThreadOutboxProviderManifest, ThreadOutboxProviderObservation,
+    ThreadOutboxProviderPush, ToolManifest, Verification, X402PaymentPayload, X402PaymentRequired,
+    X402PaymentRequirements, X402ResourceInfo, X402SettleResponse,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -129,6 +129,7 @@ pub fn generated_schema_artifacts() -> Vec<SchemaArtifact> {
         public_packet_artifact::<ProviderOperationPacket>("provider-operation.schema.json"),
         schema_artifact::<ReviewReceiptOutput>("review-receipt-output.schema.json"),
         public_packet_artifact::<PaidInvocation>("paid-invocation.schema.json"),
+        public_packet_artifact::<PaidSkillListing>("paid-skill-listing.schema.json"),
         public_packet_artifact::<OfferRevisionRef>("offer-revision-ref.schema.json"),
         public_packet_artifact::<ParentInvocationBinding>("parent-invocation-binding.schema.json"),
         public_packet_artifact::<QuotePaidInvocationRequest>(

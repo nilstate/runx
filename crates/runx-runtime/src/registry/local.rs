@@ -125,6 +125,7 @@ impl FileRegistryStore {
             if existing.digest != version.digest
                 || existing.profile_digest != version.profile_digest
                 || existing.package_digest != version.package_digest
+                || existing.paid_listing != version.paid_listing
             {
                 if !options.upsert {
                     return Err(LocalRegistryError::VersionConflict {
@@ -256,6 +257,7 @@ fn create_registry_skill_version(
         if existing.digest != record.digest
             || existing.profile_digest != record.profile_digest
             || existing.package_digest != record.package_digest
+            || existing.paid_listing != record.paid_listing
         {
             if !options.upsert {
                 return Err(LocalRegistryError::VersionConflict {
@@ -372,6 +374,7 @@ pub fn resolve_registry_skill(
             profile_digest: record.profile_digest,
             package_files: record.package_files,
             package_digest: record.package_digest,
+            paid_listing: record.paid_listing,
             runner_names: record.runner_names,
             skill_id: record.skill_id,
             name: record.name,
