@@ -490,6 +490,49 @@ mod tests {
     }
 
     #[test]
+    fn allocation_refuses_missing_capacity_before_hosted_io() {
+        let input = ArtifactAllocateInput {
+            value: Some(JsonValue::Object(JsonObject::from([(
+                "answer".to_owned(),
+                JsonValue::Number(runx_contracts::JsonNumber::U64(42)),
+            )]))),
+            data_base64: None,
+            media_type: "application/json".to_owned(),
+            idempotency_scope: "ocr-output".to_owned(),
+        };
+        let env = BTreeMap::from([(
+            crate::HOSTED_API_BASE_URL_ENV.to_owned(),
+            "not-a-hosted-url".to_owned(),
+        )]);
+        let credentials = CredentialDelivery::none();
+        let effects = RuntimeEffectRegistry::default();
+
+        let error = allocate(&NativeInvocation {
+            inputs: &input,
+            observed_at: "2026-08-24T00:00:00Z",
+            data_source_binding: None,
+            env: &env,
+            skill_directory: std::path::Path::new("."),
+            credential_delivery: &credentials,
+            local_artifacts: super::super::fixture_local_artifacts(),
+            effects: &effects,
+        })
+        .expect_err("missing capacity must refuse before hosted resolution");
+
+        assert!(
+            matches!(
+                &error,
+                RuntimeError::SkillFailed {
+                    skill_name,
+                    message,
+                } if skill_name == ALLOCATE_TOOL
+                    && message == "hosted artifact capacity is unavailable or invalid"
+            ),
+            "unexpected missing-capacity error: {error}"
+        );
+    }
+
+    #[test]
     fn idempotency_is_run_bound_and_scope_stable() {
         let environment = std::collections::BTreeMap::from([(
             crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
