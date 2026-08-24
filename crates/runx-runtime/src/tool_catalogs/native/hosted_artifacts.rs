@@ -21,7 +21,7 @@ use super::capability::{NativeCapability, TypedNativeCapability};
 use super::{NativeInvocation, invalid_input};
 
 const ALLOCATE_TOOL: &str = "artifact.allocate";
-const MAX_ARTIFACT_BYTES: usize = 25 * 1024 * 1024;
+const HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV: &str = "RUNX_HOSTED_ARTIFACT_MAXIMUM_BYTES";
 const MAX_IDEMPOTENCY_SCOPE_BYTES: usize = 256;
 
 #[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
@@ -91,7 +91,8 @@ pub(in crate::tool_catalogs::native) const CAPABILITIES: &[&dyn NativeCapability
 fn allocate(
     invocation: &NativeInvocation<'_, ArtifactAllocateInput>,
 ) -> Result<HostedArtifactOutput, RuntimeError> {
-    let (data_base64, bytes) = allocation_bytes(invocation.inputs)?;
+    let maximum_bytes = hosted_artifact_maximum_bytes(invocation.env)?;
+    let (data_base64, bytes) = allocation_bytes(invocation.inputs, maximum_bytes)?;
     let media_type = media_type(&invocation.inputs.media_type)?;
     let content_digest = runx_contracts::sha256_prefixed(&bytes);
     let idempotency_key = run_bound_idempotency_key(
@@ -170,11 +171,20 @@ fn invoke<I>(
     ))
 }
 
-fn allocation_bytes(input: &ArtifactAllocateInput) -> Result<(String, Vec<u8>), RuntimeError> {
+fn allocation_bytes(
+    input: &ArtifactAllocateInput,
+    maximum_bytes: usize,
+) -> Result<(String, Vec<u8>), RuntimeError> {
     let bytes = match (&input.value, &input.data_base64) {
         (Some(value), None) => serde_json::to_vec(value)
             .map_err(|source| RuntimeError::json("serializing artifact value", source))?,
         (None, Some(encoded)) => {
+            if encoded.len() > maximum_base64_bytes(maximum_bytes) {
+                return Err(invalid_input(
+                    ALLOCATE_TOOL,
+                    "artifact bytes exceed the hosted capacity",
+                ));
+            }
             let decoded = base64::engine::general_purpose::STANDARD
                 .decode(encoded)
                 .map_err(|_| invalid_input(ALLOCATE_TOOL, "data_base64 is invalid"))?;
@@ -193,18 +203,46 @@ fn allocation_bytes(input: &ArtifactAllocateInput) -> Result<(String, Vec<u8>), 
             ));
         }
     };
-    validate_allocation_size(bytes.len())?;
+    validate_allocation_size(bytes.len(), maximum_bytes)?;
     Ok((
         base64::engine::general_purpose::STANDARD.encode(&bytes),
         bytes,
     ))
 }
 
-fn validate_allocation_size(size: usize) -> Result<(), RuntimeError> {
-    if size == 0 || size > MAX_ARTIFACT_BYTES {
+fn hosted_artifact_maximum_bytes(
+    environment: &std::collections::BTreeMap<String, String>,
+) -> Result<usize, RuntimeError> {
+    let maximum_bytes = environment
+        .get(HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV)
+        .filter(|value| {
+            value.as_bytes().first().is_some_and(|byte| *byte != b'0')
+                && value.bytes().all(|byte| byte.is_ascii_digit())
+        })
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .ok_or_else(|| {
+            invalid_input(
+                ALLOCATE_TOOL,
+                "hosted artifact capacity is unavailable or invalid",
+            )
+        })?;
+    Ok(maximum_bytes)
+}
+
+fn maximum_base64_bytes(maximum_bytes: usize) -> usize {
+    maximum_bytes
+        .checked_add(2)
+        .and_then(|value| value.checked_div(3))
+        .and_then(|value| value.checked_mul(4))
+        .unwrap_or(usize::MAX)
+}
+
+fn validate_allocation_size(size: usize, maximum_bytes: usize) -> Result<(), RuntimeError> {
+    if size == 0 || size > maximum_bytes {
         return Err(invalid_input(
             ALLOCATE_TOOL,
-            "artifact bytes must be between 1 byte and 25 MiB",
+            "artifact bytes must be non-empty and within the hosted capacity",
         ));
     }
     Ok(())
@@ -377,6 +415,7 @@ mod tests {
 
     #[test]
     fn allocation_accepts_one_canonical_source() {
+        let maximum_bytes = 2 * 1024 * 1024;
         let value = ArtifactAllocateInput {
             value: Some(JsonValue::Object(JsonObject::from([(
                 "answer".to_owned(),
@@ -386,14 +425,14 @@ mod tests {
             media_type: "application/json".to_owned(),
             idempotency_scope: "ocr-output".to_owned(),
         };
-        let (_, bytes) = allocation_bytes(&value).expect("JSON allocation bytes");
+        let (_, bytes) = allocation_bytes(&value, maximum_bytes).expect("JSON allocation bytes");
         assert_eq!(bytes, br#"{"answer":42}"#);
 
         let both = ArtifactAllocateInput {
             data_base64: Some("e30=".to_owned()),
             ..value
         };
-        assert!(allocation_bytes(&both).is_err());
+        assert!(allocation_bytes(&both, maximum_bytes).is_err());
 
         let noncanonical = ArtifactAllocateInput {
             value: None,
@@ -401,9 +440,53 @@ mod tests {
             media_type: "application/octet-stream".to_owned(),
             idempotency_scope: "binary-output".to_owned(),
         };
-        assert!(allocation_bytes(&noncanonical).is_err());
-        assert!(validate_allocation_size(0).is_err());
-        assert!(validate_allocation_size(MAX_ARTIFACT_BYTES + 1).is_err());
+        assert!(allocation_bytes(&noncanonical, maximum_bytes).is_err());
+        assert!(validate_allocation_size(0, maximum_bytes).is_err());
+        assert!(validate_allocation_size(maximum_bytes + 1, maximum_bytes).is_err());
+    }
+
+    #[test]
+    fn allocation_capacity_is_host_owned_and_above_legacy_inline_size() {
+        let maximum_bytes = 2 * 1024 * 1024;
+        let environment = BTreeMap::from([(
+            HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV.to_owned(),
+            maximum_bytes.to_string(),
+        )]);
+        assert_eq!(
+            hosted_artifact_maximum_bytes(&environment).expect("configured capacity"),
+            maximum_bytes
+        );
+
+        let data = vec![7_u8; 1024 * 1024 + 1];
+        let input = ArtifactAllocateInput {
+            value: None,
+            data_base64: Some(base64::engine::general_purpose::STANDARD.encode(&data)),
+            media_type: "application/octet-stream".to_owned(),
+            idempotency_scope: "large-binary".to_owned(),
+        };
+        let (_, decoded) = allocation_bytes(&input, maximum_bytes).expect("artifact above 1 MiB");
+        assert_eq!(decoded.len(), data.len());
+        assert!(allocation_bytes(&input, data.len() - 1).is_err());
+
+        for invalid in [
+            None,
+            Some(""),
+            Some("0"),
+            Some("01"),
+            Some("+1"),
+            Some(" 1024"),
+            Some("not-a-size"),
+        ] {
+            let environment = invalid
+                .map(|value| {
+                    BTreeMap::from([(
+                        HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV.to_owned(),
+                        value.to_owned(),
+                    )])
+                })
+                .unwrap_or_default();
+            assert!(hosted_artifact_maximum_bytes(&environment).is_err());
+        }
     }
 
     #[test]
@@ -516,7 +599,8 @@ mod tests {
             media_type: "application/json".to_owned(),
             idempotency_scope: "ausca.document-ocr.output.v1".to_owned(),
         };
-        let (_, bytes) = allocation_bytes(&input).expect("allocation bytes");
+        let maximum_bytes = 1024;
+        let (_, bytes) = allocation_bytes(&input, maximum_bytes).expect("allocation bytes");
         let content_digest = runx_contracts::sha256_prefixed(&bytes);
         let artifact_ref = format!(
             "runx:artifact:sha256:{}",
@@ -534,6 +618,10 @@ mod tests {
             (
                 crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
                 "run-fixture".to_owned(),
+            ),
+            (
+                HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV.to_owned(),
+                maximum_bytes.to_string(),
             ),
         ]);
         let idempotency_key = run_bound_idempotency_key(
