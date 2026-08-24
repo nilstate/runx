@@ -21,10 +21,15 @@ standard, not a Runx v2 contract.
 
 ## Operator guide
 
-Use this skill after a resource returns structured x402 requirements and a
-compatible hosted buyer grant is configured. Stop on malformed or expired
-requirements, amount/currency/counterparty/operation drift, incomplete
-authority, missing approval, or inconsistent paid-resource readback. Never pass
-wallet keys, seed phrases, bearer tokens, facilitator credentials, or arbitrary
-endpoints in skill input, and never treat a quote or HTTP acknowledgement as
-settlement.
+Use this skill for one exact HTTPS resource already named by a hosted x402 grant.
+The resource request carries bounded inline control data or artifact references;
+large documents and media never travel as oversized graph values. The hosted
+buyer accepts external x402 V2 only, signs and stages the payload before the paid
+POST, and reuses those exact bytes after an uncertain response.
+
+Stop on malformed or expired requirements, amount/currency/payee/resource drift,
+incomplete authority, missing approval, or inconsistent paid-resource readback.
+Never pass wallet keys, seed phrases, bearer tokens, or facilitator credentials
+in skill input. A 2xx response is not finality: the readback must return the
+provider transaction, confirmed chain block, and the paid resource's terminal
+Runx receipt reference.

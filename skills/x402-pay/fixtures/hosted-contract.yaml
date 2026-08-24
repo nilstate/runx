@@ -3,22 +3,42 @@ kind: skill
 target: ..
 runner: pay
 operator_journeys:
-  - { mode: standalone, confusors: [spend, stripe-pay], request: Pay this exact x402 challenge., expected_outcome: Require hosted x402 authority and return provider readback. }
+  - { mode: standalone, confusors: [spend, stripe-pay], request: Pay this exact x402 resource., expected_outcome: Require hosted x402 authority and return provider plus resource readback. }
   - mode: composed
     request: Continue this admitted x402 payment.
-    expected_outcome: Reuse supplied challenge and authority evidence.
-    prior_evidence: [The admitted x402 challenge supplied by the caller.]
+    expected_outcome: Reuse supplied resource terms, authority, and retry identity.
+    prior_evidence: [The admitted x402 resource terms supplied by the caller.]
     must_not_repeat: [Do not mint a second x402 payment identity.]
 inputs:
-  payment_signal: { challenge_id: ch_test_001, amount_minor: 125, currency: USD, counterparty: "merchant:demo" }
-  parent_payment_authority: { term_id: "authority:test" }
-  idempotency_seed: x402-test-001
+  payment_signal:
+    resource:
+      url: https://vendor.example/v1/invocations
+      method: POST
+      body: { offer_id: document-ocr, input: { artifact_ref: "runx:artifact:document-1" } }
+      max_response_bytes: 26214400
+    amount_minor: 25
+    pay_to: "0x0000000000000000000000000000000000000002"
+    parent_binding: current_paid_invocation
+  parent_payment_authority:
+    term_id: authority-test-1
+    currency: USD
+    max_amount_minor: 25
+    counterparty: https://vendor.example/v1/invocations
+  idempotency_seed: x402-test-payment-001
 caller:
-  approvals: { "provider-effect:sha256:3f1d7b31b2a81870701ada2afe08d5f7baafefe2c18feadd4700b96cc743e5ab": true }
+  approvals: { "provider-effect:sha256:50e90a9d317b6a508d57c9249c5119478ab604a65467779f8b0a8b34c766fb83": true }
   provider_responses:
     principal_id: x402-fixture
     grants: [{ grant_id: x402-fixture, provider: x402, scopes: [payment.x402, payment.x402.read] }]
     operations:
-      - { grant_id: x402-fixture, operation: payment.x402, target: "merchant:demo", access: mutate, result: { payment_ref: payment_x402_001, challenge_id: ch_test_001, amount_minor: 125, currency: USD, status: settled } }
-      - { grant_id: x402-fixture, operation: payment.x402.read, target: "merchant:demo", access: read, result: { payment_ref: payment_x402_001, challenge_id: ch_test_001, amount_minor: 125, currency: USD, status: settled } }
+      - grant_id: x402-fixture
+        operation: payment.x402
+        target: https://vendor.example/v1/invocations
+        access: mutate
+        result: { payment_ref: payment_x402_001, challenge_id: ch_test_001, amount_minor: 25, currency: USD, status: settled, transaction: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", network: "eip155:8453", payer: "0x0000000000000000000000000000000000000001", pay_to: "0x0000000000000000000000000000000000000002", invocation_id: ausca-invocation-1, payment_required_digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111", payment_response_digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222", resource_status: 202 }
+      - grant_id: x402-fixture
+        operation: payment.x402.read
+        target: https://vendor.example/v1/invocations
+        access: read
+        result: { payment_ref: payment_x402_001, challenge_id: ch_test_001, amount_minor: 25, currency: USD, status: settled, transaction: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", network: "eip155:8453", payer: "0x0000000000000000000000000000000000000001", pay_to: "0x0000000000000000000000000000000000000002", invocation_id: ausca-invocation-1, payment_required_digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111", payment_response_digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222", resource_status: 200, resource_result: { invocation: { state: succeeded, receipt_ref: { type: receipt, uri: "runx:receipt:inner-1" } } }, finality: confirmed, block_number: "123", inner_receipt_ref: "runx:receipt:inner-1", runx_composite: { inner_receipt_ref: "runx:receipt:inner-1" } }
 expect: { status: sealed, receipt: { schema: runx.receipt.v1 } }

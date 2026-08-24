@@ -1,0 +1,21 @@
+name: marketplace-invoke-x402-refusal
+kind: skill
+target: ..
+runner: invoke
+inputs:
+  listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2
+  vendor_ref: runx:principal:ausca
+  settlement_family: x402
+  settlement_signal:
+    resource: { url: https://vendor.example/v1/invocations, method: POST, body: { offer_id: document-ocr } }
+    amount_minor: 25
+    pay_to: "0x0000000000000000000000000000000000000002"
+  parent_payment_authority: { term_id: authority-test-1, currency: USD, max_amount_minor: 25, counterparty: https://vendor.example/v1/invocations }
+  idempotency_seed: marketplace-test-payment-002
+caller:
+  provider_responses:
+    principal_id: marketplace-fixture
+    grants: [{ grant_id: marketplace-fixture, provider: x402, scopes: [payment.x402.read] }]
+    operations:
+      - { grant_id: marketplace-fixture, operation: payment.x402.read, target: https://vendor.example/v1/invocations, access: read, result: { status: unavailable } }
+expect: { status: policy_denied, receipt: { schema: runx.receipt.v1 } }

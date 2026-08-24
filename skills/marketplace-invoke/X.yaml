@@ -1,0 +1,57 @@
+skill: marketplace-invoke
+version: "0.1.0"
+catalog:
+  kind: graph
+  audience: operator
+  visibility: public
+  role: canonical
+  runtime_path: hosted
+  execution: execute
+  completion: provider_readback
+  requires_adapter: true
+  approval: required
+runners:
+  invoke:
+    default: true
+    type: graph
+    inputs:
+      listing_ref: { type: string, required: true, description: Immutable marketplace listing reference, schema: { minLength: 1, maxLength: 512 } }
+      vendor_ref: { type: string, required: true, description: Authenticated vendor reference selected by discovery, schema: { minLength: 1, maxLength: 512 } }
+      settlement_family: { type: string, required: true, description: Explicit marketplace settlement adapter, schema: { enum: [x402] } }
+      settlement_signal: { type: json, required: true, description: Exact protocol signal consumed by the selected adapter. }
+      parent_payment_authority: { type: json, required: true, description: Complete maximum spend authority for this vendor resource. }
+      idempotency_seed: { type: string, required: true, description: Stable retry identity for this marketplace purchase, schema: { minLength: 16, maxLength: 500 } }
+    examples:
+      - listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2
+        vendor_ref: runx:principal:ausca
+        settlement_family: x402
+        settlement_signal:
+          resource:
+            url: https://vendor.example/v1/invocations
+            method: POST
+            body: { offer_id: document-ocr, input: { artifact_ref: "runx:artifact:document-1" } }
+            max_response_bytes: 26214400
+          amount_minor: 25
+          pay_to: "0x0000000000000000000000000000000000000002"
+          parent_binding: current_paid_invocation
+        parent_payment_authority:
+          term_id: marketplace-purchase-1
+          currency: USD
+          max_amount_minor: 25
+          counterparty: https://vendor.example/v1/invocations
+        idempotency_seed: marketplace-purchase-0001
+    graph:
+      name: marketplace-invoke
+      result_from: [x402]
+      steps:
+        - id: x402
+          when:
+            field: $input.settlement_family
+            equals: x402
+          skill: ../x402-pay
+          runner: pay
+          mutation: true
+          inputs:
+            payment_signal: $input.settlement_signal
+            parent_payment_authority: $input.parent_payment_authority
+            idempotency_seed: $input.idempotency_seed

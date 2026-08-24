@@ -245,6 +245,13 @@
     "catalog_role": "canonical"
   },
   {
+    "skill_id": "runx/marketplace-invoke",
+    "version": "sha-07780486bf26",
+    "digest": "9db5e67484cdbc660113b4fed8d622dd7c804171a13e7837606c3d587cba1f38",
+    "catalog_visibility": "public",
+    "catalog_role": "canonical"
+  },
+  {
     "skill_id": "zhtwangk/meeting-followup",
     "version": "sha-d007ef86ba8c",
     "digest": "85a1476c09e4f4c68b21f97c61a260eaff2e29dd3dc19b92deb3f9dfc6871c08",
@@ -547,8 +554,8 @@
   },
   {
     "skill_id": "runx/x402-pay",
-    "version": "sha-e4e33d5c0b98",
-    "digest": "7e9dd90184a0130585abf8b27f888d56fa85a3ea3d3bd154dfabd9c0113562cd",
+    "version": "sha-80bc8f842b8d",
+    "digest": "156cff81915fa2b642b4ccf1bee412df54ceb99bd69d1b323319726ce550e4d1",
     "catalog_visibility": "public",
     "catalog_role": "branded"
   },

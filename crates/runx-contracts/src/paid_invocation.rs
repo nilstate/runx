@@ -568,10 +568,26 @@ pub struct GetPaidInvocationRequest {
     pub invocation_id: NonEmptyString,
 }
 
-paid_invocation_result!(
-    GetPaidInvocationResult,
-    "runx.payment.get_paid_invocation.result.v1"
-);
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetPaidInvocationAdmission {
+    pub invocation: PaidInvocation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub receipt_ref: Option<Reference>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
+#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
+#[runx_schema(id = "runx.payment.get_paid_invocation.result.v1")]
+pub enum GetPaidInvocationResult {
+    Admitted {
+        value: Box<GetPaidInvocationAdmission>,
+    },
+    Refused {
+        code: PaidInvocationRefusalCode,
+        reason: PaidInvocationRefusalReason,
+    },
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]

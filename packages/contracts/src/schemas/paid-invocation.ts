@@ -177,7 +177,15 @@ export type PaidInvocationAdmissionResultContract =
 
 export type ExecutePaidInvocationResultContract = PaidInvocationAdmissionResultContract;
 export type GetPaidInvocationRequestContract = DeepReadonly<{ invocation_id: string }>;
-export type GetPaidInvocationResultContract = PaidInvocationAdmissionResultContract;
+export type GetPaidInvocationResultContract =
+  | DeepReadonly<{
+      status: "admitted";
+      value: {
+        invocation: PaidInvocationContract;
+        receipt_ref?: ReferenceContract;
+      };
+    }>
+  | PaidInvocationRefusalContract;
 export type CancelPaidInvocationRequestContract = DeepReadonly<{
   invocation_id: string;
   idempotency: PaymentIdempotencyBindingContract;
