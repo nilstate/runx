@@ -153,7 +153,12 @@ impl ProviderPermissionEffect {
                     message,
                 });
             }
-            resolved.target = target.value;
+            resolved.target = target.value.ok_or_else(|| {
+                provider_permission_policy_error(
+                    "target_from_grant requires hosted grant discovery; host-injected grant authority must supply an explicit target"
+                        .to_owned(),
+                )
+            })?;
             return Ok(resolved);
         }
         if requested == super::ProviderTransportPreference::LocalGithub {
@@ -174,7 +179,7 @@ impl ProviderPermissionEffect {
                 request,
                 policy,
                 provider,
-                target.value,
+                target,
                 required_scopes,
                 explicit_grant.as_deref(),
             );
@@ -201,7 +206,7 @@ impl ProviderPermissionEffect {
             request,
             policy,
             provider,
-            target.value,
+            target,
             required_scopes,
             None,
         )
@@ -222,7 +227,7 @@ impl ProviderPermissionEffect {
         request: &EffectStepRequest<'_>,
         policy: &JsonObject,
         provider: &str,
-        target: String,
+        target: ResolvedProviderTarget,
         required_scopes: Vec<String>,
         bound_grant: Option<&str>,
     ) -> Result<NativeProviderResolution, RuntimeEffectError> {
@@ -255,9 +260,20 @@ impl ProviderPermissionEffect {
         )
         .map_err(|message| RuntimeEffectError::Denied {
             family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            verb,
+            verb: verb.clone(),
             message,
         })?;
+        let target = target
+            .value
+            .or_else(|| grant.target_locator.clone())
+            .ok_or_else(|| RuntimeEffectError::Denied {
+                family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+                verb,
+                message: format!(
+                    "provider grant '{}' has no target_locator for target_from_grant",
+                    grant.grant_id
+                ),
+            })?;
         Ok(NativeProviderResolution {
             grant_id: grant.grant_id.clone(),
             granted_scopes: grant.scopes.clone(),
@@ -374,7 +390,7 @@ fn hosted_provider_preflight_denied(
 #[cfg(feature = "catalog")]
 #[derive(Clone, Debug)]
 struct ResolvedProviderTarget {
-    value: String,
+    value: Option<String>,
     local_github: Option<super::local_github::ResolvedGithubTarget>,
 }
 
@@ -383,16 +399,46 @@ fn resolved_provider_target(
     request: &EffectStepRequest<'_>,
     provider: &str,
 ) -> Result<ResolvedProviderTarget, RuntimeEffectError> {
-    let target = super::approval::required_provider_input(request.inputs, "target")?;
+    let target = request
+        .inputs
+        .get("target")
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let target_from_grant = request
+        .inputs
+        .get("target_from_grant")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false);
+    if target.is_some() == target_from_grant {
+        return Err(provider_permission_policy_error(
+            "native provider reads require exactly one of target or target_from_grant".to_owned(),
+        ));
+    }
+    if target_from_grant {
+        if provider == "github" {
+            return Err(provider_permission_policy_error(
+                "target_from_grant is not supported for github targets; supply an explicit target"
+                    .to_owned(),
+            ));
+        }
+        return Ok(ResolvedProviderTarget {
+            value: None,
+            local_github: None,
+        });
+    }
+    let target = target.ok_or_else(|| {
+        provider_permission_policy_error("native provider target is required".to_owned())
+    })?;
     if provider != "github" {
         return Ok(ResolvedProviderTarget {
-            value: target.to_owned(),
+            value: Some(target.to_owned()),
             local_github: None,
         });
     }
     super::local_github::resolve_target(request.env, request.graph_dir, target)
         .map(|target| ResolvedProviderTarget {
-            value: target.repository.clone(),
+            value: Some(target.repository.clone()),
             local_github: Some(target),
         })
         .map_err(|error| provider_permission_policy_error(error.to_string()))

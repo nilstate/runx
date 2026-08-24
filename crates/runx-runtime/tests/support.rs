@@ -85,7 +85,7 @@ pub(crate) fn read_test_signed_receipt(
 /// Linux fixtures include `/proc/self/stat` start time so a busy concurrent test
 /// run cannot mistake rapid PID reuse for a surviving descendant. Older
 /// pid-only fixtures retain the ESRCH/zombie check.
-#[cfg(all(unix, any(feature = "cli-tool", feature = "thread-outbox-provider")))]
+#[cfg(all(unix, feature = "thread-outbox-provider"))]
 pub(crate) fn wait_for_recorded_pid_exit(
     pid_path: &Path,
     deadline: std::time::Duration,
@@ -129,14 +129,7 @@ pub(crate) fn wait_for_pid_exit(
     wait_for_process_exit(pid, None, deadline)
 }
 
-#[cfg(all(
-    unix,
-    any(
-        feature = "cli-tool",
-        feature = "mcp",
-        feature = "thread-outbox-provider"
-    )
-))]
+#[cfg(all(unix, any(feature = "mcp", feature = "thread-outbox-provider")))]
 fn wait_for_process_exit(
     pid: i32,
     started_at: Option<u64>,
@@ -164,14 +157,7 @@ fn wait_for_process_exit(
     }
 }
 
-#[cfg(all(
-    unix,
-    any(
-        feature = "cli-tool",
-        feature = "mcp",
-        feature = "thread-outbox-provider"
-    )
-))]
+#[cfg(all(unix, any(feature = "mcp", feature = "thread-outbox-provider")))]
 fn process_start_time(pid: i32) -> Option<u64> {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {
@@ -188,14 +174,7 @@ fn process_start_time(pid: i32) -> Option<u64> {
     }
 }
 
-#[cfg(all(
-    unix,
-    any(
-        feature = "cli-tool",
-        feature = "mcp",
-        feature = "thread-outbox-provider"
-    )
-))]
+#[cfg(all(unix, any(feature = "mcp", feature = "thread-outbox-provider")))]
 fn process_is_terminal(pid: i32) -> bool {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     {

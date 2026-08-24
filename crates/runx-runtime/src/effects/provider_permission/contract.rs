@@ -16,7 +16,10 @@ fn is_false(value: &bool) -> bool {
 #[serde(deny_unknown_fields)]
 struct ProviderReadInput {
     operation: String,
-    target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    target_from_grant: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     readback: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -57,6 +60,10 @@ const READ_FIELDS: &[CapabilityField] = &[
         "Human-readable provider target bound into readback and mutation approval.",
     ),
     field(
+        "target_from_grant",
+        "Resolve the exact hosted target from the selected grant; cannot be combined with target.",
+    ),
+    field(
         "readback",
         "Explicitly marks this provider read as independent finality verification for a prior mutation.",
     ),
@@ -78,14 +85,14 @@ const READ_FIELDS: &[CapabilityField] = &[
 const MUTATE_FIELDS: &[CapabilityField] = &[
     READ_FIELDS[0],
     READ_FIELDS[1],
-    READ_FIELDS[3],
     READ_FIELDS[4],
+    READ_FIELDS[5],
     field(
         "idempotency_key",
         "Stable request identity hashed into the provider idempotency key by Runx.",
     ),
-    READ_FIELDS[5],
     READ_FIELDS[6],
+    READ_FIELDS[7],
 ];
 
 const fn field(name: &'static str, description: &'static str) -> CapabilityField {

@@ -32,6 +32,7 @@ pub struct HostedProviderGrant {
     pub provider: String,
     pub scopes: Vec<String>,
     pub status: String,
+    pub target_locator: Option<String>,
 }
 
 impl ProviderOperationAccess {
@@ -84,6 +85,12 @@ fn parse_provider_grant(value: &JsonValue) -> Result<HostedProviderGrant, Provid
     validate_provider_grant_id(&grant_id)?;
     let provider = required_response_string(grant, "provider")?.to_owned();
     let status = required_response_string(grant, "status")?.to_owned();
+    let target_locator = grant
+        .get("target_locator")
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned);
     let scopes = grant
         .get("scopes")
         .and_then(JsonValue::as_array)
@@ -110,6 +117,7 @@ fn parse_provider_grant(value: &JsonValue) -> Result<HostedProviderGrant, Provid
         provider,
         scopes,
         status,
+        target_locator,
     })
 }
 

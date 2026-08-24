@@ -21,7 +21,10 @@ pub(super) fn resolved_provider_effect(
 ) -> Result<ProviderEffectResolved, RuntimeEffectError> {
     let provider = required_provider_input(request.inputs, "expected_provider")?;
     let operation = required_provider_input(request.inputs, "operation")?;
-    let target = resolved_target.unwrap_or(required_provider_input(request.inputs, "target")?);
+    let target = match resolved_target {
+        Some(target) => target,
+        None => required_provider_input(request.inputs, "target")?,
+    };
     let payload = request
         .inputs
         .get("input")

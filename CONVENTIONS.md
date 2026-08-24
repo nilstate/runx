@@ -131,12 +131,14 @@ live-provider smoke tests are separate and opt-in. CLI journeys prove that Runx
 can drive a representative composite flow, but must not duplicate the skill's
 full scenario matrix.
 
-Native HTTP-read scenarios declare exact `caller.http_responses` in the harness.
-Those bytes still pass through the production request admission, allowlist,
-redirect, extraction, digest, redaction, and response-bound logic that applies
-to the selected capability, but the harness never falls through to the network
-when a response map is present. Keep live-provider availability checks in a
-separate opt-in smoke lane.
+Native HTTP scenarios declare exact `caller.http_responses` in the harness.
+The lane admits GET reads and runtime-declared, idempotency-keyed POST requests
+such as `artifact.allocate`; other methods fail closed. Fixture bytes still
+pass through the production admission, allowlist, redirect, extraction,
+digest, redaction, and response-bound logic that applies to the selected
+capability, and the harness never falls through to the network when a response
+map is present. Keep live-provider availability checks in a separate opt-in
+smoke lane.
 
 A sealed status is engine coverage, not operator-value proof. Every kept public
 skill must have at least one semantic oracle through `expect.output`,

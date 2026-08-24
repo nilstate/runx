@@ -106,7 +106,10 @@ fn classify_native_tool(tool: &str, usage: &mut CandidateResourceUsage) {
         usage.process_spawns = usage.process_spawns.saturating_add(1);
         usage.network = true;
     }
-    if tool.starts_with("http.") || tool.starts_with("provider.") || tool == "web.fetch" {
+    if tool.starts_with("http.")
+        || tool.starts_with("provider.")
+        || matches!(tool, "web.fetch" | "artifact.allocate")
+    {
         usage.network = true;
     }
 }
@@ -160,7 +163,12 @@ mod tests {
 
     #[test]
     fn actual_network_tools_claim_network_access() {
-        for tool in ["http.read", "provider.read", "web.fetch"] {
+        for tool in [
+            "http.read",
+            "provider.read",
+            "web.fetch",
+            "artifact.allocate",
+        ] {
             let mut usage = CandidateResourceUsage::default();
             classify_native_tool(tool, &mut usage);
             assert!(usage.network, "{tool} must consume the network budget");

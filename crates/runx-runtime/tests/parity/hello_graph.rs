@@ -57,12 +57,13 @@ fn hello_graph_matches_post_cutover_fixture() -> Result<(), Box<dyn std::error::
     assert_eq!(run.receipt.created_at, expected.created_at);
     if std::env::var("RUNX_REGEN_FIXTURES").is_ok() {
         eprintln!(
-            "REGEN-HELLO graph_seal_digest={} child_seal_digests={:?} graph_receipt_id={} child_receipt_ids={:?}",
+            "REGEN-HELLO graph_seal_digest={} child_seal_digests={:?} enforcement_profile_hash={} graph_receipt_id={} child_receipt_ids={:?}",
             run.receipt.digest,
             run.steps
                 .iter()
                 .map(|s| s.receipt.digest.clone())
                 .collect::<Vec<_>>(),
+            run.receipt.authority.enforcement.profile_hash,
             run.receipt.id,
             run.steps
                 .iter()

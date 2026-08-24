@@ -753,7 +753,7 @@ replay fails unless every supplied answer is observable in the root or step
 output. For stateful work, use one graph fixture to prove the transition and
 durable readback; do not depend on fixture filename order.
 
-Native HTTP-read fixtures can bind exact response bytes without turning a semantic
+Native HTTP fixtures can bind exact response bytes without turning a semantic
 test into a live-network smoke test:
 
 ```yaml
@@ -766,12 +766,13 @@ caller:
 ```
 
 The key is the exact requested URL. When this map is present, an unmatched URL
-or a non-GET request fails instead of reaching the network. Native `web.fetch`
-and `http.read` still own their real URL and host admission, request
-preparation, extraction or JSON projection, response limits, digests,
-redaction, and provenance; only transport response bytes come from the harness.
-This lane is unavailable to skill inputs, environment configuration, and
-ordinary live runs.
+fails instead of reaching the network. The lane admits GET reads plus only
+runtime-declared, idempotency-keyed POST requests such as `artifact.allocate`;
+other methods fail closed. Native `web.fetch`, `http.read`, and
+`artifact.allocate` still own their real admission, request preparation,
+response limits, digests, redaction, and provenance; only transport response
+bytes come from the harness. This lane is unavailable to skill inputs,
+environment configuration, and ordinary live runs.
 
 Package replay uses a disposable project-owned workspace below `.runx/harness`
 and a separate receipt store for every case, then cleans that scratch state.

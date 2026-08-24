@@ -36,6 +36,8 @@ mod files;
 #[cfg(feature = "cli-tool")]
 mod git;
 mod handoff;
+#[cfg(feature = "catalog")]
+mod hosted_artifacts;
 #[cfg(feature = "async-http")]
 mod http;
 mod input;
@@ -84,6 +86,8 @@ const CAPABILITY_GROUPS: &[&[&dyn NativeCapability]] = &[
     evidence::CAPABILITIES,
     attestation::CAPABILITIES,
     artifacts::CAPABILITIES,
+    #[cfg(feature = "catalog")]
+    hosted_artifacts::CAPABILITIES,
     receipt_tools::CAPABILITIES,
     policy::CAPABILITIES,
 ];

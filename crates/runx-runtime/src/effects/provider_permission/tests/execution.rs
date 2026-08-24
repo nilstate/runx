@@ -91,6 +91,21 @@ fn hosted_grant_selection_is_unique_scope_bound_and_explicit() {
 }
 
 #[test]
+fn hosted_grant_selection_preserves_the_admitted_target() {
+    let mut grant = hosted_grant("grant_aws", "aws", &["aws.textract.read"], "active");
+    grant.target_locator = Some("aws://account/123456789012".to_owned());
+    let grants = [grant];
+    let selected =
+        select_hosted_provider_grant(&grants, "aws", &["aws.textract.read".to_owned()], None)
+            .expect("unique AWS grant");
+
+    assert_eq!(
+        selected.target_locator.as_deref(),
+        Some("aws://account/123456789012")
+    );
+}
+
+#[test]
 fn hosted_authentication_is_cached_per_environment() {
     struct StubTransport(RefCell<Vec<HttpRequest>>);
     impl Transport for StubTransport {

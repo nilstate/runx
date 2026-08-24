@@ -303,5 +303,6 @@ fn hosted_grant(
         provider: provider.to_owned(),
         scopes: scopes.iter().map(|scope| (*scope).to_owned()).collect(),
         status: status.to_owned(),
+        target_locator: None,
     }
 }

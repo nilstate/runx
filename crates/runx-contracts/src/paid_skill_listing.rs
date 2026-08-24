@@ -112,7 +112,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn paid_skill_listing_accepts_multiple_rails_without_rail_shapes() {
+    fn paid_skill_listing_accepts_multiple_rails_without_rail_shapes()
+    -> Result<(), serde_json::Error> {
         let listing: PaidSkillListing = serde_json::from_value(json!({
             "skill_id": "acme/transcribe",
             "version": "1.0.0",
@@ -132,8 +133,7 @@ mod tests {
                 "currency": "USD",
                 "accepted_settlement_families": ["rail-a", "rail-b"]
             }}
-        }))
-        .expect("valid listing");
+        }))?;
         assert_eq!(
             listing.offers.as_map()["transcribe"].amount_minor.get(),
             125
@@ -142,6 +142,7 @@ mod tests {
         let schema = PaidSkillListing::json_schema().to_string();
         assert!(!schema.contains("PAYMENT-REQUIRED"));
         assert!(!schema.contains("facilitator"));
+        Ok(())
     }
 
     #[test]

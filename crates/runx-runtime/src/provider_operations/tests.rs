@@ -158,6 +158,7 @@ fn provider_grant_listing_returns_only_bounded_authority_metadata() {
                 "opaque capability with spaces".to_owned(),
             ],
             status: "active".to_owned(),
+            target_locator: None,
         }]
     );
     let requests = transport.requests.borrow();

@@ -217,6 +217,19 @@ impl<'a> NativeHttpTransport<'a> {
         }
     }
 
+    pub(crate) fn for_hosted_api(
+        harness_responses: Option<&'a BTreeMap<String, RuntimeHttpResponse>>,
+        allow_private_network: bool,
+    ) -> Result<Self, RuntimeHttpError> {
+        match harness_responses {
+            Some(responses) => Ok(Self::Harness(responses)),
+            None if allow_private_network => Ok(Self::Live(
+                ReqwestHttpTransport::with_private_network_access()?,
+            )),
+            None => Self::new(None),
+        }
+    }
+
     pub(crate) fn send_bounded(
         &self,
         request: RuntimeHttpRequest,
@@ -291,7 +304,7 @@ fn exact_harness_response(
     {
         return Err(RuntimeHttpError::Transport {
             message: format!(
-                "deterministic harness HTTP responses admit GET reads and idempotent POST queries only, not {}",
+                "deterministic harness HTTP responses admit GET reads and runtime-declared idempotent POST requests only, not {}",
                 request.method.as_str()
             ),
         });

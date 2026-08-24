@@ -143,8 +143,12 @@ fn registry_paid_listing_cannot_change_seller_inside_one_version()
         display_name: None,
     });
 
-    let error = ingest_skill_markdown(&store, MARKDOWN, changed_seller)
-        .expect_err("seller mutation unexpectedly replaced an immutable listing");
+    let error = match ingest_skill_markdown(&store, MARKDOWN, changed_seller) {
+        Ok(_) => {
+            return Err("seller mutation unexpectedly replaced an immutable listing".into());
+        }
+        Err(error) => error,
+    };
     assert!(
         error
             .to_string()

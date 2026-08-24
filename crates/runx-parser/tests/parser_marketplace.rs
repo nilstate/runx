@@ -68,8 +68,8 @@ fn missing_marketplace_keeps_all_runners_free() -> Result<(), String> {
 }
 
 #[test]
-fn marketplace_rejects_undeclared_runner_and_unknown_rail_fields() {
-    let undeclared = validate(&manifest(&format!(
+fn marketplace_rejects_undeclared_runner_and_unknown_rail_fields() -> Result<(), String> {
+    let Err(undeclared) = validate(&manifest(&format!(
         r#"marketplace:
   offers:
     missing:
@@ -78,11 +78,12 @@ fn marketplace_rejects_undeclared_runner_and_unknown_rail_fields() {
       accepted_settlement_families: [x402]
       input_schema_digest: {DIGEST_A}
       output_schema_digest: {DIGEST_B}"#
-    )))
-    .expect_err("undeclared offer unexpectedly passed");
+    ))) else {
+        return Err("undeclared offer unexpectedly passed".to_owned());
+    };
     assert!(undeclared.contains("references an undeclared runner"));
 
-    let provider_shape = validate(&manifest(&format!(
+    let Err(provider_shape) = validate(&manifest(&format!(
         r#"marketplace:
   offers:
     transcribe:
@@ -92,13 +93,15 @@ fn marketplace_rejects_undeclared_runner_and_unknown_rail_fields() {
       input_schema_digest: {DIGEST_A}
       output_schema_digest: {DIGEST_B}
       stripe_price_id: price_private"#
-    )))
-    .expect_err("provider field unexpectedly passed");
+    ))) else {
+        return Err("provider field unexpectedly passed".to_owned());
+    };
     assert!(provider_shape.contains("unknown field `stripe_price_id`"));
+    Ok(())
 }
 
 #[test]
-fn marketplace_rejects_ambiguous_terms() {
+fn marketplace_rejects_ambiguous_terms() -> Result<(), String> {
     for (field, value, expected) in [
         ("amount_minor", "0", "amount_minor"),
         ("currency", "usd", "currency"),
@@ -129,8 +132,10 @@ fn marketplace_rejects_ambiguous_terms() {
             ),
             &format!("{field}: {value}"),
         );
-        let error =
-            validate(&manifest(&marketplace)).expect_err("invalid offer unexpectedly passed");
+        let Err(error) = validate(&manifest(&marketplace)) else {
+            return Err("invalid offer unexpectedly passed".to_owned());
+        };
         assert!(error.contains(expected), "{error}");
     }
+    Ok(())
 }
