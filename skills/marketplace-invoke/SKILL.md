@@ -2,7 +2,7 @@
 name: marketplace-invoke
 description: Invoke one exact marketplace-listed vendor resource through an approved settlement adapter and return receipt-backed provider readback.
 runx:
-  category: marketplace
+  category: payments
 ---
 
 # Marketplace Invoke
