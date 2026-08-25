@@ -50,6 +50,22 @@ fn options(profile_document: String) -> IngestSkillOptions {
     }
 }
 
+fn mediated_profile(vendor_amount_minor: u64, platform_fee_minor: u64) -> String {
+    profile(125).replace(
+        &format!("      output_schema_digest: {DIGEST_B}"),
+        &format!(
+            r#"      output_schema_digest: {DIGEST_B}
+      mediation:
+        endpoint_url: https://vendor.example/v1/invocations
+        vendor_amount_minor: {vendor_amount_minor}
+        platform_fee_minor: {platform_fee_minor}
+        currency: USD
+        settlement_family: x402
+        expected_receipt_class: executed"#
+        ),
+    )
+}
+
 #[test]
 fn registry_paid_listing_is_resolved_once_and_returned_without_profile_reparsing()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -124,6 +140,43 @@ fn registry_paid_listing_price_change_revisions_profile_not_package()
             .amount_minor
             .get(),
         250
+    );
+    Ok(())
+}
+
+#[test]
+fn registry_derives_mediated_listing_identity_and_refuses_split_drift()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempdir()?;
+    let store = FileRegistryStore::new(temp.path());
+    let version = ingest_skill_markdown(&store, MARKDOWN, options(mediated_profile(100, 25)))?;
+    let mediation = version
+        .paid_listing
+        .as_ref()
+        .ok_or("missing paid listing")?
+        .offers
+        .as_map()["transcribe"]
+        .mediation
+        .as_ref()
+        .ok_or("missing mediation")?;
+    assert_eq!(
+        mediation.listing_ref.as_str(),
+        format!(
+            "runx:listing:acme/transcribe@{}#transcribe",
+            version.version
+        ),
+    );
+    assert_eq!(
+        mediation.endpoint_url.as_str(),
+        "https://vendor.example/v1/invocations"
+    );
+
+    let error = ingest_skill_markdown(&store, MARKDOWN, options(mediated_profile(100, 24)))
+        .expect_err("commercial split drift unexpectedly passed");
+    assert!(
+        error
+            .to_string()
+            .contains("must equal vendor amount plus platform fee")
     );
     Ok(())
 }

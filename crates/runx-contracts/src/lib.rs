@@ -207,23 +207,23 @@ pub use paid_invocation::{
     EXECUTE_PAID_INVOCATION_RESULT_SCHEMA, ExecutePaidInvocationRequest,
     ExecutePaidInvocationResult, GET_PAID_INVOCATION, GET_PAID_INVOCATION_REQUEST_SCHEMA,
     GET_PAID_INVOCATION_RESULT_SCHEMA, GetPaidInvocationRequest, GetPaidInvocationResult,
-    OFFER_REVISION_REF_SCHEMA, OfferRevisionRef, PAID_INVOCATION_SCHEMA,
-    PARENT_INVOCATION_BINDING_SCHEMA, PaidInvocation, PaidInvocationAdmission,
-    PaidInvocationCanonicalizerVersion, PaidInvocationExecutionState, PaidInvocationOutcomeGate,
-    PaidInvocationPaymentChallenge, PaidInvocationPaymentState, PaidInvocationRefusalCode,
-    PaidInvocationRefusalReason, ParentInvocationBinding, PaymentIdempotencyBinding,
-    PaymentReference, PortableAmountMinor, PrincipalReference, QUOTE_PAID_INVOCATION,
-    QUOTE_PAID_INVOCATION_REQUEST_SCHEMA, QUOTE_PAID_INVOCATION_RESULT_SCHEMA,
-    QuotePaidInvocationAdmission, QuotePaidInvocationRequest, QuotePaidInvocationResult,
-    SettlementFamilies, SettlementFamily, Sha256Digest,
+    MediatedReceiptClass, MediationEndpointUrl, MediationListingRef, OFFER_REVISION_REF_SCHEMA,
+    OfferRevisionRef, PAID_INVOCATION_SCHEMA, PARENT_INVOCATION_BINDING_SCHEMA, PaidInvocation,
+    PaidInvocationAdmission, PaidInvocationCanonicalizerVersion, PaidInvocationExecutionState,
+    PaidInvocationMediation, PaidInvocationOutcomeGate, PaidInvocationPaymentChallenge,
+    PaidInvocationPaymentState, PaidInvocationRefusalCode, PaidInvocationRefusalReason,
+    ParentInvocationBinding, PaymentIdempotencyBinding, PaymentReference, PortableAmountMinor,
+    PrincipalReference, QUOTE_PAID_INVOCATION, QUOTE_PAID_INVOCATION_REQUEST_SCHEMA,
+    QUOTE_PAID_INVOCATION_RESULT_SCHEMA, QuotePaidInvocationAdmission, QuotePaidInvocationRequest,
+    QuotePaidInvocationResult, SettlementFamilies, SettlementFamily, Sha256Digest,
 };
 pub use paid_invocation_fingerprint::{
     PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, fingerprint_cancel_paid_invocation_request,
     fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
 };
 pub use paid_skill_listing::{
-    PAID_SKILL_LISTING_SCHEMA, PaidSkillListing, PaidSkillOfferTerms, PaidSkillOffers,
-    PaidSkillRunnerOffer,
+    PAID_SKILL_LISTING_SCHEMA, PaidSkillListing, PaidSkillMediationTerms, PaidSkillOfferTerms,
+    PaidSkillOffers, PaidSkillRunnerOffer,
 };
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,

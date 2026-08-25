@@ -246,8 +246,8 @@
   },
   {
     "skill_id": "runx/marketplace-invoke",
-    "version": "sha-c271d700a851",
-    "digest": "4328d3d16bab7e54d209c4aee46f4a18c8b91b105457e6d1547b350c899aaf5b",
+    "version": "sha-9f2bfa28f964",
+    "digest": "2fe80b4b024a5ba7b6ce901259061d28e354a7d8c82254af09fdd67a5fe3dd75",
     "catalog_visibility": "public",
     "catalog_role": "canonical"
   },
@@ -554,7 +554,7 @@
   },
   {
     "skill_id": "runx/x402-pay",
-    "version": "sha-80bc8f842b8d",
+    "version": "sha-b5e9ac2d446a",
     "digest": "156cff81915fa2b642b4ccf1bee412df54ceb99bd69d1b323319726ce550e4d1",
     "catalog_visibility": "public",
     "catalog_role": "branded"

@@ -4,9 +4,9 @@
 use runx_contracts::maturity::MaturityTier;
 use runx_contracts::schema::NonEmptyString;
 use runx_contracts::{
-    JsonObject, JsonValue, OfferRevisionRef, PaidSkillListing, PaidSkillOfferTerms,
-    PaidSkillOffers, PaidSkillRunnerOffer, PrincipalReference, RunxPrincipalId, Sha256Digest,
-    sha256_hex,
+    JsonObject, JsonValue, MediationListingRef, OfferRevisionRef, PaidSkillListing,
+    PaidSkillOfferTerms, PaidSkillOffers, PaidSkillRunnerOffer, PrincipalReference,
+    RunxPrincipalId, Sha256Digest, sha256_hex,
 };
 use serde::Deserialize;
 
@@ -150,21 +150,32 @@ fn resolve_paid_listing(
     let runner_offers = offers
         .iter()
         .map(|(runner, terms)| {
-            (
-                runner.clone(),
-                PaidSkillRunnerOffer::from_terms(
-                    OfferRevisionRef {
-                        offer_id: NonEmptyString::from(format!("{skill_id}#{runner}")),
-                        revision: NonEmptyString::from(version.to_owned()),
-                        revision_digest: profile_digest.clone(),
-                        input_schema_digest: terms.input_schema_digest.clone(),
-                        output_schema_digest: terms.output_schema_digest.clone(),
-                    },
-                    terms,
-                ),
+            let listing_ref = MediationListingRef::new(format!(
+                "runx:listing:{skill_id}@{version}#{runner}"
+            ))
+            .ok_or_else(|| invalid_paid_listing("derived listing_ref is invalid"))?;
+            let offer = PaidSkillRunnerOffer::from_terms(
+                OfferRevisionRef {
+                    offer_id: NonEmptyString::from(format!("{skill_id}#{runner}")),
+                    revision: NonEmptyString::from(version.to_owned()),
+                    revision_digest: profile_digest.clone(),
+                    input_schema_digest: terms.input_schema_digest.clone(),
+                    output_schema_digest: terms.output_schema_digest.clone(),
+                },
+                listing_ref,
+                terms,
             )
+            .ok_or_else(|| {
+                invalid_paid_listing(
+                    "mediated offer total must equal vendor amount plus platform fee in one currency",
+                )
+            })?;
+            Ok::<_, LocalRegistryError>((
+                runner.clone(),
+                offer,
+            ))
         })
-        .collect::<std::collections::BTreeMap<_, _>>();
+        .collect::<Result<std::collections::BTreeMap<_, _>, _>>()?;
     let offers = PaidSkillOffers::new(runner_offers)
         .ok_or_else(|| invalid_paid_listing("offers must contain non-empty runner names"))?;
     Ok(Some(PaidSkillListing {

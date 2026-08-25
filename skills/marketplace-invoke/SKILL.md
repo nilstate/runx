@@ -7,14 +7,16 @@ runx:
 
 # Marketplace Invoke
 
-`marketplace-invoke` is the buyer-facing marketplace command. It binds a listing,
-vendor, exact vendor resource, maximum spend, and stable retry identity into one
-Runx run. The public result is the selected settlement adapter's provider and
-paid-resource readback. When this command itself is sold as a paid Runx skill,
-Hosted receipt custody verifies the returned inner receipt and seals the outer
+`marketplace-invoke` is the buyer-facing marketplace skill called through the
+existing `runx skill` surface. Paid listing
+admission injects the immutable listing, vendor, exact endpoint, vendor price,
+demand-side fee, settlement family, and expected receipt class into one Runx
+run before its quote is fingerprinted. Callers supply only the live settlement
+signal, the matching bounded authority, and a stable retry identity. Hosted
+receipt custody verifies the returned inner receipt and seals the outer
 execution as a mediated composite receipt.
 
-The command is rail-neutral at its boundary. `settlement_family` selects an
+The skill is rail-neutral at its boundary. `settlement_family` selects an
 explicit adapter branch; x402 is the first implementation. Stripe and future
 rails add sibling branches while preserving the listing, vendor, authority,
 result, and composite-receipt semantics. Provider SDKs, wallets, credentials,
@@ -28,10 +30,11 @@ settlement recovery, and database state remain in Runx Hosted.
 
 ## Operator guide
 
-Use this skill after marketplace discovery has selected one immutable listing
-and vendor endpoint. Supply the exact settlement signal returned for that
-resource, a complete parent maximum, and an idempotency seed stable across every
-retry. Keep large inputs behind artifact references.
+Use this skill through a paid endpoint listing after marketplace discovery.
+Supply the exact settlement signal returned for that resource, a complete
+parent maximum equal to the listing's vendor price, and an idempotency seed
+stable across every retry. `marketplace_offer` is reserved for hosted admission;
+a caller-supplied value is refused. Keep large inputs behind artifact references.
 
 The x402 branch delegates to `x402-pay`, which owns the single provider-effect
 approval, exact external V2 validation, durable signed-payload retry, transaction

@@ -65,12 +65,29 @@ export type OfferRevisionRefContract = DeepReadonly<{
   output_schema_digest: Sha256DigestContract;
 }>;
 
+export type MediatedReceiptClassContract = "executed";
+
+export type PaidInvocationMediationContract = DeepReadonly<{
+  listing_ref: string;
+  endpoint_url: string;
+  vendor_amount_minor: number;
+  platform_fee_minor: number;
+  currency: CurrencyCodeContract;
+  settlement_family: SettlementFamilyContract;
+  expected_receipt_class: MediatedReceiptClassContract;
+}>;
+
+export type PaidSkillMediationTermsContract = DeepReadonly<
+  Omit<PaidInvocationMediationContract, "listing_ref">
+>;
+
 export type PaidSkillOfferTermsContract = DeepReadonly<{
   amount_minor: number;
   currency: CurrencyCodeContract;
   accepted_settlement_families: readonly SettlementFamilyContract[];
   input_schema_digest: Sha256DigestContract;
   output_schema_digest: Sha256DigestContract;
+  mediation?: PaidSkillMediationTermsContract;
 }>;
 
 export type PaidSkillRunnerOfferContract = DeepReadonly<{
@@ -78,6 +95,7 @@ export type PaidSkillRunnerOfferContract = DeepReadonly<{
   amount_minor: number;
   currency: CurrencyCodeContract;
   accepted_settlement_families: readonly SettlementFamilyContract[];
+  mediation?: PaidInvocationMediationContract;
 }>;
 
 export type PaidSkillListingContract = DeepReadonly<{
@@ -107,6 +125,7 @@ export type PaidInvocationContract = DeepReadonly<{
   amount_minor: number;
   currency: CurrencyCodeContract;
   accepted_settlement_families: readonly SettlementFamilyContract[];
+  mediation?: PaidInvocationMediationContract;
   settlement_family?: SettlementFamilyContract;
   idempotency: PaymentIdempotencyBindingContract;
   expires_at: string;
@@ -141,6 +160,7 @@ export type QuotePaidInvocationRequestContract = DeepReadonly<{
   amount_minor: number;
   currency: CurrencyCodeContract;
   accepted_settlement_families: readonly SettlementFamilyContract[];
+  mediation?: PaidInvocationMediationContract;
   idempotency: PaymentIdempotencyBindingContract;
   parent?: ParentInvocationBindingContract;
 }>;

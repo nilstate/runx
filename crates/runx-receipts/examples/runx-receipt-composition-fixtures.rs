@@ -204,6 +204,20 @@ fn vectors() -> Result<Vec<Vector>, Box<dyn Error>> {
 fn composite() -> Result<(Receipt, Receipt), Box<dyn Error>> {
     let mut outer = executed("paid_outer", '7', None)?;
     outer.class = ReceiptClass::Mediated;
+    outer
+        .subject
+        .paid_invocation
+        .as_mut()
+        .ok_or("missing outer paid binding")?
+        .mediation = Some(serde_json::from_value(serde_json::json!({
+        "listing_ref": "runx:listing:ausca/document-ocr@1.0.0#invoke",
+        "endpoint_url": "https://vendor.example/v1/invocations",
+        "vendor_amount_minor": 100,
+        "platform_fee_minor": 25,
+        "currency": "USD",
+        "settlement_family": "x402",
+        "expected_receipt_class": "executed"
+    }))?);
     let expected = binding(
         "paid_inner",
         '8',
@@ -259,6 +273,7 @@ fn binding(
         },
         package_digest: digest(package)?,
         input_digest: digest('1')?,
+        mediation: None,
         parent_binding: parent,
     })
 }

@@ -57,12 +57,23 @@ export type ReceiptParentInvocationBindingContract = DeepReadonly<{
   execution_digest: string;
 }>;
 
+export type ReceiptPaidInvocationMediationContract = DeepReadonly<{
+  listing_ref: string;
+  endpoint_url: string;
+  vendor_amount_minor: number;
+  platform_fee_minor: number;
+  currency: string;
+  settlement_family: string;
+  expected_receipt_class: "executed";
+}>;
+
 export type ReceiptPaidInvocationBindingContract = DeepReadonly<{
   invocation_id: string;
   vendor_ref: ReferenceContract;
   offer_revision: ReceiptOfferRevisionContract;
   package_digest: string;
   input_digest: string;
+  mediation?: ReceiptPaidInvocationMediationContract;
   parent_binding?: ReceiptParentInvocationBindingContract;
 }>;
 

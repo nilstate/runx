@@ -110,6 +110,47 @@ fn composite_requires_outer_paid_binding() -> Result<(), serde_json::Error> {
 }
 
 #[test]
+fn composite_requires_outer_mediated_listing_terms() -> Result<(), serde_json::Error> {
+    let (mut outer, inner) = proof_composition_pair()?;
+    let Some(binding) = outer.subject.paid_invocation.as_mut() else {
+        return Err(serde_json::Error::io(std::io::Error::other(
+            "missing outer binding",
+        )));
+    };
+    binding.mediation = None;
+
+    let verification = verify_receipt_tree(&outer, &[inner]);
+
+    assert_finding(
+        &verification,
+        ReceiptFindingCode::ReceiptPaidBindingMissing,
+        "subject.paid_invocation.mediation",
+    );
+    Ok(())
+}
+
+#[test]
+fn composite_inner_vendor_must_equal_outer_listing_vendor() -> Result<(), serde_json::Error> {
+    let (mut outer, mut inner) = proof_composition_pair()?;
+    let ReceiptEvidence::InnerReceipt { expected, .. } = &mut outer.evidence[0];
+    expected.vendor_ref = runx_contracts::PrincipalReference::new(Reference::runx(
+        ReferenceType::Principal,
+        "other-vendor",
+    ))
+    .ok_or_else(|| serde_json::Error::io(std::io::Error::other("invalid vendor")))?;
+    inner.subject.paid_invocation = Some(expected.clone());
+
+    let verification = verify_receipt_tree(&outer, &[inner]);
+
+    assert_finding(
+        &verification,
+        ReceiptFindingCode::InnerReceiptBindingMismatch,
+        "evidence[0].expected.vendor_ref",
+    );
+    Ok(())
+}
+
+#[test]
 fn composite_evidence_refs_must_be_unique() -> Result<(), serde_json::Error> {
     let (mut outer, inner) = proof_composition_pair()?;
     outer.evidence.push(outer.evidence[0].clone());

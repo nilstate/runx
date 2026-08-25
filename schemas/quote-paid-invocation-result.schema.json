@@ -828,6 +828,59 @@
                   "minLength": 1,
                   "type": "string"
                 },
+                "mediation": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "currency": {
+                      "pattern": "^[A-Z]{3}$",
+                      "type": "string"
+                    },
+                    "endpoint_url": {
+                      "maxLength": 2048,
+                      "pattern": "^https://[^\\s@/#?]+[^\\s#]*$",
+                      "type": "string"
+                    },
+                    "expected_receipt_class": {
+                      "anyOf": [
+                        {
+                          "const": "executed",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "listing_ref": {
+                      "maxLength": 512,
+                      "pattern": "^runx:listing:[^\\s]+$",
+                      "type": "string"
+                    },
+                    "platform_fee_minor": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "settlement_family": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+                      "type": "string"
+                    },
+                    "vendor_amount_minor": {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "listing_ref",
+                    "endpoint_url",
+                    "vendor_amount_minor",
+                    "platform_fee_minor",
+                    "currency",
+                    "settlement_family",
+                    "expected_receipt_class"
+                  ],
+                  "type": "object"
+                },
                 "offer_revision": {
                   "$id": "https://schemas.runx.ai/runx/payment/offer-revision-ref/v1.json",
                   "$schema": "https://json-schema.org/draft/2020-12/schema",

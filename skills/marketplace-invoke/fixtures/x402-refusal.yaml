@@ -3,9 +3,15 @@ kind: skill
 target: ..
 runner: invoke
 inputs:
-  listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2
-  vendor_ref: runx:principal:ausca
-  settlement_family: x402
+  marketplace_offer:
+    listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2#invoke
+    endpoint_url: https://vendor.example/v1/invocations
+    vendor_amount_minor: 25
+    platform_fee_minor: 5
+    currency: USD
+    settlement_family: x402
+    expected_receipt_class: executed
+    vendor_ref: { type: principal, uri: runx:principal:ausca }
   settlement_signal:
     resource: { url: https://vendor.example/v1/invocations, method: POST, body: { offer_id: document-ocr } }
     amount_minor: 25

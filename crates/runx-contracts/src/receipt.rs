@@ -182,6 +182,8 @@ pub struct ReceiptPaidInvocationBinding {
     pub package_digest: Sha256Digest,
     pub input_digest: Sha256Digest,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub mediation: Option<crate::PaidInvocationMediation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_binding: Option<ParentInvocationBinding>,
 }
 

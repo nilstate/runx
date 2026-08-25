@@ -68,6 +68,43 @@ fn missing_marketplace_keeps_all_runners_free() -> Result<(), String> {
 }
 
 #[test]
+fn marketplace_accepts_rail_neutral_mediated_endpoint_terms() -> Result<(), String> {
+    let parsed = validate(&manifest(&format!(
+        r#"marketplace:
+  offers:
+    transcribe:
+      amount_minor: 125
+      currency: USD
+      accepted_settlement_families: [x402]
+      input_schema_digest: {DIGEST_A}
+      output_schema_digest: {DIGEST_B}
+      mediation:
+        endpoint_url: https://vendor.example/v1/invocations
+        vendor_amount_minor: 100
+        platform_fee_minor: 25
+        currency: USD
+        settlement_family: x402
+        expected_receipt_class: executed"#
+    )))?;
+    let offer = &parsed
+        .marketplace
+        .ok_or_else(|| "missing marketplace".to_owned())?
+        .offers["transcribe"];
+    let mediation = offer
+        .mediation
+        .as_ref()
+        .ok_or_else(|| "missing mediation".to_owned())?;
+    assert_eq!(
+        mediation.endpoint_url.as_str(),
+        "https://vendor.example/v1/invocations"
+    );
+    assert_eq!(mediation.vendor_amount_minor.get(), 100);
+    assert_eq!(mediation.platform_fee_minor.get(), 25);
+    assert_eq!(mediation.settlement_family.as_str(), "x402");
+    Ok(())
+}
+
+#[test]
 fn marketplace_rejects_undeclared_runner_and_unknown_rail_fields() -> Result<(), String> {
     let Err(undeclared) = validate(&manifest(&format!(
         r#"marketplace:

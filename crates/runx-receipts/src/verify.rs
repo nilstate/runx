@@ -93,6 +93,19 @@ impl Verifier {
                 "composite receipts require the outer paid invocation binding",
             );
         }
+        if !receipt.evidence.is_empty()
+            && receipt
+                .subject
+                .paid_invocation
+                .as_ref()
+                .is_some_and(|binding| binding.mediation.is_none())
+        {
+            self.push(
+                ReceiptFindingCode::ReceiptPaidBindingMissing,
+                "subject.paid_invocation.mediation",
+                "composite receipts require immutable mediated listing terms",
+            );
+        }
 
         let lineage_children = receipt
             .lineage
@@ -134,6 +147,15 @@ impl Verifier {
                     ReceiptFindingCode::InnerReceiptParentBindingMissing,
                     format!("{path}.expected.parent_binding"),
                     "inner receipt evidence must bind the outer paid invocation",
+                );
+            }
+            if let Some(outer) = receipt.subject.paid_invocation.as_ref()
+                && expected.vendor_ref != outer.vendor_ref
+            {
+                self.push(
+                    ReceiptFindingCode::InnerReceiptBindingMismatch,
+                    format!("{path}.expected.vendor_ref"),
+                    "inner and outer paid invocation bindings must name the same vendor",
                 );
             }
         }

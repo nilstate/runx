@@ -12,8 +12,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::paid_invocation::{
-    CurrencyCode, OfferRevisionRef, PortableAmountMinor, PrincipalReference, SettlementFamilies,
-    Sha256Digest,
+    CurrencyCode, MediatedReceiptClass, MediationEndpointUrl, MediationListingRef,
+    OfferRevisionRef, PaidInvocationMediation, PortableAmountMinor, PrincipalReference,
+    SettlementFamilies, SettlementFamily, Sha256Digest,
 };
 use crate::schema::{NonEmptyString, RunxSchema};
 
@@ -28,6 +29,20 @@ pub struct PaidSkillOfferTerms {
     pub accepted_settlement_families: SettlementFamilies,
     pub input_schema_digest: Sha256Digest,
     pub output_schema_digest: Sha256Digest,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mediation: Option<PaidSkillMediationTerms>,
+}
+
+/// Seller-authored endpoint terms. Registry identity supplies `listing_ref`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillMediationTerms {
+    pub endpoint_url: MediationEndpointUrl,
+    pub vendor_amount_minor: PortableAmountMinor,
+    pub platform_fee_minor: PortableAmountMinor,
+    pub currency: CurrencyCode,
+    pub settlement_family: SettlementFamily,
+    pub expected_receipt_class: MediatedReceiptClass,
 }
 
 /// One immutable, registry-resolved runner offer.
@@ -38,16 +53,50 @@ pub struct PaidSkillRunnerOffer {
     pub amount_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub accepted_settlement_families: SettlementFamilies,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mediation: Option<PaidInvocationMediation>,
 }
 
 impl PaidSkillRunnerOffer {
-    pub fn from_terms(offer_revision: OfferRevisionRef, terms: &PaidSkillOfferTerms) -> Self {
-        Self {
+    pub fn from_terms(
+        offer_revision: OfferRevisionRef,
+        listing_ref: MediationListingRef,
+        terms: &PaidSkillOfferTerms,
+    ) -> Option<Self> {
+        let mediation = terms
+            .mediation
+            .as_ref()
+            .map(|mediation| PaidInvocationMediation {
+                listing_ref,
+                endpoint_url: mediation.endpoint_url.clone(),
+                vendor_amount_minor: mediation.vendor_amount_minor,
+                platform_fee_minor: mediation.platform_fee_minor,
+                currency: mediation.currency.clone(),
+                settlement_family: mediation.settlement_family.clone(),
+                expected_receipt_class: mediation.expected_receipt_class,
+            });
+        if let Some(mediation) = &mediation {
+            let total = mediation
+                .vendor_amount_minor
+                .get()
+                .checked_add(mediation.platform_fee_minor.get())?;
+            if total != terms.amount_minor.get()
+                || mediation.currency != terms.currency
+                || !terms
+                    .accepted_settlement_families
+                    .as_slice()
+                    .contains(&mediation.settlement_family)
+            {
+                return None;
+            }
+        }
+        Some(Self {
             offer_revision,
             amount_minor: terms.amount_minor,
             currency: terms.currency.clone(),
             accepted_settlement_families: terms.accepted_settlement_families.clone(),
-        }
+            mediation,
+        })
     }
 }
 
@@ -169,5 +218,68 @@ mod tests {
             "offers": {"": offer}
         }));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn mediated_offer_binds_listing_and_rejects_commercial_drift()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let terms: PaidSkillOfferTerms = serde_json::from_value(json!({
+            "amount_minor": 125,
+            "currency": "USD",
+            "accepted_settlement_families": ["x402"],
+            "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "e".repeat(64)),
+            "mediation": {
+                "endpoint_url": "https://vendor.example/v1/invocations",
+                "vendor_amount_minor": 100,
+                "platform_fee_minor": 25,
+                "currency": "USD",
+                "settlement_family": "x402",
+                "expected_receipt_class": "executed"
+            }
+        }))?;
+        let revision: OfferRevisionRef = serde_json::from_value(json!({
+            "offer_id": "acme/transcribe#transcribe",
+            "revision": "1.0.0",
+            "revision_digest": format!("sha256:{}", "b".repeat(64)),
+            "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "e".repeat(64))
+        }))?;
+        let listing_ref = MediationListingRef::new("runx:listing:acme/transcribe@1.0.0#transcribe")
+            .ok_or("invalid test listing ref")?;
+        let offer = PaidSkillRunnerOffer::from_terms(revision.clone(), listing_ref, &terms)
+            .ok_or("valid mediation was refused")?;
+        assert_eq!(
+            offer
+                .mediation
+                .as_ref()
+                .map(|value| value.listing_ref.as_str()),
+            Some("runx:listing:acme/transcribe@1.0.0#transcribe"),
+        );
+
+        let mut wrong_total = terms.clone();
+        wrong_total.amount_minor = PortableAmountMinor::new(126).ok_or("invalid test amount")?;
+        assert!(
+            PaidSkillRunnerOffer::from_terms(
+                revision.clone(),
+                MediationListingRef::new("runx:listing:acme/transcribe@1.0.0#transcribe")
+                    .ok_or("invalid test listing ref")?,
+                &wrong_total,
+            )
+            .is_none()
+        );
+
+        let mut wrong_rail = terms;
+        wrong_rail.accepted_settlement_families = serde_json::from_value(json!(["other-rail"]))?;
+        assert!(
+            PaidSkillRunnerOffer::from_terms(
+                revision,
+                MediationListingRef::new("runx:listing:acme/transcribe@1.0.0#transcribe")
+                    .ok_or("invalid test listing ref")?,
+                &wrong_rail,
+            )
+            .is_none()
+        );
+        Ok(())
     }
 }

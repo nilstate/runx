@@ -1,5 +1,5 @@
 skill: marketplace-invoke
-version: "0.1.0"
+version: "0.2.0"
 catalog:
   kind: graph
   audience: operator
@@ -15,16 +15,41 @@ runners:
     default: true
     type: graph
     inputs:
-      listing_ref: { type: string, required: true, description: Immutable marketplace listing reference, schema: { minLength: 1, maxLength: 512 } }
-      vendor_ref: { type: string, required: true, description: Authenticated vendor reference selected by discovery, schema: { minLength: 1, maxLength: 512 } }
-      settlement_family: { type: string, required: true, description: Explicit marketplace settlement adapter, schema: { enum: [x402] } }
+      marketplace_offer:
+        type: object
+        required: true
+        description: Immutable mediation terms injected by paid listing admission; callers cannot supply or override this field.
+        schema:
+          additionalProperties: false
+          required: [listing_ref, endpoint_url, vendor_amount_minor, platform_fee_minor, currency, settlement_family, expected_receipt_class, vendor_ref]
+          properties:
+            listing_ref: { type: string, pattern: '^runx:listing:\S+$', maxLength: 512 }
+            endpoint_url: { type: string, pattern: '^https://\S+$', maxLength: 2048 }
+            vendor_amount_minor: { type: integer, minimum: 1, maximum: 9007199254740991 }
+            platform_fee_minor: { type: integer, minimum: 1, maximum: 9007199254740991 }
+            currency: { type: string, pattern: '^[A-Z]{3}$' }
+            settlement_family: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' }
+            expected_receipt_class: { type: string, const: executed }
+            vendor_ref:
+              type: object
+              additionalProperties: false
+              required: [type, uri]
+              properties:
+                type: { type: string, const: principal }
+                uri: { type: string, pattern: '^runx:principal:\S+$', maxLength: 512 }
       settlement_signal: { type: json, required: true, description: Exact protocol signal consumed by the selected adapter. }
       parent_payment_authority: { type: json, required: true, description: Complete maximum spend authority for this vendor resource. }
       idempotency_seed: { type: string, required: true, description: Stable retry identity for this marketplace purchase, schema: { minLength: 16, maxLength: 500 } }
     examples:
-      - listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2
-        vendor_ref: runx:principal:ausca
-        settlement_family: x402
+      - marketplace_offer:
+          listing_ref: runx:listing:ausca/document-ocr@ocr-fixed-r2#invoke
+          endpoint_url: https://vendor.example/v1/invocations
+          vendor_amount_minor: 25
+          platform_fee_minor: 5
+          currency: USD
+          settlement_family: x402
+          expected_receipt_class: executed
+          vendor_ref: { type: principal, uri: runx:principal:ausca }
         settlement_signal:
           resource:
             url: https://vendor.example/v1/invocations
@@ -46,7 +71,7 @@ runners:
       steps:
         - id: x402
           when:
-            field: $input.settlement_family
+            field: $input.marketplace_offer.settlement_family
             equals: x402
           skill: ../x402-pay
           runner: pay
@@ -54,4 +79,5 @@ runners:
           inputs:
             payment_signal: $input.settlement_signal
             parent_payment_authority: $input.parent_payment_authority
+            marketplace_offer: $input.marketplace_offer
             idempotency_seed: $input.idempotency_seed
