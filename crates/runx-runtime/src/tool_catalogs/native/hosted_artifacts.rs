@@ -95,8 +95,9 @@ fn allocate(
     let (data_base64, bytes) = allocation_bytes(invocation.inputs, maximum_bytes)?;
     let media_type = media_type(&invocation.inputs.media_type)?;
     let content_digest = runx_contracts::sha256_prefixed(&bytes);
+    let run_id = runtime_run_id(invocation.env)?;
     let idempotency_key = run_bound_idempotency_key(
-        invocation.env,
+        run_id,
         &invocation.inputs.idempotency_scope,
         media_type,
         &content_digest,
@@ -106,6 +107,7 @@ fn allocate(
             "operation".to_owned(),
             JsonValue::String(ALLOCATE_TOOL.to_owned()),
         ),
+        ("run_id".to_owned(), JsonValue::String(run_id.to_owned())),
         (
             "input".to_owned(),
             JsonValue::Object(JsonObject::from([
@@ -125,14 +127,9 @@ fn allocate(
             ])),
         ),
     ]);
-    let (mut packet, principal_ref) = invoke(invocation, body)?;
+    let (packet, principal_ref) = invoke(invocation, body)?;
     validate_packet(&packet, &idempotency_key, &principal_ref)?;
-    packet.result = JsonValue::Object(validate_allocation_result(
-        &packet,
-        &content_digest,
-        media_type,
-        bytes.len(),
-    )?);
+    validate_allocation_result(&packet, &content_digest, media_type, bytes.len())?;
     Ok(HostedArtifactOutput {
         artifact_operation: packet,
     })
@@ -253,15 +250,23 @@ fn validate_packet(
     idempotency_key: &str,
     principal_ref: &str,
 ) -> Result<(), RuntimeError> {
+    let hosted_result_digest = digest_json(&packet.result)?;
+    let expected_readback_ref = format!(
+        "runx:artifact-readback:{}",
+        hosted_result_digest.trim_start_matches("sha256:")
+    );
     if packet.schema != "runx.provider.operation.v1"
         || packet.status != "success"
         || packet.provider != "runx-artifact"
         || packet.operation != ALLOCATE_TOOL
         || packet.access.as_deref() != Some("mutate")
-        || packet.transport != "hosted_loopback"
+        || !matches!(
+            packet.transport.as_str(),
+            "hosted_loopback" | "hosted_control_plane"
+        )
         || packet.principal_ref.as_deref() != Some(principal_ref)
         || packet.finality.as_deref() != Some("verified")
-        || packet.readback_ref.trim().is_empty()
+        || packet.readback_ref != expected_readback_ref
         || packet
             .operation_id
             .as_deref()
@@ -269,7 +274,7 @@ fn validate_packet(
         || packet.idempotency_key.as_deref() != Some(idempotency_key)
         || packet.grant_ref.is_some()
         || packet.plan_digest.is_some()
-        || packet.result_digest.is_some()
+        || packet.result_digest.as_deref() != Some(hosted_result_digest.as_str())
         || packet.host.is_some()
         || packet.account_ref.is_some()
     {
@@ -286,7 +291,7 @@ fn validate_allocation_result(
     expected_digest: &str,
     expected_media_type: &str,
     expected_size: usize,
-) -> Result<JsonObject, RuntimeError> {
+) -> Result<(), RuntimeError> {
     let result = packet.result.as_object().ok_or_else(|| {
         runtime_failure(
             ALLOCATE_TOOL,
@@ -296,61 +301,48 @@ fn validate_allocation_result(
     let artifact_ref = result.get("artifact_ref").and_then(JsonValue::as_str);
     let digest = result.get("content_digest").and_then(JsonValue::as_str);
     let media_type = result.get("media_type").and_then(JsonValue::as_str);
+    let created_at = result.get("created_at").and_then(JsonValue::as_str);
     let size = result.get("size_bytes").and_then(|value| match value {
         JsonValue::Number(runx_contracts::JsonNumber::U64(value)) => Some(*value),
         JsonValue::Number(runx_contracts::JsonNumber::I64(value)) => u64::try_from(*value).ok(),
         _ => None,
     });
-    let (Some(artifact_ref), Some(digest), Some(media_type), Some(size)) =
-        (artifact_ref, digest, media_type, size)
+    let (Some(artifact_ref), Some(digest), Some(media_type), Some(size), Some(created_at)) =
+        (artifact_ref, digest, media_type, size, created_at)
     else {
         return Err(runtime_failure(
             ALLOCATE_TOOL,
             "artifact allocation result does not match the requested bytes",
         ));
     };
-    if artifact_ref != packet.target
+    if result.len() != 5
+        || artifact_ref != packet.target
         || self::artifact_ref(artifact_ref).ok() != expected_digest.strip_prefix("sha256:")
         || digest != expected_digest
         || media_type != expected_media_type
         || Some(size) != u64::try_from(expected_size).ok()
+        || !valid_text(created_at, 64)
     {
         return Err(runtime_failure(
             ALLOCATE_TOOL,
             "artifact allocation result does not match the requested bytes",
         ));
     }
-    Ok(JsonObject::from([
-        (
-            "artifact_ref".to_owned(),
-            JsonValue::String(artifact_ref.to_owned()),
-        ),
-        (
-            "content_digest".to_owned(),
-            JsonValue::String(digest.to_owned()),
-        ),
-        (
-            "media_type".to_owned(),
-            JsonValue::String(media_type.to_owned()),
-        ),
-        (
-            "size_bytes".to_owned(),
-            JsonValue::Number(runx_contracts::JsonNumber::U64(size)),
-        ),
-    ]))
+    Ok(())
 }
 
 fn run_bound_idempotency_key(
-    environment: &std::collections::BTreeMap<String, String>,
+    run_id: &str,
     scope: &str,
     media_type: &str,
     content_digest: &str,
 ) -> Result<String, RuntimeError> {
-    let run_id = environment
-        .get(crate::execution::runner::RUNX_RUN_ID_ENV)
-        .map(String::as_str)
-        .filter(|value| valid_text(value, 256))
-        .ok_or_else(|| invalid_input(ALLOCATE_TOOL, "runtime run identity is unavailable"))?;
+    if !valid_text(run_id, 256) {
+        return Err(invalid_input(
+            ALLOCATE_TOOL,
+            "runtime run identity is unavailable",
+        ));
+    }
     if !valid_text(scope, MAX_IDEMPOTENCY_SCOPE_BYTES) {
         return Err(invalid_input(ALLOCATE_TOOL, "idempotency_scope is invalid"));
     }
@@ -365,6 +357,22 @@ fn run_bound_idempotency_key(
         "runx.artifact.allocate:{}",
         digest.trim_start_matches("sha256:")
     ))
+}
+
+fn runtime_run_id(
+    environment: &std::collections::BTreeMap<String, String>,
+) -> Result<&str, RuntimeError> {
+    environment
+        .get(crate::execution::runner::RUNX_RUN_ID_ENV)
+        .map(String::as_str)
+        .filter(|value| valid_text(value, 256))
+        .ok_or_else(|| invalid_input(ALLOCATE_TOOL, "runtime run identity is unavailable"))
+}
+
+fn digest_json(value: &JsonValue) -> Result<String, RuntimeError> {
+    serde_json::to_vec(value)
+        .map(|encoded| runx_contracts::sha256_prefixed(&encoded))
+        .map_err(|source| RuntimeError::json("digesting hosted artifact result", source))
 }
 
 fn artifact_ref(value: &str) -> Result<&str, RuntimeError> {
@@ -534,40 +542,36 @@ mod tests {
 
     #[test]
     fn idempotency_is_run_bound_and_scope_stable() {
-        let environment = std::collections::BTreeMap::from([(
-            crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
-            "run-1".to_owned(),
-        )]);
         let first = run_bound_idempotency_key(
-            &environment,
+            "run-1",
             "ocr-output",
             "application/json",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
         .expect("first key");
         let replay = run_bound_idempotency_key(
-            &environment,
+            "run-1",
             "ocr-output",
             "application/json",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
         .expect("replay key");
         let other = run_bound_idempotency_key(
-            &environment,
+            "run-1",
             "other-output",
             "application/json",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
         .expect("other key");
         let other_content = run_bound_idempotency_key(
-            &environment,
+            "run-1",
             "ocr-output",
             "application/json",
             "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         )
         .expect("other content key");
         let other_media_type = run_bound_idempotency_key(
-            &environment,
+            "run-1",
             "ocr-output",
             "text/plain",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -581,21 +585,26 @@ mod tests {
 
     #[test]
     fn allocation_readback_binds_principal_and_replay_identity() {
+        let result = JsonValue::Object(JsonObject::new());
+        let result_digest = digest_json(&result).expect("result digest");
         let mut packet = ProviderOperationPacket {
             schema: "runx.provider.operation.v1".to_owned(),
             status: "success".to_owned(),
             provider: "runx-artifact".to_owned(),
             operation: ALLOCATE_TOOL.to_owned(),
             target: "runx:artifact:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned(),
-            result: JsonValue::Object(JsonObject::new()),
+            result,
             transport: "hosted_loopback".to_owned(),
-            readback_ref: "runx:artifact-readback:test".to_owned(),
+            readback_ref: format!(
+                "runx:artifact-readback:{}",
+                result_digest.trim_start_matches("sha256:")
+            ),
             access: Some("mutate".to_owned()),
             principal_ref: Some("runx:principal:test".to_owned()),
             grant_ref: None,
             finality: Some("verified".to_owned()),
             plan_digest: None,
-            result_digest: None,
+            result_digest: Some(result_digest),
             operation_id: Some("runx:artifact-operation:test".to_owned()),
             idempotency_key: Some("runx.artifact.allocate:test".to_owned()),
             host: None,
@@ -631,7 +640,43 @@ mod tests {
     }
 
     #[test]
-    fn allocation_replays_through_the_native_harness_and_projects_metadata() {
+    fn artifact_result_digest_matches_the_hosted_canonical_json_contract() {
+        let result = JsonValue::Object(JsonObject::from([
+            (
+                "artifact_ref".to_owned(),
+                JsonValue::String(
+                    "runx:artifact:sha256:81c6229bbf333718687f4cb790606ace26e5d509f8b044d6a330828083231bb5"
+                        .to_owned(),
+                ),
+            ),
+            (
+                "content_digest".to_owned(),
+                JsonValue::String(
+                    "sha256:80ff22272248cc8280cc7fbbbaab3568ab009b7905dc51fa498e16ff2f181aa9"
+                        .to_owned(),
+                ),
+            ),
+            (
+                "created_at".to_owned(),
+                JsonValue::String("2026-08-24T00:00:00.000Z".to_owned()),
+            ),
+            (
+                "media_type".to_owned(),
+                JsonValue::String("application/pdf".to_owned()),
+            ),
+            (
+                "size_bytes".to_owned(),
+                JsonValue::Number(runx_contracts::JsonNumber::U64(23)),
+            ),
+        ]));
+        assert_eq!(
+            digest_json(&result).expect("artifact result digest"),
+            "sha256:2f72b1eb54a75ba3b7d0b71b014915ed5b0951b060da53504d17b080dce2378d"
+        );
+    }
+
+    #[test]
+    fn allocation_replays_through_the_native_harness_and_validates_exact_metadata() {
         let base_url = "https://artifact-fixture.runx.invalid";
         let input = ArtifactAllocateInput {
             value: Some(JsonValue::Object(JsonObject::from([(
@@ -668,48 +713,53 @@ mod tests {
             ),
         ]);
         let idempotency_key = run_bound_idempotency_key(
-            &env,
+            "run-fixture",
             &input.idempotency_scope,
             &input.media_type,
             &content_digest,
         )
         .expect("idempotency key");
+        let hosted_result = JsonValue::Object(JsonObject::from([
+            (
+                "artifact_ref".to_owned(),
+                JsonValue::String(artifact_ref.clone()),
+            ),
+            (
+                "content_digest".to_owned(),
+                JsonValue::String(content_digest),
+            ),
+            (
+                "media_type".to_owned(),
+                JsonValue::String("application/json".to_owned()),
+            ),
+            (
+                "size_bytes".to_owned(),
+                JsonValue::Number(runx_contracts::JsonNumber::U64(bytes.len() as u64)),
+            ),
+            (
+                "created_at".to_owned(),
+                JsonValue::String("2026-08-24T00:00:00.000Z".to_owned()),
+            ),
+        ]));
+        let hosted_result_digest = digest_json(&hosted_result).expect("hosted result digest");
         let packet = ProviderOperationPacket {
             schema: "runx.provider.operation.v1".to_owned(),
             status: "success".to_owned(),
             provider: "runx-artifact".to_owned(),
             operation: ALLOCATE_TOOL.to_owned(),
             target: artifact_ref.clone(),
-            result: JsonValue::Object(JsonObject::from([
-                (
-                    "artifact_ref".to_owned(),
-                    JsonValue::String(artifact_ref.clone()),
-                ),
-                (
-                    "content_digest".to_owned(),
-                    JsonValue::String(content_digest),
-                ),
-                (
-                    "media_type".to_owned(),
-                    JsonValue::String("application/json".to_owned()),
-                ),
-                (
-                    "size_bytes".to_owned(),
-                    JsonValue::Number(runx_contracts::JsonNumber::U64(bytes.len() as u64)),
-                ),
-                (
-                    "download_url".to_owned(),
-                    JsonValue::String("https://must-not-escape.invalid".to_owned()),
-                ),
-            ])),
-            transport: "hosted_loopback".to_owned(),
-            readback_ref: "runx:artifact-readback:fixture".to_owned(),
+            result: hosted_result,
+            transport: "hosted_control_plane".to_owned(),
+            readback_ref: format!(
+                "runx:artifact-readback:{}",
+                hosted_result_digest.trim_start_matches("sha256:")
+            ),
             access: Some("mutate".to_owned()),
             principal_ref: Some("runx:principal:operator:test".to_owned()),
             grant_ref: None,
             finality: Some("verified".to_owned()),
             plan_digest: None,
-            result_digest: None,
+            result_digest: Some(hosted_result_digest),
             operation_id: Some("runx:artifact-operation:fixture".to_owned()),
             idempotency_key: Some(idempotency_key),
             host: None,
@@ -747,7 +797,7 @@ mod tests {
             .as_object()
             .expect("projected result");
 
-        assert_eq!(result.len(), 4);
+        assert_eq!(result.len(), 5);
         assert!(!result.contains_key("download_url"));
         assert_eq!(
             crate::tool_catalogs::native::required_scopes(ALLOCATE_TOOL),
@@ -761,7 +811,7 @@ mod tests {
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let artifact_ref =
             "runx:artifact:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-        let packet = ProviderOperationPacket {
+        let mut packet = ProviderOperationPacket {
             schema: "runx.provider.operation.v1".to_owned(),
             status: "success".to_owned(),
             provider: "runx-artifact".to_owned(),
@@ -784,6 +834,10 @@ mod tests {
                     "size_bytes".to_owned(),
                     JsonValue::Number(runx_contracts::JsonNumber::U64(1)),
                 ),
+                (
+                    "created_at".to_owned(),
+                    JsonValue::String("2026-08-24T00:00:00.000Z".to_owned()),
+                ),
             ])),
             transport: "hosted_loopback".to_owned(),
             readback_ref: "runx:artifact-readback:test".to_owned(),
@@ -802,5 +856,28 @@ mod tests {
         assert!(
             validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
         );
+
+        packet.target = format!(
+            "runx:artifact:sha256:{}",
+            expected_digest.trim_start_matches("sha256:")
+        );
+        let target = packet.target.clone();
+        let JsonValue::Object(result) = &mut packet.result else {
+            panic!("artifact result must be an object");
+        };
+        result.insert("artifact_ref".to_owned(), JsonValue::String(target));
+        result.insert(
+            "download_url".to_owned(),
+            JsonValue::String("https://must-not-escape.invalid".to_owned()),
+        );
+        assert!(
+            validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
+        );
+        let JsonValue::Object(result) = &mut packet.result else {
+            panic!("artifact result must be an object");
+        };
+        result.remove("download_url");
+        validate_allocation_result(&packet, expected_digest, "application/json", 1)
+            .expect("exact artifact result");
     }
 }
