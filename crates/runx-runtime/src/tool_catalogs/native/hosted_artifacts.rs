@@ -315,9 +315,12 @@ fn validate_allocation_result(
             "artifact allocation result does not match the requested bytes",
         ));
     };
+    // artifact_ref is the principal/idempotency-scoped storage identity. The
+    // separately verified content_digest is the content identity; callers
+    // must not infer one from the other.
     if result.len() != 5
         || artifact_ref != packet.target
-        || self::artifact_ref(artifact_ref).ok() != expected_digest.strip_prefix("sha256:")
+        || self::artifact_ref(artifact_ref).is_err()
         || digest != expected_digest
         || media_type != expected_media_type
         || Some(size) != u64::try_from(expected_size).ok()
@@ -806,7 +809,7 @@ mod tests {
     }
 
     #[test]
-    fn allocation_ref_must_name_the_verified_content_digest() {
+    fn allocation_ref_is_opaque_and_result_remains_exact() {
         let expected_digest =
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let artifact_ref =
@@ -853,19 +856,26 @@ mod tests {
             account_ref: None,
         };
 
-        assert!(
-            validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
-        );
+        validate_allocation_result(&packet, expected_digest, "application/json", 1)
+            .expect("opaque artifact identity with exact content evidence");
 
-        packet.target = format!(
-            "runx:artifact:sha256:{}",
-            expected_digest.trim_start_matches("sha256:")
-        );
-        let target = packet.target.clone();
         let JsonValue::Object(result) = &mut packet.result else {
             panic!("artifact result must be an object");
         };
-        result.insert("artifact_ref".to_owned(), JsonValue::String(target));
+        result.insert(
+            "artifact_ref".to_owned(),
+            JsonValue::String("runx:artifact:not-a-digest".to_owned()),
+        );
+        assert!(
+            validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
+        );
+        let JsonValue::Object(result) = &mut packet.result else {
+            panic!("artifact result must be an object");
+        };
+        result.insert(
+            "artifact_ref".to_owned(),
+            JsonValue::String(artifact_ref.to_owned()),
+        );
         result.insert(
             "download_url".to_owned(),
             JsonValue::String("https://must-not-escape.invalid".to_owned()),
