@@ -169,6 +169,7 @@ fn readback_projection_is_bounded_and_identity_checked() {
             transport: "runx_connect",
             expected_result: None,
             result_fields: Some(vec!["handle_ref".to_owned(), "expires_at".to_owned()]),
+            optional_result_fields: Some(vec!["provider_note".to_owned()]),
             finality: test_provider_finality("grant_vault", ProviderNativeAccess::Mutate),
         },
     )
@@ -182,6 +183,7 @@ fn readback_projection_is_bounded_and_identity_checked() {
         .expect("result");
     assert_eq!(result.len(), 2);
     assert!(!result.contains_key("secret"));
+    assert!(!result.contains_key("provider_note"));
 
     let mismatch = project_provider_tool_readback(
         PROVIDER_READ_TOOL,
@@ -211,10 +213,97 @@ fn readback_projection_is_bounded_and_identity_checked() {
                 JsonValue::String("runxhq/runx".to_owned()),
             )])),
             result_fields: None,
+            optional_result_fields: None,
             finality: test_provider_finality("grant_github", ProviderNativeAccess::Read),
         },
     );
     assert!(mismatch.is_err());
+}
+
+#[test]
+fn result_projection_keeps_present_optional_fields_and_requires_required_fields() {
+    let readback = JsonObject::from([
+        ("provider".to_owned(), JsonValue::String("x402".to_owned())),
+        (
+            "result".to_owned(),
+            JsonValue::Object(JsonObject::from([
+                (
+                    "payment_ref".to_owned(),
+                    JsonValue::String("runx:payment:test".to_owned()),
+                ),
+                (
+                    "runx_composite".to_owned(),
+                    JsonValue::Object(JsonObject::new()),
+                ),
+                (
+                    "private".to_owned(),
+                    JsonValue::String("drop-me".to_owned()),
+                ),
+            ])),
+        ),
+    ]);
+    let contract = |required: &str| ProviderReadbackContract {
+        expected_provider: "x402".to_owned(),
+        operation: "payment.x402.read".to_owned(),
+        target: "https://example.test/invocations".to_owned(),
+        grant_id: "grant_x402".to_owned(),
+        access: ProviderNativeAccess::Read,
+        principal_ref: "runx:principal:operator:test".to_owned(),
+        transport: "runx_connect",
+        expected_result: None,
+        result_fields: Some(vec![required.to_owned()]),
+        optional_result_fields: Some(vec!["runx_composite".to_owned()]),
+        finality: test_provider_finality("grant_x402", ProviderNativeAccess::Read),
+    };
+
+    let output = project_provider_tool_readback(
+        PROVIDER_READ_TOOL,
+        readback.clone(),
+        contract("payment_ref"),
+    )
+    .expect("optional projection");
+    let result = output
+        .as_object()
+        .and_then(|output| output.get("provider_operation"))
+        .and_then(JsonValue::as_object)
+        .and_then(|operation| operation.get("result"))
+        .and_then(JsonValue::as_object)
+        .expect("result");
+    assert_eq!(result.len(), 2);
+    assert!(result.contains_key("runx_composite"));
+    assert!(!result.contains_key("private"));
+
+    assert!(
+        project_provider_tool_readback(PROVIDER_READ_TOOL, readback, contract("missing")).is_err()
+    );
+}
+
+#[test]
+fn result_projection_contract_rejects_overlapping_fields() {
+    let inputs = JsonObject::from([
+        (
+            "result_fields".to_owned(),
+            JsonValue::Array(vec![JsonValue::String("payment_ref".to_owned())]),
+        ),
+        (
+            "optional_result_fields".to_owned(),
+            JsonValue::Array(vec![JsonValue::String("payment_ref".to_owned())]),
+        ),
+    ]);
+    let env = BTreeMap::new();
+    let credentials = crate::CredentialDelivery::none();
+    let request = EffectToolRequest {
+        tool_ref: PROVIDER_READ_TOOL,
+        observed_at: "2026-08-26T00:00:00Z",
+        inputs: &inputs,
+        env: &env,
+        skill_directory: Path::new("."),
+        credential_delivery: &credentials,
+        admission: None,
+    };
+
+    let error = provider_result_projection(&request).expect_err("overlap must fail");
+    assert!(error.to_string().contains("must not overlap"));
 }
 
 #[test]

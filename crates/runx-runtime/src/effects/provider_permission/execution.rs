@@ -2,7 +2,7 @@ use runx_contracts::{JsonObject, JsonValue};
 
 use super::readback::{
     ProviderReadbackContract, complete_provider_effect, project_provider_tool_readback,
-    provider_expected_result, provider_operation_access, provider_result_fields,
+    provider_expected_result, provider_operation_access, provider_result_projection,
 };
 use super::recovery::{
     persist_provider_attempt, persist_provider_readback, persist_provider_unknown,
@@ -82,6 +82,7 @@ pub(super) fn invoke_provider_tool(
                 transport: readback.2,
                 expected_result: input.expected_result,
                 result_fields: input.result_fields,
+                optional_result_fields: input.optional_result_fields,
                 finality,
             },
         )
@@ -207,6 +208,7 @@ pub(super) struct ProviderToolInvocation {
     payload: JsonObject,
     expected_result: Option<JsonObject>,
     result_fields: Option<Vec<String>>,
+    optional_result_fields: Option<Vec<String>>,
     attempt: ProviderEffectAttempt,
     admission: ProviderPermissionAdmission,
     transport: ProviderTransportSelection,
@@ -243,6 +245,7 @@ pub(super) fn admit_provider_tool_invocation(
         .cloned()
         .unwrap_or_default();
     inject_provider_idempotency(request.tool_ref, access, &attempt, &mut payload)?;
+    let projection = provider_result_projection(request)?;
     Ok(ProviderToolInvocation {
         expected_provider: expected_provider.to_owned(),
         grant_id,
@@ -250,7 +253,8 @@ pub(super) fn admit_provider_tool_invocation(
         target: target.to_owned(),
         payload,
         expected_result: provider_expected_result(request)?,
-        result_fields: provider_result_fields(request)?,
+        result_fields: projection.required,
+        optional_result_fields: projection.optional,
         attempt,
         admission: context.clone(),
         transport: context.transport.clone(),

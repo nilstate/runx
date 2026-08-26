@@ -106,5 +106,5 @@ runners:
           tool: provider.read
           scopes: [payment.x402.read]
           policy: { provider_permission: { verb: read } }
-          inputs: { operation: payment.x402.read, target: $input.payment_signal.resource.url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, finality, block_number, inner_receipt_ref, runx_composite] }
+          inputs: { operation: payment.x402.read, target: $input.payment_signal.resource.url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, finality, block_number, inner_receipt_ref], optional_result_fields: [runx_composite] }
           context: { input: pay.provider_operation.data.result, expected_result: pay.provider_operation.data.result }

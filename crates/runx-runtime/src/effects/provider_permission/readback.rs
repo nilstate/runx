@@ -11,22 +11,58 @@ use crate::{
 };
 
 #[cfg(feature = "catalog")]
-pub(super) fn provider_result_fields(
+#[derive(Debug)]
+pub(super) struct ProviderResultProjection {
+    pub(super) required: Option<Vec<String>>,
+    pub(super) optional: Option<Vec<String>>,
+}
+
+#[cfg(feature = "catalog")]
+pub(super) fn provider_result_projection(
     request: &EffectToolRequest<'_>,
+) -> Result<ProviderResultProjection, RuntimeError> {
+    let required = provider_projection_fields(request, "result_fields")?;
+    let optional = provider_projection_fields(request, "optional_result_fields")?;
+    let total = required.as_ref().map_or(0, Vec::len) + optional.as_ref().map_or(0, Vec::len);
+    if total > 50 {
+        return Err(provider_tool_error(
+            request.tool_ref,
+            "result_fields and optional_result_fields must contain at most 50 entries in total",
+        ));
+    }
+    if let (Some(required), Some(optional)) = (&required, &optional) {
+        let required = required.iter().map(String::as_str).collect::<BTreeSet<_>>();
+        if optional
+            .iter()
+            .any(|field| required.contains(field.as_str()))
+        {
+            return Err(provider_tool_error(
+                request.tool_ref,
+                "result_fields and optional_result_fields must not overlap",
+            ));
+        }
+    }
+    Ok(ProviderResultProjection { required, optional })
+}
+
+#[cfg(feature = "catalog")]
+fn provider_projection_fields(
+    request: &EffectToolRequest<'_>,
+    input_name: &str,
 ) -> Result<Option<Vec<String>>, RuntimeError> {
-    let Some(value) = request.inputs.get("result_fields") else {
+    let Some(value) = request.inputs.get(input_name) else {
         return Ok(None);
     };
     let fields = value.as_array().ok_or_else(|| {
         provider_tool_error(
             request.tool_ref,
-            "result_fields must be a non-empty string array",
+            format!("{input_name} must be a non-empty string array"),
         )
     })?;
     if fields.is_empty() || fields.len() > 50 {
         return Err(provider_tool_error(
             request.tool_ref,
-            "result_fields must contain 1 to 50 entries",
+            format!("{input_name} must contain 1 to 50 entries"),
         ));
     }
     let mut seen = BTreeSet::new();
@@ -39,7 +75,7 @@ pub(super) fn provider_result_fields(
             .ok_or_else(|| {
                 provider_tool_error(
                     request.tool_ref,
-                    "result_fields entries must be safe non-empty top-level field names",
+                    format!("{input_name} entries must be safe non-empty top-level field names"),
                 )
             })?;
         if seen.insert(field.to_owned()) {
@@ -108,6 +144,7 @@ pub(super) struct ProviderReadbackContract {
     pub(super) transport: &'static str,
     pub(super) expected_result: Option<JsonObject>,
     pub(super) result_fields: Option<Vec<String>>,
+    pub(super) optional_result_fields: Option<Vec<String>>,
     pub(super) finality: ProviderEffectFinality,
 }
 
@@ -156,10 +193,18 @@ pub(super) fn project_provider_tool_readback(
         tool_ref,
         &readback,
         contract.expected_result.as_ref(),
-        contract.result_fields.is_some(),
+        contract.result_fields.is_some() || contract.optional_result_fields.is_some(),
     )?;
-    if let Some(fields) = contract.result_fields.as_deref() {
-        project_result_fields(tool_ref, &mut readback, fields)?;
+    if contract.result_fields.is_some() || contract.optional_result_fields.is_some() {
+        project_result_fields(
+            tool_ref,
+            &mut readback,
+            contract.result_fields.as_deref().unwrap_or_default(),
+            contract
+                .optional_result_fields
+                .as_deref()
+                .unwrap_or_default(),
+        )?;
     }
     append_readback_contract(&mut readback, &contract);
     validate_provider_operation_packet(tool_ref, &readback)?;
@@ -231,10 +276,11 @@ fn validate_expected_result(
 fn project_result_fields(
     tool_ref: &str,
     readback: &mut JsonObject,
-    fields: &[String],
+    required_fields: &[String],
+    optional_fields: &[String],
 ) -> Result<(), RuntimeError> {
     let result = provider_result_object(tool_ref, readback)?;
-    let projected = fields
+    let mut projected = required_fields
         .iter()
         .map(|field| {
             result
@@ -249,6 +295,11 @@ fn project_result_fields(
                 })
         })
         .collect::<Result<JsonObject, RuntimeError>>()?;
+    for field in optional_fields {
+        if let Some(value) = result.get(field) {
+            projected.insert(field.clone(), value.clone());
+        }
+    }
     readback.insert("result".to_owned(), JsonValue::Object(projected));
     Ok(())
 }
