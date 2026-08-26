@@ -52,7 +52,7 @@ fn parses_login_plan() -> Result<(), String> {
         LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
             provider: Some("github".to_owned()),
-            purpose: Some("publish".to_owned()),
+            purpose: Some(HostedApiCredentialPurpose::Publish),
             from_gh: true,
             allow_local_api: true,
             json: true,
@@ -62,9 +62,29 @@ fn parses_login_plan() -> Result<(), String> {
 }
 
 #[test]
+fn rejects_unknown_login_purpose_before_network_access() {
+    let error = parse_login_plan(&[
+        OsString::from("login"),
+        OsString::from("--for"),
+        OsString::from("billing"),
+    ])
+    .expect_err("unknown credential purposes must fail closed");
+
+    assert_eq!(error, "--for must be default or publish");
+}
+
+#[test]
 fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
+    runx_runtime::store_authenticated_hosted_environment(
+        &env,
+        &temp,
+        HostedApiCredentialPurpose::Default,
+        "https://runx.test",
+        "user_1",
+        "rxk_default",
+    )?;
     let transport = StubTransport::with_responses(vec![
         HttpResponse::new(
             201,
@@ -102,7 +122,7 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
             provider: Some("github".to_owned()),
-            purpose: Some("publish".to_owned()),
+            purpose: Some(HostedApiCredentialPurpose::Publish),
             from_gh: false,
             allow_local_api: false,
             json: true,
@@ -114,9 +134,32 @@ fn login_exchange_stores_encrypted_public_api_token() -> Result<(), Box<dyn std:
     )?;
 
     assert!(output.contains("\"status\": \"success\""));
-    let config = fs::read_to_string(temp.join("config.json"))?;
-    assert!(config.contains("api_token_ref"));
-    assert!(!config.contains("rxk_secret"));
+    let config_text = fs::read_to_string(temp.join("config.json"))?;
+    assert!(config_text.contains("publish_api_token_ref"));
+    assert!(!config_text.contains("rxk_secret"));
+    assert!(!config_text.contains("rxk_default"));
+    let config = runx_runtime::load_runx_config_file(&temp.join("config.json"))?;
+    let public = config.public.ok_or("missing public config")?;
+    assert_eq!(
+        runx_runtime::load_local_public_api_token(
+            &temp,
+            public
+                .api_token_ref
+                .as_deref()
+                .ok_or("missing default token")?,
+        )?,
+        "rxk_default"
+    );
+    assert_eq!(
+        runx_runtime::load_local_public_api_token(
+            &temp,
+            public
+                .publish_api_token_ref
+                .as_deref()
+                .ok_or("missing publish token")?,
+        )?,
+        "rxk_secret"
+    );
 
     let requests = transport.requests.borrow();
     assert_eq!(requests[0].url, "https://runx.test/v1/login/sessions");
@@ -190,7 +233,7 @@ fn github_cli_login_exchanges_provider_token_without_serializing_it()
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
             provider: Some("github".to_owned()),
-            purpose: Some("publish".to_owned()),
+            purpose: Some(HostedApiCredentialPurpose::Publish),
             from_gh: true,
             allow_local_api: false,
             json: true,
@@ -242,7 +285,7 @@ fn github_cli_login_rejects_a_noncanonical_principal() -> Result<(), Box<dyn std
         &LoginPlan {
             api_base_url: Some("https://runx.test/".to_owned()),
             provider: Some("github".to_owned()),
-            purpose: Some("publish".to_owned()),
+            purpose: Some(HostedApiCredentialPurpose::Publish),
             from_gh: true,
             allow_local_api: false,
             json: true,

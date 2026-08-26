@@ -124,11 +124,13 @@ still runs first for fast feedback.
 `runx login --for publish` opens the hosted sign-in flow. Add `--from-gh` to use
 the active GitHub CLI identity without the browser consent step. Both paths store
 a purpose-scoped public API token in the encrypted local config at
-`public.api_token`. The token can publish and report skills, but it cannot move
-money, mutate hosted billing state, or operate unrelated hosted surfaces. Hosted
-CLI commands use token precedence in this order: an explicit `--token` when the
-command has one, then `RUNX_PUBLIC_API_TOKEN`, then the stored token from
-`runx login`. `runx registry publish` uses the env or stored-token sources.
+`public.publish_api_token`. The token can publish and report skills, but it
+cannot move money, mutate hosted billing state, or operate unrelated hosted
+surfaces. Hosted CLI commands use token precedence in this order: an explicit
+`--token` when the command has one, then `RUNX_PUBLIC_API_TOKEN`, then the stored
+token from `runx login --for publish`. `runx registry publish` uses the env or
+stored publish-token sources. The default operator credential is stored separately;
+signing in for publication cannot replace or attenuate it.
 
 After a public URL publish, use the claim flow from the registry listing to prove
 control of the source repo and move matching versions toward verified discovery.

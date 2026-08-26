@@ -646,8 +646,10 @@ runx publish ./.runx/receipts/<receipt-id>.json
 with `publish: true`, then prints the public `/r` link and content hash returned
 by the notary. Configure the hosted API with `RUNX_PUBLIC_API_BASE_URL` (default
 `https://api.runx.ai`) and authenticate with `RUNX_PUBLIC_API_TOKEN` or `--token`
-(or run `runx login`). Runx requires HTTPS for non-loopback API origins so the
-bearer token cannot be sent to a public plaintext endpoint.
+(or run `runx login --for publish`). The stored publish credential is separate
+from the default operator credential used by Connect and provider effects. Runx
+requires HTTPS for non-loopback API origins so the bearer token cannot be sent
+to a public plaintext endpoint.
 
 For local hosted dogfood only, point at a loopback API and opt into the private
 network escape explicitly:

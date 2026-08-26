@@ -80,7 +80,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         json: false,
     };
 
-    let explicit = runx_runtime::HostedApiEnvironment::resolve(
+    let explicit = runx_runtime::HostedApiEnvironment::resolve_publish(
         plan.api_base_url.as_deref(),
         plan.token.as_deref(),
         &env,
@@ -94,7 +94,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         api_base_url: None,
         ..plan
     };
-    let from_env = runx_runtime::HostedApiEnvironment::resolve(
+    let from_env = runx_runtime::HostedApiEnvironment::resolve_publish(
         env_plan.api_base_url.as_deref(),
         env_plan.token.as_deref(),
         &env,
@@ -110,7 +110,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         allow_local_api: false,
         json: false,
     };
-    let blank_explicit = runx_runtime::HostedApiEnvironment::resolve(
+    let blank_explicit = runx_runtime::HostedApiEnvironment::resolve_publish(
         empty_token_plan.api_base_url.as_deref(),
         empty_token_plan.token.as_deref(),
         &env,
@@ -119,7 +119,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
     assert_eq!(blank_explicit.require_token()?, "public-token");
 
     env.insert("RUNX_PUBLIC_API_TOKEN".to_owned(), " ".to_owned());
-    let blank = runx_runtime::HostedApiEnvironment::resolve(
+    let blank = runx_runtime::HostedApiEnvironment::resolve_publish(
         empty_token_plan.api_base_url.as_deref(),
         empty_token_plan.token.as_deref(),
         &env,
@@ -139,7 +139,7 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
         temp.join("isolated").to_string_lossy().into_owned(),
     )]);
     assert_eq!(
-        runx_runtime::HostedApiEnvironment::resolve(
+        runx_runtime::HostedApiEnvironment::resolve_publish(
             empty_url_plan.api_base_url.as_deref(),
             None,
             &isolated_env,
@@ -152,21 +152,27 @@ fn resolves_global_api_environment_precedence() -> Result<(), Box<dyn std::error
 }
 
 #[test]
-fn resolves_stored_public_api_token_after_explicit_sources()
+fn resolves_only_the_stored_publish_token_after_explicit_sources()
 -> Result<(), Box<dyn std::error::Error>> {
     let temp = tempfile_dir()?;
     let env = BTreeMap::from([("RUNX_HOME".to_owned(), temp.to_string_lossy().to_string())]);
-    let config = runx_runtime::update_runx_config_value(
-        runx_runtime::RunxConfigFile::default(),
-        runx_runtime::ConfigKey::PublicApiToken,
-        "stored-token",
+    runx_runtime::store_authenticated_hosted_environment(
+        &env,
         &temp,
+        runx_runtime::HostedApiCredentialPurpose::Publish,
+        "https://api.runx.ai",
+        "user_1",
+        "stored-token",
     )?;
-    runx_runtime::write_runx_config_file(&temp.join("config.json"), &config)?;
-    let environment = runx_runtime::HostedApiEnvironment::resolve(None, None, &env, &temp)?;
+    let environment = runx_runtime::HostedApiEnvironment::resolve_publish(None, None, &env, &temp)?;
     assert_eq!(environment.require_token()?, "stored-token");
+    assert!(
+        runx_runtime::HostedApiEnvironment::resolve(None, None, &env, &temp)?
+            .require_token()
+            .is_err()
+    );
 
-    let mismatched = runx_runtime::HostedApiEnvironment::resolve(
+    let mismatched = runx_runtime::HostedApiEnvironment::resolve_publish(
         Some("https://other.runx.test"),
         None,
         &env,
@@ -189,6 +195,9 @@ fn unauthenticated_environment_does_not_load_stored_credentials()
                 api_base_url: Some("https://stored.runx.test".to_owned()),
                 api_token_ref: Some("missing-encrypted-token".to_owned()),
                 principal_id: Some("stored-principal".to_owned()),
+                publish_api_base_url: None,
+                publish_api_token_ref: None,
+                publish_principal_id: None,
             }),
             credentials: None,
         },

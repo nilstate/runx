@@ -11,8 +11,8 @@ use super::{
     HOSTED_API_TOKEN_ENV, HostedApiError, parse_hosted_api_error,
 };
 use crate::config::{
-    ConfigKey, load_local_public_api_token, load_runx_config_file, resolve_runx_home_dir,
-    update_runx_config_value, write_runx_config_file,
+    load_local_public_api_token, load_runx_config_file, resolve_runx_home_dir,
+    store_local_public_api_token, write_runx_config_file,
 };
 use crate::http::{
     HttpMethod, ReqwestHttpTransport as DefaultRuntimeHttpTransport, RuntimeHttpError,
@@ -35,6 +35,23 @@ pub struct AuthenticatedHostedApiEnvironment {
     base_url: String,
     token: String,
     principal_id: RunxPrincipalId,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HostedApiCredentialPurpose {
+    #[default]
+    Default,
+    Publish,
+}
+
+impl HostedApiCredentialPurpose {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Publish => "publish",
+        }
+    }
 }
 
 impl fmt::Debug for HostedApiEnvironment {
@@ -70,7 +87,28 @@ impl HostedApiEnvironment {
         env: &BTreeMap<String, String>,
         cwd: &Path,
     ) -> Result<Self, HostedApiError> {
-        Self::resolve_inner(explicit_base_url, explicit_token, env, cwd, true)
+        Self::resolve_inner(
+            explicit_base_url,
+            explicit_token,
+            env,
+            cwd,
+            Some(HostedApiCredentialPurpose::Default),
+        )
+    }
+
+    pub fn resolve_publish(
+        explicit_base_url: Option<&str>,
+        explicit_token: Option<&str>,
+        env: &BTreeMap<String, String>,
+        cwd: &Path,
+    ) -> Result<Self, HostedApiError> {
+        Self::resolve_inner(
+            explicit_base_url,
+            explicit_token,
+            env,
+            cwd,
+            Some(HostedApiCredentialPurpose::Publish),
+        )
     }
 
     pub fn resolve_unauthenticated(
@@ -78,7 +116,7 @@ impl HostedApiEnvironment {
         env: &BTreeMap<String, String>,
         cwd: &Path,
     ) -> Result<Self, HostedApiError> {
-        Self::resolve_inner(explicit_base_url, None, env, cwd, false)
+        Self::resolve_inner(explicit_base_url, None, env, cwd, None)
     }
 
     fn resolve_inner(
@@ -86,31 +124,42 @@ impl HostedApiEnvironment {
         explicit_token: Option<&str>,
         env: &BTreeMap<String, String>,
         cwd: &Path,
-        include_credentials: bool,
+        credential_purpose: Option<HostedApiCredentialPurpose>,
     ) -> Result<Self, HostedApiError> {
         let config_dir = resolve_runx_home_dir(env, cwd);
         let config = load_runx_config_file(&config_dir.join("config.json"))?;
         let public = config.public.unwrap_or_default();
-        let stored_base_url = normalize_hosted_base_url(public.api_base_url.as_deref())?
-            .unwrap_or_else(|| DEFAULT_HOSTED_API_BASE_URL.to_owned());
+        let stored_base_url = normalize_hosted_base_url(match credential_purpose {
+            Some(HostedApiCredentialPurpose::Publish) => public.publish_api_base_url.as_deref(),
+            Some(HostedApiCredentialPurpose::Default) | None => public.api_base_url.as_deref(),
+        })?
+        .unwrap_or_else(|| DEFAULT_HOSTED_API_BASE_URL.to_owned());
         let explicit_base_url = normalize_hosted_base_url(explicit_base_url)?;
         let environment_base_url =
             normalize_hosted_base_url(env.get(HOSTED_API_BASE_URL_ENV).map(String::as_str))?;
         let base_url = explicit_base_url
             .or(environment_base_url)
             .unwrap_or_else(|| stored_base_url.clone());
-        let direct_token = include_credentials
+        let direct_token = credential_purpose
+            .is_some()
             .then(|| {
                 non_empty(explicit_token)
                     .or_else(|| non_empty(env.get(HOSTED_API_TOKEN_ENV).map(String::as_str)))
             })
             .flatten();
         let stored_token_allowed = base_url == stored_base_url;
-        let stored_token = if include_credentials && direct_token.is_none() && stored_token_allowed
-        {
-            public
-                .api_token_ref
-                .as_deref()
+        let (stored_token_ref, stored_principal_id) = match credential_purpose {
+            Some(HostedApiCredentialPurpose::Default) => {
+                (public.api_token_ref.as_deref(), public.principal_id.clone())
+            }
+            Some(HostedApiCredentialPurpose::Publish) => (
+                public.publish_api_token_ref.as_deref(),
+                public.publish_principal_id.clone(),
+            ),
+            None => (None, None),
+        };
+        let stored_token = if direct_token.is_none() && stored_token_allowed {
+            stored_token_ref
                 .map(|token_ref| load_local_public_api_token(&config_dir, token_ref))
                 .transpose()?
                 .and_then(|token| non_empty(Some(&token)))
@@ -118,14 +167,14 @@ impl HostedApiEnvironment {
             None
         };
         let using_stored_token = direct_token.is_none() && stored_token.is_some();
-        let stored_credential_environment_mismatch = include_credentials
+        let stored_credential_environment_mismatch = credential_purpose.is_some()
             && direct_token.is_none()
-            && public.api_token_ref.is_some()
+            && stored_token_ref.is_some()
             && !stored_token_allowed;
         Ok(Self {
             base_url,
             token: direct_token.or(stored_token),
-            expected_principal_id: using_stored_token.then_some(public.principal_id).flatten(),
+            expected_principal_id: using_stored_token.then_some(stored_principal_id).flatten(),
             stored_credential_environment_mismatch,
         })
     }
@@ -218,6 +267,7 @@ impl AuthenticatedHostedApiEnvironment {
 pub fn store_authenticated_hosted_environment(
     env: &BTreeMap<String, String>,
     cwd: &Path,
+    purpose: HostedApiCredentialPurpose,
     base_url: &str,
     principal_id: &str,
     token: &str,
@@ -225,14 +275,23 @@ pub fn store_authenticated_hosted_environment(
     let principal_id = parse_runx_principal_id(principal_id)?;
     let config_dir = resolve_runx_home_dir(env, cwd);
     let config_path = config_dir.join("config.json");
-    let config = load_runx_config_file(&config_path)?;
-    let mut next = update_runx_config_value(config, ConfigKey::PublicApiToken, token, &config_dir)?;
+    let mut next = load_runx_config_file(&config_path)?;
+    let token_ref = store_local_public_api_token(&config_dir, token)?;
     let public = next.public.get_or_insert_default();
-    public.api_base_url = Some(
-        normalize_hosted_base_url(Some(base_url))?
-            .unwrap_or_else(|| DEFAULT_HOSTED_API_BASE_URL.to_owned()),
-    );
-    public.principal_id = Some(principal_id.into_string());
+    let base_url = normalize_hosted_base_url(Some(base_url))?
+        .unwrap_or_else(|| DEFAULT_HOSTED_API_BASE_URL.to_owned());
+    match purpose {
+        HostedApiCredentialPurpose::Default => {
+            public.api_base_url = Some(base_url);
+            public.api_token_ref = Some(token_ref);
+            public.principal_id = Some(principal_id.into_string());
+        }
+        HostedApiCredentialPurpose::Publish => {
+            public.publish_api_base_url = Some(base_url);
+            public.publish_api_token_ref = Some(token_ref);
+            public.publish_principal_id = Some(principal_id.into_string());
+        }
+    }
     write_runx_config_file(&config_path, &next)?;
     Ok(())
 }

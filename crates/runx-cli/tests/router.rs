@@ -17,6 +17,7 @@ use runx_cli::router::{
     skill_help_text, verify_help_text,
 };
 use runx_cli::skill::{SkillAction, SkillPlan};
+use runx_runtime::HostedApiCredentialPurpose;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -346,7 +347,7 @@ fn routes_login_to_native_plan() {
         ]),
         RouterAction::RunLogin(LoginPlan {
             provider: Some("github".to_owned()),
-            purpose: Some("publish".to_owned()),
+            purpose: Some(HostedApiCredentialPurpose::Publish),
             api_base_url: Some("https://runx.test".to_owned()),
             from_gh: true,
             allow_local_api: false,

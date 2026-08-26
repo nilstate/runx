@@ -140,12 +140,13 @@ pub use host::{Host, NoopHost};
 #[cfg(feature = "async-http")]
 pub use hosted_api::{
     AuthenticatedHostedApiEnvironment, DEFAULT_HOSTED_API_BASE_URL, HOSTED_API_BASE_URL_ENV,
-    HOSTED_API_TOKEN_ENV, HostedApiEnvironment, HostedApiError, HostedApiErrorPayload,
-    HostedApiOperationError, HostedConnectAction, HostedConnectStart, HostedLoginCompleteResponse,
-    HostedLoginStartResponse, HostedProviderTokenLoginResponse, ReceiptPublishResponse,
-    complete_hosted_login, exchange_hosted_provider_token, execute_hosted_connect,
-    hosted_api_transport, hosted_private_network_allowed, parse_hosted_api_error,
-    publish_hosted_receipt, start_hosted_login, store_authenticated_hosted_environment,
+    HOSTED_API_TOKEN_ENV, HostedApiCredentialPurpose, HostedApiEnvironment, HostedApiError,
+    HostedApiErrorPayload, HostedApiOperationError, HostedConnectAction, HostedConnectStart,
+    HostedLoginCompleteResponse, HostedLoginStartResponse, HostedProviderTokenLoginResponse,
+    ReceiptPublishResponse, complete_hosted_login, exchange_hosted_provider_token,
+    execute_hosted_connect, hosted_api_transport, hosted_private_network_allowed,
+    parse_hosted_api_error, publish_hosted_receipt, start_hosted_login,
+    store_authenticated_hosted_environment,
 };
 pub use http::{
     HttpMethod, ReqwestHttpTransport, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest,

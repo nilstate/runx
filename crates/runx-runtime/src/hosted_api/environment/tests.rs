@@ -39,6 +39,7 @@ fn storing_a_hosted_environment_rejects_noncanonical_principal_ids() {
     let error = store_authenticated_hosted_environment(
         &BTreeMap::new(),
         workspace.path(),
+        HostedApiCredentialPurpose::Default,
         "https://api.runx.test",
         " operator:test ",
         "rxk_super_secret",
@@ -46,6 +47,49 @@ fn storing_a_hosted_environment_rejects_noncanonical_principal_ids() {
     .expect_err("principal ids are never trimmed or rewritten");
 
     assert!(error.to_string().contains("principal_id must match"));
+}
+
+#[test]
+fn stored_default_and_publish_credentials_keep_independent_environment_bindings() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let env = BTreeMap::from([(
+        "RUNX_HOME".to_owned(),
+        workspace.path().to_string_lossy().into_owned(),
+    )]);
+
+    store_authenticated_hosted_environment(
+        &env,
+        workspace.path(),
+        HostedApiCredentialPurpose::Default,
+        "https://operator.runx.test",
+        "operator_1",
+        "rxk_operator",
+    )
+    .expect("store operator credential");
+    store_authenticated_hosted_environment(
+        &env,
+        workspace.path(),
+        HostedApiCredentialPurpose::Publish,
+        "https://publish.runx.test",
+        "publisher_1",
+        "rxk_publisher",
+    )
+    .expect("store publisher credential");
+
+    let operator = HostedApiEnvironment::resolve(None, None, &env, workspace.path())
+        .expect("resolve operator credential");
+    let publisher = HostedApiEnvironment::resolve_publish(None, None, &env, workspace.path())
+        .expect("resolve publisher credential");
+    assert_eq!(operator.base_url(), "https://operator.runx.test");
+    assert_eq!(
+        operator.require_token().expect("operator token"),
+        "rxk_operator"
+    );
+    assert_eq!(publisher.base_url(), "https://publish.runx.test");
+    assert_eq!(
+        publisher.require_token().expect("publisher token"),
+        "rxk_publisher"
+    );
 }
 
 #[test]

@@ -38,8 +38,9 @@ a caller-supplied value is refused. Keep large inputs behind artifact references
 
 The x402 branch delegates to `x402-pay`, which owns the single provider-effect
 approval, exact external V2 validation, durable signed-payload retry, transaction
-finality, and vendor receipt readback. This skill never asks for a second approval
-and never interprets wallet material.
+finality, and vendor receipt readback. This skill adds no wrapper approval: the
+delegated provider-effect request is returned as the one waiting-resolution gate
+for vendor spend. The skill never interprets wallet material.
 
 Stop if the family is unsupported, the endpoint differs from the authority or
 signal, terms drift, provider readback is incomplete, or the inner receipt is not

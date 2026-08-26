@@ -10,8 +10,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use runx_runtime::{
-    HostedApiOperationError, HostedLoginCompleteResponse, HostedLoginStartResponse,
-    RuntimeHttpError, RuntimeHttpTransport as Transport, WorkspaceEnv,
+    HostedApiCredentialPurpose, HostedApiOperationError, HostedLoginCompleteResponse,
+    HostedLoginStartResponse, RuntimeHttpError, RuntimeHttpTransport as Transport, WorkspaceEnv,
 };
 
 use crate::cli_args::{flag_value, os_arg, split_flag};
@@ -22,7 +22,7 @@ const DEFAULT_LOGIN_TIMEOUT_SECONDS: u64 = 180;
 pub struct LoginPlan {
     pub api_base_url: Option<String>,
     pub provider: Option<String>,
-    pub purpose: Option<String>,
+    pub purpose: Option<HostedApiCredentialPurpose>,
     pub from_gh: bool,
     pub allow_local_api: bool,
     pub json: bool,
@@ -155,7 +155,11 @@ pub fn parse_login_plan(args: &[OsString]) -> Result<LoginPlan, String> {
             }
             "--for" | "--purpose" => {
                 let (value, next_index) = flag_value(args, index, flag, inline_value, "login")?;
-                purpose = Some(value);
+                purpose = Some(match value.as_str() {
+                    "default" => HostedApiCredentialPurpose::Default,
+                    "publish" => HostedApiCredentialPurpose::Publish,
+                    _ => return Err("--for must be default or publish".to_owned()),
+                });
                 index = next_index;
             }
             "--allow-local-api" => {
@@ -234,7 +238,7 @@ fn run_provider_token_login_with_transport<T: Transport>(
         transport,
         base_url,
         plan.provider.as_deref().unwrap_or("github"),
-        plan.purpose.as_deref(),
+        plan.purpose.map(HostedApiCredentialPurpose::as_str),
         github_token,
     )?;
     if completed.status != "success" || completed.token.trim().is_empty() {
@@ -247,6 +251,7 @@ fn run_provider_token_login_with_transport<T: Transport>(
     runx_runtime::store_authenticated_hosted_environment(
         env,
         cwd,
+        plan.purpose.unwrap_or_default(),
         base_url,
         principal_id,
         &completed.token,
@@ -304,7 +309,7 @@ fn run_login_command_with_transport<T: Transport>(
         transport,
         base_url,
         plan.provider.as_deref(),
-        plan.purpose.as_deref(),
+        plan.purpose.map(HostedApiCredentialPurpose::as_str),
     )?;
     let signin_url = started
         .authorization_url
@@ -327,7 +332,14 @@ fn run_login_command_with_transport<T: Transport>(
         .as_deref()
         .filter(|value| !value.trim().is_empty())
         .ok_or(LoginCliError::MissingPrincipal)?;
-    runx_runtime::store_authenticated_hosted_environment(env, cwd, base_url, principal_id, token)?;
+    runx_runtime::store_authenticated_hosted_environment(
+        env,
+        cwd,
+        plan.purpose.unwrap_or_default(),
+        base_url,
+        principal_id,
+        token,
+    )?;
     render_login_result(
         plan.json,
         &LoginResult {

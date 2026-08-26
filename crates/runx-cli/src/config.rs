@@ -304,10 +304,13 @@ fn flatten_config(config: &RunxConfigFile) -> Vec<(&'static str, &str)> {
             rows.push(("agent.api_key", api_key_ref));
         }
     }
-    if let Some(public) = config.public.as_ref()
-        && let Some(api_token_ref) = public.api_token_ref.as_deref()
-    {
-        rows.push(("public.api_token", api_token_ref));
+    if let Some(public) = config.public.as_ref() {
+        if let Some(api_token_ref) = public.api_token_ref.as_deref() {
+            rows.push(("public.api_token", api_token_ref));
+        }
+        if let Some(api_token_ref) = public.publish_api_token_ref.as_deref() {
+            rows.push(("public.publish_api_token", api_token_ref));
+        }
     }
     rows
 }

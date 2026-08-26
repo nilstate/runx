@@ -63,10 +63,19 @@ pub struct RunxAgentConfig {
 pub struct RunxPublicConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_base_url: Option<String>,
+    /// Default operator credential used by connect, provider effects, and
+    /// hosted artifact operations.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_token_ref: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub principal_id: Option<String>,
+    /// Narrow credential used only by receipt and skill publication.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_api_base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_api_token_ref: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_principal_id: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -257,6 +266,11 @@ pub fn mask_runx_config_file(config: &RunxConfigFile) -> RunxConfigFile {
         && public.api_token_ref.is_some()
     {
         public.api_token_ref = Some("[encrypted]".to_owned());
+    }
+    if let Some(public) = masked.public.as_mut()
+        && public.publish_api_token_ref.is_some()
+    {
+        public.publish_api_token_ref = Some("[encrypted]".to_owned());
     }
     if let Some(credentials) = masked.credentials.as_mut() {
         for profile in credentials.profiles.values_mut() {
@@ -466,7 +480,10 @@ fn store_local_agent_api_key(config_dir: &Path, api_key: &str) -> Result<String,
     store_local_config_secret_value(config_dir, api_key, "local_agent_key")
 }
 
-fn store_local_public_api_token(config_dir: &Path, api_token: &str) -> Result<String, ConfigError> {
+pub(crate) fn store_local_public_api_token(
+    config_dir: &Path,
+    api_token: &str,
+) -> Result<String, ConfigError> {
     store_local_config_secret_value(config_dir, api_token, "local_public_api_token")
 }
 

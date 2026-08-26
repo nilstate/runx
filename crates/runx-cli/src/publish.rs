@@ -187,7 +187,7 @@ fn run_publish_command(
     cwd: &Path,
 ) -> Result<String, PublishCliError> {
     let receipt = read_receipt_json(&plan.receipt_path)?;
-    let environment = runx_runtime::HostedApiEnvironment::resolve(
+    let environment = runx_runtime::HostedApiEnvironment::resolve_publish(
         plan.api_base_url.as_deref(),
         plan.token.as_deref(),
         env,

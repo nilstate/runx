@@ -13,8 +13,8 @@ pub(crate) mod request;
 
 pub use connect::{HostedConnectAction, HostedConnectStart, execute_hosted_connect};
 pub use environment::{
-    AuthenticatedHostedApiEnvironment, HostedApiEnvironment, hosted_api_transport,
-    hosted_private_network_allowed, store_authenticated_hosted_environment,
+    AuthenticatedHostedApiEnvironment, HostedApiCredentialPurpose, HostedApiEnvironment,
+    hosted_api_transport, hosted_private_network_allowed, store_authenticated_hosted_environment,
 };
 pub use error::{
     HostedApiError, HostedApiErrorPayload, HostedApiOperationError, parse_hosted_api_error,
