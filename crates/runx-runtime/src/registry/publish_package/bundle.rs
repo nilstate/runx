@@ -33,18 +33,11 @@ pub(super) fn collect_bundle_files(
     };
     let root_files =
         super::files::collect_publish_package_files(loaded, env, cwd, root_packet_ids)?;
+    if let Some(descriptor) = loaded.package.source.files.get(PACKAGE_BUNDLE_FILE) {
+        return collect_materialized_bundle_files(closure, env, cwd, &root, root_files, descriptor);
+    }
     if closure.packages.len() <= 1 {
         return Ok(root_files);
-    }
-    if loaded
-        .package
-        .source
-        .files
-        .contains_key(PACKAGE_BUNDLE_FILE)
-    {
-        return Err(RegistryPublishPackageError::invalid(format!(
-            "{PACKAGE_BUNDLE_FILE} is reserved for registry package materialization"
-        )));
     }
 
     let source_root = common_source_root(&root, closure.packages.keys())?;
@@ -80,6 +73,62 @@ pub(super) fn collect_bundle_files(
     let descriptor =
         encode_package_bundle(dependencies).map_err(RegistryPublishPackageError::invalid)?;
     super::files::insert_source_file(&mut files, PACKAGE_BUNDLE_FILE, descriptor.as_bytes())?;
+    super::files::validate_package_limits(&files)?;
+    Ok(files.into_values().collect())
+}
+
+fn collect_materialized_bundle_files(
+    closure: &LocalExecutionClosure,
+    env: &BTreeMap<String, String>,
+    cwd: &Path,
+    root: &Path,
+    root_files: Vec<RegistryPackageFile>,
+    descriptor: &[u8],
+) -> Result<Vec<RegistryPackageFile>, RegistryPublishPackageError> {
+    if closure.packages.len() <= 1 {
+        return Err(RegistryPublishPackageError::invalid(format!(
+            "{PACKAGE_BUNDLE_FILE} does not bind a package dependency"
+        )));
+    }
+    let mut files = root_files
+        .into_iter()
+        .map(|file| (file.path.clone(), file))
+        .collect::<BTreeMap<_, _>>();
+    for (package_root, packet_ids) in &closure.packages {
+        if package_root == root {
+            continue;
+        }
+        let relative = package_root.strip_prefix(root).map_err(|_| {
+            RegistryPublishPackageError::invalid(format!(
+                "materialized package dependency {} is outside bundle {}",
+                package_root.display(),
+                root.display()
+            ))
+        })?;
+        let prefix = relative.to_string_lossy().replace('\\', "/");
+        if prefix.is_empty() {
+            return Err(RegistryPublishPackageError::invalid(
+                "materialized package dependency path cannot be empty",
+            ));
+        }
+        let dependency = crate::load_validated_skill_package(package_root)?;
+        insert_prefixed(
+            &mut files,
+            &prefix,
+            "SKILL.md",
+            dependency.package.manual_markdown.as_bytes(),
+        )?;
+        if let Some(profile_path) = dependency.profile_path.as_deref()
+            && let Some(profile_document) = dependency.package.file_text(profile_path)
+        {
+            insert_prefixed(&mut files, &prefix, "X.yaml", profile_document.as_bytes())?;
+        }
+        for file in super::files::collect_publish_package_files(&dependency, env, cwd, packet_ids)?
+        {
+            insert_prefixed(&mut files, &prefix, &file.path, file.content.as_bytes())?;
+        }
+    }
+    super::files::insert_source_file(&mut files, PACKAGE_BUNDLE_FILE, descriptor)?;
     super::files::validate_package_limits(&files)?;
     Ok(files.into_values().collect())
 }

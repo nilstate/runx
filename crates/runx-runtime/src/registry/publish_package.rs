@@ -411,6 +411,98 @@ runners:
     }
 
     #[test]
+    fn materialized_registry_bundle_repackages_without_drift()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir()?;
+        let catalog = temp.path().join("skills");
+        let root = catalog.join("root");
+        let sibling = catalog.join("sibling");
+        fs::create_dir_all(&root)?;
+        fs::create_dir_all(&sibling)?;
+        fs::write(
+            root.join("SKILL.md"),
+            "---\nname: root\ndescription: Root fixture.\n---\n# Root\n",
+        )?;
+        fs::write(
+            root.join("X.yaml"),
+            r#"skill: root
+harness:
+  cases:
+    - name: sibling
+      runner: main
+      inputs: {}
+      expect: { status: sealed }
+runners:
+  main:
+    default: true
+    type: graph
+    graph:
+      name: root
+      result_from: [sibling]
+      steps:
+        - id: sibling
+          skill: ../sibling
+"#,
+        )?;
+        fs::write(
+            sibling.join("SKILL.md"),
+            "---\nname: sibling\ndescription: Sibling fixture.\n---\n# Sibling\n",
+        )?;
+        fs::write(
+            sibling.join("X.yaml"),
+            r#"skill: sibling
+runners:
+  default:
+    default: true
+    type: graph
+    graph:
+      name: sibling
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs: { value: sibling }
+"#,
+        )?;
+
+        let first = prepare_registry_publish_package(RegistryPublishPackageRequest {
+            subject: root.to_str().ok_or("temporary path is not UTF-8")?,
+            profile: None,
+            env: &BTreeMap::new(),
+            cwd: &root,
+        })?
+        .into_parts();
+        let staged = temp.path().join("staged");
+        fs::create_dir_all(&staged)?;
+        fs::write(staged.join("SKILL.md"), &first.markdown)?;
+        fs::write(
+            staged.join("X.yaml"),
+            first
+                .profile_document
+                .as_deref()
+                .ok_or("profile document missing")?,
+        )?;
+        for file in &first.package_files {
+            let path = staged.join(&file.path);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(path, &file.content)?;
+        }
+
+        let second = prepare_registry_publish_package(RegistryPublishPackageRequest {
+            subject: staged.to_str().ok_or("temporary path is not UTF-8")?,
+            profile: None,
+            env: &BTreeMap::new(),
+            cwd: &staged,
+        })?
+        .into_parts();
+
+        assert_eq!(second, first);
+        Ok(())
+    }
+
+    #[test]
     fn packet_input_schema_is_materialized_into_registry_bundle()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
