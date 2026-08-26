@@ -2,8 +2,10 @@ import {
   type DeepReadonly,
   generatedSchema,
   generatedSchemaAt,
+  validatePrecompiledContract,
   validateContractSchema,
 } from "../internal.js";
+import validatePaidSkillListing from "../generated/paid-skill-listing-validator.js";
 import { RECEIPT_CANONICALIZATION } from "./receipt.js";
 import type { ReferenceContract } from "./spine.js";
 
@@ -289,7 +291,12 @@ export function validatePaidInvocationContract(value: unknown, label = "paid_inv
 }
 
 export function validatePaidSkillListingContract(value: unknown, label = "paid_skill_listing") {
-  return validateContractSchema(paidSkillListingV1Schema, value, label);
+  return validatePrecompiledContract(
+    paidSkillListingV1Schema,
+    value,
+    label,
+    validatePaidSkillListing,
+  );
 }
 
 export function validateOfferRevisionRefContract(value: unknown, label = "offer_revision") {

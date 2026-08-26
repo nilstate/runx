@@ -30,6 +30,34 @@
             "pattern": "^[A-Z]{3}$",
             "type": "string"
           },
+          "executor": {
+            "additionalProperties": false,
+            "properties": {
+              "execution_closure_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "package_digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "runner": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "skill": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill",
+              "runner",
+              "package_digest",
+              "execution_closure_digest"
+            ],
+            "type": "object"
+          },
           "mediation": {
             "additionalProperties": false,
             "properties": {

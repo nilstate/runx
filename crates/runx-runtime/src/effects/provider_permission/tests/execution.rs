@@ -223,13 +223,13 @@ fn readback_projection_is_bounded_and_identity_checked() {
 #[test]
 fn result_projection_keeps_present_optional_fields_and_requires_required_fields() {
     let readback = JsonObject::from([
-        ("provider".to_owned(), JsonValue::String("x402".to_owned())),
+        ("provider".to_owned(), JsonValue::String("example".to_owned())),
         (
             "result".to_owned(),
             JsonValue::Object(JsonObject::from([
                 (
-                    "payment_ref".to_owned(),
-                    JsonValue::String("runx:payment:test".to_owned()),
+                    "receipt_ref".to_owned(),
+                    JsonValue::String("runx:receipt:test".to_owned()),
                 ),
                 (
                     "runx_composite".to_owned(),
@@ -243,23 +243,23 @@ fn result_projection_keeps_present_optional_fields_and_requires_required_fields(
         ),
     ]);
     let contract = |required: &str| ProviderReadbackContract {
-        expected_provider: "x402".to_owned(),
-        operation: "payment.x402.read".to_owned(),
-        target: "https://example.test/invocations".to_owned(),
-        grant_id: "grant_x402".to_owned(),
+        expected_provider: "example".to_owned(),
+        operation: "records.read".to_owned(),
+        target: "https://example.test/records".to_owned(),
+        grant_id: "grant_example".to_owned(),
         access: ProviderNativeAccess::Read,
         principal_ref: "runx:principal:operator:test".to_owned(),
         transport: "runx_connect",
         expected_result: None,
         result_fields: Some(vec![required.to_owned()]),
         optional_result_fields: Some(vec!["runx_composite".to_owned()]),
-        finality: test_provider_finality("grant_x402", ProviderNativeAccess::Read),
+        finality: test_provider_finality("grant_example", ProviderNativeAccess::Read),
     };
 
     let output = project_provider_tool_readback(
         PROVIDER_READ_TOOL,
         readback.clone(),
-        contract("payment_ref"),
+        contract("receipt_ref"),
     )
     .expect("optional projection");
     let result = output
@@ -283,11 +283,11 @@ fn result_projection_contract_rejects_overlapping_fields() {
     let inputs = JsonObject::from([
         (
             "result_fields".to_owned(),
-            JsonValue::Array(vec![JsonValue::String("payment_ref".to_owned())]),
+            JsonValue::Array(vec![JsonValue::String("receipt_ref".to_owned())]),
         ),
         (
             "optional_result_fields".to_owned(),
-            JsonValue::Array(vec![JsonValue::String("payment_ref".to_owned())]),
+            JsonValue::Array(vec![JsonValue::String("receipt_ref".to_owned())]),
         ),
     ]);
     let env = BTreeMap::new();

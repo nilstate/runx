@@ -362,6 +362,27 @@ export function validateContractSchema<TSchemaValue extends JsonSchema>(
   throw new Error(`${path} must match ${schemaRef}.`);
 }
 
+export interface PrecompiledContractValidator {
+  (value: unknown): boolean;
+  readonly errors?: readonly ErrorObject[] | null;
+}
+
+export function validatePrecompiledContract<TSchemaValue extends JsonSchema>(
+  schema: TSchemaValue,
+  value: unknown,
+  label: string,
+  validate: PrecompiledContractValidator,
+): Static<TSchemaValue> {
+  if (validate(value)) {
+    return value as Static<TSchemaValue>;
+  }
+  const canonicalSchema = schemaWithGeneratedArtifact(schema);
+  const firstError = validate.errors?.[0];
+  const schemaRef = typeof canonicalSchema.$id === "string" ? canonicalSchema.$id : "contract schema";
+  const errorPath = firstError ? formatAjvErrorPath(label, firstError) : label;
+  throw new Error(`${errorPath} must match ${schemaRef}.`);
+}
+
 export function contractSchemaMatches(
   schema: JsonSchema,
   value: unknown,

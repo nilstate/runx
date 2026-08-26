@@ -27,6 +27,9 @@ importers:
       '@x402/core':
         specifier: 2.23.0
         version: 2.23.0
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
