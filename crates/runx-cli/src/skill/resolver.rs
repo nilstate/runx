@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use runx_contracts::PaidSkillListing;
 use runx_contracts::sha256_prefixed;
 use runx_runtime::registry::{
     InstallCandidate, InstallLocalSkillOptions, materialization_cache_path,
@@ -46,6 +47,8 @@ pub(crate) struct ResolvedSkillRef {
     pub(crate) trust_state: Option<RegistryTrustState>,
     pub(crate) trust_tier: Option<String>,
     pub(crate) registry_key_id: Option<String>,
+    pub(crate) paid_listing: Option<PaidSkillListing>,
+    pub(crate) hosted_registry_url: Option<String>,
     pub(crate) runnable_path: PathBuf,
 }
 
@@ -223,10 +226,17 @@ fn materialize_trusted_registry_skill(
     };
     let target = registry::resolve_registry_target(&plan, env, cwd);
     let source_description = registry::registry_source_description(&target);
+    let hosted_registry_url = match &target {
+        registry::RegistryTarget::Remote { registry_url } => Some(registry_url.clone()),
+        registry::RegistryTarget::Local { .. } => None,
+    };
     let source_fingerprint = registry_source_fingerprint(&target);
     let source_authority = target.manifest_source_authority();
-    let (mut candidate, _acquisition) = registry::install_candidate(&plan, target, env, cwd)
+    let (mut candidate, acquisition) = registry::install_candidate(&plan, target, env, cwd)
         .map_err(|error| error.into_message())?;
+    let paid_listing = acquisition
+        .as_ref()
+        .and_then(|acquired| acquired.paid_listing.clone());
     if cache_root == CacheRoot::Official {
         candidate.manifest_source_authority =
             Some(runx_runtime::registry::RegistryManifestSourceAuthority::OfficialRunx);
@@ -285,6 +295,8 @@ fn materialize_trusted_registry_skill(
             .signed_manifest
             .as_ref()
             .map(|manifest| manifest.signer.key_id.clone()),
+        paid_listing,
+        hosted_registry_url,
         runnable_path,
     })
 }
@@ -620,6 +632,8 @@ fn local_resolved(kind: SkillRefKind, runnable_path: PathBuf) -> ResolvedSkillRe
         trust_state: None,
         trust_tier: None,
         registry_key_id: None,
+        paid_listing: None,
+        hosted_registry_url: None,
         runnable_path,
     }
 }

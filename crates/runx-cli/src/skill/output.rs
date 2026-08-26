@@ -33,7 +33,7 @@ pub(super) fn skill_result_exit_code(value: &JsonValue) -> ExitCode {
         JsonValue::Object(object)
             if matches!(
                 object.get("status").and_then(JsonValue::as_str),
-                Some("needs_agent" | "needs_approval")
+                Some("needs_agent" | "needs_approval" | "payment_required")
             ) =>
         {
             ExitCode::from(2)
@@ -281,7 +281,7 @@ fn semantic_outcome(object: &JsonObject) -> &'static str {
         };
     }
     match object_string(object, "status") {
-        Some("needs_agent" | "needs_approval") => "deferred",
+        Some("needs_agent" | "needs_approval" | "payment_required") => "deferred",
         Some("sealed") => "completed",
         _ => "failed",
     }

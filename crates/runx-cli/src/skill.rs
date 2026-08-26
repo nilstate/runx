@@ -14,6 +14,7 @@ use runx_runtime::{
 mod credential;
 mod environment_readiness;
 mod inputs;
+mod marketplace;
 mod operator_context;
 mod output;
 mod parser;
@@ -140,6 +141,34 @@ pub fn run_native_skill_with_workspace(plan: SkillPlan, workspace: &WorkspaceEnv
         },
         None => plan.inputs.clone(),
     };
+    if resolved.paid_listing.is_some() && resolved.hosted_registry_url.is_some() {
+        let mut output =
+            match marketplace::discover_paid_skill(&resolved, plan.runner.as_deref(), &inputs) {
+                Ok(output) => output,
+                Err(error) => {
+                    return write_skill_failure(
+                        &error,
+                        plan.json,
+                        "marketplace_error",
+                        1,
+                        registry_provenance(&resolved),
+                    );
+                }
+            };
+        attach_registry_provenance(&mut output, &resolved);
+        let exit_code = skill_result_exit_code(&output);
+        return write_skill_output(
+            &output,
+            plan.json,
+            exit_code,
+            ResumeHint {
+                receipt_dir: plan.receipt_dir.as_deref(),
+                answers_path: plan.answers.as_deref(),
+            },
+            &project_runx_dir,
+            plan.diagnostics,
+        );
+    }
     let resume = ResumeHint {
         receipt_dir: plan.receipt_dir.as_deref(),
         answers_path: plan.answers.as_deref(),

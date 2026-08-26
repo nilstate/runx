@@ -223,7 +223,10 @@ fn readback_projection_is_bounded_and_identity_checked() {
 #[test]
 fn result_projection_keeps_present_optional_fields_and_requires_required_fields() {
     let readback = JsonObject::from([
-        ("provider".to_owned(), JsonValue::String("example".to_owned())),
+        (
+            "provider".to_owned(),
+            JsonValue::String("example".to_owned()),
+        ),
         (
             "result".to_owned(),
             JsonValue::Object(JsonObject::from([
