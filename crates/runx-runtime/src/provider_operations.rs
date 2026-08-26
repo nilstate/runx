@@ -2,7 +2,7 @@ use runx_contracts::{JsonObject, JsonValue};
 
 use crate::hosted_api::{
     AuthenticatedHostedApiEnvironment, HostedConnectAction, execute_hosted_connect,
-    request::send_json,
+    request::{send_json, send_json_idempotent},
 };
 use crate::http::{HttpMethod, RuntimeHttpTransport as Transport};
 
@@ -169,15 +169,26 @@ pub fn invoke_provider_operation<T: Transport + ?Sized>(
             message: error.to_string(),
         }
     })?;
-    let response: JsonObject = send_json(
-        transport,
-        environment.base_url(),
-        "provider operation",
-        HttpMethod::Post,
-        "/v1/provider-operations",
-        Some(environment.token()),
-        Some(body),
-    )?;
+    let response: JsonObject = match request.expected_access {
+        Some(ProviderOperationAccess::Read) => send_json_idempotent(
+            transport,
+            environment.base_url(),
+            "provider operation",
+            HttpMethod::Post,
+            "/v1/provider-operations",
+            Some(environment.token()),
+            Some(body),
+        )?,
+        _ => send_json(
+            transport,
+            environment.base_url(),
+            "provider operation",
+            HttpMethod::Post,
+            "/v1/provider-operations",
+            Some(environment.token()),
+            Some(body),
+        )?,
+    };
     parse_provider_operation_response(response, request)
 }
 

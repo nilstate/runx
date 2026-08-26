@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -12,6 +12,7 @@ use crate::http::{
 struct StubTransport {
     requests: RefCell<Vec<HttpRequest>>,
     responses: RefCell<Vec<HttpResponse>>,
+    idempotent_requests: Cell<usize>,
 }
 
 impl StubTransport {
@@ -19,6 +20,7 @@ impl StubTransport {
         Self {
             requests: RefCell::new(Vec::new()),
             responses: RefCell::new(responses.into_iter().rev().collect()),
+            idempotent_requests: Cell::new(0),
         }
     }
 }
@@ -33,6 +35,61 @@ impl Transport for StubTransport {
                 message: "missing stub response".to_owned(),
             })
     }
+
+    fn send_idempotent(&self, request: HttpRequest) -> Result<HttpResponse, RuntimeHttpError> {
+        self.idempotent_requests
+            .set(self.idempotent_requests.get().saturating_add(1));
+        self.send(request)
+    }
+}
+
+#[test]
+fn provider_read_uses_only_the_idempotent_transport_lane() {
+    let env = BTreeMap::from([("RUNX_PUBLIC_API_TOKEN".to_owned(), "rxk_test".to_owned())]);
+    let transport = StubTransport::with_responses(vec![
+        HttpResponse::new(
+            200,
+            serde_json::json!({
+                "status": "success",
+                "principal": {"principal_id": "operator:test"}
+            })
+            .to_string(),
+        ),
+        HttpResponse::new(
+            200,
+            serde_json::json!({
+                "status": "success",
+                "provider": "x402",
+                "operation": "payment.x402.read",
+                "target": "https://vendor.example/v1/invocations",
+                "access": "read",
+                "readback_ref": "runx:provider-readback:payment-1",
+                "result": {"status": "settled"}
+            })
+            .to_string(),
+        ),
+    ]);
+    let environment =
+        HostedApiEnvironment::resolve(Some("https://api.runx.test"), None, &env, Path::new("."))
+            .expect("environment")
+            .authenticate(&transport)
+            .expect("authenticated");
+
+    invoke_provider_operation(
+        &transport,
+        &environment,
+        &ProviderOperationRequest {
+            grant_id: "grant_x402_1".to_owned(),
+            operation: "payment.x402.read".to_owned(),
+            target: "https://vendor.example/v1/invocations".to_owned(),
+            scopes: vec!["payment.x402.read".to_owned()],
+            input: JsonObject::new(),
+            expected_access: Some(ProviderOperationAccess::Read),
+        },
+    )
+    .expect("provider read");
+
+    assert_eq!(transport.idempotent_requests.get(), 1);
 }
 
 #[test]
@@ -90,6 +147,7 @@ fn provider_operation_authenticates_and_returns_bounded_readback() {
         Some("slack")
     );
     assert_eq!(transport.requests.borrow().len(), 2);
+    assert_eq!(transport.idempotent_requests.get(), 0);
     let request_body: JsonValue = serde_json::from_str(
         transport.requests.borrow()[1]
             .body
