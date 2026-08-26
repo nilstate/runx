@@ -554,7 +554,7 @@
   },
   {
     "skill_id": "runx/x402-pay",
-    "version": "sha-b5e9ac2d446a",
+    "version": "sha-a579d65d4bab",
     "digest": "156cff81915fa2b642b4ccf1bee412df54ceb99bd69d1b323319726ce550e4d1",
     "catalog_visibility": "public",
     "catalog_role": "branded"
