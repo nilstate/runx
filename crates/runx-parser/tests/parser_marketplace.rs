@@ -78,6 +78,11 @@ fn marketplace_accepts_rail_neutral_mediated_endpoint_terms() -> Result<(), Stri
       accepted_settlement_families: [x402]
       input_schema_digest: {DIGEST_A}
       output_schema_digest: {DIGEST_B}
+      executor:
+        skill: marketplace-invoke
+        runner: invoke
+        package_digest: {DIGEST_A}
+        execution_closure_digest: {DIGEST_B}
       mediation:
         endpoint_url: https://vendor.example/v1/invocations
         vendor_amount_minor: 100
@@ -174,5 +179,47 @@ fn marketplace_rejects_ambiguous_terms() -> Result<(), String> {
         };
         assert!(error.contains(expected), "{error}");
     }
+    Ok(())
+}
+
+#[test]
+fn marketplace_rejects_partial_endpoint_execution_binding() -> Result<(), String> {
+    let missing_executor = manifest(&format!(
+        r#"marketplace:
+  offers:
+    transcribe:
+      amount_minor: 125
+      currency: USD
+      accepted_settlement_families: [x402]
+      input_schema_digest: {DIGEST_A}
+      output_schema_digest: {DIGEST_B}
+      mediation:
+        endpoint_url: https://vendor.example/v1/invocations
+        vendor_amount_minor: 100
+        platform_fee_minor: 25
+        currency: USD
+        settlement_family: x402
+        expected_receipt_class: executed"#,
+    ));
+    let error = validate(&missing_executor).expect_err("partial endpoint binding passed");
+    assert!(error.contains("must declare executor and mediation together"));
+
+    let missing_mediation = manifest(&format!(
+        r#"marketplace:
+  offers:
+    transcribe:
+      amount_minor: 125
+      currency: USD
+      accepted_settlement_families: [x402]
+      input_schema_digest: {DIGEST_A}
+      output_schema_digest: {DIGEST_B}
+      executor:
+        skill: marketplace-invoke
+        runner: invoke
+        package_digest: {DIGEST_A}
+        execution_closure_digest: {DIGEST_B}"#,
+    ));
+    let error = validate(&missing_mediation).expect_err("unmediated executor binding passed");
+    assert!(error.contains("must declare executor and mediation together"));
     Ok(())
 }

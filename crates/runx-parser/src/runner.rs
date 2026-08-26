@@ -199,6 +199,11 @@ fn validate_marketplace(
         let terms = serde_json::from_value::<PaidSkillOfferTerms>(serialized).map_err(|error| {
             FIELDS.validation_error(format!("marketplace.offers.{runner} is invalid: {error}"))
         })?;
+        if terms.mediation.is_some() != terms.executor.is_some() {
+            return Err(FIELDS.validation_error(format!(
+                "marketplace.offers.{runner} must declare executor and mediation together."
+            )));
+        }
         offers.insert(runner.clone(), terms);
     }
     Ok(Some(MarketplaceManifest { offers }))

@@ -55,6 +55,11 @@ fn mediated_profile(vendor_amount_minor: u64, platform_fee_minor: u64) -> String
         &format!("      output_schema_digest: {DIGEST_B}"),
         &format!(
             r#"      output_schema_digest: {DIGEST_B}
+      executor:
+        skill: marketplace-invoke
+        runner: invoke
+        package_digest: {DIGEST_A}
+        execution_closure_digest: {DIGEST_B}
       mediation:
         endpoint_url: https://vendor.example/v1/invocations
         vendor_amount_minor: {vendor_amount_minor}

@@ -31,6 +31,8 @@ pub struct PaidSkillOfferTerms {
     pub output_schema_digest: Sha256Digest,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mediation: Option<PaidSkillMediationTerms>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor: Option<PaidSkillExecutorBinding>,
 }
 
 /// Seller-authored endpoint terms. Registry identity supplies `listing_ref`.
@@ -45,6 +47,20 @@ pub struct PaidSkillMediationTerms {
     pub expected_receipt_class: MediatedReceiptClass,
 }
 
+/// Exact public execution package selected by an endpoint listing.
+///
+/// The listing package remains inert commercial data. Hosted admission resolves
+/// this binding and refuses package or closure drift before the paid invocation
+/// is quoted.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillExecutorBinding {
+    pub skill: NonEmptyString,
+    pub runner: NonEmptyString,
+    pub package_digest: Sha256Digest,
+    pub execution_closure_digest: Sha256Digest,
+}
+
 /// One immutable, registry-resolved runner offer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
@@ -55,6 +71,8 @@ pub struct PaidSkillRunnerOffer {
     pub accepted_settlement_families: SettlementFamilies,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mediation: Option<PaidInvocationMediation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor: Option<PaidSkillExecutorBinding>,
 }
 
 impl PaidSkillRunnerOffer {
@@ -63,6 +81,9 @@ impl PaidSkillRunnerOffer {
         listing_ref: MediationListingRef,
         terms: &PaidSkillOfferTerms,
     ) -> Option<Self> {
+        if terms.mediation.is_some() != terms.executor.is_some() {
+            return None;
+        }
         let mediation = terms
             .mediation
             .as_ref()
@@ -96,6 +117,7 @@ impl PaidSkillRunnerOffer {
             currency: terms.currency.clone(),
             accepted_settlement_families: terms.accepted_settlement_families.clone(),
             mediation,
+            executor: terms.executor.clone(),
         })
     }
 }
@@ -229,6 +251,12 @@ mod tests {
             "accepted_settlement_families": ["x402"],
             "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
             "output_schema_digest": format!("sha256:{}", "e".repeat(64)),
+            "executor": {
+                "skill": "marketplace-invoke",
+                "runner": "invoke",
+                "package_digest": format!("sha256:{}", "6".repeat(64)),
+                "execution_closure_digest": format!("sha256:{}", "7".repeat(64))
+            },
             "mediation": {
                 "endpoint_url": "https://vendor.example/v1/invocations",
                 "vendor_amount_minor": 100,
@@ -256,6 +284,10 @@ mod tests {
                 .map(|value| value.listing_ref.as_str()),
             Some("runx:listing:acme/transcribe@1.0.0#transcribe"),
         );
+        assert_eq!(
+            offer.executor.as_ref().map(|value| value.skill.as_str()),
+            Some("marketplace-invoke")
+        );
 
         let mut wrong_total = terms.clone();
         wrong_total.amount_minor = PortableAmountMinor::new(126).ok_or("invalid test amount")?;
@@ -269,14 +301,26 @@ mod tests {
             .is_none()
         );
 
-        let mut wrong_rail = terms;
+        let mut wrong_rail = terms.clone();
         wrong_rail.accepted_settlement_families = serde_json::from_value(json!(["other-rail"]))?;
+        assert!(
+            PaidSkillRunnerOffer::from_terms(
+                revision.clone(),
+                MediationListingRef::new("runx:listing:acme/transcribe@1.0.0#transcribe")
+                    .ok_or("invalid test listing ref")?,
+                &wrong_rail,
+            )
+            .is_none()
+        );
+
+        let mut missing_executor = terms;
+        missing_executor.executor = None;
         assert!(
             PaidSkillRunnerOffer::from_terms(
                 revision,
                 MediationListingRef::new("runx:listing:acme/transcribe@1.0.0#transcribe")
                     .ok_or("invalid test listing ref")?,
-                &wrong_rail,
+                &missing_executor,
             )
             .is_none()
         );

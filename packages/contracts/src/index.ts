@@ -369,6 +369,7 @@ export {
   type OfferRevisionRefContract,
   type MediatedReceiptClassContract,
   type PaidInvocationMediationContract,
+  type PaidSkillExecutorBindingContract,
   type PaidSkillMediationTermsContract,
   type PaidSkillOfferTermsContract,
   type PaidSkillRunnerOfferContract,

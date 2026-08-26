@@ -81,6 +81,13 @@ export type PaidSkillMediationTermsContract = DeepReadonly<
   Omit<PaidInvocationMediationContract, "listing_ref">
 >;
 
+export type PaidSkillExecutorBindingContract = DeepReadonly<{
+  skill: string;
+  runner: string;
+  package_digest: Sha256DigestContract;
+  execution_closure_digest: Sha256DigestContract;
+}>;
+
 export type PaidSkillOfferTermsContract = DeepReadonly<{
   amount_minor: number;
   currency: CurrencyCodeContract;
@@ -88,6 +95,7 @@ export type PaidSkillOfferTermsContract = DeepReadonly<{
   input_schema_digest: Sha256DigestContract;
   output_schema_digest: Sha256DigestContract;
   mediation?: PaidSkillMediationTermsContract;
+  executor?: PaidSkillExecutorBindingContract;
 }>;
 
 export type PaidSkillRunnerOfferContract = DeepReadonly<{
@@ -96,6 +104,7 @@ export type PaidSkillRunnerOfferContract = DeepReadonly<{
   currency: CurrencyCodeContract;
   accepted_settlement_families: readonly SettlementFamilyContract[];
   mediation?: PaidInvocationMediationContract;
+  executor?: PaidSkillExecutorBindingContract;
 }>;
 
 export type PaidSkillListingContract = DeepReadonly<{

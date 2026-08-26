@@ -222,8 +222,8 @@ pub use paid_invocation_fingerprint::{
     fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
 };
 pub use paid_skill_listing::{
-    PAID_SKILL_LISTING_SCHEMA, PaidSkillListing, PaidSkillMediationTerms, PaidSkillOfferTerms,
-    PaidSkillOffers, PaidSkillRunnerOffer,
+    PAID_SKILL_LISTING_SCHEMA, PaidSkillExecutorBinding, PaidSkillListing, PaidSkillMediationTerms,
+    PaidSkillOfferTerms, PaidSkillOffers, PaidSkillRunnerOffer,
 };
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,

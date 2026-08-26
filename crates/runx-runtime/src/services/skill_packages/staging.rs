@@ -158,7 +158,25 @@ pub(super) fn isolated_harness_env(
             value.to_string_lossy().into_owned(),
         );
     }
+    if let Some(registry_dir) = admitted_registry_dir(repo_root, env) {
+        isolated.insert("RUNX_REGISTRY_DIR".to_owned(), registry_dir);
+    }
     isolated
+}
+
+fn admitted_registry_dir(repo_root: &Path, env: &BTreeMap<String, String>) -> Option<String> {
+    let configured = Path::new(env.get("RUNX_REGISTRY_DIR")?);
+    if !configured.is_absolute() {
+        return None;
+    }
+    let repo_root = fs::canonicalize(repo_root).ok()?;
+    let registry_dir = fs::canonicalize(configured).ok()?;
+    if !registry_dir.is_dir()
+        || (registry_dir != repo_root && !registry_dir.starts_with(&repo_root))
+    {
+        return None;
+    }
+    Some(registry_dir.to_string_lossy().into_owned())
 }
 
 pub(super) struct CandidateStage {
@@ -267,5 +285,48 @@ fn rebase_bundle(
 impl Drop for CandidateStage {
     fn drop(&mut self) {
         let _ignored = fs::remove_dir_all(&self.root);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::isolated_harness_env;
+    use std::collections::BTreeMap;
+    use tempfile::tempdir;
+
+    #[test]
+    fn isolated_harness_admits_only_an_in_workspace_registry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = tempdir()?;
+        let registry = workspace.path().join(".runx/authoring-registry");
+        std::fs::create_dir_all(&registry)?;
+        let env = BTreeMap::from([(
+            "RUNX_REGISTRY_DIR".to_owned(),
+            registry.to_string_lossy().into_owned(),
+        )]);
+
+        let isolated = isolated_harness_env(workspace.path(), &env);
+
+        assert_eq!(
+            isolated.get("RUNX_REGISTRY_DIR").map(String::as_str),
+            Some(registry.canonicalize()?.to_string_lossy().as_ref())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn isolated_harness_drops_an_out_of_workspace_registry()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = tempdir()?;
+        let registry = tempdir()?;
+        let env = BTreeMap::from([(
+            "RUNX_REGISTRY_DIR".to_owned(),
+            registry.path().to_string_lossy().into_owned(),
+        )]);
+
+        let isolated = isolated_harness_env(workspace.path(), &env);
+
+        assert!(!isolated.contains_key("RUNX_REGISTRY_DIR"));
+        Ok(())
     }
 }

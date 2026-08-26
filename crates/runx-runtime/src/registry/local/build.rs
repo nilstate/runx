@@ -167,7 +167,7 @@ fn resolve_paid_listing(
             )
             .ok_or_else(|| {
                 invalid_paid_listing(
-                    "mediated offer total must equal vendor amount plus platform fee in one currency",
+                    "mediated offer must bind an executor and its total must equal vendor amount plus platform fee in one currency",
                 )
             })?;
             Ok::<_, LocalRegistryError>((
