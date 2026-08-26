@@ -2,8 +2,8 @@ use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -225,7 +225,6 @@ static INDEX: TypedNativeCapability<EvidenceIndexInput, EvidenceIndexOutput> =
             effect: CapabilityEffect::Read,
             approval: CapabilityApproval::None,
             artifacts: CapabilityArtifacts::None,
-            admission: CapabilityAdmission::ReusedBy(&["research", "content-pipeline"]),
             fields: INDEX_FIELDS,
         },
         super::index_sources,
@@ -241,7 +240,6 @@ static VERIFY: TypedNativeCapability<EvidenceVerifyInput, EvidenceVerifyOutput> 
             effect: CapabilityEffect::Read,
             approval: CapabilityApproval::None,
             artifacts: CapabilityArtifacts::None,
-            admission: CapabilityAdmission::ReusedBy(&["ghostwrite", "deep-research"]),
             fields: VERIFY_FIELDS,
         },
         super::verify_artifact,

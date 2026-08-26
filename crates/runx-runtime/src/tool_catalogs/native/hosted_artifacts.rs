@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 use crate::hosted_api::request::send_json_idempotent;
 use crate::http::NativeHttpTransport;
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput, HostedApiEnvironment,
-    RuntimeError, hosted_private_network_allowed,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput, HostedApiEnvironment, RuntimeError,
+    hosted_private_network_allowed,
 };
 
 use super::capability::{NativeCapability, TypedNativeCapability};
@@ -77,9 +77,6 @@ static ALLOCATE: TypedNativeCapability<ArtifactAllocateInput, HostedArtifactOutp
                 output: "artifact_operation",
                 packet: "runx.provider.operation.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "artifact bytes, digest, media type, and run-bound replay identity must agree before materialization",
-            ),
             fields: ALLOCATE_FIELDS,
         },
         allocate,

@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::services::DEFAULT_ARTIFACT_PAGE_BYTES;
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -116,9 +116,6 @@ static ADMIT: TypedNativeCapability<ArtifactAdmitInput, ArtifactAdmitOutput> =
                 output: "local_artifact",
                 packet: "runx.local_artifact.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "large immutable content must cross execution boundaries by contained digest-bound reference",
-            ),
             fields: ADMIT_FIELDS,
         },
         super::admit,
@@ -137,9 +134,6 @@ static READ: TypedNativeCapability<ArtifactReadInput, ArtifactReadOutput> =
                 output: "artifact_page",
                 packet: "runx.local_artifact.page.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "artifact pages must preserve source identity and exact byte continuation without exposing a host path",
-            ),
             fields: READ_FIELDS,
         },
         super::read,

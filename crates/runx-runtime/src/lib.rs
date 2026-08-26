@@ -73,9 +73,8 @@ pub use adapter::{
 };
 pub use approval::{ApprovalError, LocalApprovalGateResolver, request_approval};
 pub use capability::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityContract,
-    CapabilityDefinition, CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
-    TypedCapability,
+    CapabilityApproval, CapabilityArtifacts, CapabilityContract, CapabilityDefinition,
+    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput, TypedCapability,
 };
 pub use config::{
     ConfigError, ConfigKey, ManagedAgentConfig, RunxAgentConfig, RunxConfigFile,

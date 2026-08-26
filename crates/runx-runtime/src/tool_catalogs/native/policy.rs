@@ -2,8 +2,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::NativeInvocation;
@@ -60,9 +60,6 @@ static LINT: TypedNativeCapability<PolicyLintInput, PolicyLintOutput> = TypedNat
             output: "policy_lint",
             packet: "runx.policy.lint.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "policy authoring and policy admission must use the same engine",
-        ),
         fields: FIELDS,
     },
     lint_policy,

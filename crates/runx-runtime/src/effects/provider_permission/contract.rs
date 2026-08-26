@@ -2,8 +2,8 @@ use runx_contracts::JsonObject;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityContract,
-    CapabilityDefinition, CapabilityEffect, CapabilityField, CapabilityInput, TypedCapability,
+    CapabilityApproval, CapabilityArtifacts, CapabilityContract, CapabilityDefinition,
+    CapabilityEffect, CapabilityField, CapabilityInput, TypedCapability,
 };
 
 use super::{PROVIDER_MUTATE_TOOL, PROVIDER_READ_TOOL};
@@ -120,9 +120,6 @@ static PROVIDER_READ: TypedCapability<ProviderReadInput> = TypedCapability::new(
             output: "provider_operation",
             packet: "runx.provider.operation.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "provider reads require transport-bound authority and identity-bound readback",
-        ),
         fields: READ_FIELDS,
     },
 );
@@ -139,9 +136,6 @@ static PROVIDER_MUTATE: TypedCapability<ProviderMutateInput> = TypedCapability::
             output: "provider_operation",
             packet: "runx.provider.operation.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "provider mutations require exact approval, idempotency, and independent readback",
-        ),
         fields: MUTATE_FIELDS,
     },
 );

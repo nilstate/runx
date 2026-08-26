@@ -4,8 +4,8 @@ use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -149,7 +149,6 @@ static PLAN: TypedNativeCapability<CommandInput, CommandPlanOutput> = TypedNativ
             output: "command_plan",
             packet: "runx.command.plan.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["release", "sourcey"]),
         fields: FIELDS,
     },
     super::plan,
@@ -168,9 +167,6 @@ static EXECUTE: TypedNativeCapability<CommandInput, CommandExecutionOutput> =
                 output: "command_execution",
                 packet: "runx.command.execution.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "generic commands require exact argv, admitted environment, and supervised host execution",
-            ),
             fields: FIELDS,
         },
         super::execute,

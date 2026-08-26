@@ -52,12 +52,6 @@ pub enum CapabilityArtifacts {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CapabilityAdmission {
-    RuntimeInvariant(&'static str),
-    ReusedBy(&'static [&'static str]),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CapabilityField {
     pub name: &'static str,
     pub description: &'static str,
@@ -72,7 +66,6 @@ pub struct CapabilityDefinition {
     pub effect: CapabilityEffect,
     pub approval: CapabilityApproval,
     pub artifacts: CapabilityArtifacts,
-    pub admission: CapabilityAdmission,
     pub fields: &'static [CapabilityField],
 }
 
@@ -180,7 +173,6 @@ pub(crate) fn validate_capability_contract(
 ) -> Result<(), RuntimeError> {
     let definition = contract.definition();
     validate_capability_identity(definition)?;
-    validate_capability_admission(definition)?;
     validate_capability_artifacts(definition)?;
     validate_capability_fields(definition, &contract.input_schema()?)?;
     validate_capability_output_schema(definition, &contract.output_schema())?;
@@ -245,28 +237,6 @@ fn validate_capability_identity(definition: &CapabilityDefinition) -> Result<(),
         if value.trim().is_empty() {
             return Err(invalid(definition.id, format!("{field} must not be empty")));
         }
-    }
-    Ok(())
-}
-
-fn validate_capability_admission(definition: &CapabilityDefinition) -> Result<(), RuntimeError> {
-    match definition.admission {
-        CapabilityAdmission::RuntimeInvariant(reason) if reason.trim().is_empty() => {
-            return Err(invalid(
-                definition.id,
-                "runtime-invariant admission must name the invariant",
-            ));
-        }
-        CapabilityAdmission::ReusedBy(consumers) => {
-            let unique = consumers.iter().copied().collect::<BTreeSet<_>>();
-            if unique.len() < 2 || unique.iter().any(|consumer| consumer.trim().is_empty()) {
-                return Err(invalid(
-                    definition.id,
-                    "reuse admission requires two distinct named consumers",
-                ));
-            }
-        }
-        CapabilityAdmission::RuntimeInvariant(_) => {}
     }
     Ok(())
 }

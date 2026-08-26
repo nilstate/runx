@@ -2,8 +2,8 @@ use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -66,7 +66,6 @@ static FETCH: TypedNativeCapability<WebFetchInput, WebFetchOutput> = TypedNative
             output: "fetch_result",
             packet: "runx.fetch.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["research", "deep-research"]),
         fields: FIELDS,
     },
     super::fetch,

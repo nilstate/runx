@@ -3,8 +3,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -119,7 +119,6 @@ static CURRENT_BRANCH: TypedNativeCapability<GitInput, GitBranchOutput> =
                 output: "git_branch",
                 packet: "runx.git.branch.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["release", "issue-to-pr"]),
             fields: ROOT_FIELDS,
         },
         super::current_branch,
@@ -137,7 +136,6 @@ static STATUS: TypedNativeCapability<GitInput, GitStatusOutput> = TypedNativeCap
             output: "git_status",
             packet: "runx.git.status.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["release", "skill-lab"]),
         fields: ROOT_FIELDS,
     },
     super::status,
@@ -155,7 +153,6 @@ static DIFF: TypedNativeCapability<GitDiffInput, GitDiffOutput> = TypedNativeCap
             output: "git_diff",
             packet: "runx.git.diff.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["release", "issue-to-pr"]),
         fields: DIFF_FIELDS,
     },
     super::diff_name_only,
@@ -174,9 +171,6 @@ static BLOB_DIGEST: TypedNativeCapability<GitBlobDigestInput, GitBlobDigestOutpu
                 output: "git_blob_digest",
                 packet: "runx.git.blob_digest.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "pinned Git source identity must use Git's canonical blob encoding",
-            ),
             fields: BLOB_FIELDS,
         },
         super::blob_digest,

@@ -2,8 +2,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -69,7 +69,6 @@ static CAPTURE_HELP: TypedNativeCapability<CaptureHelpInput, CliHelpOutput> =
                 output: "cli_help",
                 packet: "runx.cli.help.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["prior-art", "skill-lab"]),
             fields: FIELDS,
         },
         super::capture_help,

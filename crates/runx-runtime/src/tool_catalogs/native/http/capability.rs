@@ -2,8 +2,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -56,7 +56,6 @@ static READ: TypedNativeCapability<HttpBatchInput, HttpBatchOutput> = TypedNativ
             output: "http_execution",
             packet: "runx.http.execution.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["web-fetch", "cve-audit"]),
         fields: FIELDS,
     },
     super::read,
@@ -74,7 +73,6 @@ static QUERY: TypedNativeCapability<HttpBatchInput, HttpBatchOutput> = TypedNati
             output: "http_execution",
             packet: "runx.http.execution.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["google-analytics", "google-search-console"]),
         fields: FIELDS,
     },
     super::query,
@@ -92,12 +90,6 @@ static EXECUTE: TypedNativeCapability<HttpBatchInput, HttpBatchOutput> = TypedNa
             output: "http_execution",
             packet: "runx.http.execution.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&[
-            "twitter",
-            "moltbook",
-            "n8n-handoff",
-            "zapier-handoff",
-        ]),
         fields: FIELDS,
     },
     super::execute,

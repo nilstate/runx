@@ -1,7 +1,4 @@
-use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect,
-};
+use crate::{CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect};
 
 use super::capability::{NativeCapability, TypedNativeCapability};
 
@@ -34,7 +31,6 @@ static INSPECT: TypedNativeCapability<InspectInput, AuthoringInspectOutput> =
                 output: "authoring_context",
                 packet: "runx.skill_lab.authoring_context.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["skill-lab", "runx-new"]),
             fields: INSPECT_FIELDS,
         },
         inspect_skill,
@@ -52,7 +48,6 @@ static VALIDATE: TypedNativeCapability<ValidateInput, ValidateOutput> = TypedNat
             output: "skill_validation",
             packet: "runx.skill.validation.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["skill-lab", "runx-new"]),
         fields: VALIDATE_FIELDS,
     },
     validate_skill,
@@ -70,7 +65,6 @@ static PLAN: TypedNativeCapability<PlanInput, PlanOutput> = TypedNativeCapabilit
             output: "architecture_plan",
             packet: "runx.skill.architecture_plan.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["skill-lab", "runx-new"]),
         fields: PLAN_FIELDS,
     },
     plan_skill,
@@ -88,7 +82,6 @@ static BIND: TypedNativeCapability<BindInput, BindOutput> = TypedNativeCapabilit
             output: "change_bundle",
             packet: "runx.skill.change_bundle.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["skill-lab", "runx-new"]),
         fields: BIND_FIELDS,
     },
     bind_skill,
@@ -106,9 +99,6 @@ static APPLY: TypedNativeCapability<ApplyInput, ApplyOutput> = TypedNativeCapabi
             output: "apply_result",
             packet: "runx.skill.apply_result.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "skill authoring writes require one digest-bound transactional owner",
-        ),
         fields: APPLY_FIELDS,
     },
     apply_skill,

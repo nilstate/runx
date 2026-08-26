@@ -2,8 +2,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::capability::{NativeCapability, TypedNativeCapability};
@@ -146,9 +146,6 @@ static DIGEST: TypedNativeCapability<DigestInput, DigestOutput> = TypedNativeCap
             output: "digest_result",
             packet: "runx.data.digest.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "digest identities must use one canonical serialization",
-        ),
         fields: DIGEST_FIELDS,
     },
     digest_value,
@@ -166,7 +163,6 @@ static COMPARE: TypedNativeCapability<CompareInput, CompareOutput> = TypedNative
             output: "comparison",
             packet: "runx.data.comparison.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["dispute-respond", "twitter"]),
         fields: COMPARE_FIELDS,
     },
     compare_values,
@@ -185,9 +181,6 @@ static HARNESS_CONTEXT: TypedNativeCapability<HarnessContextInput, HarnessContex
                 output: "harness_context",
                 packet: "runx.control.harness_context.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "harness context must be explicit rather than inferred from ambient state",
-            ),
             fields: CONTEXT_FIELDS,
         },
         capture_harness_context,

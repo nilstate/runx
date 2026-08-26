@@ -75,7 +75,6 @@ mod tests {
                 output: "deployment",
                 packet: "mock.deployment.v1",
             },
-            admission: crate::CapabilityAdmission::ReusedBy(&["test-a", "test-b"]),
             fields: &[crate::CapabilityField {
                 name: "resource",
                 description: "Resource to inspect.",
@@ -101,7 +100,6 @@ mod tests {
             effect: crate::CapabilityEffect::Read,
             approval: crate::CapabilityApproval::None,
             artifacts: crate::CapabilityArtifacts::None,
-            admission: crate::CapabilityAdmission::ReusedBy(&["test-a", "test-b"]),
             fields: &[],
         });
     #[cfg(feature = "catalog")]

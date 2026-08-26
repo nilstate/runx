@@ -2,8 +2,8 @@ use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -250,9 +250,6 @@ static READ: TypedNativeCapability<FileReadInput, FileReadOutput> = TypedNativeC
             output: "file_read",
             packet: "runx.fs.file_read.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "all workspace reads require canonical path and symlink containment",
-        ),
         fields: READ_FIELDS,
     },
     super::read,
@@ -271,7 +268,6 @@ static READ_BUNDLE: TypedNativeCapability<FileReadBundleInput, FileReadBundleOut
                 output: "file_read_bundle",
                 packet: "runx.fs.file_read_bundle.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["skill-lab", "release"]),
             fields: READ_BUNDLE_FIELDS,
         },
         super::read_bundle,
@@ -289,9 +285,6 @@ static WRITE: TypedNativeCapability<FileWriteInput, FileWriteOutput> = TypedNati
             output: "file_write",
             packet: "runx.fs.file_write.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "all workspace mutation requires one transactional containment owner",
-        ),
         fields: WRITE_FIELDS,
     },
     super::write,
@@ -310,7 +303,6 @@ static APPLY: TypedNativeCapability<FileApplyBundleInput, FileApplyBundleOutput>
                 output: "file_bundle_apply",
                 packet: "runx.fs.apply_bundle.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["skill-lab", "sourcey"]),
             fields: APPLY_FIELDS,
         },
         super::apply_files,

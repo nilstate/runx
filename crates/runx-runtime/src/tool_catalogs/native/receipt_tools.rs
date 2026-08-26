@@ -2,8 +2,8 @@ use runx_contracts::{JsonNumber, JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput,
 };
 
 use super::NativeInvocation;
@@ -137,7 +137,6 @@ static QUERY: TypedNativeCapability<ReceiptQueryInput, ReceiptQueryOutput> =
                 output: "receipt_query",
                 packet: "runx.receipt.query.v1",
             },
-            admission: CapabilityAdmission::ReusedBy(&["run-history", "ledger"]),
             fields: QUERY_FIELDS,
         },
         query_receipts,
@@ -156,9 +155,6 @@ static PROVE: TypedNativeCapability<ReceiptProofInput, ReceiptProofOutput> =
                 output: "receipt_proof",
                 packet: "runx.receipt.proof.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "receipt proof must share canonical storage and verification",
-            ),
             fields: PROOF_FIELDS,
         },
         prove_receipts,

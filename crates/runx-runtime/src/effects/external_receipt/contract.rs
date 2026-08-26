@@ -3,9 +3,8 @@ use serde::{Deserialize, Serialize};
 use runx_contracts::ExternalReceiptVerification;
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityContract,
-    CapabilityDefinition, CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput,
-    TypedCapability,
+    CapabilityApproval, CapabilityArtifacts, CapabilityContract, CapabilityDefinition,
+    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput, TypedCapability,
 };
 
 use super::EXTERNAL_RECEIPT_VERIFY_TOOL;
@@ -72,9 +71,6 @@ static VERIFY: TypedCapability<ExternalReceiptVerifyInput> = TypedCapability::ne
             output: "external_receipt_verification",
             packet: "runx.external_receipt.verification.v1",
         },
-        admission: CapabilityAdmission::RuntimeInvariant(
-            "external accountability evidence must be verified by its canonical verifier instead of trusted from model-authored fields",
-        ),
         fields: FIELDS,
     },
 );

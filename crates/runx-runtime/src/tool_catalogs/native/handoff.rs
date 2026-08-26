@@ -9,8 +9,8 @@ use runx_contracts::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput, CapabilityOutput, RuntimeError,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput, CapabilityOutput, RuntimeError,
 };
 
 use super::capability::{NativeCapability, TypedNativeCapability};
@@ -106,7 +106,6 @@ static PREPARE: TypedNativeCapability<HandoffInput, HandoffOutput> = TypedNative
             output: "handoff_context",
             packet: "runx.orchestrator.handoff_context.v1",
         },
-        admission: CapabilityAdmission::ReusedBy(&["n8n-handoff", "zapier-handoff"]),
         fields: FIELDS,
     },
     prepare,

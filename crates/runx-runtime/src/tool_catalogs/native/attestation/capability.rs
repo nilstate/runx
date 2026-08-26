@@ -2,8 +2,8 @@ use runx_contracts::{JsonObject, JsonValue};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CapabilityAdmission, CapabilityApproval, CapabilityArtifacts, CapabilityDefinition,
-    CapabilityEffect, CapabilityField, CapabilityInput,
+    CapabilityApproval, CapabilityArtifacts, CapabilityDefinition, CapabilityEffect,
+    CapabilityField, CapabilityInput,
 };
 
 use super::super::capability::{NativeCapability, TypedNativeCapability};
@@ -58,9 +58,6 @@ static ATTEST: TypedNativeCapability<AttestationInput, AttestationOutput> =
                 output: "attestation",
                 packet: "runx.attestation.v1",
             },
-            admission: CapabilityAdmission::RuntimeInvariant(
-                "off-runtime claims must remain explicitly unverified and evidence-bound",
-            ),
             fields: FIELDS,
         },
         super::prepare,
