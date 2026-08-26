@@ -39,6 +39,11 @@ const DEFAULT_HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 #[cfg(feature = "async-http")]
 const MANAGED_AGENT_REQUEST_TIMEOUT: Duration = Duration::from_secs(180);
+/// Provider operations may contain one adapter-owned synchronous budget of up
+/// to 120 seconds. Keep the control-plane envelope above that budget so the
+/// caller never abandons a still-running, idempotently recoverable effect.
+#[cfg(feature = "async-http")]
+const PROVIDER_OPERATION_REQUEST_TIMEOUT: Duration = Duration::from_secs(180);
 #[cfg(feature = "async-http")]
 const MAX_SAFE_READ_ATTEMPTS: usize = 3;
 #[cfg(feature = "async-http")]
@@ -48,7 +53,7 @@ const MAX_SAFE_READ_RETRY_DELAY: Duration = Duration::from_secs(2);
 #[cfg(feature = "async-http")]
 static HTTP_CLIENT_RUNTIME: RetryableCell<tokio::runtime::Runtime> = RetryableCell::new();
 #[cfg(feature = "async-http")]
-const HTTP_CLIENT_PROFILE_COUNT: usize = 3;
+const HTTP_CLIENT_PROFILE_COUNT: usize = 5;
 #[cfg(feature = "async-http")]
 static HTTP_CLIENTS: [RetryableCell<reqwest::Client>; HTTP_CLIENT_PROFILE_COUNT] =
     [const { RetryableCell::new() }; HTTP_CLIENT_PROFILE_COUNT];
@@ -91,6 +96,8 @@ enum TransportProfile {
     PublicStandard = 0,
     PrivateStandard = 1,
     PublicPatient = 2,
+    PublicProviderOperation = 3,
+    PrivateProviderOperation = 4,
 }
 
 #[cfg(feature = "async-http")]
@@ -119,6 +126,16 @@ impl TransportProfile {
                 request_timeout: MANAGED_AGENT_REQUEST_TIMEOUT,
                 connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
                 allow_private_networks: false,
+            },
+            Self::PublicProviderOperation => TransportConfig {
+                request_timeout: PROVIDER_OPERATION_REQUEST_TIMEOUT,
+                connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
+                allow_private_networks: false,
+            },
+            Self::PrivateProviderOperation => TransportConfig {
+                request_timeout: PROVIDER_OPERATION_REQUEST_TIMEOUT,
+                connect_timeout: DEFAULT_HTTP_CONNECT_TIMEOUT,
+                allow_private_networks: true,
             },
         }
     }
@@ -181,6 +198,18 @@ impl ReqwestHttpTransport {
     /// guard and short connect timeout.
     pub fn for_managed_agent() -> Result<Self, RuntimeHttpError> {
         Self::from_profile(TransportProfile::PublicPatient)
+    }
+
+    /// Build the transport used only for authenticated provider operations.
+    /// The adapter owns its narrower operation deadline; this envelope prevents
+    /// the control-plane request from timing out first and creating an unknown
+    /// outcome for an effect that may still settle successfully.
+    pub fn for_provider_operation(allow_private_networks: bool) -> Result<Self, RuntimeHttpError> {
+        Self::from_profile(if allow_private_networks {
+            TransportProfile::PrivateProviderOperation
+        } else {
+            TransportProfile::PublicProviderOperation
+        })
     }
 
     #[cfg(test)]
@@ -993,8 +1022,9 @@ mod tests {
     use super::RuntimeHttpTransport;
     #[cfg(feature = "async-http")]
     use super::{
-        GuardedDnsResolver, NativeHttpTransport, ReqwestHttpTransport,
-        STANDARD_HTTP_RESPONSE_BYTES, TransportProfile, block_on_http, http_runtime,
+        GuardedDnsResolver, NativeHttpTransport, PROVIDER_OPERATION_REQUEST_TIMEOUT,
+        ReqwestHttpTransport, STANDARD_HTTP_RESPONSE_BYTES, TransportProfile, block_on_http,
+        http_runtime,
     };
     use super::{HttpMethod, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest};
     #[cfg(feature = "async-http")]
@@ -1189,12 +1219,29 @@ mod tests {
         let _private_second = ReqwestHttpTransport::with_private_network_access()?;
         let _managed_first = ReqwestHttpTransport::for_managed_agent()?;
         let _managed_second = ReqwestHttpTransport::for_managed_agent()?;
+        let provider_public = ReqwestHttpTransport::for_provider_operation(false)?;
+        let provider_private = ReqwestHttpTransport::for_provider_operation(true)?;
 
-        let (Some(public), Some(private), Some(patient)) = (
+        let (
+            Some(public),
+            Some(private),
+            Some(patient),
+            Some(provider_public_client),
+            Some(provider_private_client),
+        ) = (
             TransportProfile::PublicStandard.cache().value.get(),
             TransportProfile::PrivateStandard.cache().value.get(),
             TransportProfile::PublicPatient.cache().value.get(),
-        ) else {
+            TransportProfile::PublicProviderOperation
+                .cache()
+                .value
+                .get(),
+            TransportProfile::PrivateProviderOperation
+                .cache()
+                .value
+                .get(),
+        )
+        else {
             return Err(RuntimeHttpError::Transport {
                 message: "canonical HTTP profile client was not cached".to_owned(),
             }
@@ -1202,6 +1249,21 @@ mod tests {
         };
         assert!(!std::ptr::eq(public, private));
         assert!(!std::ptr::eq(public, patient));
+        assert!(!std::ptr::eq(public, provider_public_client));
+        assert!(!std::ptr::eq(
+            provider_public_client,
+            provider_private_client
+        ));
+        assert_eq!(
+            provider_public.request_timeout,
+            PROVIDER_OPERATION_REQUEST_TIMEOUT
+        );
+        assert_eq!(
+            provider_private.request_timeout,
+            PROVIDER_OPERATION_REQUEST_TIMEOUT
+        );
+        assert!(!provider_public.allow_private_networks);
+        assert!(provider_private.allow_private_networks);
         Ok(())
     }
 

@@ -313,6 +313,14 @@ pub fn hosted_api_transport(
     DefaultRuntimeHttpTransport::new()
 }
 
+/// Provider calls may legitimately consume their adapter-owned synchronous
+/// deadline. Give only that boundary the larger control-plane envelope.
+pub fn hosted_provider_api_transport(
+    allow_private_network: bool,
+) -> Result<DefaultRuntimeHttpTransport, RuntimeHttpError> {
+    DefaultRuntimeHttpTransport::for_provider_operation(allow_private_network)
+}
+
 fn normalize_hosted_base_url(value: Option<&str>) -> Result<Option<String>, HostedApiError> {
     let Some(normalized) = value.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(None);

@@ -145,8 +145,8 @@ pub use hosted_api::{
     HostedLoginCompleteResponse, HostedLoginStartResponse, HostedProviderTokenLoginResponse,
     ReceiptPublishResponse, complete_hosted_login, exchange_hosted_provider_token,
     execute_hosted_connect, hosted_api_transport, hosted_private_network_allowed,
-    parse_hosted_api_error, publish_hosted_receipt, start_hosted_login,
-    store_authenticated_hosted_environment,
+    hosted_provider_api_transport, parse_hosted_api_error, publish_hosted_receipt,
+    start_hosted_login, store_authenticated_hosted_environment,
 };
 pub use http::{
     HttpMethod, ReqwestHttpTransport, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest,

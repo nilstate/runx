@@ -197,7 +197,7 @@ impl ProviderPermissionEffect {
     ) -> Result<Arc<dyn RuntimeHttpTransport + Send + Sync>, RuntimeHttpError> {
         self.http_transport.clone().map_or_else(
             || {
-                crate::hosted_api_transport(allow_private_network)
+                crate::hosted_provider_api_transport(allow_private_network)
                     .map(|transport| Arc::new(transport) as Arc<_>)
             },
             Ok,
