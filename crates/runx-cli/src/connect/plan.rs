@@ -26,6 +26,7 @@ pub enum ConnectAction {
 pub struct ConnectStartPlan {
     pub provider: String,
     pub scopes: Vec<String>,
+    pub credentials_from_stdin: bool,
     pub scope_family: Option<String>,
     pub authority_kind: Option<String>,
     pub target_repo: Option<String>,
@@ -38,6 +39,7 @@ struct ParsedConnectArgs {
     api_base_url: Option<String>,
     token: Option<String>,
     allow_local_api: bool,
+    credentials_from_stdin: bool,
     json: bool,
     scopes: Vec<String>,
     scope_family: Option<String>,
@@ -97,6 +99,7 @@ fn apply_switch(
     let target = match flag {
         "--json" | "-j" => Some(&mut parsed.json),
         "--allow-local-api" => Some(&mut parsed.allow_local_api),
+        "--credentials-from-stdin" => Some(&mut parsed.credentials_from_stdin),
         _ => None,
     };
     let Some(target) = target else {
@@ -145,6 +148,9 @@ fn connect_action(
     subcommand: &str,
     parsed: &mut ParsedConnectArgs,
 ) -> Result<ConnectAction, String> {
+    if subcommand != "start" && parsed.credentials_from_stdin {
+        return Err("--credentials-from-stdin is only valid for runx connect start".to_owned());
+    }
     match subcommand {
         "list" if parsed.positional.is_empty() => Ok(ConnectAction::List),
         "bind" if parsed.positional.len() == 2 => Ok(ConnectAction::Bind {
@@ -172,6 +178,7 @@ fn start_action(parsed: &mut ParsedConnectArgs) -> Result<ConnectAction, String>
     Ok(ConnectAction::Start(ConnectStartPlan {
         provider: parsed.positional.remove(0),
         scopes: std::mem::take(&mut parsed.scopes),
+        credentials_from_stdin: parsed.credentials_from_stdin,
         scope_family: parsed.scope_family.take(),
         authority_kind: parsed.authority_kind.take(),
         target_repo: parsed.target_repo.take(),

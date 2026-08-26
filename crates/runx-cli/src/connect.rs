@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::io::{self, Read};
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -21,6 +22,14 @@ mod plan;
 pub use plan::{ConnectAction, ConnectPlan, ConnectStartPlan, parse_connect_plan};
 
 pub fn run_native_connect(plan: ConnectPlan, workspace: &WorkspaceEnv) -> ExitCode {
+    run_native_connect_with_stdin(plan, workspace, io::empty())
+}
+
+pub fn run_native_connect_with_stdin(
+    plan: ConnectPlan,
+    workspace: &WorkspaceEnv,
+    stdin: impl Read,
+) -> ExitCode {
     if let ConnectAction::Bind {
         provider,
         transport,
@@ -42,10 +51,47 @@ pub fn run_native_connect(plan: ConnectPlan, workspace: &WorkspaceEnv) -> ExitCo
             );
         }
     };
-    match run_connect_with_transport(&plan, workspace.env(), workspace.cwd(), &transport) {
+    let credentials = match read_connect_credentials(&plan, stdin) {
+        Ok(credentials) => credentials,
+        Err(error) => return fail(&plan, &error),
+    };
+    match run_connect_with_transport(
+        &plan,
+        workspace.env(),
+        workspace.cwd(),
+        &transport,
+        credentials.as_ref(),
+    ) {
         Ok(output) => crate::cli_io::write_stdout_code(&output, 0),
         Err(error) => fail(&plan, &error.to_string()),
     }
+}
+
+fn read_connect_credentials(plan: &ConnectPlan, stdin: impl Read) -> Result<Option<Value>, String> {
+    let ConnectAction::Start(start) = &plan.action else {
+        return Ok(None);
+    };
+    if !start.credentials_from_stdin {
+        return Ok(None);
+    }
+    const MAX_CREDENTIAL_BYTES: u64 = 64 * 1024;
+    let mut raw = String::new();
+    stdin
+        .take(MAX_CREDENTIAL_BYTES + 1)
+        .read_to_string(&mut raw)
+        .map_err(|error| format!("failed to read connect credentials from stdin: {error}"))?;
+    if raw.len() as u64 > MAX_CREDENTIAL_BYTES {
+        return Err("connect credentials from stdin exceed 64 KiB".to_owned());
+    }
+    let credentials: Value = serde_json::from_str(raw.trim())
+        .map_err(|error| format!("connect credentials from stdin are not valid JSON: {error}"))?;
+    if !credentials
+        .as_object()
+        .is_some_and(|object| !object.is_empty())
+    {
+        return Err("connect credentials from stdin must be a non-empty JSON object".to_owned());
+    }
+    Ok(Some(credentials))
 }
 
 fn run_connect_with_transport<T: Transport>(
@@ -53,6 +99,7 @@ fn run_connect_with_transport<T: Transport>(
     env: &BTreeMap<String, String>,
     cwd: &Path,
     transport: &T,
+    credentials: Option<&Value>,
 ) -> Result<String, ConnectError> {
     let environment = runx_runtime::HostedApiEnvironment::resolve(
         plan.api_base_url.as_deref(),
@@ -69,7 +116,29 @@ fn run_connect_with_transport<T: Transport>(
             "project transport binding cannot use hosted execution".to_owned(),
         )
     })?;
-    let response = runx_runtime::execute_hosted_connect(transport, &authenticated, action)?;
+    let mut response = runx_runtime::execute_hosted_connect(transport, &authenticated, action)?;
+    if let Some(credentials) = credentials {
+        let status = string_field(&response, "status").unwrap_or("unknown");
+        if status == "credential_required" {
+            let session_id = string_field(&response, "session_id").ok_or_else(|| {
+                ConnectError::InvalidJson(
+                    "credential-required connect response is missing session_id".to_owned(),
+                )
+            })?;
+            response = runx_runtime::execute_hosted_connect(
+                transport,
+                &authenticated,
+                HostedConnectAction::SubmitCredentials {
+                    session_id,
+                    credentials,
+                },
+            )?;
+        } else if !matches!(status, "created" | "unchanged") {
+            return Err(ConnectError::InvalidJson(format!(
+                "connect credential submission cannot continue from status {status}"
+            )));
+        }
+    }
     render_connect_result(
         plan.json,
         authenticated.base_url(),
@@ -340,8 +409,13 @@ mod tests {
             json: true,
         };
 
-        let output =
-            run_connect_with_transport(&plan, &BTreeMap::new(), &std::env::temp_dir(), &transport)?;
+        let output = run_connect_with_transport(
+            &plan,
+            &BTreeMap::new(),
+            &std::env::temp_dir(),
+            &transport,
+            None,
+        )?;
 
         assert!(output.contains("\"connect\""));
         let requests = transport.requests.borrow();
@@ -403,7 +477,13 @@ mod tests {
             ),
         ]);
 
-        run_connect_with_transport(&plan, &BTreeMap::new(), &std::env::temp_dir(), &transport)?;
+        run_connect_with_transport(
+            &plan,
+            &BTreeMap::new(),
+            &std::env::temp_dir(),
+            &transport,
+            None,
+        )?;
 
         let requests = transport.requests.borrow();
         let body = requests[1]
@@ -413,6 +493,80 @@ mod tests {
         let request: serde_json::Value = serde_json::from_str(body)?;
         assert_eq!(request["provider"], "future-provider");
         assert_eq!(request["scopes"], serde_json::json!(scopes));
+        Ok(())
+    }
+
+    #[test]
+    fn connect_start_submits_stdin_credentials_without_rendering_them()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let plan = parse_connect_plan(&[
+            "connect".into(),
+            "start".into(),
+            "x402".into(),
+            "--scope".into(),
+            "payment.x402".into(),
+            "--credentials-from-stdin".into(),
+            "--api-base-url".into(),
+            "https://runx.test/".into(),
+            "--token".into(),
+            "rxk_test".into(),
+            "--json".into(),
+        ])?;
+        let transport = StubTransport::new(vec![
+            RuntimeHttpResponse::new(
+                200,
+                serde_json::json!({
+                    "status": "success",
+                    "principal": {"principal_id": "user_1"}
+                })
+                .to_string(),
+            ),
+            RuntimeHttpResponse::new(
+                201,
+                serde_json::json!({
+                    "status": "credential_required",
+                    "session_id": "flow_1"
+                })
+                .to_string(),
+            ),
+            RuntimeHttpResponse::new(
+                201,
+                serde_json::json!({
+                    "status": "created",
+                    "session_id": "flow_1",
+                    "grant": {"grant_id": "grant_x402_1"}
+                })
+                .to_string(),
+            ),
+        ]);
+        let credentials = serde_json::json!({
+            "address": "0x0000000000000000000000000000000000000001",
+            "private_key": "secret-private-key"
+        });
+
+        let output = run_connect_with_transport(
+            &plan,
+            &BTreeMap::new(),
+            &std::env::temp_dir(),
+            &transport,
+            Some(&credentials),
+        )?;
+
+        assert!(output.contains("grant_x402_1"));
+        assert!(!output.contains("secret-private-key"));
+        let requests = transport.requests.borrow();
+        assert_eq!(requests.len(), 3);
+        assert_eq!(
+            requests[2].url,
+            "https://runx.test/v1/connect/sessions/flow_1/credentials"
+        );
+        let request: serde_json::Value = serde_json::from_str(
+            requests[2]
+                .body
+                .as_deref()
+                .ok_or("connect credential request body missing")?,
+        )?;
+        assert_eq!(request["credentials"], credentials);
         Ok(())
     }
 

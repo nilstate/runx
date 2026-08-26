@@ -137,17 +137,19 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         usage: &[
             "runx connect list [-j|--json]",
             "runx connect bind <provider> <auto|local|hosted|hosted:grant-id> [-j|--json]",
-            "runx connect start <provider> --scope <capability> [--scope <capability>...] [--scope-family family] [--authority-kind kind] [--target-repo repo] [--target-locator locator] [--binding id] [-j|--json]",
+            "runx connect start <provider> --scope <capability> [--scope <capability>...] [--credentials-from-stdin] [--scope-family family] [--authority-kind kind] [--target-repo repo] [--target-locator locator] [--binding id] [-j|--json]",
             "runx connect status <session-id> [-j|--json]",
             "runx connect revoke <grant-id> [-j|--json]",
         ],
         notes: &[
             "Host-injected provider grant environment selects hosted authority and cannot coexist with an explicit local transport binding.",
+            "BYO credential JSON is accepted only from stdin and is delivered directly to hosted credential custody; secret fields are never rendered.",
         ],
         options: &[
             "--api-base-url url",
             "--token token",
             "--allow-local-api",
+            "--credentials-from-stdin",
             "-j, --json",
         ],
     },

@@ -7,9 +7,17 @@ use crate::http::{HttpMethod, RuntimeHttpTransport};
 
 pub enum HostedConnectAction<'a> {
     List,
-    Status { session_id: &'a str },
-    Revoke { grant_id: &'a str },
+    Status {
+        session_id: &'a str,
+    },
+    Revoke {
+        grant_id: &'a str,
+    },
     Start(HostedConnectStart<'a>),
+    SubmitCredentials {
+        session_id: &'a str,
+        credentials: &'a Value,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -37,6 +45,11 @@ struct ConnectStartRequest<'a> {
     target_locator: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     binding_id: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+struct ConnectCredentialsRequest<'a> {
+    credentials: &'a Value,
 }
 
 pub fn execute_hosted_connect(
@@ -79,6 +92,25 @@ pub fn execute_hosted_connect(
             (
                 HttpMethod::Post,
                 "/v1/connect/sessions".to_owned(),
+                Some(body),
+            )
+        }
+        HostedConnectAction::SubmitCredentials {
+            session_id,
+            credentials,
+        } => {
+            let body = serde_json::to_string(&ConnectCredentialsRequest { credentials }).map_err(
+                |error| HostedApiOperationError::InvalidRequest {
+                    operation: "connect credential request",
+                    message: error.to_string(),
+                },
+            )?;
+            (
+                HttpMethod::Post,
+                format!(
+                    "/v1/connect/sessions/{}/credentials",
+                    path_identifier("connect request", "session id", session_id)?
+                ),
                 Some(body),
             )
         }
