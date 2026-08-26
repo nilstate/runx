@@ -8,10 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use runx_contracts::{Receipt, ReceiptIssuerType, Reference, ReferenceType};
 use runx_runtime::journal::{
     HISTORY_PROJECTOR_ID, HistoryFilter, JOURNAL_PROJECTOR_ID, JournalProjectionError,
-    PausedRunCheckpoint, RECEIPT_REF_PREFIX, exact_receipt_id, inspect_local_receipt,
-    list_local_history, list_local_history_with_checkpoints, list_local_history_with_policy,
-    project_journal_for_receipt, project_receipt_journal, project_receipt_journal_with_policy,
-    receipt_uri,
+    PausedRunCheckpoint, RECEIPT_REF_PREFIX, append_paused_run_checkpoint, exact_receipt_id,
+    inspect_local_receipt, list_local_history, list_local_history_with_checkpoints,
+    list_local_history_with_policy, project_journal_for_receipt, project_receipt_journal,
+    project_receipt_journal_with_policy, receipt_uri,
 };
 use runx_runtime::receipts::{
     Ed25519ReceiptSigner, Ed25519ReceiptVerifier, RuntimeReceiptSignaturePolicy,
@@ -395,6 +395,59 @@ fn history_merges_paused_ledgers_and_checkpoints() -> Result<(), Box<dyn std::er
         Some("sha256:checkpoint-closure")
     );
     assert_no_local_paths(&serde_json::to_string(&history)?);
+    Ok(())
+}
+
+#[test]
+fn paused_checkpoint_ledger_chains_appends_and_fails_closed_after_tamper()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let workspace = temp.path().join("workspace");
+    let project_runx_dir = workspace.join(".runx");
+    let store = LocalReceiptStore::new(project_runx_dir.join("receipts"));
+    let run_id = "run_chained_checkpoint";
+    write_paused_ledger(store.root(), run_id, "sourcey", "2026-04-28T01:00:00.000Z")?;
+    write_paused_ledger(store.root(), run_id, "sourcey", "2026-04-28T01:01:00.000Z")?;
+
+    let ledger_path = store.root().join("ledgers").join(format!("{run_id}.jsonl"));
+    let contents = fs::read_to_string(&ledger_path)?;
+    let mut records = contents
+        .lines()
+        .map(serde_json::from_str::<serde_json::Value>)
+        .collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0]["chain"]["index"], 0);
+    assert_eq!(records[1]["chain"]["index"], 1);
+    assert_eq!(
+        records[1]["chain"]["previous_hash"],
+        records[0]["chain"]["entry_hash"]
+    );
+
+    records[0]["entry"]["data"]["detail"]["step_labels"] = json!(["tampered"]);
+    fs::write(
+        &ledger_path,
+        records
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<Vec<_>, _>>()?
+            .join("\n")
+            + "\n",
+    )?;
+
+    let history = list_local_history(
+        &store,
+        &workspace,
+        &project_runx_dir,
+        &HistoryFilter::default(),
+    )?;
+    assert_eq!(history.pending_runs.len(), 1);
+    assert_eq!(
+        history.pending_runs[0]
+            .ledger_verification
+            .as_ref()
+            .map(|verification| verification.status.as_str()),
+        Some("invalid")
+    );
     Ok(())
 }
 
@@ -1005,75 +1058,23 @@ fn write_paused_ledger(
     skill_name: &str,
     created_at: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let ledger_dir = receipt_dir.join("ledgers");
-    fs::create_dir_all(&ledger_dir)?;
-    let producer = json!({
-        "skill": skill_name,
-        "runner": "graph"
-    });
-    let started = ledger_record(json!({
-        "type": "run_event",
-        "version": "1",
-        "data": {
-            "kind": "run_started",
-            "status": "started",
-            "step_id": null,
-            "detail": {}
+    append_paused_run_checkpoint(
+        receipt_dir,
+        &PausedRunCheckpoint {
+            id: run_id.to_owned(),
+            name: skill_name.to_owned(),
+            kind: "graph".to_owned(),
+            started_at: Some(created_at.to_owned()),
+            resume_skill_ref: Some("registry:sourcey@sha256:test".to_owned()),
+            selected_runner: Some("agent-task".to_owned()),
+            credential_profile: None,
+            package_digest: Some("sha256:package".to_owned()),
+            execution_closure_digest: Some("sha256:closure".to_owned()),
+            step_ids: vec!["discover".to_owned()],
+            step_labels: vec!["inspect repo".to_owned()],
         },
-        "meta": ledger_meta(run_id, serde_json::Value::Null, producer.clone(), created_at, "ax_start")
-    }));
-    let waiting = ledger_record(json!({
-        "type": "run_event",
-        "version": "1",
-        "data": {
-            "kind": "step_waiting_resolution",
-            "status": "waiting",
-            "step_id": "discover",
-            "detail": {
-                "request_ids": ["agent_task.test-step.output"],
-                "resolution_kinds": ["agent_act"],
-                "step_ids": ["discover"],
-                "step_labels": ["inspect repo"],
-                "inputs": {},
-                "selected_runner": "agent-task"
-            }
-        },
-        "meta": ledger_meta(run_id, "discover", producer, created_at, "ax_wait")
-    }));
-    fs::write(
-        ledger_dir.join(format!("{run_id}.jsonl")),
-        format!(
-            "{}\n{}\n",
-            serde_json::to_string(&started)?,
-            serde_json::to_string(&waiting)?
-        ),
     )?;
     Ok(())
-}
-
-fn ledger_record(entry: serde_json::Value) -> serde_json::Value {
-    json!({ "entry": entry })
-}
-
-fn ledger_meta(
-    run_id: &str,
-    step_id: impl Into<serde_json::Value>,
-    producer: serde_json::Value,
-    created_at: &str,
-    artifact_id: &str,
-) -> serde_json::Value {
-    json!({
-        "artifact_id": artifact_id,
-        "run_id": run_id,
-        "step_id": step_id.into(),
-        "producer": producer,
-        "created_at": created_at,
-        "hash": "sha256:test",
-        "size_bytes": 2,
-        "parent_artifact_id": null,
-        "receipt_id": null,
-        "redacted": false
-    })
 }
 
 fn assert_no_local_paths(text: &str) {

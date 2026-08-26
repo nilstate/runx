@@ -4,11 +4,14 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::ErrorKind;
-use std::io::Write;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
+use fs2::FileExt;
 use runx_contracts::schema::NonEmptyString;
-use runx_contracts::{ClosureDisposition, ExecutionEvent, Receipt, ReferenceType};
+use runx_contracts::{
+    ClosureDisposition, ExecutionEvent, Receipt, ReferenceType, canonical_stable_json, sha256_hex,
+};
 use runx_receipts::{
     ReceiptFindingCode, ReceiptProofContextProvider, signed_display_identity, verify_receipt_proof,
 };
@@ -156,32 +159,166 @@ pub fn append_paused_run_checkpoint(
     let ledger_path = ledgers_dir.join(format!("{}.jsonl", checkpoint.id));
     let mut file = fs::OpenOptions::new()
         .create(true)
+        .read(true)
         .append(true)
         .open(ledger_path)?;
-    let entry = LedgerEntry {
-        entry_type: "run_event".to_owned(),
-        data: LedgerEventData {
-            kind: "resolution_requested".to_owned(),
-            detail: LedgerEventDetail {
-                resume_skill_ref: checkpoint.resume_skill_ref.clone(),
-                selected_runner: checkpoint.selected_runner.clone(),
-                credential_profile: checkpoint.credential_profile.clone(),
-                package_digest: checkpoint.package_digest.clone(),
-                execution_closure_digest: checkpoint.execution_closure_digest.clone(),
-                step_ids: checkpoint.step_ids.clone(),
-                step_labels: checkpoint.step_labels.clone(),
-            },
+    file.lock_exclusive()?;
+
+    let mut existing = String::new();
+    file.seek(SeekFrom::Start(0))?;
+    file.read_to_string(&mut existing)?;
+    let (index, previous_hash) = verified_ledger_head(&existing, &checkpoint.id)?;
+    let entry = paused_checkpoint_entry(checkpoint)?;
+    let entry_hash = ledger_entry_hash(index, previous_hash.as_deref(), &entry)?;
+    let record = serde_json::json!({
+        "schema_version": "runx.ledger.entry.v1",
+        "chain": {
+            "version": "runx.ledger.chain.v1",
+            "algorithm": "sha256",
+            "canonicalization": "runx.stable-json.v1",
+            "index": index,
+            "previous_hash": previous_hash,
+            "entry_hash": entry_hash,
         },
-        meta: LedgerEventMeta {
-            created_at: checkpoint.started_at.clone(),
-            producer: Some(LedgerEventProducer {
-                skill: Some(checkpoint.name.clone()),
-                runner: checkpoint.selected_runner.clone(),
-            }),
+        "entry": entry,
+    });
+
+    file.seek(SeekFrom::End(0))?;
+    serde_json::to_writer(&mut file, &record)?;
+    file.write_all(b"\n")?;
+    file.sync_data()?;
+    Ok(())
+}
+
+fn paused_checkpoint_entry(
+    checkpoint: &PausedRunCheckpoint,
+) -> Result<serde_json::Value, std::io::Error> {
+    let data = serde_json::json!({
+        "kind": "resolution_requested",
+        "status": "waiting",
+        "step_id": checkpoint.step_ids.first(),
+        "detail": {
+            "resume_skill_ref": checkpoint.resume_skill_ref,
+            "selected_runner": checkpoint.selected_runner,
+            "credential_profile": checkpoint.credential_profile,
+            "package_digest": checkpoint.package_digest,
+            "execution_closure_digest": checkpoint.execution_closure_digest,
+            "step_ids": checkpoint.step_ids,
+            "step_labels": checkpoint.step_labels,
         },
-    };
-    serde_json::to_writer(&mut file, &entry)?;
-    file.write_all(b"\n")
+    });
+    let payload = serde_json::json!({
+        "type": "run_event",
+        "version": "1",
+        "data": data,
+    });
+    let payload_hash = stable_json_sha256(&payload)?;
+    let created_at = checkpoint
+        .started_at
+        .clone()
+        .unwrap_or_else(crate::time::now_iso8601);
+    let runner = checkpoint
+        .selected_runner
+        .clone()
+        .unwrap_or_else(|| "default".to_owned());
+    let size_bytes = serde_json::to_vec(&data)?.len();
+    Ok(serde_json::json!({
+        "type": "run_event",
+        "version": "1",
+        "data": data,
+        "meta": {
+            "artifact_id": format!("ax_{}", &payload_hash[..16]),
+            "run_id": checkpoint.id,
+            "step_id": checkpoint.step_ids.first(),
+            "producer": { "skill": checkpoint.name, "runner": runner },
+            "created_at": created_at,
+            "hash": payload_hash,
+            "size_bytes": size_bytes,
+            "parent_artifact_id": null,
+            "receipt_id": null,
+            "redacted": false,
+        },
+    }))
+}
+
+fn verified_ledger_head(
+    contents: &str,
+    run_id: &str,
+) -> Result<(u64, Option<String>), std::io::Error> {
+    let mut previous_hash: Option<String> = None;
+    let mut index = 0_u64;
+    for (line_index, line) in contents.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let record: serde_json::Value = serde_json::from_str(line)
+            .map_err(|error| invalid_ledger(line_index, error.to_string()))?;
+        serde_json::from_value::<runx_contracts::LedgerEntry>(record.clone())
+            .map_err(|error| invalid_ledger(line_index, error.to_string()))?;
+        let chain = record
+            .get("chain")
+            .and_then(serde_json::Value::as_object)
+            .ok_or_else(|| invalid_ledger(line_index, "missing chain"))?;
+        let actual_index = chain
+            .get("index")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| invalid_ledger(line_index, "missing chain index"))?;
+        let actual_previous = chain
+            .get("previous_hash")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned);
+        let actual_hash = chain
+            .get("entry_hash")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| invalid_ledger(line_index, "missing entry hash"))?;
+        let entry = record
+            .get("entry")
+            .ok_or_else(|| invalid_ledger(line_index, "missing entry"))?;
+        let entry_run_id = entry
+            .pointer("/meta/run_id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| invalid_ledger(line_index, "missing entry run id"))?;
+        let expected_hash = ledger_entry_hash(index, previous_hash.as_deref(), entry)?;
+        if actual_index != index
+            || actual_previous != previous_hash
+            || actual_hash != expected_hash
+            || entry_run_id != run_id
+        {
+            return Err(invalid_ledger(line_index, "ledger chain mismatch"));
+        }
+        previous_hash = Some(expected_hash);
+        index = index.saturating_add(1);
+    }
+    Ok((index, previous_hash))
+}
+
+fn ledger_entry_hash(
+    index: u64,
+    previous_hash: Option<&str>,
+    entry: &serde_json::Value,
+) -> Result<String, std::io::Error> {
+    stable_json_sha256(&serde_json::json!({
+        "version": "runx.ledger.chain-payload.v1",
+        "index": index,
+        "previous_hash": previous_hash,
+        "entry": entry,
+    }))
+}
+
+fn stable_json_sha256(value: &serde_json::Value) -> Result<String, std::io::Error> {
+    let value = serde_json::from_value::<runx_contracts::JsonValue>(value.clone())
+        .map_err(|error| std::io::Error::new(ErrorKind::InvalidData, error))?;
+    canonical_stable_json(&value)
+        .map(|canonical| sha256_hex(canonical.as_bytes()))
+        .map_err(|error| std::io::Error::new(ErrorKind::InvalidData, error))
+}
+
+fn invalid_ledger(line_index: usize, reason: impl std::fmt::Display) -> std::io::Error {
+    std::io::Error::new(
+        ErrorKind::InvalidData,
+        format!("ledger line {} is invalid: {reason}", line_index + 1),
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -888,6 +1025,9 @@ fn paused_run_from_ledger(
 ) -> Result<Option<PausedRunSummary>, JournalProjectionError> {
     let contents =
         fs::read_to_string(path).map_err(|_| JournalProjectionError::LedgerStoreUnreadable)?;
+    if let Err(error) = verified_ledger_head(&contents, run_id) {
+        return Ok(Some(invalid_paused_run(run_id, error.to_string())));
+    }
     let mut events = Vec::new();
     for (index, line) in contents.lines().enumerate() {
         let line = line.trim();
@@ -911,10 +1051,8 @@ fn paused_run_from_ledger(
 }
 
 #[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-enum LedgerLine {
-    Wrapped { entry: LedgerEntry },
-    Entry(LedgerEntry),
+struct LedgerLine {
+    entry: LedgerEntry,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -982,9 +1120,7 @@ struct LedgerRunEvent {
 }
 
 fn ledger_event(value: LedgerLine) -> Option<LedgerRunEvent> {
-    let entry = match value {
-        LedgerLine::Wrapped { entry } | LedgerLine::Entry(entry) => entry,
-    };
+    let entry = value.entry;
     if entry.entry_type != "run_event" {
         return None;
     }

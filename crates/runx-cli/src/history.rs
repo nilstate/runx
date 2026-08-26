@@ -449,6 +449,7 @@ mod tests {
 
     use super::*;
     use runx_contracts::ReceiptIssuerType;
+    use runx_runtime::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
     use runx_runtime::receipts::step_receipt_with_signature_policy;
     use runx_runtime::{
         Ed25519ReceiptSigner, InvocationOutput, RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV,
@@ -764,34 +765,22 @@ mod tests {
         receipt_dir: &Path,
         resume_skill_ref: Option<&str>,
     ) -> Result<(), io::Error> {
-        fs::create_dir_all(receipt_dir.join("ledgers"))?;
-        fs::write(
-            receipt_dir
-                .join("ledgers")
-                .join("gx_needs_agent_oracle.jsonl"),
-            format!(
-                "{}\n{}\n",
-                needs_agent_started_record(),
-                needs_agent_waiting_record(resume_skill_ref)
-            ),
+        append_paused_run_checkpoint(
+            receipt_dir,
+            &PausedRunCheckpoint {
+                id: "gx_needs_agent_oracle".to_owned(),
+                name: "sourcey".to_owned(),
+                kind: "graph".to_owned(),
+                started_at: Some("2026-04-28T01:00:00.000Z".to_owned()),
+                resume_skill_ref: resume_skill_ref.map(str::to_owned),
+                selected_runner: Some("agent-task".to_owned()),
+                credential_profile: None,
+                package_digest: Some("sha256:package".to_owned()),
+                execution_closure_digest: Some("sha256:closure".to_owned()),
+                step_ids: vec!["discover".to_owned()],
+                step_labels: vec!["inspect repo".to_owned()],
+            },
         )
-    }
-
-    fn needs_agent_started_record() -> &'static str {
-        r#"{"entry":{"type":"run_event","version":"1","data":{"kind":"run_started","status":"started","step_id":null,"detail":{}},"meta":{"artifact_id":"ax_start","run_id":"gx_needs_agent_oracle","step_id":null,"producer":{"skill":"sourcey","runner":"graph"},"created_at":"2026-04-28T01:00:00.000Z","hash":"sha256:start","size_bytes":2,"parent_artifact_id":null,"receipt_id":null,"redacted":false}}}"#
-    }
-
-    fn needs_agent_waiting_record(resume_skill_ref: Option<&str>) -> String {
-        format!(
-            r#"{{"entry":{{"type":"run_event","version":"1","data":{{"kind":"step_waiting_resolution","status":"waiting","step_id":"discover","detail":{{"request_ids":["agent_task.test-step.output"],"resolution_kinds":["agent_act"],"step_ids":["discover"],"step_labels":["inspect repo"],"inputs":{{}},"selected_runner":"agent-task"{}}}}},"meta":{{"artifact_id":"ax_wait","run_id":"gx_needs_agent_oracle","step_id":"discover","producer":{{"skill":"sourcey","runner":"graph"}},"created_at":"2026-04-28T01:00:00.000Z","hash":"sha256:wait","size_bytes":2,"parent_artifact_id":null,"receipt_id":null,"redacted":false}}}}}}"#,
-            resume_skill_ref_fragment(resume_skill_ref)
-        )
-    }
-
-    fn resume_skill_ref_fragment(resume_skill_ref: Option<&str>) -> String {
-        resume_skill_ref
-            .map(|value| format!(r#","resume_skill_ref":"{value}""#))
-            .unwrap_or_default()
     }
 
     fn tempfile_dir() -> Result<PathBuf, io::Error> {
