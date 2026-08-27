@@ -321,6 +321,40 @@ fn invalid_ledger(line_index: usize, reason: impl std::fmt::Display) -> std::io:
     )
 }
 
+/// Resolve one paused run from its own ledger and graph checkpoint.
+///
+/// Resume is a point lookup, not a history projection. Keeping it independent
+/// of the receipt archive prevents an unrelated unreadable receipt from
+/// blocking a valid continuation while still failing closed on the requested
+/// run's own state.
+pub fn find_paused_run(
+    receipt_dir: &Path,
+    run_id: &str,
+) -> Result<Option<PausedRunSummary>, JournalProjectionError> {
+    if !valid_run_id(run_id) {
+        return Ok(None);
+    }
+    let ledger_path = receipt_dir.join("ledgers").join(format!("{run_id}.jsonl"));
+    let pending = match fs::metadata(&ledger_path) {
+        Ok(metadata) if metadata.is_file() => paused_run_from_ledger(run_id, &ledger_path),
+        Ok(_) => Err(JournalProjectionError::LedgerStoreUnreadable),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(JournalProjectionError::LedgerStoreUnreadable),
+    }?;
+    let Some(pending) = pending else {
+        return Ok(None);
+    };
+    match graph_checkpoint_status_for_run(receipt_dir, run_id)? {
+        GraphCheckpointStatus::Terminal => return Ok(None),
+        GraphCheckpointStatus::Active => return Ok(Some(pending)),
+        GraphCheckpointStatus::Missing => {}
+    }
+    if terminal_receipt_exists_for_run(receipt_dir, &pending)? {
+        return Ok(None);
+    }
+    Ok(Some(pending))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JournalProjection {
     pub schema: String,
@@ -359,6 +393,8 @@ pub enum JournalProjectionError {
     LedgerStoreUnreadable,
     #[error("failed to read local graph run state")]
     RunStateStoreUnreadable,
+    #[error("terminal receipt for pending run {run_id} is unreadable")]
+    TargetReceiptUnreadable { run_id: String },
 }
 
 pub fn list_local_history(
@@ -986,6 +1022,86 @@ fn terminal_graph_checkpoint_ids(
     Ok(terminal)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GraphCheckpointStatus {
+    Missing,
+    Active,
+    Terminal,
+}
+
+fn graph_checkpoint_status_for_run(
+    receipt_dir: &Path,
+    run_id: &str,
+) -> Result<GraphCheckpointStatus, JournalProjectionError> {
+    let path = receipt_dir
+        .join("runs")
+        .join(format!("{run_id}.graph-state.json"));
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Ok(GraphCheckpointStatus::Missing);
+        }
+        Err(_) => return Err(JournalProjectionError::RunStateStoreUnreadable),
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        // Resume owns the state-specific diagnostic. A malformed checkpoint
+        // must not make the corresponding pending run disappear here.
+        return Ok(GraphCheckpointStatus::Active);
+    };
+    if value.get("schema").and_then(serde_json::Value::as_str) != Some("runx.graph_skill_state.v1")
+        || value.get("run_id").and_then(serde_json::Value::as_str) != Some(run_id)
+    {
+        return Ok(GraphCheckpointStatus::Active);
+    }
+    let status = value
+        .pointer("/checkpoint/state/status")
+        .and_then(serde_json::Value::as_str);
+    Ok(
+        if matches!(status, Some("succeeded" | "failed" | "blocked")) {
+            GraphCheckpointStatus::Terminal
+        } else {
+            GraphCheckpointStatus::Active
+        },
+    )
+}
+
+fn terminal_receipt_exists_for_run(
+    receipt_dir: &Path,
+    pending: &PausedRunSummary,
+) -> Result<bool, JournalProjectionError> {
+    let entries = match fs::read_dir(receipt_dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+        Err(_) => return Err(JournalProjectionError::LedgerStoreUnreadable),
+    };
+    for entry in entries {
+        let entry = entry.map_err(|_| JournalProjectionError::LedgerStoreUnreadable)?;
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("json") {
+            continue;
+        }
+        let raw =
+            fs::read_to_string(path).map_err(|_| JournalProjectionError::LedgerStoreUnreadable)?;
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
+            continue;
+        };
+        let receipt_id = value.get("id").and_then(serde_json::Value::as_str);
+        let harness_id = value
+            .pointer("/subject/ref/uri")
+            .and_then(serde_json::Value::as_str);
+        if !receipt_identity_terminates_run(receipt_id, harness_id, pending) {
+            continue;
+        }
+        serde_json::from_value::<Receipt>(value).map_err(|_| {
+            JournalProjectionError::TargetReceiptUnreadable {
+                run_id: pending.id.clone(),
+            }
+        })?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 fn paused_run_from_checkpoint(checkpoint: &PausedRunCheckpoint) -> PausedRunSummary {
     PausedRunSummary {
         id: checkpoint.id.clone(),
@@ -1009,14 +1125,17 @@ fn ledger_run_id(path: &Path) -> Option<String> {
         return None;
     }
     let run_id = path.file_stem()?.to_str()?;
-    if !(run_id.starts_with("rx_") || run_id.starts_with("gx_") || run_id.starts_with("run_"))
-        || !run_id
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
-    {
+    if !valid_run_id(run_id) {
         return None;
     }
     Some(run_id.to_owned())
+}
+
+fn valid_run_id(run_id: &str) -> bool {
+    (run_id.starts_with("rx_") || run_id.starts_with("gx_") || run_id.starts_with("run_"))
+        && run_id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
 }
 
 fn paused_run_from_ledger(
@@ -1198,9 +1317,17 @@ fn is_harness_receipt(receipt: &Receipt) -> bool {
 }
 
 fn receipt_terminates_run(receipt: &LocalHistoryReceipt, pending: &PausedRunSummary) -> bool {
+    receipt_identity_terminates_run(Some(&receipt.id), Some(&receipt.harness_id), pending)
+}
+
+fn receipt_identity_terminates_run(
+    receipt_id: Option<&str>,
+    harness_id: Option<&str>,
+    pending: &PausedRunSummary,
+) -> bool {
     let run_id = receipt_identity_segment(&pending.id);
-    if receipt.id == format!("hrn_rcpt_{run_id}")
-        || receipt.harness_id == format!("hrn_{run_id}_graph")
+    if receipt_id == Some(format!("hrn_rcpt_{run_id}").as_str())
+        || harness_id == Some(format!("hrn_{run_id}_graph").as_str())
     {
         return true;
     }
@@ -1208,8 +1335,8 @@ fn receipt_terminates_run(receipt: &LocalHistoryReceipt, pending: &PausedRunSumm
         return false;
     };
     let runner = receipt_identity_segment(runner);
-    receipt.id == format!("hrn_rcpt_{run_id}_{runner}")
-        || receipt.harness_id == format!("hrn_{run_id}_{runner}")
+    receipt_id == Some(format!("hrn_rcpt_{run_id}_{runner}").as_str())
+        || harness_id == Some(format!("hrn_{run_id}_{runner}").as_str())
 }
 
 fn receipt_identity_segment(value: &str) -> String {

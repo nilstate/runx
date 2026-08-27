@@ -5,10 +5,9 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use runx_runtime::journal::list_local_history;
+use runx_runtime::journal::find_paused_run;
 use runx_runtime::{
-    LocalReceiptStore, ManagedAgentPolicy, ReceiptPathInputs, RuntimeReceiptConfig, WorkspaceEnv,
-    resolve_receipt_path,
+    ManagedAgentPolicy, ReceiptPathInputs, RuntimeReceiptConfig, WorkspaceEnv, resolve_receipt_path,
 };
 
 const MAX_STDIN_ANSWERS_BYTES: u64 = 4 * 1024 * 1024;
@@ -193,27 +192,17 @@ pub fn run_native_resume_with_workspace(plan: ResumePlan, workspace: &WorkspaceE
         env,
         cwd: &cwd,
     });
-    let store = LocalReceiptStore::new(&resolved.path);
-    let history = match list_local_history(
-        &store,
-        &resolved.workspace_base,
-        &resolved.project_runx_dir,
-        &Default::default(),
-    ) {
-        Ok(history) => history,
+    let pending = match find_paused_run(&resolved.path, &plan.run_id) {
+        Ok(pending) => pending,
         Err(error) => {
             return write_resume_failure(
-                &format!("could not read receipt history: {error}"),
+                &format!("could not read pending run: {error}"),
                 plan.json,
                 1,
             );
         }
     };
-    let Some(pending) = history
-        .pending_runs
-        .iter()
-        .find(|pending| pending.id == plan.run_id)
-    else {
+    let Some(pending) = pending else {
         return write_resume_failure(
             &format!("no pending run found for {}", plan.run_id),
             plan.json,

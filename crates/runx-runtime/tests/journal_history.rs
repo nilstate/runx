@@ -9,9 +9,10 @@ use runx_contracts::{Receipt, ReceiptIssuerType, Reference, ReferenceType};
 use runx_runtime::journal::{
     HISTORY_PROJECTOR_ID, HistoryFilter, JOURNAL_PROJECTOR_ID, JournalProjectionError,
     PausedRunCheckpoint, RECEIPT_REF_PREFIX, append_paused_run_checkpoint, exact_receipt_id,
-    inspect_local_receipt, list_local_history, list_local_history_with_checkpoints,
-    list_local_history_with_policy, project_journal_for_receipt, project_receipt_journal,
-    project_receipt_journal_with_policy, receipt_uri,
+    find_paused_run, inspect_local_receipt, list_local_history,
+    list_local_history_with_checkpoints, list_local_history_with_policy,
+    project_journal_for_receipt, project_receipt_journal, project_receipt_journal_with_policy,
+    receipt_uri,
 };
 use runx_runtime::receipts::{
     Ed25519ReceiptSigner, Ed25519ReceiptVerifier, RuntimeReceiptSignaturePolicy,
@@ -448,6 +449,62 @@ fn paused_checkpoint_ledger_chains_appends_and_fails_closed_after_tamper()
             .map(|verification| verification.status.as_str()),
         Some("invalid")
     );
+    Ok(())
+}
+
+#[test]
+fn paused_run_point_lookup_ignores_unrelated_receipt_archive_shape()
+-> Result<(), Box<dyn std::error::Error>> {
+    let temp = TestDir::new()?;
+    let receipt_dir = temp.path().join("receipts");
+    let run_id = "run_resume_target";
+    write_paused_ledger(
+        &receipt_dir,
+        run_id,
+        "github-sync",
+        "2026-08-26T01:00:00.000Z",
+    )?;
+    fs::write(
+        receipt_dir.join("sha256-unrelated.json"),
+        br#"{"schema":"runx.receipt.v1","id":"sha256:unrelated"}"#,
+    )?;
+
+    let pending = find_paused_run(&receipt_dir, run_id)?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "missing paused run"))?;
+
+    assert_eq!(pending.id, run_id);
+    assert_eq!(pending.name, "github-sync");
+    assert_eq!(pending.selected_runner.as_deref(), Some("agent-task"));
+    Ok(())
+}
+
+#[test]
+fn paused_run_point_lookup_stops_at_its_terminal_receipt() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = TestDir::new()?;
+    let workspace = temp.path().join("workspace");
+    let project_runx_dir = workspace.join(".runx");
+    let store = LocalReceiptStore::new(project_runx_dir.join("receipts"));
+    let run_id = "run_resume_terminal";
+    write_paused_ledger(
+        store.root(),
+        run_id,
+        "github-sync",
+        "2026-08-26T01:00:00.000Z",
+    )?;
+    let mut terminal = receipt_with_metadata(
+        InvocationStatus::Success,
+        run_id,
+        "2026-08-26T01:01:00.000Z",
+        "GitHub sync",
+        "local",
+        "agent-task",
+    )?;
+    terminal.subject.reference.uri = format!("hrn_{run_id}_agent-task").into();
+    reseal_receipt(&mut terminal)?;
+    store.write_receipt(&terminal)?;
+
+    assert!(find_paused_run(store.root(), run_id)?.is_none());
     Ok(())
 }
 
