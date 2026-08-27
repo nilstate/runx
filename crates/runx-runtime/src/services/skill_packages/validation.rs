@@ -26,7 +26,7 @@ pub(super) fn validate_candidate(
     if let Some(architecture) = architecture {
         validate_architecture_resources(architecture, &resources)?;
     }
-    let inspection = crate::inspect_skill_package(candidate, None)
+    let inspection = crate::inspect_skill_package(candidate, None, None)
         .map_err(|error| invalid_skill_change(format!("skill inspection failed: {error}")))?;
     let harness = if run_harness {
         run_candidate_harness(repo_root, candidate, env, effects)?
@@ -94,7 +94,7 @@ pub(crate) fn validate_skill_package(
         .map(|files| InlineCandidateStage::prepare(&repo_root, files))
         .transpose()?;
     let candidate_path = resolve_candidate_path(&repo_root, requested_ref, stage.as_ref())?;
-    let inspected = crate::inspect_skill_package(&candidate_path, None);
+    let inspected = crate::inspect_skill_package(&candidate_path, None, None);
     let run_harness = allow_execute_harness || safe_harness_execution(inspected.as_ref().ok());
     let resolved_ref = if stage.is_some() {
         "inline-candidate".to_owned()

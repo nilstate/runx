@@ -364,7 +364,7 @@ fn inspect_skill(
     env: &BTreeMap<String, String>,
     cwd: &Path,
 ) -> Result<JsonValue, String> {
-    let mut output = runx_runtime::inspect_skill_package(skill_path, selected_runner)
+    let mut output = runx_runtime::inspect_skill_package(skill_path, selected_runner, Some(env))
         .map_err(|error| error.to_string())?;
     let JsonValue::Object(object) = &mut output else {
         return Err("native skill inspection returned a non-object".to_owned());

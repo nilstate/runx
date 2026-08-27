@@ -1,6 +1,7 @@
 mod execution_closure;
 mod runner;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -69,18 +70,21 @@ impl From<RuntimeError> for SkillInspectionError {
 }
 
 /// Project one already-validated package into the stable operator inspection
-/// envelope. No source document is reparsed here.
+/// envelope. No source document is reparsed here. Registry dependencies are
+/// resolved only when the caller supplies an admitted runtime environment.
 pub fn inspect_skill_package(
     skill_path: &Path,
     selected_runner: Option<&str>,
+    env: Option<&BTreeMap<String, String>>,
 ) -> Result<JsonValue, SkillInspectionError> {
     let loaded = super::load_validated_skill_package(skill_path)?;
-    inspect_loaded_skill_package(loaded, selected_runner)
+    inspect_loaded_skill_package(loaded, selected_runner, env)
 }
 
 pub(crate) fn inspect_loaded_skill_package(
     loaded: LoadedSkillPackage,
     selected_runner: Option<&str>,
+    env: Option<&BTreeMap<String, String>>,
 ) -> Result<JsonValue, SkillInspectionError> {
     let loaded = Arc::new(loaded);
     let mut output = base_inspection(&loaded)?;
@@ -107,7 +111,7 @@ pub(crate) fn inspect_loaded_skill_package(
         }
         (None, None) => None,
     };
-    let mut execution_closures = inspect_execution_closures(loaded.clone(), None)?;
+    let mut execution_closures = inspect_execution_closures(loaded.clone(), env)?;
     if let Some(manifest) = manifest {
         output.insert(
             "runner_inspections".to_owned(),
@@ -473,7 +477,7 @@ runners:
         fs::write(child.join("SKILL.md"), CHILD_MANUAL).expect("child manual");
         fs::write(child.join("X.yaml"), CHILD_MANIFEST).expect("child manifest");
 
-        let inspected = inspect_skill_package(&root, None).expect("valid inspection");
+        let inspected = inspect_skill_package(&root, None, None).expect("valid inspection");
         let JsonValue::Object(inspected) = inspected else {
             return Err("inspection should be an object".into());
         };
@@ -586,7 +590,7 @@ runners:
             .expect("child manifest");
         }
 
-        let inspected = inspect_skill_package(&root, None).expect("valid inspection");
+        let inspected = inspect_skill_package(&root, None, None).expect("valid inspection");
         let closure = inspected
             .as_object()
             .and_then(|value| value.get("execution_closure"))

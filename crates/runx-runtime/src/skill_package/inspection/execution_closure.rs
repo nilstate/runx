@@ -62,10 +62,18 @@ struct ExecutionPackageBinding {
     skill: String,
     runner: String,
     package_digest: String,
+    source_kind: ExecutionPackageSourceKind,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     input_packet_schemas: Vec<InputPacketSchemaBinding>,
     source_path: String,
     source_files: Vec<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum ExecutionPackageSourceKind {
+    SourceRoot,
+    Registry,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -339,6 +347,11 @@ impl<'a> ExecutionClosureInspector<'a> {
                 skill: loaded.package.skill.name.clone(),
                 runner: runner_name.clone(),
                 package_digest: loaded.package.package_digest.clone(),
+                source_kind: if materialize_local {
+                    ExecutionPackageSourceKind::SourceRoot
+                } else {
+                    ExecutionPackageSourceKind::Registry
+                },
                 input_packet_schemas,
                 source_path: package_root.to_string_lossy().into_owned(),
                 source_files: loaded.package.source.files.keys().cloned().collect(),

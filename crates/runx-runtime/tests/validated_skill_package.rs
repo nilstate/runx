@@ -106,7 +106,7 @@ fn packet_input_schema_is_hydrated_into_inspection() -> Result<(), Box<dyn std::
         "{ operation: inspect }",
     )?;
 
-    let inspection = inspect_skill_package(temp.path(), Some("inspect"))?;
+    let inspection = inspect_skill_package(temp.path(), Some("inspect"), None)?;
     let plan = inspection
         .as_object()
         .and_then(|value| value.get("runner"))

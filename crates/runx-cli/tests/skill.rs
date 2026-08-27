@@ -453,6 +453,58 @@ fn native_skill_inspect_reports_declared_credential_readiness()
 }
 
 #[test]
+fn native_skill_inspect_binds_pinned_local_registry_dependencies()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = crate::support::temp_root("runx-skill-inspect-registry-closure");
+    let registry_dir = publish_registry_echo_version(&root, "1.0.0", "# Echo\n", true)?;
+    let skill_dir = root.join("parent");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: parent\n---\n# Parent\n",
+    )?;
+    fs::write(
+        skill_dir.join("X.yaml"),
+        r#"skill: parent
+runners:
+  default:
+    default: true
+    type: graph
+    graph:
+      name: parent
+      result_from: [child]
+      steps:
+        - id: child
+          skill: registry:acme/echo@1.0.0
+          runner: default
+"#,
+    )?;
+
+    let output = trusted_registry_runx_command(&root)?
+        .current_dir(&root)
+        .env("RUNX_REGISTRY_DIR", &registry_dir)
+        .args([
+            "skill",
+            "inspect",
+            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
+            "--json",
+        ])
+        .output()?;
+    let inspected = assert_json(&output, Some(0))?;
+    let closure = &inspected["execution_closure"];
+    assert_eq!(closure["fully_bound"], true);
+    assert_eq!(closure["unresolved_skill_edges"], json!([]));
+    assert_eq!(
+        closure["package_bindings"]
+            .as_array()
+            .ok_or("package bindings are missing")?
+            .len(),
+        2,
+    );
+    Ok(())
+}
+
+#[test]
 fn native_skill_exported_shim_resolves_to_source_skill() -> Result<(), Box<dyn std::error::Error>> {
     let root = crate::support::temp_root("runx-skill-exported-shim");
     let source_dir = crate::support::write_agent_task_skill(&root.join("source with spaces"))?;

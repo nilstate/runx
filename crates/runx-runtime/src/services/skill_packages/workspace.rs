@@ -71,7 +71,7 @@ fn inspect_target_package(target_root: Option<&Path>, target_exists: bool) -> Js
     let Some(target_root) = target_root else {
         return invalid_target_inspection("existing skill target has no resolved workspace path");
     };
-    match crate::inspect_skill_package(target_root, None) {
+    match crate::inspect_skill_package(target_root, None, None) {
         Ok(inspection) => inspection,
         Err(error) => invalid_target_inspection(&error.to_string()),
     }
