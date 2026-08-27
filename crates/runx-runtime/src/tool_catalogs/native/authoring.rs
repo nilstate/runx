@@ -94,7 +94,7 @@ static APPLY: TypedNativeCapability<ApplyInput, ApplyOutput> = TypedNativeCapabi
         summary: "Transactionally apply one validated, bounded skill change bundle.",
         scopes: &["fs.write", "fs.delete"],
         effect: CapabilityEffect::Mutate,
-        approval: CapabilityApproval::Policy,
+        approval: CapabilityApproval::None,
         artifacts: CapabilityArtifacts::Named {
             output: "apply_result",
             packet: "runx.skill.apply_result.v1",

@@ -13,8 +13,6 @@ operator_journeys:
     request: Create a bounded decision-note skill without package-local runtime code.
     expected_outcome: A validated declarative skill package is applied with a useful manual and semantic harness.
 caller:
-  approvals:
-    skill-lab.build.approval: true
   answers:
     agent_task.skill-lab-architecture.output:
       architecture_decision:
@@ -191,7 +189,6 @@ expect:
     - plan
     - author
     - bind
-    - approve
     - apply
   step_outputs:
     apply:

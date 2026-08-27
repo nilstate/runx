@@ -402,7 +402,11 @@ describe("official skill catalog", () => {
         RUNX_HOME: path.join(home, ".runx"),
       }) as { readonly exported: readonly { readonly skill: string }[] };
       const names = exported.exported.map((entry) => entry.skill);
-      expect(names).toHaveLength(77);
+      const expectedPublicNames = [
+        ...officialSkillPackages().filter((skillName) => catalogVisibility(skillName) === "public"),
+        "runx",
+      ].sort();
+      expect([...names].sort()).toEqual(expectedPublicNames);
       expect(names).toEqual(expect.arrayContaining([
         "adopt-skill",
         "diagnose-skill-run",

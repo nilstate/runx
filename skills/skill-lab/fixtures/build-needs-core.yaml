@@ -7,8 +7,6 @@ inputs:
   repo_root: .
   target_dir: skills/fixture-core-gap
 caller:
-  approvals:
-    skill-lab.build.approval: true
   answers:
     agent_task.skill-lab-architecture.output:
       architecture_decision:
@@ -76,7 +74,6 @@ expect:
     - plan
     - author
     - bind
-    - approve
     - apply
   step_outputs:
     apply:

@@ -462,7 +462,7 @@
         "fs.write"
       ],
       "effect": "mutate",
-      "approval": "policy",
+      "approval": "none",
       "artifacts": {
         "kind": "named",
         "output": "apply_result",
