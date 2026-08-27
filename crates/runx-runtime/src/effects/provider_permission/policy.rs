@@ -1,7 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use runx_contracts::{AuthorityVerb, JsonObject, JsonValue, sha256_prefixed};
-use runx_core::state_machine::AuthorityAdmissionWitness;
+use runx_core::{
+    policy::{ScopeGrantPolicy, missing_granted_scopes},
+    state_machine::AuthorityAdmissionWitness,
+};
 
 use super::{
     PROVIDER_PERMISSION_EFFECT_FAMILY, PROVIDER_PERMISSION_GRANT_ID_ENV,
@@ -78,7 +81,11 @@ pub(super) fn provider_permission_plan(
             granted_scopes_from_env(request.env)?,
         ),
     };
-    let missing_scopes = missing_scopes(&required_scopes, &granted_scopes);
+    let missing_scopes = missing_granted_scopes(
+        &required_scopes,
+        &granted_scopes,
+        ScopeGrantPolicy::Delegated,
+    );
     let expected_grant_id = string_field(policy, "grant_id");
     if let Some(expected) = expected_grant_id
         && expected != grant_id
@@ -275,13 +282,4 @@ pub(super) fn provider_permission_policy_error(message: String) -> RuntimeEffect
         operation: "parse provider permission policy",
         message,
     }
-}
-
-pub(super) fn missing_scopes(required: &[String], granted: &[String]) -> Vec<String> {
-    let granted = granted.iter().collect::<BTreeSet<_>>();
-    required
-        .iter()
-        .filter(|scope| !granted.contains(scope))
-        .cloned()
-        .collect()
 }

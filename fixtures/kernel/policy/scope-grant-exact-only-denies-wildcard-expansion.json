@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": false
+  },
+  "input": {
+    "grantedScope": "admin:*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "exact_only",
+    "requestedScope": "admin:write"
+  },
+  "name": "scope-grant-exact-only-denies-wildcard-expansion"
+}

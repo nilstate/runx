@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": true
+  },
+  "input": {
+    "grantedScope": "repo:*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "delegated",
+    "requestedScope": "repo:read"
+  },
+  "name": "scope-grant-delegated-allows-one-segment"
+}

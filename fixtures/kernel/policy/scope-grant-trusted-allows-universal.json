@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": true
+  },
+  "input": {
+    "grantedScope": "*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "trusted",
+    "requestedScope": "repo:admin:keys"
+  },
+  "name": "scope-grant-trusted-allows-universal"
+}

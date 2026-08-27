@@ -23,6 +23,30 @@ fn explicit_provider_grant_readiness_is_scope_bound() {
 }
 
 #[test]
+fn explicit_provider_grant_readiness_matches_runtime_wildcard_policy() {
+    let delegated = inspect_explicit_provider_grant(
+        "grant_github",
+        &["repo:*".to_owned()],
+        &["repo:read".to_owned()],
+    );
+    assert_eq!(delegated.status, "ready");
+
+    let nested = inspect_explicit_provider_grant(
+        "grant_github",
+        &["repo:*".to_owned()],
+        &["repo:admin:keys".to_owned()],
+    );
+    assert_eq!(nested.status, "needs_provider_grant");
+
+    let universal = inspect_explicit_provider_grant(
+        "grant_github",
+        &["*".to_owned()],
+        &["repo:read".to_owned()],
+    );
+    assert_eq!(universal.status, "needs_provider_grant");
+}
+
+#[test]
 fn readiness_keeps_the_most_actionable_blocker() {
     assert_eq!(
         less_ready_status("provider_readiness_unknown", "needs_provider_grant"),

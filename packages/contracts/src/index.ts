@@ -1,5 +1,12 @@
 export const contractsPackage = "@runxhq/contracts";
 
+export {
+  RUNX_SCOPE_GRANT_POLICY,
+  missingGrantedScopes,
+  scopeGrantAllows,
+  type ScopeGrantPolicy,
+} from "./scope-policy.js";
+
 export { definePacket, type PacketDefinition } from "./packet-definition.js";
 
 export {

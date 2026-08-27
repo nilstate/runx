@@ -4,7 +4,7 @@ use crate::policy::{
     credential_grant::{
         CredentialGrantRequirement, credential_grant_requirement, has_grant_reference,
     },
-    scope::scope_allows,
+    scope::{ScopeGrantPolicy, scope_grant_allows},
 };
 
 use super::util::non_empty_option;
@@ -123,10 +123,9 @@ fn collect_credential_scope_reasons(
         .requested_scopes
         .iter()
         .filter(|scope| {
-            !credential
-                .scopes
-                .iter()
-                .any(|credential_scope| scope_allows(credential_scope, scope, false))
+            !credential.scopes.iter().any(|credential_scope| {
+                scope_grant_allows(credential_scope, scope, ScopeGrantPolicy::Delegated)
+            })
         })
         .map(ToString::to_string)
         .collect::<Vec<_>>();
@@ -141,10 +140,9 @@ fn collect_credential_scope_reasons(
         .scopes
         .iter()
         .filter(|scope| {
-            !admitted_grant
-                .scopes
-                .iter()
-                .any(|granted_scope| scope_allows(granted_scope, scope, false))
+            !admitted_grant.scopes.iter().any(|granted_scope| {
+                scope_grant_allows(granted_scope, scope, ScopeGrantPolicy::Delegated)
+            })
         })
         .map(ToString::to_string)
         .collect::<Vec<_>>();

@@ -36,6 +36,7 @@ pub use public_work::{
 };
 pub use retry::admit_retry_policy;
 pub use rfc3339::parse_rfc3339_moment;
+pub use scope::{ScopeGrantPolicy, missing_granted_scopes, scope_grant_allows};
 pub use tool_ref::{ToolRefAdmission, admit_agent_tool_ref};
 pub use types::{
     AdmissionDecision, AuthorityKind, AuthorityProof, AuthorityProofApproval,

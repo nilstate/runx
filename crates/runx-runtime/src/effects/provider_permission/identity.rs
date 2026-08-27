@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use runx_contracts::JsonObject;
 #[cfg(feature = "catalog")]
 use runx_contracts::{AuthorityVerb, JsonValue, PrincipalReference};
+#[cfg(any(feature = "catalog", test))]
+use runx_core::policy::{ScopeGrantPolicy, missing_granted_scopes};
 
 use crate::effects::{EffectStepRequest, RuntimeEffectError};
 #[cfg(feature = "catalog")]
@@ -504,9 +506,8 @@ pub(super) fn select_hosted_provider_grant_index(
         .filter(|(_, grant)| grant.provider == provider)
         .filter(|(_, grant)| explicit_grant.is_none_or(|expected| grant.grant_id == expected))
         .filter(|(_, grant)| {
-            required_scopes
-                .iter()
-                .all(|scope| grant.scopes.contains(scope))
+            missing_granted_scopes(required_scopes, grant.scopes, ScopeGrantPolicy::Delegated)
+                .is_empty()
         })
         .collect::<Vec<_>>();
     candidates.sort_by(|(_, left), (_, right)| left.grant_id.cmp(right.grant_id));

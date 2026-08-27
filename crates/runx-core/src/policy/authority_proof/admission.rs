@@ -2,6 +2,7 @@ use runx_contracts::JsonValue;
 
 use crate::policy::{
     LocalAdmissionGrant, LocalScopeAdmissionOptions, ScopeAdmission, ScopeAdmissionStatus,
+    ScopeGrantPolicy,
     credential_grant::{credential_grant_requirement, find_matching_grant},
     scope::unique_strings,
 };
@@ -48,7 +49,11 @@ pub fn build_local_scope_admission(
         &requirement,
         grants,
         options.connected_auth_checked_at.as_deref(),
-        options.wildcard_scopes_trusted,
+        if options.wildcard_scopes_trusted {
+            ScopeGrantPolicy::Trusted
+        } else {
+            ScopeGrantPolicy::Delegated
+        },
     ) {
         Some(grant) => scope_admission_allow(
             requested_scopes,

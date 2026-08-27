@@ -7,7 +7,7 @@ use crate::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest,
+    RetryAdmissionRequest, ScopeGrantPolicy,
 };
 use crate::state_machine::{
     FanoutBranchResult, FanoutGroupPolicy, SequentialGraphEvent, SequentialGraphState,
@@ -75,6 +75,12 @@ pub(super) enum KernelInput {
         #[serde(default)]
         policy: PublicWorkPolicy,
     },
+    #[serde(rename = "policy.scopeGrantAllows")]
+    ScopeGrantAllows {
+        granted_scope: String,
+        requested_scope: String,
+        policy: ScopeGrantPolicy,
+    },
     #[serde(rename = "state-machine.createSingleStepState")]
     CreateSingleStepState { step_id: String },
     #[serde(rename = "state-machine.transitionSingleStep")]
@@ -139,6 +145,7 @@ pub(super) fn is_supported_kernel_kind(kind: &str) -> bool {
             | "policy.evaluatePublicPullRequestCandidate"
             | "policy.evaluatePublicCommentOpportunity"
             | "policy.normalizePublicWorkPolicy"
+            | "policy.scopeGrantAllows"
             | "state-machine.createSingleStepState"
             | "state-machine.transitionSingleStep"
             | "state-machine.createSequentialGraphState"

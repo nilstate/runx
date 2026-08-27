@@ -223,6 +223,40 @@
             "kind"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "grantedScope": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "policy.scopeGrantAllows"
+            },
+            "policy": {
+              "oneOf": [
+                {
+                  "const": "delegated"
+                },
+                {
+                  "const": "exact_only"
+                },
+                {
+                  "const": "trusted"
+                }
+              ]
+            },
+            "requestedScope": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "grantedScope",
+            "kind",
+            "policy",
+            "requestedScope"
+          ],
+          "type": "object"
         }
       ]
     },

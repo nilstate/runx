@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": true
+  },
+  "input": {
+    "grantedScope": "admin:*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "exact_only",
+    "requestedScope": "admin:*"
+  },
+  "name": "scope-grant-exact-only-allows-exact"
+}

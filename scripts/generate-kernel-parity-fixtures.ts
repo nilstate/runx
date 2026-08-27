@@ -387,6 +387,60 @@ function fixtureCases(): readonly KernelFixtureCase[] {
 
   return [
     {
+      name: "scope-grant-exact-only-allows-exact",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "admin:*",
+        requestedScope: "admin:*",
+        policy: "exact_only",
+      },
+    },
+    {
+      name: "scope-grant-exact-only-denies-wildcard-expansion",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "admin:*",
+        requestedScope: "admin:write",
+        policy: "exact_only",
+      },
+    },
+    {
+      name: "scope-grant-delegated-allows-one-segment",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "repo:*",
+        requestedScope: "repo:read",
+        policy: "delegated",
+      },
+    },
+    {
+      name: "scope-grant-delegated-denies-nested-segment",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "repo:*",
+        requestedScope: "repo:admin:keys",
+        policy: "delegated",
+      },
+    },
+    {
+      name: "scope-grant-delegated-denies-universal",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "*",
+        requestedScope: "repo:read",
+        policy: "delegated",
+      },
+    },
+    {
+      name: "scope-grant-trusted-allows-universal",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: "*",
+        requestedScope: "repo:admin:keys",
+        policy: "trusted",
+      },
+    },
+    {
       name: "authority-credential-binding-allows-matching",
       input: {
         kind: "policy.validateCredentialBinding",

@@ -293,6 +293,40 @@ fn hosted_provider_explicit_binding_and_unambiguous_fallback_remain_supported() 
     assert_eq!(grants[selected].grant_id, "grant_only");
 }
 
+#[test]
+fn hosted_provider_grants_use_bounded_delegated_wildcards() {
+    let delegated_scopes = ["repo:*".to_owned()];
+    let universal_scopes = ["*".to_owned()];
+    let grants = [
+        HostedGrantView {
+            grant_id: "grant_delegated",
+            provider: "github",
+            scopes: &delegated_scopes,
+            status: "active",
+        },
+        HostedGrantView {
+            grant_id: "grant_universal",
+            provider: "github",
+            scopes: &universal_scopes,
+            status: "active",
+        },
+    ];
+
+    let selected =
+        select_hosted_provider_grant_index(&grants, "github", &["repo:read".to_owned()], None)
+            .expect("bounded delegated grant");
+    assert_eq!(grants[selected].grant_id, "grant_delegated");
+    assert!(
+        select_hosted_provider_grant_index(
+            &grants,
+            "github",
+            &["repo:admin:keys".to_owned()],
+            None,
+        )
+        .is_err()
+    );
+}
+
 #[cfg(feature = "catalog")]
 #[test]
 fn host_injected_provider_authority_rejects_conflicting_transport_bindings() {

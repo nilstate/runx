@@ -3,10 +3,10 @@ use runx_core::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest, admit_graph_step_scopes, admit_local_skill, admit_retry_policy,
-    build_authority_proof_metadata, build_local_scope_admission,
+    RetryAdmissionRequest, ScopeGrantPolicy, admit_graph_step_scopes, admit_local_skill,
+    admit_retry_policy, build_authority_proof_metadata, build_local_scope_admission,
     evaluate_public_comment_opportunity, evaluate_public_pull_request_candidate,
-    normalize_public_work_policy, validate_credential_binding,
+    normalize_public_work_policy, scope_grant_allows, validate_credential_binding,
 };
 use serde::Deserialize;
 
@@ -173,6 +173,36 @@ const FIXTURES: &[(&str, &str)] = &[
             "../../../fixtures/kernel/policy/retry-admission-denies-mutating-without-key.json"
         ),
     ),
+    (
+        "scope-grant-delegated-allows-one-segment",
+        include_str!(
+            "../../../fixtures/kernel/policy/scope-grant-delegated-allows-one-segment.json"
+        ),
+    ),
+    (
+        "scope-grant-delegated-denies-nested-segment",
+        include_str!(
+            "../../../fixtures/kernel/policy/scope-grant-delegated-denies-nested-segment.json"
+        ),
+    ),
+    (
+        "scope-grant-delegated-denies-universal",
+        include_str!("../../../fixtures/kernel/policy/scope-grant-delegated-denies-universal.json"),
+    ),
+    (
+        "scope-grant-exact-only-allows-exact",
+        include_str!("../../../fixtures/kernel/policy/scope-grant-exact-only-allows-exact.json"),
+    ),
+    (
+        "scope-grant-exact-only-denies-wildcard-expansion",
+        include_str!(
+            "../../../fixtures/kernel/policy/scope-grant-exact-only-denies-wildcard-expansion.json"
+        ),
+    ),
+    (
+        "scope-grant-trusted-allows-universal",
+        include_str!("../../../fixtures/kernel/policy/scope-grant-trusted-allows-universal.json"),
+    ),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -232,6 +262,14 @@ enum PolicyInput {
         #[serde(default)]
         policy: PublicWorkPolicy,
     },
+    #[serde(rename = "policy.scopeGrantAllows")]
+    ScopeGrantAllows {
+        #[serde(rename = "grantedScope")]
+        granted_scope: String,
+        #[serde(rename = "requestedScope")]
+        requested_scope: String,
+        policy: ScopeGrantPolicy,
+    },
 }
 
 #[test]
@@ -279,5 +317,10 @@ fn evaluate_policy_input(input: PolicyInput) -> Result<serde_json::Value, serde_
         PolicyInput::NormalizePublicWorkPolicy { policy } => {
             serde_json::to_value(normalize_public_work_policy(&policy))
         }
+        PolicyInput::ScopeGrantAllows {
+            granted_scope,
+            requested_scope,
+            policy,
+        } => serde_json::to_value(scope_grant_allows(&granted_scope, &requested_scope, policy)),
     }
 }

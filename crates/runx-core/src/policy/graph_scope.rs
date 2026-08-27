@@ -1,6 +1,6 @@
 use super::{
     GraphScopeAdmissionDecision, GraphScopeAdmissionRequest,
-    scope::{scope_allows, unique_strings},
+    scope::{ScopeGrantPolicy, scope_grant_allows, unique_strings},
 };
 
 #[must_use]
@@ -38,9 +38,9 @@ fn denied_scopes(requested_scopes: &[String], granted_scopes: &[String]) -> Vec<
     requested_scopes
         .iter()
         .filter(|scope| {
-            !granted_scopes
-                .iter()
-                .any(|granted_scope| scope_allows(granted_scope, scope, true))
+            !granted_scopes.iter().any(|granted_scope| {
+                scope_grant_allows(granted_scope, scope, ScopeGrantPolicy::Trusted)
+            })
         })
         .cloned()
         .collect()

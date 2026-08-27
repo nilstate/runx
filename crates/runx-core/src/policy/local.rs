@@ -1,5 +1,5 @@
 use super::{
-    AdmissionDecision, LocalAdmissionOptions, LocalAdmissionSkill,
+    AdmissionDecision, LocalAdmissionOptions, LocalAdmissionSkill, ScopeGrantPolicy,
     credential_grant::{credential_grant_requirement, find_matching_grant},
     interpreter::strict_cli_tool_inline_code_denial,
 };
@@ -119,7 +119,7 @@ fn collect_credential_grant_reasons(
         &requirement,
         grants,
         options.connected_auth_checked_at.as_deref(),
-        false,
+        ScopeGrantPolicy::Delegated,
     )
     .is_none()
     {

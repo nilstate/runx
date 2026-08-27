@@ -2,7 +2,10 @@ use runx_contracts::{JsonObject, JsonValue, json_string_field as string_field};
 use serde::{Deserialize, Serialize};
 
 use super::rfc3339::parse_rfc3339_moment;
-use super::{AuthorityKind, LocalAdmissionGrant, scope::scope_allows};
+use super::{
+    AuthorityKind, LocalAdmissionGrant,
+    scope::{ScopeGrantPolicy, scope_grant_allows},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CredentialGrantRequirementError {
@@ -52,7 +55,7 @@ pub(crate) fn find_matching_grant<'a>(
     requirement: &CredentialGrantRequirement,
     grants: &'a [LocalAdmissionGrant],
     connected_auth_checked_at: Option<&str>,
-    wildcard_scopes_trusted: bool,
+    scope_policy: ScopeGrantPolicy,
 ) -> Option<&'a LocalAdmissionGrant> {
     grants.iter().find(|grant| {
         grant.provider == requirement.provider
@@ -65,9 +68,7 @@ pub(crate) fn find_matching_grant<'a>(
                 grant
                     .scopes
                     .iter()
-                    .any(|granted_scope| {
-                        scope_allows(granted_scope, scope, wildcard_scopes_trusted)
-                    })
+                    .any(|granted_scope| scope_grant_allows(granted_scope, scope, scope_policy))
             })
             && grant_reference_matches(requirement, grant)
     })
@@ -201,7 +202,7 @@ mod tests {
     use runx_contracts::{JsonObject, JsonValue};
 
     use super::{CredentialGrantRequirement, credential_grant_requirement, find_matching_grant};
-    use crate::policy::{LocalAdmissionGrant, LocalAdmissionGrantStatus};
+    use crate::policy::{LocalAdmissionGrant, LocalAdmissionGrantStatus, ScopeGrantPolicy};
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
@@ -225,7 +226,7 @@ mod tests {
                 &requirement,
                 &grants,
                 Some("2026-05-22T00:00:00Z"),
-                false,
+                ScopeGrantPolicy::Delegated,
             );
 
             prop_assert_eq!(
@@ -242,8 +243,12 @@ mod tests {
         grant.status = None;
         let grants = vec![grant];
 
-        let matched =
-            find_matching_grant(&requirement, &grants, Some("2026-05-22T00:00:00Z"), false);
+        let matched = find_matching_grant(
+            &requirement,
+            &grants,
+            Some("2026-05-22T00:00:00Z"),
+            ScopeGrantPolicy::Delegated,
+        );
 
         assert!(matched.is_none());
     }
@@ -255,8 +260,12 @@ mod tests {
         grant.expires_at = None;
         let grants = vec![grant];
 
-        let matched =
-            find_matching_grant(&requirement, &grants, Some("2026-05-22T00:00:00Z"), false);
+        let matched = find_matching_grant(
+            &requirement,
+            &grants,
+            Some("2026-05-22T00:00:00Z"),
+            ScopeGrantPolicy::Delegated,
+        );
 
         assert!(matched.is_none());
     }
@@ -266,7 +275,7 @@ mod tests {
         let requirement = github_repo_read_requirement();
         let grants = vec![matching_grant("grant_a".to_owned(), "repo:*")];
 
-        let matched = find_matching_grant(&requirement, &grants, None, false);
+        let matched = find_matching_grant(&requirement, &grants, None, ScopeGrantPolicy::Delegated);
 
         assert!(matched.is_none());
     }
@@ -276,8 +285,12 @@ mod tests {
         let requirement = github_repo_read_requirement();
         let grants = vec![matching_grant("grant_a".to_owned(), "repo:*")];
 
-        let matched =
-            find_matching_grant(&requirement, &grants, Some("2026-05-23T00:00:00Z"), false);
+        let matched = find_matching_grant(
+            &requirement,
+            &grants,
+            Some("2026-05-23T00:00:00Z"),
+            ScopeGrantPolicy::Delegated,
+        );
 
         assert!(matched.is_none());
     }
@@ -289,8 +302,12 @@ mod tests {
         grant.expires_at = Some("2026-5-23T00:00:00Z".to_owned());
         let grants = vec![grant];
 
-        let matched =
-            find_matching_grant(&requirement, &grants, Some("2026-05-22T00:00:00Z"), false);
+        let matched = find_matching_grant(
+            &requirement,
+            &grants,
+            Some("2026-05-22T00:00:00Z"),
+            ScopeGrantPolicy::Delegated,
+        );
 
         assert!(matched.is_none());
     }
@@ -302,8 +319,12 @@ mod tests {
         grant.not_before = Some("2026-05-23T00:00:00Z".to_owned());
         let grants = vec![grant];
 
-        let matched =
-            find_matching_grant(&requirement, &grants, Some("2026-05-22T00:00:00Z"), false);
+        let matched = find_matching_grant(
+            &requirement,
+            &grants,
+            Some("2026-05-22T00:00:00Z"),
+            ScopeGrantPolicy::Delegated,
+        );
 
         assert!(matched.is_none());
     }

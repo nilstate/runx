@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": false
+  },
+  "input": {
+    "grantedScope": "repo:*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "delegated",
+    "requestedScope": "repo:admin:keys"
+  },
+  "name": "scope-grant-delegated-denies-nested-segment"
+}

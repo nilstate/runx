@@ -1,7 +1,9 @@
 // Module rationale: the JSON-RPC dispatch loop, server
 // state, tool-result builders, and host-result projections for `runx mcp
 // serve` all sit on the same protocol surface.
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::io::{Read, Write};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -10,6 +12,7 @@ use std::task::{Context, Poll};
 use std::thread;
 
 use runx_contracts::{JsonObject, JsonValue};
+use runx_core::policy::{ScopeGrantPolicy, missing_granted_scopes};
 use tokio::sync::mpsc;
 
 use crate::effects::{PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV};
@@ -374,12 +377,11 @@ fn admit_mcp_tool_scopes(
         })
         .transpose()?
         .unwrap_or_default();
-    let granted = granted_scopes.iter().collect::<BTreeSet<_>>();
-    let missing = required_scopes
-        .iter()
-        .filter(|scope| !granted.contains(scope))
-        .cloned()
-        .collect::<Vec<_>>();
+    let missing = missing_granted_scopes(
+        required_scopes,
+        &granted_scopes,
+        ScopeGrantPolicy::Delegated,
+    );
     if missing.is_empty() {
         return Ok(());
     }
@@ -703,6 +705,15 @@ mod tests {
         assert!(
             result.is_ok(),
             "matching operator grant scopes should admit the MCP tool; got: {result:?}"
+        );
+
+        env.insert(
+            PROVIDER_PERMISSION_GRANTED_SCOPES_ENV.to_owned(),
+            crate::encode_provider_scopes_env(&["repo:*".to_owned()])?,
+        );
+        assert!(admit_mcp_tool_scopes("github-read", &["repo:read".to_owned()], &env).is_ok());
+        assert!(
+            admit_mcp_tool_scopes("github-admin", &["repo:admin:keys".to_owned()], &env).is_err()
         );
         Ok(())
     }

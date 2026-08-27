@@ -7,7 +7,7 @@ use super::input::{KernelDocument, KernelInput};
 use crate::policy::{
     admit_graph_step_scopes, admit_local_skill, admit_retry_policy, build_authority_proof_metadata,
     build_local_scope_admission, evaluate_public_comment_opportunity,
-    evaluate_public_pull_request_candidate, normalize_public_work_policy,
+    evaluate_public_pull_request_candidate, normalize_public_work_policy, scope_grant_allows,
     validate_credential_binding,
 };
 use crate::state_machine::{
@@ -27,7 +27,8 @@ pub(super) fn evaluate_kernel_input(input: KernelDocument) -> Result<JsonValue, 
         | KernelInput::ValidateCredentialBinding { .. }
         | KernelInput::EvaluatePublicPullRequestCandidate { .. }
         | KernelInput::EvaluatePublicCommentOpportunity { .. }
-        | KernelInput::NormalizePublicWorkPolicy { .. } => evaluate_policy_input(input),
+        | KernelInput::NormalizePublicWorkPolicy { .. }
+        | KernelInput::ScopeGrantAllows { .. } => evaluate_policy_input(input),
         KernelInput::CreateSingleStepState { .. }
         | KernelInput::TransitionSingleStep { .. }
         | KernelInput::CreateSequentialGraphState { .. }
@@ -71,6 +72,11 @@ fn evaluate_policy_input(input: KernelInput) -> Result<JsonValue, KernelEvalErro
         KernelInput::NormalizePublicWorkPolicy { policy } => {
             to_value(normalize_public_work_policy(&policy))
         }
+        KernelInput::ScopeGrantAllows {
+            granted_scope,
+            requested_scope,
+            policy,
+        } => to_value(scope_grant_allows(&granted_scope, &requested_scope, policy)),
         _ => unreachable!("policy dispatch only receives policy inputs"),
     }
 }

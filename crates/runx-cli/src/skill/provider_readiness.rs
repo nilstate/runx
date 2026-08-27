@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use runx_contracts::{JsonObject, JsonValue};
+use runx_runtime::{ScopeGrantPolicy, missing_granted_scopes};
 
 pub(super) fn inspect(
     inspection: &JsonObject,
@@ -343,11 +344,8 @@ fn inspect_explicit_provider_grant(
     granted_scopes: &[String],
     required_scopes: &[String],
 ) -> ProviderReadinessResolution {
-    let missing = required_scopes
-        .iter()
-        .filter(|required| !granted_scopes.contains(required))
-        .cloned()
-        .collect::<Vec<_>>();
+    let missing =
+        missing_granted_scopes(required_scopes, granted_scopes, ScopeGrantPolicy::Delegated);
     if missing.is_empty() {
         let mut resolution =
             provider_resolution("ready", Some(format!("runx:grant:{grant_id}")), None);
@@ -376,9 +374,8 @@ fn inspect_hosted_provider_grant(
         .filter(|grant| grant.provider == provider)
         .filter(|grant| explicit_grant.is_none_or(|expected| grant.grant_id == expected))
         .filter(|grant| {
-            required_scopes
-                .iter()
-                .all(|scope| grant.scopes.contains(scope))
+            missing_granted_scopes(required_scopes, &grant.scopes, ScopeGrantPolicy::Delegated)
+                .is_empty()
         })
         .collect::<Vec<_>>();
     match candidates.as_slice() {
