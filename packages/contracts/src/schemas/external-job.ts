@@ -73,6 +73,7 @@ export type ExternalJobScheduleContract = DeepReadonly<{
 
 export type ExternalJobScheduleIntentContract = DeepReadonly<{
   schema: "runx.external_job_schedule_intent.v1";
+  stage_runner: string;
   checkpoint: ExternalJobCheckpointContract;
   max_attempts: number;
   initial_delay_ms: number;
@@ -155,6 +156,7 @@ export function validateExternalJobScheduleIntentContract(
   label = "external_job_schedule_intent",
 ): ExternalJobScheduleIntentContract {
   const intent = validateContractSchema(externalJobScheduleIntentV1Schema, value, label);
+  runner(intent.stage_runner, `${label}.stage_runner`);
   checkpoint(intent.checkpoint, `${label}.checkpoint`);
   return intent;
 }
@@ -308,4 +310,13 @@ function timestamp(value: string, label: string): number {
 function checkpoint(value: ExternalJobCheckpointContract, label: string): void {
   const bytes = new TextEncoder().encode(canonicalJsonStringify(value)).byteLength;
   if (bytes > 64 * 1024) throw new Error(`${label} exceeds 65536 bytes.`);
+}
+
+function runner(value: string, label: string): void {
+  if (
+    value !== value.trim()
+    || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(value)
+  ) {
+    throw new Error(`${label} is invalid.`);
+  }
 }

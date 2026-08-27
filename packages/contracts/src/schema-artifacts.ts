@@ -30852,10 +30852,16 @@ export const runxSchemaArtifacts = {
             "type": "string"
           }
         ]
+      },
+      "stage_runner": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
       }
     },
     "required": [
       "schema",
+      "stage_runner",
       "checkpoint",
       "max_attempts",
       "initial_delay_ms",

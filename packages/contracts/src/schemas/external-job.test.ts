@@ -100,11 +100,20 @@ describe("external job continuation contract", () => {
     expect(validateExternalJobScheduleContract(schedule)).toEqual(schedule);
     expect(validateExternalJobScheduleIntentContract({
       schema: "runx.external_job_schedule_intent.v1",
+      stage_runner: "continue",
       checkpoint: schedule.checkpoint,
       max_attempts: 6,
       initial_delay_ms: 0,
       deadline_ms: 60_000,
     })).toMatchObject({ max_attempts: 6 });
+    expect(() => validateExternalJobScheduleIntentContract({
+      schema: "runx.external_job_schedule_intent.v1",
+      stage_runner: " continue ",
+      checkpoint: schedule.checkpoint,
+      max_attempts: 6,
+      initial_delay_ms: 0,
+      deadline_ms: 60_000,
+    })).toThrow("stage_runner is invalid");
     expect(validateExternalJobStageRequestContract({
       continuation: runnable(),
       checkpoint: schedule.checkpoint,

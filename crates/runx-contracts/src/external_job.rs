@@ -226,6 +226,9 @@ pub struct ExternalJobSchedule {
 #[runx_schema(id = "runx.external_job_schedule_intent.v1")]
 pub struct ExternalJobScheduleIntent {
     pub schema: ExternalJobScheduleIntentSchema,
+    /// Runner in the same immutable package that owns continuation stages.
+    /// Runx resolves and pins its full execution closure before scheduling.
+    pub stage_runner: BoundedString<128>,
     pub checkpoint: ExternalJobCheckpoint,
     pub max_attempts: ExternalJobAttemptLimit,
     pub initial_delay_ms: ExternalJobDelayMillis,
