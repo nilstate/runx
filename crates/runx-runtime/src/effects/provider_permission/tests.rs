@@ -242,6 +242,7 @@ fn local_github_mutation_recovery_preserves_stable_idempotency_and_readback() {
         #[cfg(feature = "catalog")]
         transport: ProviderTransportSelection::Hosted,
         provider_effect: Some(resolved.clone()),
+        mutation_authority: None,
         attempt: Some(first_attempt.clone()),
         recovery: Some(first_recovery),
     };

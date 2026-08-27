@@ -23,6 +23,7 @@ pub(super) struct ProviderRecoveryContext {
     previous_attempt: Option<u32>,
     cached_readback: Option<JsonObject>,
     approval_key: Option<String>,
+    approval_actor: Option<String>,
 }
 
 impl ProviderRecoveryContext {
@@ -37,6 +38,10 @@ impl ProviderRecoveryContext {
 
     pub(super) fn approval_key(&self) -> Option<&str> {
         self.approval_key.as_deref()
+    }
+
+    pub(super) fn approval_actor(&self) -> Option<&str> {
+        self.approval_actor.as_deref()
     }
 }
 
@@ -70,6 +75,7 @@ struct ProviderEffectStateEntry {
     readback: Option<JsonObject>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     approval_key: Option<String>,
+    approval_actor: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,7 +126,10 @@ pub(super) fn provider_recovery_context(
         cached_readback: previous_entry
             .as_ref()
             .and_then(|entry| entry.readback.clone()),
-        approval_key: previous_entry.and_then(|entry| entry.approval_key),
+        approval_key: previous_entry
+            .as_ref()
+            .and_then(|entry| entry.approval_key.clone()),
+        approval_actor: previous_entry.and_then(|entry| entry.approval_actor),
     }))
 }
 
@@ -241,7 +250,8 @@ fn persist_attempt_phase(
             }
             if let Some(current) = state.entries.get(&recovery.state_key)
                 && current.approval_key.is_some()
-                && current.approval_key != entry.approval_key
+                && (current.approval_key != entry.approval_key
+                    || current.approval_actor != entry.approval_actor)
             {
                 return Err(ReceiptStoreError::MalformedEffectState {
                     path: recovery.store_root.join("provider-effects.json"),
@@ -275,6 +285,7 @@ fn entry_from_attempt(
         phase,
         readback: None,
         approval_key: attempt.approval_key().map(str::to_owned),
+        approval_actor: attempt.approval_actor().map(str::to_owned),
     }
 }
 
@@ -303,9 +314,12 @@ fn validate_entry_for_attempt(
     attempt: &ProviderEffectAttempt,
 ) -> Result<(), RuntimeEffectError> {
     validate_entry_for_plan(entry, attempt.resolved())?;
-    if entry.attempt != attempt.attempt() {
+    if entry.attempt != attempt.attempt()
+        || entry.approval_key.as_deref() != attempt.approval_key()
+        || entry.approval_actor.as_deref() != attempt.approval_actor()
+    {
         return Err(state_error(
-            "pending provider mutation attempt changed before finality",
+            "pending provider mutation attempt or authority changed before finality",
         ));
     }
     Ok(())
@@ -331,6 +345,8 @@ fn validate_entry_shape(entry: &ProviderEffectStateEntry) -> Result<(), RuntimeE
         || entry.provider.trim().is_empty()
         || entry.operation.trim().is_empty()
         || entry.target.trim().is_empty()
+        || entry.approval_key.as_deref().is_none_or(str::is_empty)
+        || entry.approval_actor.as_deref().is_none_or(str::is_empty)
     {
         return Err(state_error("pending provider mutation state is incomplete"));
     }

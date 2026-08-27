@@ -116,14 +116,15 @@ pub use effects::{
     EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest,
     EffectToolRequest, PROVIDER_MUTATE_TOOL, PROVIDER_PERMISSION_EFFECT_FAMILY,
     PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
-    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, PROVIDER_READ_TOOL, ProviderAcknowledgementEvidence,
-    ProviderApprovalEvidence, ProviderEffectAcknowledged, ProviderEffectAmount,
-    ProviderEffectAttempt, ProviderEffectAuthority, ProviderEffectClass, ProviderEffectError,
-    ProviderEffectFinality, ProviderEffectIntent, ProviderEffectIntentInput,
-    ProviderEffectReadback, ProviderEffectReadbackEvidence, ProviderEffectResolved,
-    ProviderEffectUnknown, ProviderPermissionAdmission, ProviderPermissionEffect,
-    ProviderScopeTransportError, RuntimeEffect, RuntimeEffectError, RuntimeEffectRegistry,
-    decode_provider_scopes_env, encode_provider_scopes_env, insert_effect_verification_ref,
+    PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV, PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
+    PROVIDER_READ_TOOL, ProviderAcknowledgementEvidence, ProviderApprovalEvidence,
+    ProviderEffectAcknowledged, ProviderEffectAmount, ProviderEffectAttempt,
+    ProviderEffectAuthority, ProviderEffectClass, ProviderEffectError, ProviderEffectFinality,
+    ProviderEffectIntent, ProviderEffectIntentInput, ProviderEffectReadback,
+    ProviderEffectReadbackEvidence, ProviderEffectResolved, ProviderEffectUnknown,
+    ProviderPermissionAdmission, ProviderPermissionEffect, ProviderScopeTransportError,
+    RuntimeEffect, RuntimeEffectError, RuntimeEffectRegistry, decode_provider_scopes_env,
+    encode_provider_scopes_env, insert_effect_verification_ref,
 };
 #[cfg(feature = "catalog")]
 pub use effects::{

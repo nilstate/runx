@@ -52,6 +52,11 @@ pub const PROVIDER_MUTATE_TOOL: &str = "provider.mutate";
 pub const PROVIDER_PERMISSION_GRANT_ID_ENV: &str = "RUNX_PROVIDER_PERMISSION_GRANT_ID";
 pub const PROVIDER_PERMISSION_GRANTED_SCOPES_ENV: &str = "RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES";
 pub const PROVIDER_PERMISSION_PRINCIPAL_REF_ENV: &str = "RUNX_PROVIDER_PERMISSION_PRINCIPAL_REF";
+/// Runtime-hosted authority for a provider mutation performed as one exact
+/// stage of an admitted paid external job. Skill code cannot author this
+/// value; hosted composition injects the validated current-V1 stage request.
+pub const PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV: &str =
+    "RUNX_PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_JSON";
 /// Explicit provider transport preference. The environment overrides the
 /// project binding; either source conflicts fail closed when a complete
 /// host-injected hosted-grant triplet requests a different transport.
@@ -213,6 +218,7 @@ pub struct ProviderPermissionAdmission {
     #[cfg(feature = "catalog")]
     transport: identity::ProviderTransportSelection,
     provider_effect: Option<ProviderEffectResolved>,
+    mutation_authority: Option<approval::PaidExternalJobMutationAuthority>,
     attempt: Option<super::ProviderEffectAttempt>,
     recovery: Option<recovery::ProviderRecoveryContext>,
 }
@@ -370,6 +376,10 @@ fn build_provider_admission(
         })
         .transpose()?;
     let recovery = recovery::provider_recovery_context(request, provider_effect.as_ref())?;
+    let mutation_authority = approval::paid_external_job_mutation_authority(
+        request,
+        resolution.map(|resolved| resolved.principal_ref.as_str()),
+    )?;
     Ok(EffectAdmission::new(
         PROVIDER_PERMISSION_EFFECT_FAMILY,
         plan.verb.clone(),
@@ -383,6 +393,7 @@ fn build_provider_admission(
                 .map(|resolution| resolution.transport.clone())
                 .unwrap_or(identity::ProviderTransportSelection::Hosted),
             provider_effect,
+            mutation_authority,
             attempt: None,
             recovery,
         },

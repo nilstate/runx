@@ -29,10 +29,10 @@ pub use provider_permission::{
 };
 pub use provider_permission::{
     PROVIDER_MUTATE_TOOL, PROVIDER_PERMISSION_EFFECT_FAMILY, PROVIDER_PERMISSION_GRANT_ID_ENV,
-    PROVIDER_PERMISSION_GRANTED_SCOPES_ENV, PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
-    PROVIDER_PERMISSION_TRANSPORT_ENV, PROVIDER_READ_TOOL, ProviderPermissionAdmission,
-    ProviderPermissionEffect, ProviderScopeTransportError, decode_provider_scopes_env,
-    encode_provider_scopes_env,
+    PROVIDER_PERMISSION_GRANTED_SCOPES_ENV, PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV,
+    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, PROVIDER_PERMISSION_TRANSPORT_ENV, PROVIDER_READ_TOOL,
+    ProviderPermissionAdmission, ProviderPermissionEffect, ProviderScopeTransportError,
+    decode_provider_scopes_env, encode_provider_scopes_env,
 };
 pub use registry::RuntimeEffectRegistry;
 pub use state::{EffectAdmission, EffectReplay};

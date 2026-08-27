@@ -32,6 +32,7 @@ fn provider_tool_uses_only_its_current_step_admission() {
                 granted_scopes: vec!["messages.search".to_owned()],
                 transport: ProviderTransportSelection::Hosted,
                 provider_effect: Some(test_provider_resolved(grant_id, ProviderNativeAccess::Read)),
+                mutation_authority: None,
                 attempt: Some(test_provider_attempt(grant_id, ProviderNativeAccess::Read)),
                 recovery: None,
             },

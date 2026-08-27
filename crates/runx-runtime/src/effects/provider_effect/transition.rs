@@ -26,8 +26,8 @@ impl ProviderEffectResolved {
                 if evidence.plan_digest != self.plan_digest {
                     return Err(ProviderEffectError::ApprovalDrift);
                 }
-                if evidence.actor != "human" {
-                    return Err(ProviderEffectError::HumanApprovalRequired);
+                if evidence.actor != "human" && evidence.actor != "paid_external_job" {
+                    return Err(ProviderEffectError::ApprovalActorInvalid);
                 }
                 Some(ProviderEffectApproval {
                     actor: safe_value(evidence.actor, "approval.actor")?,

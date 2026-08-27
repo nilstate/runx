@@ -1,16 +1,105 @@
 use runx_contracts::{
-    ApprovalGate, AuthorityVerb, JsonObject, JsonValue, ProofKind, Reference, ReferenceType,
-    ResolutionResponseActor,
+    ApprovalGate, AuthorityVerb, ExternalJobStageRequest, JsonObject, JsonValue, ProofKind,
+    Reference, ReferenceType, ResolutionResponseActor,
 };
 
 use super::policy::{ProviderPermissionPlan, provider_permission_policy_error};
-use super::{PROVIDER_PERMISSION_EFFECT_FAMILY, ProviderNativeAccess, ProviderPermissionAdmission};
+use super::{
+    PROVIDER_PERMISSION_EFFECT_FAMILY, PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV,
+    ProviderNativeAccess, ProviderPermissionAdmission,
+};
 use crate::approval::ApprovalResolution;
 use crate::effects::{
     EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectStepRequest,
     ProviderApprovalEvidence, ProviderEffectAuthority, ProviderEffectClass, ProviderEffectIntent,
     ProviderEffectIntentInput, ProviderEffectResolved, RuntimeEffectError,
 };
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct PaidExternalJobMutationAuthority {
+    approval_key: String,
+    evidence_refs: Vec<Reference>,
+}
+
+impl PaidExternalJobMutationAuthority {
+    fn approval(&self, resolved: &ProviderEffectResolved) -> ProviderApprovalEvidence {
+        ProviderApprovalEvidence {
+            actor: "paid_external_job".to_owned(),
+            approval_key: self.approval_key.clone(),
+            plan_digest: resolved.plan_digest().to_owned(),
+        }
+    }
+}
+
+pub(super) fn paid_external_job_mutation_authority(
+    request: &EffectStepRequest<'_>,
+    resolved_principal_ref: Option<&str>,
+) -> Result<Option<PaidExternalJobMutationAuthority>, RuntimeEffectError> {
+    let Some(encoded) = request
+        .env
+        .get(PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV)
+    else {
+        return Ok(None);
+    };
+    let authority = serde_json::from_str::<ExternalJobStageRequest>(encoded).map_err(|error| {
+        provider_permission_policy_error(format!(
+            "paid external-job mutation authority is invalid: {error}"
+        ))
+    })?;
+    let principal_ref = authority
+        .continuation
+        .principal_ref
+        .as_reference()
+        .uri
+        .as_str();
+    if resolved_principal_ref != Some(principal_ref) {
+        return Err(RuntimeEffectError::Denied {
+            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+            verb: AuthorityVerb::Write,
+            message: "paid external-job mutation authority does not match provider principal"
+                .to_owned(),
+        });
+    }
+    let continuation_ref = Reference {
+        reference_type: ReferenceType::Target,
+        uri: format!(
+            "runx:external-job:{}",
+            authority.continuation.continuation_id.as_str()
+        )
+        .into(),
+        provider: Some("runx".to_owned().into()),
+        locator: None,
+        label: Some("paid external job continuation".to_owned().into()),
+        observed_at: None,
+        proof_kind: Some(ProofKind::EffectEvidence),
+    };
+    Ok(Some(PaidExternalJobMutationAuthority {
+        approval_key: authority.operation_key.as_str().to_owned(),
+        evidence_refs: vec![
+            paid_authority_reference(
+                &authority.continuation.invocation_ref,
+                "paid invocation execution authority",
+            ),
+            paid_authority_reference(
+                &authority.continuation.source_run_ref,
+                "external job source run",
+            ),
+            continuation_ref,
+        ],
+    }))
+}
+
+fn paid_authority_reference(reference: &Reference, label: &str) -> Reference {
+    Reference {
+        reference_type: reference.reference_type.clone(),
+        uri: reference.uri.clone(),
+        provider: Some("runx".to_owned().into()),
+        locator: reference.locator.clone(),
+        label: Some(label.to_owned().into()),
+        observed_at: reference.observed_at.clone(),
+        proof_kind: Some(ProofKind::EffectEvidence),
+    }
+}
 
 pub(super) fn resolved_provider_effect(
     request: &EffectStepRequest<'_>,
@@ -95,18 +184,36 @@ pub(super) fn resolve_provider_approval(
     };
     let approval = match (resolved.intent().class(), requirement) {
         (ProviderEffectClass::Read, EffectApprovalRequirement::Forbidden) => None,
-        (ProviderEffectClass::Mutation, EffectApprovalRequirement::Required) => Some(match context
-            .recovery
-            .as_ref()
-            .and_then(super::recovery::ProviderRecoveryContext::approval_key)
-        {
-            Some(approval_key) => ProviderApprovalEvidence {
-                actor: "human".to_owned(),
-                approval_key: approval_key.to_owned(),
-                plan_digest: resolved.plan_digest().to_owned(),
+        (ProviderEffectClass::Mutation, EffectApprovalRequirement::Required) => Some(
+            if let Some(authority) = context.mutation_authority.as_ref() {
+                authority.approval(&resolved)
+            } else if let Some(approval_key) = context
+                .recovery
+                .as_ref()
+                .and_then(super::recovery::ProviderRecoveryContext::approval_key)
+            {
+                if context
+                    .recovery
+                    .as_ref()
+                    .and_then(super::recovery::ProviderRecoveryContext::approval_actor)
+                    != Some("human")
+                {
+                    return Err(RuntimeEffectError::Denied {
+                        family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+                        verb: AuthorityVerb::Write,
+                        message: "pending provider mutation requires its original authority lane"
+                            .to_owned(),
+                    });
+                }
+                ProviderApprovalEvidence {
+                    actor: "human".to_owned(),
+                    approval_key: approval_key.to_owned(),
+                    plan_digest: resolved.plan_digest().to_owned(),
+                }
+            } else {
+                request_exact_provider_approval(step, &resolved, host)?
             },
-            None => request_exact_provider_approval(step, &resolved, host)?,
-        }),
+        ),
         (class, requirement) => {
             return Err(RuntimeEffectError::InvalidMetadata {
                 family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
@@ -234,10 +341,27 @@ pub(super) fn prepare_provider_effect_output(
             provider_proof_reference(
                 format!("runx:provider_approval:{approval_key}"),
                 provider,
-                "exact provider approval",
+                if attempt.approval_actor() == Some("paid_external_job") {
+                    "paid external-job provider authority"
+                } else {
+                    "exact provider approval"
+                },
                 ProofKind::EffectEvidence,
             ),
         )?;
+    }
+    if attempt.approval_actor() == Some("paid_external_job") {
+        for reference in context
+            .mutation_authority
+            .as_ref()
+            .into_iter()
+            .flat_map(|authority| authority.evidence_refs.iter().cloned())
+        {
+            crate::effects::insert_effect_verification_ref(
+                &mut request.output.metadata,
+                reference,
+            )?;
+        }
     }
     if attempt.resolved().intent().class() == ProviderEffectClass::Mutation {
         let operation_id = required_provider_output_field(operation, "operation_id")?;

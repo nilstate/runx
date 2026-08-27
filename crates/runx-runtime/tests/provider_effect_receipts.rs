@@ -13,10 +13,10 @@ use runx_runtime::{
     EffectApprovalRequirement, EffectOutputRequest, EffectStepRequest, Host, InvocationOutput,
     LocalReceiptStore, PROVIDER_MUTATE_TOOL, PROVIDER_PERMISSION_EFFECT_FAMILY,
     PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
-    PROVIDER_PERMISSION_PRINCIPAL_REF_ENV, PROVIDER_READ_TOOL, ProviderApprovalEvidence,
-    ProviderEffectAuthority, ProviderEffectClass, ProviderEffectIntent, ProviderEffectIntentInput,
-    ProviderEffectResolved, ProviderPermissionEffect, RuntimeEffect, RuntimeError,
-    encode_provider_scopes_env,
+    PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV, PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
+    PROVIDER_READ_TOOL, ProviderApprovalEvidence, ProviderEffectAuthority, ProviderEffectClass,
+    ProviderEffectIntent, ProviderEffectIntentInput, ProviderEffectResolved,
+    ProviderPermissionEffect, RuntimeEffect, RuntimeError, encode_provider_scopes_env,
 };
 
 const PROVIDER: &str = "slack";
@@ -202,6 +202,82 @@ fn provider_effect_mutations_require_host_attested_human_approval() {
 
     assert!(error.to_string().contains("host-attested human"));
     assert_eq!(host.requests.len(), 1);
+}
+
+#[test]
+fn paid_external_job_authority_executes_only_the_pinned_provider_mutation() {
+    let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let mut env = provider_env();
+    env.insert(
+        PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV.to_owned(),
+        paid_external_job_authority(PRINCIPAL_REF),
+    );
+    let effect = ProviderPermissionEffect::default();
+    let admission = effect
+        .admit(effect_request(&step, &inputs, &env))
+        .expect("provider admission")
+        .expect("owned provider effect");
+    let mut host = RecordingHost::default();
+
+    let admission = effect
+        .resolve_approval(
+            EffectApprovalRequirement::Required,
+            &step,
+            admission,
+            &mut host,
+        )
+        .expect("paid external-job authority");
+    assert!(host.requests.is_empty());
+
+    let resolved = resolved_effect(
+        ProviderEffectClass::Mutation,
+        &JsonObject::new(),
+        Some("request-1"),
+    );
+    let claim = provider_claim(
+        resolved.plan_digest(),
+        &format!("runx:{}", resolved.plan_digest()),
+        Some("operation-paid-external-job"),
+    );
+    let mut output = successful_output(&claim);
+    effect
+        .prepare_output(EffectOutputRequest {
+            step: &step,
+            admission: &admission,
+            claim: &claim,
+            output: &mut output,
+        })
+        .expect("provider finality projection");
+    let refs = metadata_verification_refs(&output);
+    assert!(refs.iter().any(|reference| {
+        reference.uri.as_str() == "runx:paid-invocation:paid-1"
+            && reference.proof_kind == Some(ProofKind::EffectEvidence)
+    }));
+    assert!(refs.iter().any(|reference| {
+        reference.uri.as_str() == "runx:external-job:job-1"
+            && reference.proof_kind == Some(ProofKind::EffectEvidence)
+    }));
+}
+
+#[test]
+fn paid_external_job_authority_refuses_principal_drift() {
+    let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let mut env = provider_env();
+    env.insert(
+        PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV.to_owned(),
+        paid_external_job_authority("runx:principal:someone-else"),
+    );
+
+    let error = ProviderPermissionEffect::default()
+        .admit(effect_request(&step, &inputs, &env))
+        .expect_err("principal drift must fail before approval");
+    assert!(
+        error
+            .to_string()
+            .contains("does not match provider principal")
+    );
 }
 
 #[test]
@@ -705,6 +781,36 @@ fn provider_env() -> BTreeMap<String, String> {
             PRINCIPAL_REF.to_owned(),
         ),
     ])
+}
+
+fn paid_external_job_authority(principal_ref: &str) -> String {
+    serde_json::json!({
+        "continuation": {
+            "continuation_id": "job-1",
+            "principal_ref": {"type": "principal", "uri": principal_ref},
+            "vendor_ref": {"type": "principal", "uri": principal_ref},
+            "invocation_ref": {"type": "target", "uri": "runx:paid-invocation:paid-1"},
+            "source_run_ref": {"type": "act", "uri": "runx:run:source-1"},
+            "execution_binding": {
+                "skill": "ausca/document-analysis",
+                "runner": "continue",
+                "package_digest": format!("sha256:{}", "a".repeat(64)),
+                "execution_closure_digest": format!("sha256:{}", "b".repeat(64))
+            },
+            "operation_identity": format!("sha256:{}", "c".repeat(64)),
+            "stage": "start",
+            "status": "runnable",
+            "attempts": 1,
+            "max_attempts": 6,
+            "next_attempt_at": "2026-08-27T00:00:00.000Z",
+            "deadline_at": "2026-08-27T01:00:00.000Z",
+            "created_at": "2026-08-27T00:00:00.000Z",
+            "updated_at": "2026-08-27T00:00:00.000Z"
+        },
+        "checkpoint": {"document": "input"},
+        "operation_key": format!("sha256:{}", "d".repeat(64))
+    })
+    .to_string()
 }
 
 fn resolved_effect(
