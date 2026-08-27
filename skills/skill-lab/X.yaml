@@ -1,5 +1,5 @@
 skill: skill-lab
-version: "0.9.4"
+version: "0.9.5"
 
 catalog:
   kind: graph
@@ -9,7 +9,7 @@ catalog:
   execution: execute
   completion: runtime_receipt
   requires_adapter: false
-  approval: none
+  approval: required
 
 harness:
   cases:
@@ -300,6 +300,17 @@ runners:
           context:
             architecture_plan: plan.architecture_plan.data
             change_draft: author.change_draft.data
+        - id: approve
+          label: approve the exact package transaction
+          run: { type: approval }
+          inputs:
+            gate_id: skill-lab.build.approval
+            reason: Approve applying this exact validated skill package change bundle.
+          context:
+            change_bundle: bind.change_bundle.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: apply
           label: validate and apply one package transaction
           tool: runx.skill.apply
@@ -313,6 +324,11 @@ runners:
             mode: build
           context:
             change_bundle: bind.change_bundle.data
+      policy:
+        guards:
+          - step: apply
+            field: approve.approval_decision.data.approved
+            equals: true
 
   improve:
     type: graph
@@ -440,6 +456,17 @@ runners:
           context:
             architecture_plan: plan.architecture_plan.data
             change_draft: author.change_draft.data
+        - id: approve
+          label: approve the exact package correction
+          run: { type: approval }
+          inputs:
+            gate_id: skill-lab.improve.approval
+            reason: Approve applying this exact validated skill package correction.
+          context:
+            change_bundle: bind.change_bundle.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: apply
           label: validate and apply one package transaction
           tool: runx.skill.apply
@@ -453,6 +480,11 @@ runners:
             mode: improve
           context:
             change_bundle: bind.change_bundle.data
+      policy:
+        guards:
+          - step: apply
+            field: approve.approval_decision.data.approved
+            equals: true
 
   harness:
     type: graph
@@ -556,6 +588,17 @@ runners:
           context:
             architecture_plan: plan.architecture_plan.data
             change_draft: author.change_draft.data
+        - id: approve
+          label: approve the exact harness transaction
+          run: { type: approval }
+          inputs:
+            gate_id: skill-lab.harness.approval
+            reason: Approve applying this exact validated harness change bundle.
+          context:
+            change_bundle: bind.change_bundle.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: apply
           label: validate and apply one fixture transaction
           tool: runx.skill.apply
@@ -569,3 +612,8 @@ runners:
             mode: harness
           context:
             change_bundle: bind.change_bundle.data
+      policy:
+        guards:
+          - step: apply
+            field: approve.approval_decision.data.approved
+            equals: true

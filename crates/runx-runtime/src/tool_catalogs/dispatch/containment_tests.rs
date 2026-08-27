@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Instant;
 
-use runx_contracts::{JsonObject, JsonValue};
+use runx_contracts::{JsonObject, JsonValue, Reference, ReferenceType};
 
 use super::{ToolDispatchRequest, dispatch_tool};
 use crate::{
@@ -19,7 +19,18 @@ fn invoke(
     let scopes: Vec<String> = crate::tool_catalogs::native::required_scopes(tool_ref)
         .map(|scopes| scopes.iter().map(|scope| (*scope).to_owned()).collect())
         .unwrap_or_default();
-    invoke_with_scopes(tool_ref, inputs, workspace, credential_delivery, &scopes)
+    let policy_approval_refs = [Reference::runx(
+        ReferenceType::Receipt,
+        "fixture-policy-approval",
+    )];
+    invoke_with_scopes(
+        tool_ref,
+        inputs,
+        workspace,
+        credential_delivery,
+        &scopes,
+        &policy_approval_refs,
+    )
 }
 
 fn invoke_with_scopes(
@@ -28,6 +39,7 @@ fn invoke_with_scopes(
     workspace: &Path,
     credential_delivery: CredentialDelivery,
     scopes: &[String],
+    policy_approval_refs: &[Reference],
 ) -> Result<InvocationOutput, RuntimeError> {
     let env = BTreeMap::from([(
         "RUNX_CWD".to_owned(),
@@ -49,6 +61,8 @@ fn invoke_with_scopes(
             skill_name: "architecture-containment",
             allow_explicit_manifest_path: false,
             effect_admission: None,
+            policy_approval_refs,
+            step_id: tool_ref,
         },
         &RuntimeEffectRegistry::default(),
         "2026-01-01T00:00:00Z",
@@ -68,6 +82,7 @@ fn native_capability_refuses_undeclared_owned_scope() -> Result<(), Box<dyn std:
         workspace.path(),
         CredentialDelivery::none(),
         &[],
+        &[],
     )?;
 
     assert_eq!(output.status, InvocationStatus::Failure);
@@ -75,6 +90,32 @@ fn native_capability_refuses_undeclared_owned_scope() -> Result<(), Box<dyn std:
         output.failure_message().is_some_and(
             |message| message.contains("missing required scope declaration(s): fs.read")
         )
+    );
+    Ok(())
+}
+
+#[test]
+fn native_policy_capability_refuses_unapproved_direct_dispatch()
+-> Result<(), Box<dyn std::error::Error>> {
+    let workspace = tempfile::tempdir()?;
+    let scopes = vec!["process.exec".to_owned()];
+    let output = invoke_with_scopes(
+        "command.execute",
+        JsonObject::from([(
+            "command".to_owned(),
+            JsonValue::String("/usr/bin/true".to_owned()),
+        )]),
+        workspace.path(),
+        CredentialDelivery::none(),
+        &scopes,
+        &[],
+    )?;
+
+    assert_eq!(output.status, InvocationStatus::Failure);
+    assert!(
+        output.failure_message().is_some_and(|message| {
+            message.contains("requires verified policy approval evidence")
+        })
     );
     Ok(())
 }

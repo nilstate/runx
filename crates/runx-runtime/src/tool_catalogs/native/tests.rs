@@ -94,6 +94,8 @@ fn capability_registry_dispatch_projects_only_declared_inputs() {
         credential_delivery: &CredentialDelivery::none(),
         local_artifacts: super::fixture_local_artifacts(),
         effect_admission: None,
+        policy_approval_verified: false,
+        step_id: "digest",
         effects: &RuntimeEffectRegistry::default(),
     })
     .expect("capability should resolve");

@@ -1,5 +1,5 @@
 skill: sourcey
-version: "0.1.6"
+version: "0.1.7"
 
 catalog:
   kind: skill
@@ -226,6 +226,12 @@ runners:
             sourcey_verification_proof: verify.sourcey_verification_proof.data
       policy:
         guards:
+          - step: write-docs
+            field: approve.approval_decision.data.approved
+            equals: true
+          - step: write-revisions
+            field: approve.approval_decision.data.approved
+            equals: true
           - step: author
             field: approve.approval_decision.data.approved
             equals: true

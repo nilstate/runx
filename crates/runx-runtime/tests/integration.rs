@@ -33,6 +33,8 @@ mod local_credential_provision;
 mod mcp_adapter;
 mod mcp_server;
 mod parity;
+#[cfg(all(feature = "catalog", feature = "cli-tool"))]
+mod policy_approval;
 #[cfg(feature = "cli-tool")]
 mod process_invocation_contract;
 mod provider_effect_receipts;

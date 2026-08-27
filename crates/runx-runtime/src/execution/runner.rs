@@ -201,6 +201,7 @@ pub struct Runtime<A> {
     javascript: crate::adapters::javascript::JavaScriptAdapter,
     local_artifacts: crate::services::LocalArtifactService,
     options: Arc<RuntimeOptions>,
+    inherited_policy_approval_refs: Arc<Vec<runx_contracts::Reference>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -222,6 +223,7 @@ where
             ),
             local_artifacts: crate::services::LocalArtifactService::default(),
             options: Arc::new(options),
+            inherited_policy_approval_refs: Arc::new(Vec::new()),
         }
     }
 
@@ -236,7 +238,16 @@ where
             javascript,
             local_artifacts,
             options: options.into(),
+            inherited_policy_approval_refs: Arc::new(Vec::new()),
         }
+    }
+
+    fn with_inherited_policy_approval_refs(
+        mut self,
+        references: Vec<runx_contracts::Reference>,
+    ) -> Self {
+        self.inherited_policy_approval_refs = Arc::new(references);
+        self
     }
 
     pub(crate) fn options(&self) -> &RuntimeOptions {

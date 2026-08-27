@@ -22,6 +22,8 @@ operator_journeys:
       - Do not replay the failed external operation.
       - Do not rediscover the already inspected package state.
 caller:
+  approvals:
+    skill-lab.improve.approval: true
   answers:
     agent_task.skill-lab-architecture.output:
       architecture_decision:
@@ -127,6 +129,7 @@ expect:
     - plan
     - author
     - bind
+    - approve
     - apply
   step_outputs:
     apply:

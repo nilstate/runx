@@ -106,6 +106,8 @@ impl ToolExecutor for RuntimeToolExecutor {
             skill_name: tool,
             allow_explicit_manifest_path: false,
             effect_admission: None,
+            policy_approval_refs: &[],
+            step_id: tool,
         };
         dispatch_tool(request, &self.effects, &self.observed_at, Instant::now())
     }
@@ -168,6 +170,47 @@ mod tests {
             matches!(&result, Err(RuntimeError::SkillFailed { .. })),
             "an unresolved tool must fail, not panic or succeed; got: {result:?}"
         );
+    }
+
+    #[test]
+    fn managed_agent_cannot_invoke_a_policy_capability_directly()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let workspace = tempfile::tempdir()?;
+        let executor = RuntimeToolExecutor::new(
+            BTreeMap::from([(
+                RUNX_CWD_ENV.to_owned(),
+                workspace.path().to_string_lossy().into_owned(),
+            )]),
+            workspace.path().to_path_buf(),
+            CredentialDelivery::none(),
+            RuntimeEffectRegistry::default(),
+            "2026-01-01T00:00:00Z",
+            ["fs.write".to_owned()],
+            vec!["fs.write".to_owned()],
+        );
+        let input = JsonValue::Object(BTreeMap::from([
+            (
+                "repo_root".to_owned(),
+                JsonValue::String(workspace.path().to_string_lossy().into_owned()),
+            ),
+            (
+                "path".to_owned(),
+                JsonValue::String("unapproved.txt".to_owned()),
+            ),
+            (
+                "contents".to_owned(),
+                JsonValue::String("must not be written".to_owned()),
+            ),
+        ]));
+
+        let output = executor.execute("fs.write", &input)?;
+
+        assert_eq!(output.status, InvocationStatus::Failure);
+        assert!(output.failure_message().is_some_and(|message| {
+            message.contains("requires verified policy approval evidence")
+        }));
+        assert!(!workspace.path().join("unapproved.txt").exists());
+        Ok(())
     }
 
     #[test]

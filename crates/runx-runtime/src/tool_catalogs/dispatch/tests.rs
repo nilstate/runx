@@ -1242,6 +1242,8 @@ fn invoke_with_declared_scopes_in_directory(
             skill_name: "tool-dispatch-test",
             allow_explicit_manifest_path: true,
             effect_admission: None,
+            policy_approval_refs: &[],
+            step_id: tool_ref,
         },
         &effects,
         "2026-01-01T00:00:00Z",

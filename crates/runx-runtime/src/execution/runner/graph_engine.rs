@@ -7,12 +7,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 
-use runx_contracts::{ExecutionEvent, FanoutReceiptSyncPoint, JsonValue};
+use runx_contracts::{ExecutionEvent, FanoutReceiptSyncPoint, JsonValue, Reference};
 use runx_core::state_machine::{
     FanoutBranchPlan, FanoutGroupPolicy, FanoutSyncDecision, FanoutSyncOutcome, GraphStepStatus,
     SequentialGraphEvent, SequentialGraphPlan, SequentialGraphState, create_sequential_graph_state,
 };
-use runx_parser::{ExecutionGraph, GraphStep};
+use runx_parser::{ExecutionGraph, GraphRunTarget, GraphStep};
 
 use super::super::fanout::fanout_policies;
 use super::super::graph::{LoadedStepSkill, StepSkillCache, StepSkillLoadOptions};
@@ -28,11 +28,11 @@ use super::scheduler::{
 use super::step_handlers::{output_error, runtime_error_step_run};
 use super::sync::fanout_sync_point;
 use super::{GraphCheckpoint, GraphRun, Runtime, StepRun};
-use crate::RuntimeError;
 use crate::adapter::{BorrowedSkillAdapter, SkillAdapter};
 use crate::host::{Host, RejectingParallelHost};
 use crate::journal::ExecutionJournal;
 use crate::lifecycle::LifecycleEvent;
+use crate::{CapabilityApproval, RuntimeError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum StepFailureMode {
@@ -84,6 +84,7 @@ struct ParallelFanoutJob<'a> {
     attempt: u32,
     step: &'a GraphStep,
     loaded_skill: Option<LoadedStepSkill>,
+    policy_approval_refs: Vec<Reference>,
     executor: Box<dyn SkillAdapter + Send + Sync>,
 }
 
@@ -536,10 +537,13 @@ impl GraphExecution {
                         error,
                     )
                 })?;
+                let policy_approval_refs =
+                    verified_policy_approval_references(runtime, graph, planned.step, &self.runs)?;
                 Ok(Mutex::new(Some(ParallelFanoutJob {
                     attempt: planned.attempt,
                     step: planned.step,
                     loaded_skill,
+                    policy_approval_refs,
                     executor,
                 })))
             })
@@ -745,13 +749,19 @@ impl GraphExecution {
         A: SkillAdapter,
     {
         enforce_guards(context.graph, context.step, &self.runs)?;
+        let policy_approval_refs = verified_policy_approval_references(
+            context.runtime,
+            context.graph,
+            context.step,
+            &self.runs,
+        )?;
         let retry_remaining = retry_budget_remaining(context.step, context.plan.attempt);
         self.record_lifecycle(
             context.host,
             LifecycleEvent::step_started(context.plan.step_id),
         )?;
         self.start_step(context.runtime, context.plan.step_id);
-        let run = self.execute_step_plan(&mut context, loaded_skill)?;
+        let run = self.execute_step_plan(&mut context, loaded_skill, policy_approval_refs)?;
         self.commit_step_run(
             context.runtime,
             context.host,
@@ -765,6 +775,7 @@ impl GraphExecution {
         &mut self,
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Result<Option<LoadedStepSkill>, RuntimeError>,
+        policy_approval_refs: Vec<Reference>,
     ) -> Result<StepRun, RuntimeError>
     where
         A: SkillAdapter,
@@ -778,9 +789,9 @@ impl GraphExecution {
                     .env
                     .contains_key(DISABLE_RUNTIME_INDEXES_ENV)
                 {
-                    self.execute_step_without_index(context, loaded_skill)
+                    self.execute_step_without_index(context, loaded_skill, policy_approval_refs)
                 } else {
-                    self.execute_step_with_index(context, loaded_skill)
+                    self.execute_step_with_index(context, loaded_skill, policy_approval_refs)
                 }
             });
         let run_result = run_result.map_err(|fault| fault.at_graph_step(&context.step.id));
@@ -805,6 +816,7 @@ impl GraphExecution {
         &mut self,
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Option<LoadedStepSkill>,
+        policy_approval_refs: Vec<Reference>,
     ) -> Result<StepRun, StepFault>
     where
         A: SkillAdapter,
@@ -817,6 +829,7 @@ impl GraphExecution {
                 step: context.step,
                 attempt: context.plan.attempt,
                 loaded_skill,
+                policy_approval_refs,
                 host: context.host,
             },
             &self.runs,
@@ -827,6 +840,7 @@ impl GraphExecution {
         &mut self,
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Option<LoadedStepSkill>,
+        policy_approval_refs: Vec<Reference>,
     ) -> Result<StepRun, StepFault>
     where
         A: SkillAdapter,
@@ -840,6 +854,7 @@ impl GraphExecution {
                 step: context.step,
                 attempt: context.plan.attempt,
                 loaded_skill,
+                policy_approval_refs,
                 host: context.host,
             },
             &prior_run_index,
@@ -1097,6 +1112,7 @@ fn execute_parallel_fanout_job(
             step: job.step,
             attempt: job.attempt,
             loaded_skill: job.loaded_skill,
+            policy_approval_refs: job.policy_approval_refs,
             host: &mut host,
         },
         context.prior_run_index,
@@ -1267,6 +1283,108 @@ pub(super) fn enforce_guards(
         }
     }
     Ok(())
+}
+
+fn verified_policy_approval_references<A>(
+    runtime: &Runtime<A>,
+    graph: &ExecutionGraph,
+    step: &GraphStep,
+    runs: &[StepRun],
+) -> Result<Vec<Reference>, RuntimeError>
+where
+    A: SkillAdapter,
+{
+    let tool_ref = step.tool.as_deref();
+    let requires_policy = tool_ref.is_some_and(|tool_ref| {
+        crate::tool_catalogs::native::approval(tool_ref, &runtime.options.effects)
+            == Some(CapabilityApproval::Policy)
+    });
+    if !step.mutating && !requires_policy {
+        return Ok(Vec::new());
+    }
+    if requires_policy && !step.mutating {
+        return Err(RuntimeError::InvalidRunStep {
+            step_id: step.id.clone(),
+            reason: format!(
+                "Policy capability '{}' must be declared as a mutating graph step",
+                tool_ref.unwrap_or_default()
+            ),
+        });
+    }
+
+    let mut references = Vec::new();
+    for guard in graph
+        .policy
+        .iter()
+        .flat_map(|policy| &policy.guards)
+        .filter(|guard| guard.step == step.id)
+        .filter(|guard| {
+            guard.equals == Some(JsonValue::Bool(true))
+                && guard.not_equals.is_none()
+                && guard.field.ends_with(".approval_decision.data.approved")
+        })
+    {
+        let approval_step_id = guard.field.split('.').next().unwrap_or_default();
+        let Some(approval_step) = graph
+            .steps
+            .iter()
+            .find(|candidate| candidate.id == approval_step_id)
+        else {
+            continue;
+        };
+        if !matches!(approval_step.run, Some(GraphRunTarget::Approval)) {
+            continue;
+        }
+        let Some(approval_run) = runs
+            .iter()
+            .rev()
+            .find(|run| run.step_id == approval_step_id)
+        else {
+            continue;
+        };
+        if approval_run.skill != "run:approval"
+            || !approval_run.outcome.succeeded()
+            || transition_field_value(&guard.field, runs) != Some(&JsonValue::Bool(true))
+        {
+            continue;
+        }
+        crate::receipts::tree::validate_runtime_receipt_tree_with_policy(
+            &approval_run.receipt,
+            std::iter::empty::<runx_contracts::Receipt>(),
+            runx_receipts::ReceiptTreeConfig::default(),
+            runtime.options.signature_policy(),
+        )
+        .map_err(|verification| RuntimeError::ReceiptInvalid {
+            message: format!(
+                "policy approval receipt {} failed verification: {:?}",
+                approval_run.receipt.id, verification.findings
+            ),
+        })?;
+        crate::receipts::seal::validate_step_receipt_claim(
+            &approval_run.receipt,
+            true,
+            &approval_run.contract,
+        )?;
+        references.push(crate::receipts::seal::child_receipt_reference(
+            &approval_run.receipt,
+        ));
+    }
+    references.sort_by(|left, right| left.uri.cmp(&right.uri));
+    references.dedup();
+    if references.is_empty() && requires_policy {
+        references.extend(runtime.inherited_policy_approval_refs.iter().cloned());
+    }
+    if references.is_empty() && requires_policy {
+        return Err(RuntimeError::AuthorityDenied {
+            verb: runx_contracts::AuthorityVerb::Write,
+            step_id: step.id.clone(),
+            reason: format!(
+                "Policy capability '{}' requires an exact approved run:approval guard",
+                tool_ref.unwrap_or_default()
+            ),
+        });
+    }
+    Ok(references)
 }
 
 pub(super) fn transition_field_value<'a>(

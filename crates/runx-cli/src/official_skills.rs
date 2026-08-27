@@ -187,8 +187,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/marketplace-invoke",
-        version: "sha-9f2bfa28f964",
-        digest: "2fe80b4b024a5ba7b6ce901259061d28e354a7d8c82254af09fdd67a5fe3dd75",
+        version: "sha-b11277c90a17",
+        digest: "ef72c8022fcc1188e9c728854ee213c95237330374e884348f126732b246ea07",
     },
     OfficialSkillLockEntry {
         skill_id: "zhtwangk/meeting-followup",
@@ -287,7 +287,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/release",
-        version: "sha-2579ede621c3",
+        version: "sha-fde906c745c0",
         digest: "2d08998848cff00926cbcb2a75879facb29d2eed02000a72c1627643b84b486c",
     },
     OfficialSkillLockEntry {
@@ -332,7 +332,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/skill-lab",
-        version: "sha-d5cfe5a8fc67",
+        version: "sha-3987807b7e11",
         digest: "a71af341081a6d1c89c71fec78db4a22defde1778626dd572fc36bd5100dad04",
     },
     OfficialSkillLockEntry {
@@ -347,7 +347,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/sourcey",
-        version: "sha-d7a492dbcf2d",
+        version: "sha-1f8fe1354628",
         digest: "0e1cba333e15a0affafbf3452ebdf41962507e896761c14509ff7b9ea68d67b8",
     },
     OfficialSkillLockEntry {

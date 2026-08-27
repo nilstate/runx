@@ -1,5 +1,5 @@
 skill: release
-version: "0.4.3"
+version: "0.4.4"
 
 catalog:
   kind: graph
@@ -122,6 +122,16 @@ runners:
             cwd: inspect-profile.release_context.data.commands.verify.cwd
             env: inspect-profile.release_context.data.commands.verify.env
             timeout_ms: inspect-profile.release_context.data.commands.verify.timeout_ms
+        - id: approve-prepare
+          run: { type: approval }
+          inputs:
+            gate_id: release.prepare.approval
+            reason: Approve execution of this exact digest-bound release preparation command.
+          context:
+            command_plan: plan-prepare.command_plan.data
+          artifacts:
+            wrap_as: approval_decision
+            packet: runx.approval.decision.v1
         - id: execute-prepare
           tool: command.execute
           mutation: true
@@ -244,6 +254,9 @@ runners:
           artifacts:
             named_emits: { release_context: release_context, release_brief: release_brief }
             packets: { release_context: runx.release.context.v1, release_brief: runx.release.brief.v1 }
+      policy:
+        guards:
+          - { step: execute-prepare, field: approve-prepare.approval_decision.data.approved, equals: true }
 
   release:
     default: true
@@ -307,6 +320,7 @@ runners:
             packets: { publication: runx.release.phase_result.v1 }
         - id: execute-verify
           tool: command.execute
+          mutation: true
           scopes: [process.exec, runx:release:verify]
           inputs:
             output_mode: json
@@ -338,4 +352,5 @@ runners:
           - { step: execute-publish, field: approve-publish.approval_decision.data.approved, equals: true }
           - { step: interpret-publish, field: approve-publish.approval_decision.data.approved, equals: true }
           - { step: execute-verify, field: interpret-publish.publication.data.status, equals: command_completed }
+          - { step: execute-verify, field: approve-publish.approval_decision.data.approved, equals: true }
           - { step: interpret-verify, field: interpret-publish.publication.data.status, equals: command_completed }

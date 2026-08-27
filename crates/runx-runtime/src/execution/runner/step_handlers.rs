@@ -15,7 +15,7 @@ use output::{build_step_output_projection, contract_output_claim};
 
 use runx_contracts::{
     ApprovalGate, ClosureDisposition, ExecutionEvent, JsonObject, JsonValue, ProvenanceEntry,
-    Receipt, ResolutionRequest, ResolutionResponse, ResolutionResponseActor,
+    Receipt, Reference, ResolutionRequest, ResolutionResponse, ResolutionResponseActor,
 };
 use runx_core::state_machine::StepAdmissionWitness;
 use runx_parser::{GraphRunTarget, GraphStep, SkillArtifactContract, SkillSource, SourceKind};
@@ -101,6 +101,7 @@ pub(super) struct StepRunRequest<'a, A> {
     pub(super) attempt: u32,
     pub(super) inputs: JsonObject,
     pub(super) provenance: Vec<ProvenanceEntry>,
+    pub(super) policy_approval_refs: Vec<Reference>,
     pub(super) host: &'a mut dyn Host,
 }
 
@@ -112,6 +113,7 @@ struct StepHandlerCtx<'a, A> {
     attempt: u32,
     inputs: JsonObject,
     provenance: Vec<ProvenanceEntry>,
+    policy_approval_refs: Vec<Reference>,
     host: &'a mut dyn Host,
     authority: Option<StepAuthorityContext>,
     loaded_skill: Option<LoadedStepSkill>,
@@ -134,6 +136,7 @@ struct RegularSkillSeal<'a, A> {
     attempt: u32,
     skill_name: String,
     authority: Option<&'a StepAuthorityContext>,
+    policy_approval_refs: Vec<Reference>,
 }
 
 pub(super) fn output_error(run: &StepRun) -> String {
@@ -181,6 +184,7 @@ where
         attempt,
         inputs,
         provenance,
+        policy_approval_refs,
         host,
     } = request;
     let effect_target = ResolvedEffectTarget {
@@ -241,6 +245,7 @@ where
         attempt,
         inputs,
         provenance,
+        policy_approval_refs,
         host,
         authority,
         loaded_skill,
@@ -315,6 +320,7 @@ where
             attempt: request.attempt,
             skill_name,
             authority,
+            policy_approval_refs: request.policy_approval_refs,
         },
         regular,
     )
@@ -330,7 +336,13 @@ where
 {
     let skill_directory = invocation.skill_directory.clone();
     let invocation_env = invocation.env.clone();
-    let run = execute_nested_graph(request.runtime, request.host, &invocation)?;
+    let policy_approval_refs = request.policy_approval_refs.clone();
+    let run = execute_nested_graph(
+        request.runtime,
+        request.host,
+        &invocation,
+        policy_approval_refs.clone(),
+    )?;
     let result = graph_run_result(&run)?;
     let mut output = graph_run_skill_output(&result, &run)?;
     let mut projection = build_step_output_projection(request.step, &output, None, None)?;
@@ -364,6 +376,7 @@ where
             attempt: request.attempt,
             skill_name,
             authority: request.authority.as_ref(),
+            policy_approval_refs,
         },
         RegularSkillStepOutput {
             output,
@@ -377,6 +390,7 @@ fn execute_nested_graph<A>(
     runtime: &Runtime<A>,
     host: &mut dyn Host,
     invocation: &SkillInvocation,
+    policy_approval_refs: Vec<Reference>,
 ) -> Result<GraphRun, RuntimeError>
 where
     A: SkillAdapter,
@@ -399,7 +413,8 @@ where
         child_options,
         runtime.javascript.clone(),
         runtime.local_artifacts.clone(),
-    );
+    )
+    .with_inherited_policy_approval_refs(policy_approval_refs);
     child_runtime.run_graph_with_host(&invocation.skill_directory, graph, host)
 }
 
@@ -563,8 +578,9 @@ where
             created_at: &context.runtime.options.created_at,
             authority_grant_refs,
             authority_scope_refs,
-            operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
+            operator_refs: tool_operator_references(
                 &context.runtime.options.env,
+                context.policy_approval_refs,
             ),
             child_receipts: &receipt_lineage.direct_children,
             descendant_receipts: &receipt_lineage.descendants,
@@ -895,6 +911,7 @@ where
         host,
         authority,
         loaded_skill: _,
+        policy_approval_refs,
     } = request;
     let source = inline_source(step)?;
     let requirements = inline_step_requirements(step, &source);
@@ -926,6 +943,7 @@ where
             attempt,
             skill_name: step.id.clone(),
             authority: authority.as_ref(),
+            policy_approval_refs,
         },
         regular,
     )
@@ -1038,6 +1056,7 @@ where
         host,
         authority: _,
         loaded_skill: _,
+        policy_approval_refs: _,
     } = request;
     let source = agent_task_source(step)?;
     let requirements = inline_step_requirements(step, &source);
@@ -1229,6 +1248,7 @@ where
         attempt,
         inputs,
         provenance: _,
+        policy_approval_refs,
         host: _,
         authority,
         loaded_skill: _,
@@ -1265,6 +1285,8 @@ where
             skill_name: tool_ref,
             allow_explicit_manifest_path: true,
             effect_admission: authority.as_ref().map(StepAuthorityContext::admission),
+            policy_approval_refs: &policy_approval_refs,
+            step_id: &step.id,
         };
         // Source the tool manifest's artifact contract so the wrapped packet the
         // dispatcher folds into the claim (e.g. `data_operation_result`) is
@@ -1314,9 +1336,7 @@ where
                 created_at: &runtime.options.created_at,
                 authority_grant_refs,
                 authority_scope_refs,
-                operator_refs: crate::execution::prepared_skill::prepared_receipt_references(
-                    &runtime.options.env,
-                ),
+                operator_refs: tool_operator_references(&runtime.options.env, policy_approval_refs),
                 child_receipts: &[],
                 descendant_receipts: &[],
                 closure: None,
@@ -1362,6 +1382,15 @@ where
             admission_witness,
         })
     }
+}
+
+fn tool_operator_references(
+    env: &std::collections::BTreeMap<String, String>,
+    policy_approval_refs: Vec<Reference>,
+) -> Vec<Reference> {
+    let mut references = crate::execution::prepared_skill::prepared_receipt_references(env);
+    references.extend(policy_approval_refs);
+    references
 }
 
 fn agent_task_output(

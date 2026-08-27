@@ -2,6 +2,7 @@
 // compiler-checked distinction between sealable outcomes and engine faults.
 use std::path::Path;
 
+use runx_contracts::Reference;
 use runx_parser::GraphStep;
 
 use super::super::graph::{
@@ -59,6 +60,7 @@ pub(super) struct LoadedStepExecutionRequest<'a, A: SkillAdapter> {
     pub(super) step: &'a GraphStep,
     pub(super) attempt: u32,
     pub(super) loaded_skill: Option<LoadedStepSkill>,
+    pub(super) policy_approval_refs: Vec<Reference>,
     pub(super) host: &'a mut dyn Host,
 }
 
@@ -106,6 +108,7 @@ where
         step,
         attempt,
         loaded_skill,
+        policy_approval_refs,
         host,
     } = request;
     let request = StepRunRequest {
@@ -116,6 +119,7 @@ where
         attempt,
         inputs,
         provenance,
+        policy_approval_refs,
         host,
     };
     match loaded_skill {

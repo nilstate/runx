@@ -823,17 +823,20 @@ fn bind_step_identity(
     output: &InvocationOutput,
     claim: &JsonObject,
 ) -> Result<(), RuntimeError> {
+    receipt.subject.reference.locator =
+        Some(step_identity_locator(receipt, output.succeeded(), claim)?.into());
+    Ok(())
+}
+
+fn step_identity_locator(
+    receipt: &Receipt,
+    succeeded: bool,
+    claim: &JsonObject,
+) -> Result<String, RuntimeError> {
     let mut identity = JsonObject::from([
         (
             "status".to_owned(),
-            JsonValue::String(
-                if output.succeeded() {
-                    "success"
-                } else {
-                    "failure"
-                }
-                .to_owned(),
-            ),
+            JsonValue::String(if succeeded { "success" } else { "failure" }.to_owned()),
         ),
         ("claim".to_owned(), JsonValue::Object(claim.clone())),
     ]);
@@ -852,9 +855,30 @@ fn bind_step_identity(
             message: error.to_string(),
         }
     })?;
-    receipt.subject.reference.locator =
-        Some(format!("sha256:{}", sha256_hex(material.as_bytes())).into());
-    Ok(())
+    Ok(format!("sha256:{}", sha256_hex(material.as_bytes())))
+}
+
+pub(crate) fn validate_step_receipt_claim(
+    receipt: &Receipt,
+    succeeded: bool,
+    claim: &JsonObject,
+) -> Result<(), RuntimeError> {
+    let expected = step_identity_locator(receipt, succeeded, claim)?;
+    if receipt
+        .subject
+        .reference
+        .locator
+        .as_ref()
+        .is_some_and(|locator| locator.as_str() == expected)
+    {
+        return Ok(());
+    }
+    Err(RuntimeError::ReceiptInvalid {
+        message: format!(
+            "receipt {} does not bind its retained step claim",
+            receipt.id
+        ),
+    })
 }
 
 fn graph_child_identity(children: &[Reference]) -> String {

@@ -173,10 +173,21 @@ pub(crate) fn validate_capability_contract(
 ) -> Result<(), RuntimeError> {
     let definition = contract.definition();
     validate_capability_identity(definition)?;
+    validate_capability_approval(definition)?;
     validate_capability_artifacts(definition)?;
     validate_capability_fields(definition, &contract.input_schema()?)?;
     validate_capability_output_schema(definition, &contract.output_schema())?;
     contract.catalog_inputs()?;
+    Ok(())
+}
+
+fn validate_capability_approval(definition: &CapabilityDefinition) -> Result<(), RuntimeError> {
+    if definition.approval == CapabilityApproval::Policy && !definition.effect.mutating() {
+        return Err(invalid(
+            definition.id,
+            "Policy approval is valid only for a mutating capability",
+        ));
+    }
     Ok(())
 }
 
