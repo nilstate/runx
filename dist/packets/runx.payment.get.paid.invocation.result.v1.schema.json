@@ -1542,6 +1542,64 @@
               ],
               "type": "object",
               "x-runx-schema": "runx.reference.v1"
+            },
+            "run_ref": {
+              "$id": "https://schemas.runx.ai/runx/reference/v1.json",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "locator": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "observed_at": {
+                  "minLength": 1,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$",
+                  "type": "string"
+                },
+                "proof_kind": {
+                  "anyOf": [
+                    {
+                      "const": "effect_evidence",
+                      "type": "string"
+                    },
+                    {
+                      "const": "effect_finality",
+                      "type": "string"
+                    },
+                    {
+                      "const": "credential_resolution",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "provider": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "schema": {
+                  "const": "runx.reference.v1",
+                  "type": "string"
+                },
+                "type": {
+                  "const": "act",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^runx:run:[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "uri"
+              ],
+              "type": "object",
+              "x-runx-schema": "runx.reference.v1"
             }
           },
           "required": [
