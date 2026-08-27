@@ -1,6 +1,7 @@
 name: ci
 
 env:
+  CARGO_INCREMENTAL: "0"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
@@ -10,16 +11,102 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  js-checks:
-    runs-on: ubuntu-latest
+  classify:
+    runs-on: ubuntu-24.04
+    outputs:
+      full: ${{ steps.changes.outputs.full }}
+      skills: ${{ steps.changes.outputs.skills }}
+      windows: ${{ steps.changes.outputs.windows }}
+      light: ${{ steps.changes.outputs.light }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Scan committed tree for secrets
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check --status
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          scan_dir="$RUNNER_TEMP/gitleaks-tree"
+          mkdir -p "$scan_dir"
+          git archive --format=tar HEAD | tar -xf - -C "$scan_dir"
+          "$RUNNER_TEMP/gitleaks" dir --redact --verbose --exit-code 1 "$scan_dir"
+
+      - name: Classify affected proofs
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/classify-ci-changes.test.mjs
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            base_ref=""
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+          elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            base_ref="${{ github.event.before }}"
+          else
+            base_ref=""
+          fi
+          if [[ -z "$base_ref" ]]; then
+            {
+              echo "full=true"
+              echo "skills=true"
+              echo "windows=true"
+              echo "light=false"
+              echo "summary=no stable diff base; running all checks"
+            } >> "$GITHUB_OUTPUT"
+          else
+            node scripts/classify-ci-changes.mjs "$base_ref" HEAD
+          fi
+
+      - name: Check plan
+        run: echo "${{ steps.changes.outputs.summary }}"
+
+      - name: Setup pnpm for light checks
+        if: steps.changes.outputs.light == 'true'
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.18.2
+
+      - name: Setup Node for light checks
+        if: steps.changes.outputs.light == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install workspace dependencies for light checks
+        if: steps.changes.outputs.light == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Documentation and release-surface checks
+        if: steps.changes.outputs.light == 'true'
+        run: |
+          pnpm domains:check
+          pnpm docs:api:check
+          pnpm release:version:check
+
+  linux-checks:
+    needs: classify
+    if: needs.classify.outputs.full == 'true' || needs.classify.outputs.skills == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     env:
       RUNX_SKILL_VERSION_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
     steps:
@@ -40,190 +127,92 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Restore check caches
-        uses: actions/cache@v6
-        with:
-          path: |
-            node_modules/.cache/tsc
-            .build
-          key: ${{ runner.os }}-oss-checks-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'tsconfig*.json', 'packages/**/tsconfig.json', 'packages/**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-oss-checks-
-
-      - name: Setup Rust
+      - name: Setup pinned Rust toolchain
         run: rustup show
-
-      - name: Cargo cache
-        # verify:fast builds the debug runx + fixture-oracle binaries; without this
-        # cache the whole dependency tree recompiles cold on every run.
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify
-        run: pnpm verify:fast
-
-      - name: Verify fast plan coverage
-        run: pnpm verify:fast:plan-check
-
-  demo-checks:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.18.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Restore check caches
-        uses: actions/cache@v6
-        with:
-          path: |
-            node_modules/.cache/tsc
-            .build
-          key: ${{ runner.os }}-oss-checks-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'tsconfig*.json', 'packages/**/tsconfig.json', 'packages/**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-oss-checks-
-
-      - name: Setup Rust
-        run: rustup show
-
-      - name: Cargo cache
-        # test:heavy:graph builds the debug runx binary via test-workspace.mjs;
-        # without this cache the whole dependency tree recompiles cold on every run.
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Heavy graph Vitest
-        run: pnpm test:heavy:graph
-
-  rust-checks:
-    runs-on: ubuntu-latest
-    env:
-      CARGO_INCREMENTAL: "0"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Setup Rust
-        run: rustup show
-
-      - name: Setup Rust nightly
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt, clippy
 
       - name: Install Rust test and advisory tools
+        if: needs.classify.outputs.full == 'true'
         uses: taiki-e/install-action@v2.85.5
         with:
-          # Prebuilt binaries instead of compiling from source on every cache miss.
-          # cargo-public-api is snapshot-sensitive; keep this in sync with
-          # scripts/check-rust-kernel-parity.mjs.
+          # Prebuilt binaries avoid compiling CI-only tools on cache misses.
+          # Keep cargo-public-api aligned with check-rust-kernel-parity.mjs.
           tool: cargo-nextest,cargo-deny,cargo-public-api@0.51.0
 
-      - name: Cargo cache
-        # Same Rust-aware cache the cloud workflow uses for oss/crates: keys on the
-        # lockfile and rustc version and prunes stale artifacts, so the target tree
-        # does not bloat the cache (it grew to ~183GB locally under the old scheme).
+      - name: Restore check caches
+        uses: actions/cache@v6
+        with:
+          path: |
+            node_modules/.cache/tsc
+            .build
+          key: ${{ runner.os }}-oss-checks-${{ hashFiles('pnpm-lock.yaml', 'package.json', 'tsconfig*.json', 'packages/**/tsconfig.json', 'packages/**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-oss-checks-
+
+      - name: Cache Rust workspace
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
 
-      - name: Rust checks
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fast correctness and drift gates
+        if: needs.classify.outputs.full == 'true'
+        run: |
+          pnpm verify:fast
+          pnpm verify:fast:plan-check
+
+      - name: Build the skill harness runtime
+        if: needs.classify.outputs.skills == 'true' && needs.classify.outputs.full != 'true'
+        # Skill-only changes still run against the real runtime, but do not need
+        # fixture generators or the workspace-wide fast/full Rust corpora.
+        run: |
+          node scripts/build-workspace.mjs
+          cargo build -p runx-js-worker -p runx-cli --manifest-path crates/Cargo.toml
+
+      - name: Heavy graph scenarios
+        if: needs.classify.outputs.full == 'true'
+        run: pnpm test:heavy:graph
+
+      - name: Full Rust checks
+        if: needs.classify.outputs.full == 'true'
         working-directory: crates
         run: |
-          cargo fmt --all --check
           cargo clippy --workspace --all-targets --all-features -- -D warnings
           cargo nextest run --workspace --all-features --no-fail-fast
-          # nextest does not run doctests; runx-contracts (fingerprint), runx-parser
-          # (yaml), and runx-sdk (command) carry doctests, so keep this gated.
           cargo test --workspace --all-features --doc
           cargo package -p runx-cli --list
 
-      - name: License boundary guard
+      - name: Rust license and dependency policy
+        if: needs.classify.outputs.full == 'true'
         run: |
-          node scripts/check-license-edges.mjs --check manifest-complete
-          node scripts/check-license-edges.mjs --check identifiers
-          cargo metadata --manifest-path crates/Cargo.toml --format-version 1 | node scripts/check-license-edges.mjs --check edges
-
-      - name: Cargo policy
-        run: cargo deny --manifest-path crates/Cargo.toml check advisories bans licenses sources
+          cargo metadata --manifest-path crates/Cargo.toml --format-version 1 \
+            | node scripts/check-license-edges.mjs --check edges
+          cargo deny --manifest-path crates/Cargo.toml check advisories bans licenses sources
 
       - name: Rust public API snapshot
+        if: needs.classify.outputs.full == 'true'
         run: node scripts/check-rust-kernel-parity.mjs --api-only
 
-  skill-harness:
-    # One catalog-wide behavioral sweep. Skill Lab is the sole authoring path,
-    # so there is no parallel template-generator smoke lane.
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.18.2
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Setup Rust
-        run: rustup show
-      - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build workspace packages
-        run: node scripts/build-workspace.mjs
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-      - name: Build runtime binaries
-        working-directory: crates
+      - name: Official skill operator audit
+        if: needs.classify.outputs.skills == 'true'
         run: |
-          cargo build -p runx-cli
-          cargo build -p runx-js-worker
-      - name: Audit official skill operator value
-        run: node scripts/audit-core-skills.mjs --check --json
-      - name: Catalog harness sweep
-        # The official lock is the catalog source of truth. The sweep fails on
-        # every unallowed harness failure, so a duplicate hard-coded skill count
-        # would only drift from that owner.
+          node scripts/generate-official-lock.mjs --check
+          node scripts/audit-core-skills.mjs --check --json
+
+      - name: Official skill harness sweep
+        if: needs.classify.outputs.skills == 'true'
         env:
           RUNX_RECEIPT_SIGN_KID: ci-skill-harness
           RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64: QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=
           RUNX_RECEIPT_SIGN_ISSUER_TYPE: hosted
-        run: |
-          set -euo pipefail
-          node scripts/harness-sweep.mjs \
-            --runx-bin crates/target/debug/runx --no-build
+        run: node scripts/harness-sweep.mjs --runx-bin crates/target/debug/runx --no-build
 
   windows-process-lifecycle:
-    # The Windows Job Object boundary cannot be proved by Linux emulation.
-    # Keep this lane deliberately narrow: two runtime ownership tests and the
-    # platform watchdog self-test, not another workspace-wide matrix build.
+    needs: classify
+    if: needs.classify.outputs.windows == 'true'
+    # Windows owns process-tree semantics that Linux cannot prove. Keep the lane
+    # narrow and avoid repeating the workspace suite on a premium runner.
     runs-on: windows-latest
     timeout-minutes: 8
     steps:
@@ -233,9 +222,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Setup Rust
+      - name: Setup pinned Rust toolchain
         run: rustup show
-      - name: Cargo cache
+      - name: Cache Rust workspace
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
@@ -245,14 +234,27 @@ jobs:
       - name: Prove watchdog timeout semantics
         run: node scripts/harness-sweep.mjs --self-test
 
+  # Branch protection requires this stable aggregate context. Keep it as the
+  # one merge wall while the two platform jobs remain independently visible.
   checks:
+    if: always()
     runs-on: ubuntu-latest
     needs:
-      - js-checks
-      - demo-checks
-      - rust-checks
-      - skill-harness
+      - classify
+      - linux-checks
       - windows-process-lifecycle
     steps:
       - name: Done
-        run: echo "All CI lanes passed."
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          LINUX_RESULT: ${{ needs.linux-checks.result }}
+          WINDOWS_RESULT: ${{ needs.windows-process-lifecycle.result }}
+        run: |
+          set -euo pipefail
+          for result in "$CLASSIFY_RESULT" "$LINUX_RESULT" "$WINDOWS_RESULT"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "CI lane ended with $result" >&2
+              exit 1
+            fi
+          done
+          echo "All affected CI lanes passed."
