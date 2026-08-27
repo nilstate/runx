@@ -39,7 +39,10 @@ impl CapabilityInput for ProviderReadInput {}
 #[serde(deny_unknown_fields)]
 struct ProviderMutateInput {
     operation: String,
-    target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    target_from_grant: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     input: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,6 +96,7 @@ const READ_FIELDS: &[CapabilityField] = &[
 const MUTATE_FIELDS: &[CapabilityField] = &[
     READ_FIELDS[0],
     READ_FIELDS[1],
+    READ_FIELDS[2],
     READ_FIELDS[4],
     READ_FIELDS[5],
     READ_FIELDS[6],

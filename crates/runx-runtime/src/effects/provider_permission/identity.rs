@@ -414,7 +414,8 @@ fn resolved_provider_target(
         .unwrap_or(false);
     if target.is_some() == target_from_grant {
         return Err(provider_permission_policy_error(
-            "native provider reads require exactly one of target or target_from_grant".to_owned(),
+            "native provider operations require exactly one of target or target_from_grant"
+                .to_owned(),
         ));
     }
     if target_from_grant {
