@@ -317,6 +317,28 @@ export {
 } from "./schemas/effect-finality-receipt.js";
 
 export {
+  externalJobContinuationV1Schema,
+  externalJobScheduleV1Schema,
+  externalJobScheduleIntentV1Schema,
+  externalJobStageRequestV1Schema,
+  externalJobStageResultV1Schema,
+  validateExternalJobContinuationContract,
+  validateExternalJobScheduleContract,
+  validateExternalJobScheduleIntentContract,
+  validateExternalJobStageRequestContract,
+  validateExternalJobStageResultContract,
+  type ExternalJobCheckpointContract,
+  type ExternalJobContinuationContract,
+  type ExternalJobFailureContract,
+  type ExternalJobScheduleContract,
+  type ExternalJobScheduleIntentContract,
+  type ExternalJobStageContract,
+  type ExternalJobStageRequestContract,
+  type ExternalJobStageResultContract,
+  type ExternalJobStatusContract,
+} from "./schemas/external-job.js";
+
+export {
   receiptV1Schema,
   receiptClassSchema,
   receiptPaidInvocationBindingSchema,
@@ -751,6 +773,13 @@ import { handoffSignalV1Schema, handoffStateV1Schema, suppressionRecordV1Schema 
 import { operationalPolicySchema } from "./schemas/operational-policy.js";
 import { operationalProposalSchema } from "./schemas/operational-proposal.js";
 import {
+  externalJobContinuationV1Schema,
+  externalJobScheduleV1Schema,
+  externalJobScheduleIntentV1Schema,
+  externalJobStageRequestV1Schema,
+  externalJobStageResultV1Schema,
+} from "./schemas/external-job.js";
+import {
   paidSkillListingV1Schema,
   paidInvocationV1Schema,
   offerRevisionRefV1Schema,
@@ -826,6 +855,11 @@ export const runxContractSchemas = {
   suppressionRecord: runxSchemaArtifacts["suppression-record.schema.json"],
   operationalPolicy: runxSchemaArtifacts["operational-policy.schema.json"],
   operationalProposal: runxSchemaArtifacts["operational-proposal.schema.json"],
+  externalJobContinuation: externalJobContinuationV1Schema,
+  externalJobSchedule: externalJobScheduleV1Schema,
+  externalJobScheduleIntent: externalJobScheduleIntentV1Schema,
+  externalJobStageRequest: externalJobStageRequestV1Schema,
+  externalJobStageResult: externalJobStageResultV1Schema,
   paidSkillListing: paidSkillListingV1Schema,
   paidInvocation: paidInvocationV1Schema,
   offerRevisionRef: offerRevisionRefV1Schema,

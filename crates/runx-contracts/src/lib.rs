@@ -17,6 +17,7 @@ pub mod execution;
 pub mod execution_boundary;
 pub mod execution_requirements;
 pub mod external_adapter;
+pub mod external_job;
 pub mod fingerprint;
 pub mod fixture;
 pub mod handoff;
@@ -129,6 +130,14 @@ pub use external_adapter::{
     ExternalAdapterManifestSchema, ExternalAdapterProtocolVersion, ExternalAdapterResponse,
     ExternalAdapterStatus, ExternalAdapterTelemetryObservation, ExternalAdapterTelemetryValue,
     ExternalAdapterTimeouts, ExternalAdapterTransport, ExternalAdapterTransportKind,
+};
+pub use external_job::{
+    EXTERNAL_JOB_CONTINUATION_SCHEMA, EXTERNAL_JOB_SCHEDULE_INTENT_SCHEMA,
+    EXTERNAL_JOB_SCHEDULE_SCHEMA, EXTERNAL_JOB_STAGE_REQUEST_SCHEMA,
+    EXTERNAL_JOB_STAGE_RESULT_SCHEMA, ExternalJobAttemptLimit, ExternalJobCheckpoint,
+    ExternalJobContinuation, ExternalJobDeadlineMillis, ExternalJobDelayMillis, ExternalJobFailure,
+    ExternalJobSchedule, ExternalJobScheduleIntent, ExternalJobScheduleIntentSchema,
+    ExternalJobStage, ExternalJobStageRequest, ExternalJobStageResult, ExternalJobStatus,
 };
 pub use fingerprint::{Fingerprint, FingerprintAlgorithm, hex_lower, sha256_hex, sha256_prefixed};
 pub use fixture::{Fixture, FixtureLane};

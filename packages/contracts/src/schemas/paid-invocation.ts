@@ -145,6 +145,7 @@ export type PaidInvocationContract = DeepReadonly<{
   execution_state: PaidInvocationExecutionStateContract;
   outcome_gate: PaidInvocationOutcomeGateContract;
   execution_ref?: ReferenceContract;
+  external_job_ref?: ReferenceContract;
   payment_ref?: PaymentReferenceContract;
   created_at: string;
   updated_at: string;
@@ -287,7 +288,16 @@ export function principalReferenceFromRunxPrincipalId(
 }
 
 export function validatePaidInvocationContract(value: unknown, label = "paid_invocation") {
-  return validateContractSchema(paidInvocationV1Schema, value, label);
+  const invocation = validateContractSchema(paidInvocationV1Schema, value, label);
+  if (invocation.external_job_ref
+    && (invocation.external_job_ref.type !== "target"
+      || !invocation.external_job_ref.uri.startsWith("runx:external-job:"))) {
+    throw new Error(`${label}.external_job_ref must identify a Runx external job target.`);
+  }
+  if (invocation.execution_state === "waiting_external" && !invocation.external_job_ref) {
+    throw new Error(`${label}.waiting_external requires external_job_ref.`);
+  }
+  return invocation;
 }
 
 export function validatePaidSkillListingContract(value: unknown, label = "paid_skill_listing") {

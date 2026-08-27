@@ -519,6 +519,8 @@ pub struct PaidInvocation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execution_ref: Option<Reference>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_job_ref: Option<Reference>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_ref: Option<PaymentReference>,
     pub created_at: IsoDateTime,
     pub updated_at: IsoDateTime,
