@@ -8,9 +8,10 @@ runx:
 # Nitrosend
 
 Use this as the single public Runx surface for Nitrosend customer operations.
-It calls the live Nitrosend MCP boundary through a bounded provider adapter;
-API keys are delivered as credentials, never accepted as skill inputs or
-returned in receipts.
+Local account runners bind the API key only to the local runtime. The hosted
+`review-content` runner calls one bounded `provider.read` operation whose Cloud
+adapter retains credential custody. No runner accepts an API key as skill input
+or returns one in a receipt.
 
 This skill is not for Nitrosend customer-support administration or team Slack
 work. Those are product-operator concerns owned by the Nitrosend repository.

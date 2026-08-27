@@ -198,7 +198,6 @@ runners:
             brand_sid: "$input.brand_sid"
   review-content:
     type: graph
-    credential: nitrosend
     inputs:
       subject:
         type: string
@@ -215,16 +214,46 @@ runners:
         html: "<h1>Product update</h1><p>What changed and why it matters.</p>"
     graph:
       name: nitrosend-review-content
-      result_from: [review]
+      result_from: [project]
       steps:
-        - id: review
-          skill: graph/provider-operation
-          runner: read
+        - id: digest-html
+          tool: data.digest
           inputs:
-            operation: review_content
-            arguments:
+            value: "$input.html"
+            encoding: utf8_text
+        - id: review
+          tool: provider.read
+          scopes: [content.review]
+          policy:
+            provider_permission: { verb: read }
+          inputs:
+            expected_provider: nitrosend
+            operation: content.review
+            target: nitrosend://content-review
+            result_fields: [subject, html_size_bytes, html_digest, text_preview, text_length, accessibility, spam_score, warnings]
+            input:
               subject: "$input.subject"
               html: "$input.html"
+        - id: project
+          inputs:
+            subject: "$input.subject"
+            html: "$input.html"
+          context:
+            expected_html_digest: digest-html.digest_result.data.digest
+            provider_result: review.provider_operation.data.result
+          run:
+            type: javascript
+            module: review-content.mjs
+            export: projectContentReview
+            outputs:
+              subject: string
+              html_size_bytes: number
+              html_digest: string
+              text_preview: string
+              text_length: number
+              accessibility: object
+              spam_score: object
+              warnings: array
   import-status:
     type: graph
     credential: nitrosend
