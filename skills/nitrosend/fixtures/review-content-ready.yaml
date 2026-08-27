@@ -1,0 +1,27 @@
+name: nitrosend-review-content-ready
+kind: skill
+target: ..
+runner: review-content
+operator_journeys:
+  - mode: standalone
+    confusors: [review-delivery, content-pipeline]
+    request: Review this exact rendered email content without reading a Nitrosend account entity.
+    expected_outcome: Return bounded Nitrosend spam and accessibility evidence without mutation or private record access.
+env:
+  NITROSEND_API_KEY: harness-nitrosend-token
+inputs:
+  subject: A useful product update
+  html: "<h1>Product update</h1><p>What changed and why it matters.</p>"
+caller:
+  http_responses:
+    "https://api.nitrosend.com/mcp":
+      status: 200
+      headers: { content-type: application/json }
+      body: '{"jsonrpc":"2.0","id":"nitrosend-review_content","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_review_delivery\"},\"result\":{\"subject\":\"A useful product update\",\"html_size_bytes\":63,\"html_digest\":\"4df1dc8fa817446fa9d7f55e44cd79e58230a90fb15b33d0fe742d7b5f2bd0a0\",\"text_preview\":\"Product update What changed and why it matters.\",\"text_length\":47,\"accessibility\":{\"valid\":true,\"warnings\":[]},\"spam_score\":{\"score\":0,\"rating\":\"low\",\"factors\":[]},\"warnings\":[]}}"}]}}'
+expect:
+  status: sealed
+  receipt: { schema: runx.receipt.v1 }
+metadata:
+  public_skill: nitrosend
+  source_case: review-content-ready
+  source: skills-fixture

@@ -119,6 +119,36 @@ test("threads exact flow revisions and preserves campaign lifecycle behavior", (
   assert.equal(campaignApprove.decision, "ready");
 });
 
+test("prepares a bounded self-contained content review without private entity ids", () => {
+  const plan = prepareOperation({
+    mode: "read",
+    operation: "review_content",
+    arguments: { subject: "A useful update", html: "<h1>Update</h1>" },
+  }).operation_plan;
+
+  assert.equal(plan.decision, "ready");
+  assert.equal(plan.tool, "nitro_review_delivery");
+  assert.deepEqual(plan.requests[0].body.params.arguments, {
+    subject: "A useful update",
+    html: "<h1>Update</h1>",
+  });
+  assert.equal(plan.requests[0].headers["x-brand-sid"], undefined);
+
+  for (const arguments_ of [
+    { subject: "ok", html: "" },
+    { subject: "ok", html: "<p>ok</p>", target_id: 42 },
+    { subject: "x".repeat(999), html: "<p>ok</p>" },
+  ]) {
+    const refused = prepareOperation({
+      mode: "read",
+      operation: "review_content",
+      arguments: arguments_,
+    }).operation_plan;
+    assert.equal(refused.decision, "needs_input");
+    assert.deepEqual(refused.requests, []);
+  }
+});
+
 test("requires exact brand-scoped sender settings before HTTP", () => {
   for (const mode of ["read", "act"]) {
     const operation = mode === "read" ? "sender_settings" : "configure_sender";

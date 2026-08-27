@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.3.1"
+version: "0.3.2"
 catalog:
   kind: skill
   audience: public
@@ -196,6 +196,35 @@ runners:
               target_id: "$input.target_id"
               revision_id: "$input.revision_id"
             brand_sid: "$input.brand_sid"
+  review-content:
+    type: graph
+    credential: nitrosend
+    inputs:
+      subject:
+        type: string
+        required: true
+        description: Exact email subject; empty is allowed, maximum 998 UTF-8 bytes.
+        schema: { maxLength: 998 }
+      html:
+        type: string
+        required: true
+        description: Exact rendered email HTML for a self-contained read-only review.
+        schema: { minLength: 1, maxLength: 262144 }
+    examples:
+      - subject: A useful product update
+        html: "<h1>Product update</h1><p>What changed and why it matters.</p>"
+    graph:
+      name: nitrosend-review-content
+      result_from: [review]
+      steps:
+        - id: review
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: review_content
+            arguments:
+              subject: "$input.subject"
+              html: "$input.html"
   import-status:
     type: graph
     credential: nitrosend

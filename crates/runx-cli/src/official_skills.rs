@@ -222,8 +222,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/nitrosend",
-        version: "sha-cbb92ee3fa87",
-        digest: "25c1d932035cefdac9341a4978ab9c259c4a2404f7ab8dd12cac1e4ee170bbe8",
+        version: "sha-16b5810d4c82",
+        digest: "0aceded9e96acf78bb6f0911bc6bb3e4431cb7026b96d6440bcfde08b603d3f9",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/nws-weather-forecast",

@@ -25,6 +25,9 @@ work. Those are product-operator concerns owned by the Nitrosend repository.
 - `analytics`: live account, campaign, flow, or message insights.
 - `review-delivery`: read-only content and preflight review. Flow review requires
   the exact immutable `revision_id`; campaigns and templates do not.
+- `review-content`: read-only spam and accessibility review for bounded inline
+  email content. It accepts no account entity, audience, delivery, or mutation
+  input and is safe to compose behind a payment-as-access vendor endpoint.
 - `plan-campaign`, `plan-flow`, `plan-transactional`, and `plan-import`:
   bounded agent judgment that produces a reviewable request without provider
   completion.

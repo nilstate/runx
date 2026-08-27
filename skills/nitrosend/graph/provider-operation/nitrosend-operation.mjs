@@ -5,6 +5,7 @@ const READ_OPERATIONS = new Map([
   ["sender_settings", "nitro_configure_account"],
   ["insights", "nitro_get_insights"],
   ["review_delivery", "nitro_review_delivery"],
+  ["review_content", "nitro_review_delivery"],
   ["import_status", "nitro_query"],
   ["compose_campaign_intent", "nitro_compose_campaign"],
   ["validate_campaign_composition", "nitro_compose_campaign"],
@@ -190,6 +191,18 @@ function validate(mode, operation, args, brandSid) {
       return ["review_delivery requires arguments.revision_id for flows"];
     }
   }
+  if (mode === "read" && operation === "review_content") {
+    const keys = Object.keys(args);
+    const unexpected = keys.filter((key) => !["subject", "html"].includes(key));
+    if (unexpected.length > 0) {
+      return [`review_content received unsupported fields: ${unexpected.join(", ")}`];
+    }
+    if (typeof args.subject !== "string" || utf8Bytes(args.subject) > 998 ||
+        typeof args.html !== "string" || utf8Bytes(args.html) < 1 ||
+        utf8Bytes(args.html) > 262_144) {
+      return ["review_content requires a UTF-8 subject up to 998 bytes and HTML between 1 and 262144 bytes"];
+    }
+  }
   if (mode === "read" && operation === "import_status" && !positiveInteger(args.import_id)) {
     return ["import_status requires arguments.import_id"];
   }
@@ -264,6 +277,22 @@ function validate(mode, operation, args, brandSid) {
     }
   }
   return [];
+}
+
+function utf8Bytes(value) {
+  let bytes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x7f) bytes += 1;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff &&
+             index + 1 < value.length && value.charCodeAt(index + 1) >= 0xdc00 &&
+             value.charCodeAt(index + 1) <= 0xdfff) {
+      bytes += 4;
+      index += 1;
+    } else bytes += 3;
+  }
+  return bytes;
 }
 
 function providerArguments(operation, args) {
