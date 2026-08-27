@@ -141,19 +141,23 @@ pub fn run_native_skill_with_workspace(plan: SkillPlan, workspace: &WorkspaceEnv
         None => plan.inputs.clone(),
     };
     if resolved.paid_listing.is_some() && resolved.hosted_registry_url.is_some() {
-        let mut output =
-            match marketplace::discover_paid_skill(&resolved, plan.runner.as_deref(), &inputs) {
-                Ok(output) => output,
-                Err(error) => {
-                    return write_skill_failure(
-                        &error,
-                        plan.json,
-                        "marketplace_error",
-                        1,
-                        registry_provenance(&resolved),
-                    );
-                }
-            };
+        let mut output = match marketplace::discover_paid_skill(
+            &resolved,
+            plan.runner.as_deref(),
+            &inputs,
+            &env,
+        ) {
+            Ok(output) => output,
+            Err(error) => {
+                return write_skill_failure(
+                    &error,
+                    plan.json,
+                    "marketplace_error",
+                    1,
+                    registry_provenance(&resolved),
+                );
+            }
+        };
         attach_registry_provenance(&mut output, &resolved);
         let exit_code = skill_result_exit_code(&output);
         return write_skill_output(

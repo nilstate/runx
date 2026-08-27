@@ -2,6 +2,8 @@
 // command while a named runtime service owns the hosted HTTP boundary. The CLI
 // validates and renders the x402 presentation; settlement remains an ordinary
 // skill and never enters this router.
+use std::collections::BTreeMap;
+
 use runx_contracts::{JsonObject, JsonValue, X402_PAYMENT_REQUIRED_HEADER, X402PaymentRequired};
 use runx_runtime::{HostedSkillChallenge, request_hosted_skill_challenge};
 use runx_x402::decode_payment_required_header;
@@ -12,6 +14,7 @@ pub(super) fn discover_paid_skill(
     resolved: &ResolvedSkillRef,
     requested_runner: Option<&str>,
     inputs: &JsonObject,
+    env: &BTreeMap<String, String>,
 ) -> Result<JsonValue, String> {
     let listing = resolved
         .paid_listing
@@ -22,8 +25,12 @@ pub(super) fn discover_paid_skill(
         .hosted_registry_url
         .as_deref()
         .ok_or_else(|| "paid registry skill has no hosted execution surface".to_owned())?;
-    let challenge = request_hosted_skill_challenge(base_url, listing.skill_id.as_str())
-        .map_err(|error| format!("marketplace discovery failed: {error}"))?;
+    let challenge = request_hosted_skill_challenge(
+        base_url,
+        listing.skill_id.as_str(),
+        runx_runtime::hosted_private_network_allowed(false, env),
+    )
+    .map_err(|error| format!("marketplace discovery failed: {error}"))?;
     render_paid_skill_challenge(listing, runner, inputs, challenge)
 }
 

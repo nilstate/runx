@@ -29,8 +29,13 @@ pub enum HostedSkillEndpointError {
 pub fn request_hosted_skill_challenge(
     base_url: &str,
     skill_id: &str,
+    allow_private_network: bool,
 ) -> Result<HostedSkillChallenge, HostedSkillEndpointError> {
-    let transport = ReqwestHttpTransport::new()?;
+    let transport = if allow_private_network {
+        ReqwestHttpTransport::with_private_network_access()?
+    } else {
+        ReqwestHttpTransport::new()?
+    };
     request_hosted_skill_challenge_with_transport(&transport, base_url, skill_id)
 }
 
