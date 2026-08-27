@@ -40,10 +40,7 @@ fn render_paid_skill_challenge(
     inputs: &JsonObject,
     challenge: HostedSkillChallenge,
 ) -> Result<JsonValue, String> {
-    let HostedSkillChallenge {
-        resource_url,
-        response,
-    } = challenge;
+    let HostedSkillChallenge { response, .. } = challenge;
     if response.status != 402 {
         return Err(format!(
             "marketplace discovery returned HTTP {}; expected 402",
@@ -67,6 +64,10 @@ fn render_paid_skill_challenge(
     if header != body {
         return Err("marketplace x402 header and body challenges differ".to_owned());
     }
+    // The registry transport may be an internal origin behind a proxy. The
+    // canonical paid resource is the one declared by the matching x402 header
+    // and body, not the address used to fetch that challenge.
+    let resource_url = body.resource.url.as_str().to_owned();
 
     serde_json::from_value(serde_json::json!({
         "status": "payment_required",
@@ -138,6 +139,7 @@ mod tests {
         assert_eq!(output["status"], "payment_required");
         assert_eq!(output["runner"], "invoke");
         assert_eq!(output["result"]["payment_required"], body);
+        assert_eq!(output["result"]["resource"]["url"], body["resource"]["url"]);
     }
 
     #[test]
@@ -170,7 +172,8 @@ mod tests {
             encoded,
         )];
         HostedSkillChallenge {
-            resource_url: "https://api.runx.test/v1/skills/ausca/document-ocr/run".to_owned(),
+            resource_url: "https://registry.internal.test/v1/skills/ausca/document-ocr/run"
+                .to_owned(),
             response,
         }
     }
