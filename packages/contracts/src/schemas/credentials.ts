@@ -74,7 +74,6 @@ const authorityProofRequestedSchema = Type.Object(
   {
     connected_auth: Type.Boolean(),
     scopes: Type.Array(Type.String({ minLength: 1 })),
-    mutating: Type.Boolean(),
     scope_family: Type.Optional(Type.String({ minLength: 1 })),
     authority_kind: Type.Optional(stringEnum(authorityKinds)),
     target_repo: Type.Optional(Type.String({ minLength: 1 })),

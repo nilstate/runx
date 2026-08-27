@@ -10151,9 +10151,6 @@ export const runxSchemaArtifacts = {
           "connected_auth": {
             "type": "boolean"
           },
-          "mutating": {
-            "type": "boolean"
-          },
           "scope_family": {
             "minLength": 1,
             "type": "string"
@@ -10176,8 +10173,7 @@ export const runxSchemaArtifacts = {
         },
         "required": [
           "connected_auth",
-          "scopes",
-          "mutating"
+          "scopes"
         ],
         "type": "object"
       },
@@ -76186,9 +76182,6 @@ export const runxSchemaArtifacts = {
           "type": "object"
         },
         "type": "object"
-      },
-      "mutating": {
-        "type": "boolean"
       },
       "name": {
         "type": "string"

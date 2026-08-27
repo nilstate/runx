@@ -1,6 +1,6 @@
 ---
 name: issue-to-pr
-description: Implement one bounded repository issue with normal host tools, prove the tested change through one scafld finalize wall, and optionally publish an approved pull request with provider readback.
+description: Implement one bounded repository issue with normal host tools, prove the tested change through one scafld finalize wall, and optionally publish the exact pull request through scoped provider authority with readback.
 runx:
   category: code
 ---
@@ -30,7 +30,8 @@ host agent's editor, shell, Git, tests, or repository judgment.
 6. If PR publication is not authorized, return the tested/finalized result and
    stop. Do not silently downgrade the work to a plan.
 7. If publication is authorized, pass the exact `host_result` to `publish`.
-   Runx approves one `pullrequest.publish` mutation. That boundary publishes
+   Runx admits one `pullrequest.publish` mutation under the scoped repository
+   grant. That boundary publishes
    the exact commit to the requested branch, recovers by reading existing
    remote state, and independently reads the PR back. Notifications, feeds,
    issue comments, and documentation sync are optional downstream skills.
@@ -46,7 +47,7 @@ host agent's editor, shell, Git, tests, or repository judgment.
 - `finalize-local` verifies the completed host result and returns it without a
   remote mutation.
 - `publish` verifies the completed host result, publishes its exact Git ref,
-  and creates or recovers the approved PR with readback.
+  and creates or recovers the authorized PR with readback.
 - Preserve the same idempotency key across pause, retry, and resume. An
   uncertain PR creation never gets a new key.
 
@@ -96,8 +97,8 @@ state.
   evidence already gathered.
 - Failed tests or failed/stale finalize: return blocked or failed, never
   succeeded.
-- Missing publication approval: retain the tested finalized change locally and
+- Missing publication authority: retain the tested finalized change locally and
   stop before PR creation.
-- Provider failure after approval: preserve the approval, idempotency key,
+- Provider failure after admission: preserve the grant reference, idempotency key,
   finalization evidence, and mutation recovery state. Resume at publication;
   do not repeat issue discovery, coding, tests, or finalize.

@@ -30,7 +30,6 @@ steps:
     skill: ../../skills/stripe-spt-fulfill
     scopes:
       - payment:spend
-    mutation: true
     idempotency_key: stripe-spt-fulfill
     context:
       reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority

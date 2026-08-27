@@ -249,7 +249,7 @@ runners:
     ].join("\n"),
   );
   const result = run(
-    ["skill", skill, "--receipt-dir", receipts, "--json", "--non-interactive"],
+    ["skill", skill, "--receipt-dir", receipts, "--json"],
     { expectedStatuses: [2] },
   );
   if (preparedRunCount(result.stderr) !== 1) {
@@ -297,7 +297,6 @@ runners:
         - id: apply
           tool: fs.apply_bundle
           scopes: [fs.write]
-          mutation: true
           inputs:
             repo_root: .
             writes:
@@ -317,7 +316,6 @@ runners:
       "--receipt-dir",
       receipts,
       "--json",
-      "--non-interactive",
     ],
     { expectedStatuses: [2] },
   );
@@ -342,7 +340,6 @@ runners:
       "--receipt-dir",
       receipts,
       "--json",
-      "--non-interactive",
     ],
     { expectedStatuses: [1] },
   );
@@ -366,7 +363,6 @@ runners:
     "--receipt-dir",
     receipts,
     "--json",
-    "--non-interactive",
   ]);
   const resumed = parseJson(resumedResult.stdout, "approval resume");
   const actor = resumed.context?.step_outputs?.approve?.approval_decision?.data?.actor;

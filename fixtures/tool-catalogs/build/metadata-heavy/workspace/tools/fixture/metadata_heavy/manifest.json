@@ -28,7 +28,6 @@
     "fixture.metadata_heavy",
     "workspace.read"
   ],
-  "mutating": false,
   "artifacts": {
     "wrap_as": "metadata_summary"
   },

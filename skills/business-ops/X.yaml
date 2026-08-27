@@ -1,5 +1,5 @@
 skill: business-ops
-version: "0.2.1"
+version: "0.2.2"
 
 catalog:
   kind: graph
@@ -162,7 +162,6 @@ runners:
         - id: persist-route
           skill: ../data-store
           runner: append_event
-          mutation: true
           inputs:
             data_source_ref: "$input.data_source_ref"
             resource: "$input.resource"

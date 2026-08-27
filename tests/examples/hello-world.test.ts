@@ -24,7 +24,6 @@ describe("hello-world example", () => {
           "examples/hello-world",
           "--message",
           "hello from docs",
-          "--non-interactive",
           "--json",
         ],
         {

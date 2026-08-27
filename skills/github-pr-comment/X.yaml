@@ -1,5 +1,5 @@
 skill: github-pr-comment
-version: "0.3.0"
+version: "0.3.1"
 
 catalog:
   kind: graph
@@ -9,7 +9,7 @@ catalog:
   execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: required
+  approval: conditional
 
 input_definitions:
   repository:
@@ -127,7 +127,6 @@ runners:
           skill: ../../examples/github-mcp-hero/review-note
           scopes:
             - pr.comment
-          mutation: true
           idempotency_key: "$input.idempotency_key"
           policy:
             provider_permission:
@@ -175,7 +174,6 @@ runners:
 
         - id: post-comment
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes:
             - pr.comment
@@ -238,7 +236,6 @@ runners:
           skill: ../../examples/github-mcp-hero/merge-pr
           scopes:
             - pr.merge
-          mutation: true
           idempotency_key: github-pr-comment-merge
           policy:
             provider_permission:

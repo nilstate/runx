@@ -7,13 +7,12 @@ use crate::ValidationError;
 
 use super::{
     FIELDS, RawSkillIr, SkillArtifactContract, SkillGovernance, SkillIdempotencyPolicy, SkillInput,
-    SkillRetryPolicy, field_value, first_value, nested_value, validate_execution_semantics,
+    SkillRetryPolicy, field_value, first_value, validate_execution_semantics,
 };
 
 pub(super) fn validate_skill_governance(
     raw: &RawSkillIr,
     runx: Option<&JsonObject>,
-    risk: Option<&JsonValue>,
 ) -> Result<SkillGovernance, ValidationError> {
     Ok(SkillGovernance {
         retry: validate_retry(
@@ -26,16 +25,6 @@ pub(super) fn validate_skill_governance(
                 field_value(runx, "idempotency"),
             ),
             "idempotency",
-        )?,
-        mutating: validate_mutating(
-            first_value(
-                first_value(
-                    raw.frontmatter.get("mutating"),
-                    nested_value(risk, "mutating"),
-                ),
-                field_value(runx, "mutating"),
-            ),
-            "mutating",
         )?,
         artifacts: validate_artifact_contract(field_value(runx, "artifacts"), "runx.artifacts")?,
         allowed_tools: validate_allowed_tools(
@@ -370,13 +359,6 @@ pub(super) fn validate_idempotency(
             }))
         }
     }
-}
-
-pub(super) fn validate_mutating(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<bool>, ValidationError> {
-    FIELDS.optional_bool(value, field)
 }
 
 fn validate_named_emits(

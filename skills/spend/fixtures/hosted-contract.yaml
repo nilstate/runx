@@ -16,7 +16,7 @@ inputs:
   rail_profile_ref: "rail-profile:test"
   idempotency_seed: spend-test-001
 caller:
-  approvals: { "provider-effect:sha256:25c4a257ac4dfb3fd0b5ac4514ab1db51925ca2f3715bf46c852b93529369421": true }
+  approvals: { "provider-effect:sha256:7fc69ef4807d994272280e28866eab0ab6b2abbf5d4cb7b595072a0ac8a6be1b": true }
   provider_responses:
     principal_id: spend-fixture
     grants: [{ grant_id: spend-fixture, provider: mpp, scopes: [payment.spend, payment.spend.read] }]

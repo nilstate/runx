@@ -1,5 +1,5 @@
 skill: moltbook
-version: "0.4.2"
+version: "0.4.3"
 
 catalog:
   kind: skill
@@ -8,10 +8,10 @@ catalog:
   role: context
   provider: moltbook
   runtime_path: moltbook
-  execution: read
+  execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: none
+  approval: conditional
 
 input_definitions:
   feed_snapshot:
@@ -591,7 +591,6 @@ runners:
             field: bind-payload.comparison.data.equal
             equals: true
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes:
             - post.write
@@ -602,6 +601,9 @@ runners:
             operation: post.create
             target: moltbook://posts
             expected_provider: moltbook
+            approval:
+              reason: Approve publishing this exact post to Moltbook.
+              type: moltbook_post
             idempotency_key: $input.idempotency_key
             expected_result:
               payload_digest: $input.post_packet.payload_digest

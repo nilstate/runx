@@ -1,5 +1,5 @@
 skill: x402-pay
-version: "0.8.0"
+version: "0.8.1"
 catalog: { kind: graph, audience: operator, visibility: public, role: branded, canonical_skill: runx/spend, provider: x402, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 input_definitions:
   marketplace_offer:
@@ -30,7 +30,7 @@ input_definitions:
     description: Exact x402 V2 resource request and expected settlement terms.
     schema:
       additionalProperties: false
-      required: [resource]
+      required: [resource, amount_minor]
       properties:
         resource:
           type: object
@@ -91,7 +91,6 @@ runners:
       steps:
         - id: pay
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.x402]
           policy: { provider_permission: { verb: write } }
@@ -99,6 +98,10 @@ runners:
             operation: payment.x402
             target: $input.payment_signal.resource.url
             expected_provider: x402
+            approval:
+              reason: Approve paying this exact x402 challenge.
+              type: x402_payment
+            amount: { units: $input.payment_signal.amount_minor, unit: $input.parent_payment_authority.currency }
             idempotency_key: $input.idempotency_seed
             result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest]
             input: { payment_signal: $input.payment_signal, parent_payment_authority: $input.parent_payment_authority, marketplace_offer: $input.marketplace_offer }

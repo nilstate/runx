@@ -495,7 +495,6 @@ function fixtureCases(): readonly KernelFixtureCase[] {
             },
             approved: true,
           },
-          mutating: true,
         },
       },
     },
@@ -980,28 +979,6 @@ function fixtureCases(): readonly KernelFixtureCase[] {
             },
           ],
           connectedAuthCheckedAt,
-        },
-      },
-    },
-    {
-      name: "retry-admission-allows-readonly-retry",
-      input: {
-        kind: "policy.admitRetryPolicy",
-        request: {
-          stepId: "read",
-          retry: { maxAttempts: 2 },
-          mutating: false,
-        },
-      },
-    },
-    {
-      name: "retry-admission-denies-mutating-without-key",
-      input: {
-        kind: "policy.admitRetryPolicy",
-        request: {
-          stepId: "deploy",
-          retry: { maxAttempts: 2 },
-          mutating: true,
         },
       },
     },

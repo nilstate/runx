@@ -93,8 +93,6 @@ pub struct ToolManifest {
     pub retry: Option<ToolRetryPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency: Option<ToolIdempotencyPolicy>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
 }
 
 pub type ToolInput = InputDefinition;
@@ -218,8 +216,6 @@ pub struct ToolInspectResult {
     pub execution_source_type: String,
     pub inputs: BTreeMap<String, ToolInput>,
     pub scopes: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime: Option<RuntimeCommand>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -366,7 +362,6 @@ mod tests {
             artifacts: None,
             retry: None,
             idempotency: None,
-            mutating: None,
         }
     }
 

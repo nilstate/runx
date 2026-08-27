@@ -344,8 +344,6 @@ pub struct ValidatedSkill {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency: Option<SkillIdempotencyPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<SkillArtifactContract>,
     pub allowed_tools: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -380,8 +378,6 @@ pub struct SkillRunnerDefinition {
     pub retry: Option<SkillRetryPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency: Option<SkillIdempotencyPolicy>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<SkillArtifactContract>,
     #[serde(skip_serializing_if = "Option::is_none")]

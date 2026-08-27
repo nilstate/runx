@@ -1,5 +1,5 @@
 skill: slack-notify
-version: "0.4.1"
+version: "0.4.2"
 catalog:
   kind: graph
   audience: public
@@ -252,7 +252,6 @@ runners:
           tool: provider.mutate
           scopes:
             - channel.post
-          mutation: true
           idempotency_key: $input.idempotency_key
           when:
             field: bind-content.comparison.data.equal
@@ -264,6 +263,9 @@ runners:
             operation: channel.post
             target: $input.channel_locator
             expected_provider: slack
+            approval:
+              reason: Approve posting this exact digest-bound Slack notification.
+              type: slack_message
             idempotency_key: $input.idempotency_key
             expected_result:
               conversation_locator: $input.channel_locator

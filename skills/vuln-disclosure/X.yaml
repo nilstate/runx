@@ -1,5 +1,5 @@
 skill: vuln-disclosure
-version: "0.4.2"
+version: "0.4.3"
 
 catalog:
   kind: graph
@@ -339,7 +339,6 @@ runners:
             field: bind-payload.comparison.data.equal
             equals: true
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes:
             - advisory.publish
@@ -350,6 +349,9 @@ runners:
             operation: advisory.publish
             target: $input.disclosure_packet.target.locator
             expected_provider: $input.provider
+            approval:
+              reason: Approve publishing this exact vulnerability advisory.
+              type: vulnerability_disclosure
             idempotency_key: $input.idempotency_key
             expected_result:
               payload_digest: $input.disclosure_packet.payload_digest

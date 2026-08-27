@@ -6,7 +6,7 @@ use super::*;
 
 #[test]
 fn provider_effect_read_reaches_finality_without_approval() {
-    let resolved = resolved(ProviderEffectClass::Read, None);
+    let resolved = resolved(ProviderEffectClass::Read, None, None);
     let attempt = resolved.begin(None).expect("read attempt");
     let acknowledged = attempt
         .acknowledge(ack(None, None))
@@ -22,7 +22,7 @@ fn provider_effect_read_reaches_finality_without_approval() {
 
 #[test]
 fn provider_effect_draft_cannot_attempt_or_request_approval() {
-    let resolved = resolved(ProviderEffectClass::Draft, None);
+    let resolved = resolved(ProviderEffectClass::Draft, None, None);
     assert_eq!(
         resolved.begin(None),
         Err(ProviderEffectError::DraftCannotExecute)
@@ -31,7 +31,11 @@ fn provider_effect_draft_cannot_attempt_or_request_approval() {
 
 #[test]
 fn provider_effect_mutation_requires_exact_approval() {
-    let resolved = resolved(ProviderEffectClass::Mutation, Some("request-1"));
+    let resolved = resolved(
+        ProviderEffectClass::Mutation,
+        Some("request-1"),
+        Some("sha256:approval-request"),
+    );
     assert_eq!(
         resolved.clone().begin(None),
         Err(ProviderEffectError::ApprovalRequired)
@@ -45,8 +49,14 @@ fn provider_effect_mutation_requires_exact_approval() {
 }
 
 #[test]
+fn provider_effect_mutation_uses_grant_without_optional_live_approval() {
+    let resolved = resolved(ProviderEffectClass::Mutation, Some("request-1"), None);
+    assert!(resolved.begin(None).is_ok());
+}
+
+#[test]
 fn provider_effect_rejects_gratuitous_read_approval() {
-    let resolved = resolved(ProviderEffectClass::Read, None);
+    let resolved = resolved(ProviderEffectClass::Read, None, None);
     let approval = ProviderApprovalEvidence {
         actor: "human".to_owned(),
         approval_key: "sha256:approval".to_owned(),
@@ -62,7 +72,11 @@ fn provider_effect_rejects_gratuitous_read_approval() {
 
 #[test]
 fn provider_effect_rejects_approval_digest_drift() {
-    let resolved = resolved(ProviderEffectClass::Mutation, Some("request-1"));
+    let resolved = resolved(
+        ProviderEffectClass::Mutation,
+        Some("request-1"),
+        Some("sha256:approval-request"),
+    );
     let approval = ProviderApprovalEvidence {
         actor: "human".to_owned(),
         approval_key: "sha256:approval".to_owned(),
@@ -161,6 +175,7 @@ fn provider_effect_plan_stores_payload_digest_not_secret_material() {
         payload: &payload,
         required_scopes: vec!["thread.reply".to_owned()],
         amount: None,
+        approval_digest: Some("sha256:approval-request".to_owned()),
         request_key: Some("request-1"),
     })
     .expect("intent");
@@ -192,6 +207,7 @@ fn provider_effect_preserves_opaque_capabilities_without_normalizing_them() {
         payload: &JsonObject::new(),
         required_scopes: required_scopes.clone(),
         amount: None,
+        approval_digest: None,
         request_key: None,
     })
     .expect("intent");
@@ -199,7 +215,11 @@ fn provider_effect_preserves_opaque_capabilities_without_normalizing_them() {
     assert_eq!(intent.required_scopes(), required_scopes);
 }
 
-fn resolved(class: ProviderEffectClass, request_key: Option<&str>) -> ProviderEffectResolved {
+fn resolved(
+    class: ProviderEffectClass,
+    request_key: Option<&str>,
+    approval_digest: Option<&str>,
+) -> ProviderEffectResolved {
     let payload = JsonObject::from([("text".to_owned(), JsonValue::String("hello".to_owned()))]);
     let intent = ProviderEffectIntent::new(ProviderEffectIntentInput {
         class,
@@ -209,6 +229,7 @@ fn resolved(class: ProviderEffectClass, request_key: Option<&str>) -> ProviderEf
         payload: &payload,
         required_scopes: vec!["thread.reply".to_owned()],
         amount: None,
+        approval_digest: approval_digest.map(str::to_owned),
         request_key,
     })
     .expect("intent");
@@ -220,7 +241,11 @@ fn resolved(class: ProviderEffectClass, request_key: Option<&str>) -> ProviderEf
 }
 
 fn mutation_attempt() -> ProviderEffectAttempt {
-    let resolved = resolved(ProviderEffectClass::Mutation, Some("request-1"));
+    let resolved = resolved(
+        ProviderEffectClass::Mutation,
+        Some("request-1"),
+        Some("sha256:approval-request"),
+    );
     let approval = ProviderApprovalEvidence {
         actor: "human".to_owned(),
         approval_key: "sha256:approval".to_owned(),

@@ -173,10 +173,13 @@ provider operations.
 Skills use native `provider.read` and `provider.mutate` tools for Connect. The
 runtime authenticates the operator, lists bounded active grant metadata, and
 selects the unique grant matching the skill's `expected_provider` and declared
-scopes. Reads do not need human approval. Mutations are still gated at the
-consequential graph step, and Cloud checks the tool's expected read/mutate
+scopes. Reads do not need human approval. A mutation uses that admitted grant
+directly unless its typed `provider.mutate.inputs.approval` request asks for an
+exact human decision. In that case the native provider effect suspends the run,
+binds the decision to the provider plan digest, and resumes only from
+host-attested approval. Cloud checks the tool's expected read/mutate
 classification against the provider driver's authoritative descriptor before
-dispatch.
+dispatch; it does not own a second approval policy.
 
 The `runx connect` command manages grant setup, status, listing, and revocation;
 it does not expose raw provider invocation. Provider operations stay inside a

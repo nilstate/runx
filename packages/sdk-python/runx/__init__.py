@@ -97,13 +97,10 @@ class RunxClient:
         self,
         skill_path: str,
         inputs: Mapping[str, Any] | None = None,
-        non_interactive: bool = True,
     ) -> dict[str, Any]:
         args = ["skill", skill_path]
         for key, value in (inputs or {}).items():
             args.extend([f"--{key}", str(value)])
-        if non_interactive:
-            args.append("--non-interactive")
         return self.run_json(args)
 
     def continue_run(
@@ -112,14 +109,11 @@ class RunxClient:
         run_id: str,
         answers_file: str,
         inputs: Mapping[str, Any] | None = None,
-        non_interactive: bool = True,
     ) -> dict[str, Any]:
         del skill_path
         if inputs:
             raise ValueError("runx resume reads answers from the answers file; pass fresh inputs only on a new skill run.")
         args = ["resume", run_id, answers_file]
-        if non_interactive:
-            args.append("--non-interactive")
         return self.run_json(args)
 
 def _optional_str(value: Any) -> str | None:

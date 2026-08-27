@@ -34,8 +34,7 @@ pub(super) fn write_operator_context(
         .map(|kind| kind.as_str().to_owned())
         .collect::<Vec<_>>();
     out.push_str(&format!(
-        "  Steps:  {total_steps} total, {} mutating, {} conditional\n  Tools:  {}\n  Boundaries: {}\n",
-        report.governance.mutating_steps.len(),
+        "  Steps:  {total_steps} total, {} conditional\n  Tools:  {}\n  Boundaries: {}\n",
         report.governance.conditional_steps,
         list_or_none(&report.governance.tool_refs),
         list_or_none(&execution_boundaries),
@@ -185,11 +184,10 @@ fn append_node(
         ));
     }
     out.push_str(&format!(
-        "runner_name: {}\nrunner_type: {}\nrunner_selection: {}\nrunner_mutating: {}\nrunner_scopes: {}\nrunner_execution_boundary: {}\nterminal: {}\n",
+        "runner_name: {}\nrunner_type: {}\nrunner_selection: {}\nrunner_scopes: {}\nrunner_execution_boundary: {}\nterminal: {}\n",
         node.runner.name,
         node.runner.source_type,
         node.runner.selection,
-        node.runner.mutating,
         list_or_none(&node.runner.scopes),
         node.runner
             .execution_boundary
@@ -230,10 +228,9 @@ fn append_step(out: &mut String, step: &SkillOperatorContextStep) -> Result<(), 
     let definition = &step.definition;
     out.push_str(&format!("\n--- graph step: {} ---\n", step.node_path));
     out.push_str(&format!(
-        "step_id: {}\ntarget: {}\nmutation: {}\nexecution_boundary: {}\n",
+        "step_id: {}\ntarget: {}\nexecution_boundary: {}\n",
         definition.id,
         step.target_label(),
-        definition.mutating,
         step.execution_boundary
             .map(|observation| observation.kind.as_str())
             .unwrap_or("none"),

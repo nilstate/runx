@@ -1,5 +1,5 @@
 skill: google-search-console
-version: "0.1.6"
+version: "0.1.7"
 
 catalog:
   kind: graph
@@ -12,7 +12,7 @@ catalog:
   execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: conditional
+  approval: none
 
 input_definitions:
   property:
@@ -96,7 +96,7 @@ input_definitions:
       additionalProperties: false
       properties:
         schema: { const: runx.search.sitemap_plan.v1 }
-        decision: { const: ready_for_approval }
+        decision: { const: ready_for_execution }
         provider: { const: google-search-console }
         operation: { const: sitemaps.submit }
         property: { type: string, pattern: '^(?:https?://|sc-domain:).+' }
@@ -313,7 +313,7 @@ harness:
             subset:
               sitemap_plan:
                 data:
-                  decision: ready_for_approval
+                  decision: ready_for_execution
                   property: http://example.com/
                   sitemap_url: http://example.com/sitemap.xml
                   provider_status: not_called
@@ -400,7 +400,7 @@ harness:
               sitemap_plan:
                 data:
                   schema: runx.search.sitemap_plan.v1
-                  decision: ready_for_approval
+                  decision: ready_for_execution
                   provider: google-search-console
                   operation: sitemaps.submit
                   property: sc-domain:example.com
@@ -731,7 +731,7 @@ runners:
     examples:
       - sitemap_plan:
           schema: runx.search.sitemap_plan.v1
-          decision: ready_for_approval
+          decision: ready_for_execution
           provider: google-search-console
           operation: sitemaps.submit
           property: sc-domain:example.com
@@ -769,7 +769,6 @@ runners:
             field: admit.submission_admission.decision
             equals: ready
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes: [sitemaps.submit]
           policy:

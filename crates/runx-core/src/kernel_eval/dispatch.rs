@@ -5,7 +5,7 @@ use runx_contracts::JsonValue;
 use super::KernelEvalError;
 use super::input::{KernelDocument, KernelInput};
 use crate::policy::{
-    admit_graph_step_scopes, admit_local_skill, admit_retry_policy, build_authority_proof_metadata,
+    admit_graph_step_scopes, admit_local_skill, build_authority_proof_metadata,
     build_local_scope_admission, evaluate_public_comment_opportunity,
     evaluate_public_pull_request_candidate, normalize_public_work_policy, scope_grant_allows,
     validate_credential_binding,
@@ -20,7 +20,6 @@ pub(super) fn evaluate_kernel_input(input: KernelDocument) -> Result<JsonValue, 
     let input = KernelInput::from(input);
     match input {
         KernelInput::AdmitLocalSkill { .. }
-        | KernelInput::AdmitRetryPolicy { .. }
         | KernelInput::AdmitGraphStepScopes { .. }
         | KernelInput::BuildLocalScopeAdmission { .. }
         | KernelInput::BuildAuthorityProofMetadata { .. }
@@ -44,7 +43,6 @@ fn evaluate_policy_input(input: KernelInput) -> Result<JsonValue, KernelEvalErro
         KernelInput::AdmitLocalSkill { skill, options } => {
             to_value(admit_local_skill(&skill, &options))
         }
-        KernelInput::AdmitRetryPolicy { request } => to_value(admit_retry_policy(&request)),
         KernelInput::AdmitGraphStepScopes { request } => {
             to_value(admit_graph_step_scopes(&request))
         }

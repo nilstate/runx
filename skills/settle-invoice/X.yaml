@@ -1,5 +1,5 @@
 skill: settle-invoice
-version: "0.5.0"
+version: "0.5.1"
 catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   settle-invoice:
@@ -7,7 +7,7 @@ runners:
     type: graph
     inputs:
       invoice_ref: { type: string, required: true }
-      amount_minor: { type: number, required: true }
+      amount_minor: { type: integer, required: true }
       currency: { type: string, required: true }
       payee: { type: object, required: true }
       rail: { type: string, required: true }
@@ -21,7 +21,6 @@ runners:
       steps:
         - id: settle
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.invoice.settle]
           policy: { provider_permission: { verb: write } }
@@ -29,6 +28,10 @@ runners:
             operation: payment.invoice.settle
             target: $input.invoice_ref
             expected_provider: $input.rail
+            approval:
+              reason: Approve settling this exact invoice through the selected rail.
+              type: invoice_settlement
+            amount: { units: $input.amount_minor, unit: $input.currency }
             idempotency_key: $input.idempotency_seed
             result_fields: [payment_ref, invoice_ref, amount_minor, currency, status]
             input: { invoice_ref: $input.invoice_ref, amount_minor: $input.amount_minor, currency: $input.currency, payee: $input.payee, rail_profile_ref: $input.rail_profile_ref, parent_payment_authority: $input.parent_payment_authority, realm: $input.realm }

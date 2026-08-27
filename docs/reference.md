@@ -16,7 +16,6 @@ cargo build --manifest-path crates/Cargo.toml -p runx-cli
 export RUNX_RECEIPT_DIR="$(mktemp -d)"
 crates/target/debug/runx skill examples/hello-world \
   --message "hello from docs" \
-  --non-interactive \
   --json
 ```
 
@@ -169,10 +168,14 @@ and required human inputs keep their existing local behavior.
 
 Prepared context never asks for performative approval: it binds the selected
 skill, inputs, execution closure, and drift guards into the receipt. A
-consequential action stops once at its owning boundary—an effect-owned gate for
-native provider mutation, or an explicit graph approval when no native effect
-owns the decision. There is no persistent or environment-based auto-approval
-override; development configuration must not silently acquire live authority.
+consequential action stops once at its owning boundary. Native
+`provider.mutate` accepts an optional typed `approval` request; when it is
+present, the provider effect suspends for one exact host-attested human
+decision. When it is absent, the admitted provider grant is sufficient and no
+performative gate is invented. Use an explicit graph approval only when no
+native effect owns the consequential decision. There is no persistent or
+environment-based auto-approval override; development configuration must not
+silently acquire live authority.
 
 Provider-backed skills declare requirements in `X.yaml`; configure them with
 `runx credential` or an ignored workspace `.env`. See
@@ -470,14 +473,47 @@ graph:
   name: publish-and-readback
   result_from: [readback]
   steps:
-    - id: approve
-      run:
-        type: approval
     - id: publish
       tool: provider.mutate
+      idempotency_key: $input.idempotency_key
+      scopes: [post.write]
+      policy: { provider_permission: { verb: write } }
+      inputs:
+        operation: post.create
+        target: $input.target
+        expected_provider: $input.provider
+        idempotency_key: $input.idempotency_key
+        approval:
+          reason: Approve publishing this exact digest-bound post.
+          type: post_publication
     - id: readback
       tool: provider.read
 ```
+
+The approval request is optional. Omit it when the scoped grant is the complete
+authority for the operation. When present, it is part of the provider plan
+digest and the native effect owner returns a resumable approval request before
+dispatch. The runtime constructs the operator summary from the admitted
+provider, operation, target, scopes, payload digest, plan digest, and amount
+when present; package code cannot inject a second free-form account of the act.
+Do not place a `run: approval` step next to the same provider mutation; one
+effect has one approval owner.
+
+For generic native `fs.write`, `fs.apply_bundle`, `command.execute`, and
+`http.execute` calls, the runner's exact scopes and containment are sufficient
+by default. Add an explicit `run: approval` guard only when the domain action
+itself requires a human decision, such as publishing a release. Runx does not
+infer that requirement from the capability's write-shaped effect.
+
+The host protocol represents every unresolved request with the generic
+`needs_agent` run state. CLI JSON and human output normalize a request set made
+only of approval requests to `needs_approval`; mixed or model-authored request
+sets remain `needs_agent`. Both resume the same sealed checkpoint through
+`runx resume` and neither opens an interactive prompt.
+
+Payment capabilities also set the typed `amount: {units, unit}` input. It is
+part of the plan digest and appears in the operator summary; it is not copied
+into the provider payload or inferred from provider-specific JSON.
 
 `result_from` is not a list of graph leaves. It returns each selected successful
 step's complete declared contract, including packet envelopes. Approvals and

@@ -6,9 +6,9 @@ use runx_contracts::{JsonObject, JsonValue};
 use runx_core::policy::admit_agent_tool_ref;
 
 use super::helpers::{
-    number_to_non_negative_integer, number_to_positive_integer, optional_bool,
-    optional_non_empty_string, optional_number, optional_object, optional_string,
-    optional_string_array, optional_string_object, required_string, validation_error,
+    number_to_non_negative_integer, number_to_positive_integer, optional_non_empty_string,
+    optional_number, optional_object, optional_string, optional_string_array,
+    optional_string_object, required_string, validation_error,
 };
 use super::types::{
     GraphContextEdge, GraphRetryPolicy, GraphRunTarget, GraphStep, GraphWhen,
@@ -101,8 +101,6 @@ pub fn validate_step(
             &format!("{field}.fanout_group"),
         )?,
         when: validate_when(raw_step.get("when"), &format!("{field}.when"))?,
-        mutating: optional_bool(raw_step.get("mutation"), &format!("{field}.mutation"))?
-            .unwrap_or(false),
         idempotency_key: optional_non_empty_string(
             raw_step.get("idempotency_key"),
             &format!("{field}.idempotency_key"),
@@ -435,6 +433,11 @@ fn reject_unsupported_step_fields(
     raw_step: &JsonObject,
     field: &str,
 ) -> Result<(), ValidationError> {
+    if raw_step.contains_key("mutation") {
+        return Err(validation_error(format!(
+            "{field}.mutation is not supported; approval and authority are owned by the invoked capability"
+        )));
+    }
     if raw_step.contains_key("instructions") {
         return Err(validation_error(format!(
             "{field}.instructions is not supported; put agent operating instructions in the owning SKILL.md"
@@ -442,7 +445,7 @@ fn reject_unsupported_step_fields(
     }
     if raw_step.contains_key("effect_family") {
         return Err(validation_error(format!(
-            "{field}.effect_family is not supported; effect ownership is derived from the resolved target"
+            "{field}.effect_family is not supported; effect ownership belongs to the invoked capability"
         )));
     }
     if raw_step.contains_key("sync") {

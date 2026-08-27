@@ -45,7 +45,7 @@ pub enum ConfigResult {
     },
     List {
         action: ConfigAction,
-        values: RunxConfigFile,
+        values: Box<RunxConfigFile>,
     },
 }
 
@@ -238,7 +238,7 @@ fn execute_config_plan(
     match plan.action {
         ConfigAction::List => Ok(ConfigResult::List {
             action: ConfigAction::List,
-            values: mask_runx_config_file(&config),
+            values: Box::new(mask_runx_config_file(&config)),
         }),
         ConfigAction::Get => {
             let key = required_key(plan)?;

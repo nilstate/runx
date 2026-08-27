@@ -39,7 +39,6 @@ pub(crate) fn inspect(
             definition.summary,
             tool.catalog_inputs().ok()?,
             definition.scopes,
-            definition.effect.mutating(),
             root,
         ));
     }
@@ -52,7 +51,6 @@ pub(crate) fn inspect(
         definition.summary,
         tool.catalog_inputs().ok()?,
         definition.scopes,
-        definition.effect.mutating(),
         root,
     ))
 }
@@ -63,7 +61,6 @@ fn inspect_report(
     description: &str,
     inputs: BTreeMap<String, ToolInput>,
     scopes: &[&str],
-    mutating: bool,
     root: &Path,
 ) -> ToolInspectReport {
     ToolInspectReport {
@@ -75,7 +72,6 @@ fn inspect_report(
             execution_source_type: "native".to_owned(),
             inputs,
             scopes: scopes.iter().map(|scope| (*scope).to_owned()).collect(),
-            mutating: Some(mutating),
             runtime: None,
             risk: None,
             reference_path: format!("native:{name}"),

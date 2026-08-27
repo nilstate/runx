@@ -11,11 +11,18 @@ impl ProviderEffectIntent {
         let operation = safe_value(input.operation.to_owned(), "operation")?;
         let target = safe_value(input.target.to_owned(), "target")?;
         let required_scopes = normalize_scopes(input.required_scopes)?;
-        let amount = input.amount;
-        if let Some(amount) = &amount {
-            safe_value(amount.unit.clone(), "amount.unit")?;
-        }
+        let amount = input
+            .amount
+            .map(|mut amount| {
+                amount.unit = safe_value(amount.unit, "amount.unit")?;
+                Ok(amount)
+            })
+            .transpose()?;
         let payload_digest = digest_json(&JsonValue::Object(input.payload.clone()))?;
+        let approval_digest = input
+            .approval_digest
+            .map(|value| safe_value(value, "approval_digest"))
+            .transpose()?;
         let request_key_digest = input
             .request_key
             .map(|value| safe_value(value.to_owned(), "request_key"))
@@ -29,6 +36,7 @@ impl ProviderEffectIntent {
             payload_digest,
             required_scopes,
             amount,
+            approval_digest,
             request_key_digest,
         })
     }
@@ -61,6 +69,11 @@ impl ProviderEffectIntent {
     #[must_use]
     pub fn required_scopes(&self) -> &[String] {
         &self.required_scopes
+    }
+
+    #[must_use]
+    pub fn requires_approval(&self) -> bool {
+        self.approval_digest.is_some()
     }
 }
 
@@ -169,6 +182,12 @@ impl ProviderEffectResolved {
                 ])),
             );
         }
+        if let Some(approval_digest) = &self.intent.approval_digest {
+            summary.insert(
+                "approval_digest".to_owned(),
+                JsonValue::String(approval_digest.clone()),
+            );
+        }
         summary
     }
 }
@@ -188,6 +207,7 @@ fn resolved_digest_value(
         "payload_digest": intent.payload_digest,
         "required_scopes": intent.required_scopes,
         "amount": intent.amount,
+        "approval_digest": intent.approval_digest,
         "request_key_digest": intent.request_key_digest,
     });
     serde_json::from_value(value).map_err(|error| ProviderEffectError::Digest(error.to_string()))

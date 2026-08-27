@@ -1,12 +1,12 @@
 skill: issue-triage
-version: "0.4.0"
+version: "0.4.1"
 
 catalog:
   kind: graph
   audience: public
   visibility: public
   role: canonical
-  execution: read
+  execution: execute
   completion: provider_readback
   requires_adapter: true
   approval: none
@@ -341,7 +341,6 @@ runners:
         - id: post-comment
           when: { field: validate.comparison.data.equal, equals: true }
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes: [issue.comment]
           policy:

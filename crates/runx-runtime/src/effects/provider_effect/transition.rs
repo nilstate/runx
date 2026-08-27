@@ -11,18 +11,26 @@ impl ProviderEffectResolved {
         self,
         approval: Option<ProviderApprovalEvidence>,
     ) -> Result<ProviderEffectAttempt, ProviderEffectError> {
-        let approval = match (self.intent.class, approval) {
-            (ProviderEffectClass::Draft, _) => return Err(ProviderEffectError::DraftCannotExecute),
-            (ProviderEffectClass::Read, Some(_)) => {
+        let approval = match (self.intent.class, self.intent.requires_approval(), approval) {
+            (ProviderEffectClass::Draft, _, _) => {
+                return Err(ProviderEffectError::DraftCannotExecute);
+            }
+            (ProviderEffectClass::Read, _, Some(_)) => {
                 return Err(ProviderEffectError::GratuitousApproval {
                     class: ProviderEffectClass::Read,
                 });
             }
-            (ProviderEffectClass::Read, None) => None,
-            (ProviderEffectClass::Mutation, None) => {
+            (ProviderEffectClass::Read, _, None) => None,
+            (ProviderEffectClass::Mutation, true, None) => {
                 return Err(ProviderEffectError::ApprovalRequired);
             }
-            (ProviderEffectClass::Mutation, Some(evidence)) => {
+            (ProviderEffectClass::Mutation, false, Some(_)) => {
+                return Err(ProviderEffectError::GratuitousApproval {
+                    class: ProviderEffectClass::Mutation,
+                });
+            }
+            (ProviderEffectClass::Mutation, false, None) => None,
+            (ProviderEffectClass::Mutation, true, Some(evidence)) => {
                 if evidence.plan_digest != self.plan_digest {
                     return Err(ProviderEffectError::ApprovalDrift);
                 }
@@ -47,13 +55,13 @@ impl ProviderEffectResolved {
 
     pub fn begin_retry(
         self,
-        approval: ProviderApprovalEvidence,
+        approval: Option<ProviderApprovalEvidence>,
         previous_attempt: u32,
     ) -> Result<ProviderEffectAttempt, ProviderEffectError> {
         if previous_attempt == 0 {
             return Err(ProviderEffectError::InvalidRecoveryAttempt);
         }
-        let mut attempt = self.begin(Some(approval))?;
+        let mut attempt = self.begin(approval)?;
         attempt.attempt = previous_attempt.saturating_add(1);
         Ok(attempt)
     }

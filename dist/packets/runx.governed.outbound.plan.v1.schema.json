@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.runx.ai/runx/governed_outbound/plan/v1.json",
   "x-runx-packet-id": "runx.governed_outbound.plan.v1",
-  "x-runx-generated-from": "skills/governed-outbound/X.yaml#root.runners.plan.graph.steps.4",
+  "x-runx-generated-from": "skills/governed-outbound/X.yaml#root.runners.plan.graph.steps.3",
   "type": "object",
   "required": [
     "outbound_plan"
@@ -11,23 +11,6 @@
     "outbound_plan": {
       "additionalProperties": false,
       "properties": {
-        "approval": {
-          "additionalProperties": false,
-          "properties": {
-            "approved": {
-              "const": true
-            },
-            "gate_id": {
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          "required": [
-            "approved",
-            "gate_id"
-          ],
-          "type": "object"
-        },
         "audience": {
           "minLength": 1,
           "type": "string"
@@ -164,7 +147,6 @@
         "audience",
         "source",
         "redaction",
-        "approval",
         "provider_actions",
         "send_plan"
       ],

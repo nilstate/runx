@@ -343,13 +343,7 @@ fn is_export_input_name(name: &str) -> bool {
 fn is_reserved_skill_flag(name: &str) -> bool {
     matches!(
         name,
-        "answers"
-            | "credential"
-            | "json"
-            | "non_interactive"
-            | "receipt_dir"
-            | "run_id"
-            | "secret_env"
+        "answers" | "credential" | "json" | "receipt_dir" | "run_id" | "secret_env"
     )
 }
 

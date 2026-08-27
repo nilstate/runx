@@ -35,7 +35,6 @@ describe("registry skill native fetch", () => {
         "--input",
         `project=${projectDir}`,
         "--json",
-        "--non-interactive",
       ]);
       const firstJson = parseJsonOutput(first, 2);
       expect((firstJson as { status?: string }).status).toBe("needs_agent");
@@ -50,7 +49,6 @@ describe("registry skill native fetch", () => {
         "--input",
         `project=${projectDir}`,
         "--json",
-        "--non-interactive",
       ]);
       const secondJson = parseJsonOutput(second, 2);
       expect((secondJson as { status?: string }).status).toBe("needs_agent");
@@ -88,7 +86,6 @@ describe("registry skill native fetch", () => {
         "--input",
         `project=${projectDir}`,
         "--json",
-        "--non-interactive",
       ]);
       expect(result.status).toBe(1);
       expect(result.stderr).toBe("");
@@ -182,7 +179,6 @@ describe("registry skill native fetch", () => {
         "--input-json",
         "event={\"type\":\"posting.created\",\"payload\":{\"title\":\"cached data-store smoke\"}}",
         "--json",
-        "--non-interactive",
       ]);
       const output = parseJsonOutput(result, 0) as { status?: string };
 

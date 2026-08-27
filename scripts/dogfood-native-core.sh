@@ -10,7 +10,7 @@ cargo build --manifest-path "$ROOT/crates/Cargo.toml" -p runx-cli -p runx-js-wor
 echo "[dogfood:native] skill"
 RUNX_HOME="$ROOT/.runx/native-dogfood-home" \
 RUNX_RECEIPT_DIR="$ROOT/.runx/native-dogfood-receipts" \
-"$RUNX" skill "$ROOT/examples/hello-world" --message "hello from native dogfood" --non-interactive --json >/dev/null
+"$RUNX" skill "$ROOT/examples/hello-world" --message "hello from native dogfood" --json >/dev/null
 
 echo "[dogfood:native] harness"
 "$RUNX" harness "$ROOT/examples/hello-graph/harness.yaml" --json >/dev/null

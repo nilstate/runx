@@ -132,7 +132,6 @@ pub struct CredentialEnvelope {
 pub struct AuthorityProofRequested {
     pub connected_auth: bool,
     pub scopes: Vec<NonEmptyString>,
-    pub mutating: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope_family: Option<NonEmptyString>,
     #[serde(skip_serializing_if = "Option::is_none")]

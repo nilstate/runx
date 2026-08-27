@@ -112,7 +112,7 @@ pub use effects::{
     EXTERNAL_RECEIPT_EFFECT_FAMILY, EXTERNAL_RECEIPT_VERIFY_TOOL, ExternalReceiptEffect,
 };
 pub use effects::{
-    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
+    EffectAdmission, EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest,
     EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest,
     EffectToolRequest, PROVIDER_MUTATE_TOOL, PROVIDER_PERMISSION_EFFECT_FAMILY,
     PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,

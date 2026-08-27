@@ -16,7 +16,7 @@ inputs:
   verify_capability_ref: "capability:test"
   idempotency_seed: charge-test-001
 caller:
-  approvals: { "provider-effect:sha256:94b9afa39ef2dd2d133a289c8e4f079a65e869bb0107b43e4e72858f44b8c029": true }
+  approvals: { "provider-effect:sha256:128b3659b1bda65aaf11ee7cf9be37ae8a919aa6be502f8d0ceab9fedf22766a": true }
   provider_responses:
     principal_id: charge-fixture
     grants: [{ grant_id: charge-fixture, provider: mpp, scopes: [payment.charge, payment.charge.read] }]

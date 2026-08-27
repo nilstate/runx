@@ -17,7 +17,7 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         name: "new",
         top_level_usage: &[],
         usage: &[
-            "runx new <name> --objective text [--project-context text] [--directory dir] [-R dir] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [-j|--json]",
+            "runx new <name> --objective text [--project-context text] [--directory dir] [-R dir] [--managed-agent [--managed-agent-rounds n]] [-j|--json]",
         ],
         notes: &[
             "Delegates to the canonical Skill Lab build lane; no files are written until the digest-bound package validates.",
@@ -30,7 +30,6 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
             "-R, --receipt-dir dir",
             "--managed-agent  Explicitly allow an in-process model loop for this run",
             "--managed-agent-rounds n  Bound each managed act to 1-32 rounds (default 4)",
-            "--non-interactive",
             "-j, --json",
         ],
     },
@@ -87,7 +86,7 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         name: "resume",
         top_level_usage: &[],
         usage: &[
-            "runx resume <run-id> <answers.json|-> [-R dir] [--package-digest sha256] [--execution-closure-digest sha256] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [--diagnostics] [-j|--json]",
+            "runx resume <run-id> <answers.json|-> [-R dir] [--package-digest sha256] [--execution-closure-digest sha256] [--managed-agent [--managed-agent-rounds n]] [--diagnostics] [-j|--json]",
         ],
         notes: &[
             "Put agent/task responses under {\"answers\": {...}}.",
@@ -96,7 +95,6 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
         options: &[
             "-R, --receipts dir",
             "--receipt-dir dir",
-            "--non-interactive  Accepted for automation; resume never prompts",
             "--managed-agent  Explicitly allow an in-process model loop for this continuation",
             "--managed-agent-rounds n  Bound each managed act to 1-32 rounds (default 4)",
             "--package-digest sha256   Reassert the checkpointed package binding",
@@ -303,7 +301,6 @@ pub const COMMAND_SPECS: &[CommandSpec] = &[
             "--input-json key=json    Set an input that must parse as JSON",
             "--inputs file|-          Read the complete JSON input object from a file or stdin; do not mix with per-key inputs",
             "--full-operator-context  Print the complete prepared context before execution",
-            "--non-interactive        Never prompt; return approval instructions instead",
             "--managed-agent          Explicitly allow an in-process model loop for this run",
             "--managed-agent-rounds n Bound each managed act to 1-32 rounds (default 4)",
             "-R, --receipts dir       Write receipts under dir",

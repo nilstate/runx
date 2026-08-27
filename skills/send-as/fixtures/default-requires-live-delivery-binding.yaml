@@ -5,7 +5,7 @@ operator_journeys:
   - mode: refusal
     confusors: [slack-notify, governed-outbound]
     request: Attempt to send this digest-bound release notice without approving the exact live effect.
-    expected_outcome: Refuse at one exact live-send approval without claiming delivery.
+    expected_outcome: Suspend at one exact live-send approval without claiming delivery.
 env:
   RUNX_PROVIDER_PERMISSION_GRANT_ID: grant-send-demo
   RUNX_PROVIDER_PERMISSION_GRANTED_SCOPES: '["message.send"]'
@@ -53,13 +53,8 @@ caller:
         success_checkpoint:
           milestone: send_ready_for_approval
           description: The exact digest-bound release notice awaits live-send approval.
-  approvals:
-    "provider-effect:sha256:e41743bc96f7779bbe61dad47f07bca8ff0f9b47e9104cf66a770b5eb8f63088": false
 expect:
-  status: policy_denied
-  receipt:
-    schema: runx.receipt.v1
-    disposition: blocked
+  status: needs_agent
 metadata:
   public_skill: send-as
   source_case: direct-default-live-send-gate

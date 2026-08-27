@@ -4,13 +4,13 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use runx_contracts::{
-    ExecutionEvent, JsonObject, JsonValue, ProofKind, ReferenceType, ResolutionRequest,
-    ResolutionResponse, ResolutionResponseActor,
+    ExecutionEvent, JsonNumber, JsonObject, JsonValue, ProofKind, ReferenceType, ResolutionRequest,
+    ResolutionResponse, ResolutionResponseActor, sha256_prefixed,
 };
 use runx_parser::GraphStep;
 use runx_runtime::effects::ResolvedEffectTarget;
 use runx_runtime::{
-    EffectApprovalRequirement, EffectOutputRequest, EffectStepRequest, Host, InvocationOutput,
+    EffectOutputRequest, EffectPreparationOutcome, EffectStepRequest, Host, InvocationOutput,
     LocalReceiptStore, PROVIDER_MUTATE_TOOL, PROVIDER_PERMISSION_EFFECT_FAMILY,
     PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANTED_SCOPES_ENV,
     PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV, PROVIDER_PERMISSION_PRINCIPAL_REF_ENV,
@@ -34,7 +34,7 @@ fn provider_effect_receipts_bind_approval_ack_readback_and_grant() {
         JsonValue::String("hello from runx".to_owned()),
     )]);
     let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, payload.clone());
-    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
     let env = provider_env();
     let effect = ProviderPermissionEffect::default();
     let admission = effect
@@ -43,13 +43,11 @@ fn provider_effect_receipts_bind_approval_ack_readback_and_grant() {
         .expect("owned provider effect");
     let mut host = RecordingHost::approving();
     let admission = effect
-        .resolve_approval(
-            EffectApprovalRequirement::Required,
-            &step,
-            admission,
-            &mut host,
-        )
+        .prepare_execution(&step, admission, &mut host)
         .expect("exact provider approval");
+    let EffectPreparationOutcome::Ready(admission) = admission else {
+        panic!("approving host must resolve the effect");
+    };
     assert_eq!(host.requests.len(), 1);
 
     let resolved = resolved_effect(ProviderEffectClass::Mutation, &payload, Some("request-1"));
@@ -128,7 +126,7 @@ fn provider_effect_receipts_reads_do_not_request_approval() {
     let payload =
         JsonObject::from([("query".to_owned(), JsonValue::String("incident".to_owned()))]);
     let inputs = provider_inputs(PROVIDER_READ_TOOL, payload.clone());
-    let step = provider_step(PROVIDER_READ_TOOL, "read", false);
+    let step = provider_step(PROVIDER_READ_TOOL, "read");
     let env = provider_env();
     let effect = ProviderPermissionEffect::default();
     let admission = effect
@@ -137,13 +135,11 @@ fn provider_effect_receipts_reads_do_not_request_approval() {
         .expect("owned provider effect");
     let mut host = RecordingHost::default();
     let admission = effect
-        .resolve_approval(
-            EffectApprovalRequirement::Forbidden,
-            &step,
-            admission,
-            &mut host,
-        )
-        .expect("approval-free read transition");
+        .prepare_execution(&step, admission, &mut host)
+        .expect("provider read preparation");
+    let EffectPreparationOutcome::Ready(admission) = admission else {
+        panic!("provider read must not suspend");
+    };
     assert!(host.requests.is_empty());
 
     let attempt = resolved_effect(ProviderEffectClass::Read, &payload, None)
@@ -180,9 +176,9 @@ fn provider_effect_receipts_reads_do_not_request_approval() {
 }
 
 #[test]
-fn provider_effect_mutations_require_host_attested_human_approval() {
+fn provider_effect_requested_approval_requires_a_host_attested_human() {
     let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
-    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
     let env = provider_env();
     let effect = ProviderPermissionEffect::default();
     let admission = effect
@@ -192,12 +188,7 @@ fn provider_effect_mutations_require_host_attested_human_approval() {
     let mut host = RecordingHost::agent_approving();
 
     let error = effect
-        .resolve_approval(
-            EffectApprovalRequirement::Required,
-            &step,
-            admission,
-            &mut host,
-        )
+        .prepare_execution(&step, admission, &mut host)
         .expect_err("agent approval must not authorize a provider mutation");
 
     assert!(error.to_string().contains("host-attested human"));
@@ -205,9 +196,89 @@ fn provider_effect_mutations_require_host_attested_human_approval() {
 }
 
 #[test]
+fn provider_effect_mutation_uses_its_grant_when_no_approval_is_requested() {
+    let mut inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
+    inputs.remove("approval");
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
+    let env = provider_env();
+    let effect = ProviderPermissionEffect::default();
+    let admission = effect
+        .admit(effect_request(&step, &inputs, &env))
+        .expect("provider admission")
+        .expect("owned provider effect");
+    let mut host = RecordingHost::default();
+
+    let outcome = effect
+        .prepare_execution(&step, admission, &mut host)
+        .expect("grant-authorized provider mutation");
+
+    assert!(matches!(outcome, EffectPreparationOutcome::Ready(_)));
+    assert!(host.requests.is_empty());
+}
+
+#[test]
+fn provider_effect_approval_request_suspends_without_a_human_decision() {
+    let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
+    let env = provider_env();
+    let effect = ProviderPermissionEffect::default();
+    let admission = effect
+        .admit(effect_request(&step, &inputs, &env))
+        .expect("provider admission")
+        .expect("owned provider effect");
+    let mut host = RecordingHost::default();
+
+    let outcome = effect
+        .prepare_execution(&step, admission, &mut host)
+        .expect("pending approval must be resumable");
+
+    assert!(matches!(outcome, EffectPreparationOutcome::Pending { .. }));
+    assert_eq!(host.requests.len(), 1);
+}
+
+#[test]
+fn provider_effect_approval_exposes_the_exact_plan_bound_amount() {
+    let mut inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
+    inputs.insert(
+        "amount".to_owned(),
+        JsonValue::Object(JsonObject::from([
+            ("units".to_owned(), JsonValue::Number(JsonNumber::U64(125))),
+            ("unit".to_owned(), JsonValue::String("USD".to_owned())),
+        ])),
+    );
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
+    let env = provider_env();
+    let effect = ProviderPermissionEffect::default();
+    let admission = effect
+        .admit(effect_request(&step, &inputs, &env))
+        .expect("provider admission")
+        .expect("owned provider effect");
+    let mut host = RecordingHost::approving();
+
+    let outcome = effect
+        .prepare_execution(&step, admission, &mut host)
+        .expect("provider approval");
+
+    assert!(matches!(outcome, EffectPreparationOutcome::Ready(_)));
+    let ResolutionRequest::Approval { gate, .. } = &host.requests[0] else {
+        panic!("provider effect must request approval");
+    };
+    assert_eq!(
+        gate.summary
+            .as_ref()
+            .and_then(|summary| summary.get("amount"))
+            .and_then(JsonValue::as_object),
+        Some(&JsonObject::from([
+            ("units".to_owned(), JsonValue::Number(JsonNumber::U64(125))),
+            ("unit".to_owned(), JsonValue::String("USD".to_owned())),
+        ]))
+    );
+}
+
+#[test]
 fn paid_external_job_authority_executes_only_the_pinned_provider_mutation() {
     let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
-    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
     let mut env = provider_env();
     env.insert(
         PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV.to_owned(),
@@ -221,13 +292,11 @@ fn paid_external_job_authority_executes_only_the_pinned_provider_mutation() {
     let mut host = RecordingHost::default();
 
     let admission = effect
-        .resolve_approval(
-            EffectApprovalRequirement::Required,
-            &step,
-            admission,
-            &mut host,
-        )
+        .prepare_execution(&step, admission, &mut host)
         .expect("paid external-job authority");
+    let EffectPreparationOutcome::Ready(admission) = admission else {
+        panic!("paid authority must resolve the effect");
+    };
     assert!(host.requests.is_empty());
 
     let resolved = resolved_effect(
@@ -263,7 +332,7 @@ fn paid_external_job_authority_executes_only_the_pinned_provider_mutation() {
 #[test]
 fn paid_external_job_authority_refuses_principal_drift() {
     let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, JsonObject::new());
-    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
     let mut env = provider_env();
     env.insert(
         PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV.to_owned(),
@@ -294,7 +363,7 @@ fn provider_effect_redaction_keeps_secret_payload_out_of_approval_and_receipt() 
         ),
     ]);
     let inputs = provider_inputs(PROVIDER_MUTATE_TOOL, payload.clone());
-    let step = provider_step(PROVIDER_MUTATE_TOOL, "write", true);
+    let step = provider_step(PROVIDER_MUTATE_TOOL, "write");
     let env = provider_env();
     let effect = ProviderPermissionEffect::default();
     let admission = effect
@@ -303,13 +372,11 @@ fn provider_effect_redaction_keeps_secret_payload_out_of_approval_and_receipt() 
         .expect("owned provider effect");
     let mut host = RecordingHost::approving();
     let admission = effect
-        .resolve_approval(
-            EffectApprovalRequirement::Required,
-            &step,
-            admission,
-            &mut host,
-        )
+        .prepare_execution(&step, admission, &mut host)
         .expect("provider approval");
+    let EffectPreparationOutcome::Ready(admission) = admission else {
+        panic!("approving host must resolve the effect");
+    };
     let approval_json = serde_json::to_string(&host.requests).expect("approval request JSON");
     assert!(!approval_json.contains(SECRET));
 
@@ -487,7 +554,7 @@ mod production_recovery {
                 .and_then(JsonValue::as_object)
                 .is_some_and(JsonObject::is_empty)
         );
-        assert_eq!(host.requests.len(), 1);
+        assert!(host.requests.is_empty());
         Ok(())
     }
 
@@ -632,7 +699,6 @@ steps:
   - id: provider-operation
     tool: provider.mutate
     scopes: [channel.post]
-    mutation: true
     idempotency_key: request-1
     policy:
       provider_permission:
@@ -726,11 +792,24 @@ fn provider_inputs(tool: &str, payload: JsonObject) -> JsonObject {
             "idempotency_key".to_owned(),
             JsonValue::String("request-1".to_owned()),
         );
+        inputs.insert(
+            "approval".to_owned(),
+            JsonValue::Object(JsonObject::from([
+                (
+                    "reason".to_owned(),
+                    JsonValue::String("Approve this exact provider mutation.".to_owned()),
+                ),
+                (
+                    "type".to_owned(),
+                    JsonValue::String("provider_effect".to_owned()),
+                ),
+            ])),
+        );
     }
     inputs
 }
 
-fn provider_step(tool: &str, verb: &str, mutating: bool) -> GraphStep {
+fn provider_step(tool: &str, verb: &str) -> GraphStep {
     GraphStep {
         id: "provider_operation".to_owned(),
         label: None,
@@ -759,7 +838,6 @@ fn provider_step(tool: &str, verb: &str, mutating: bool) -> GraphStep {
         )])),
         fanout_group: None,
         when: None,
-        mutating,
         idempotency_key: Some("provider-operation-step".to_owned()),
         mint_authority: None,
         requested_scope_from: None,
@@ -827,12 +905,28 @@ fn resolved_effect(
             payload,
             required_scopes: vec![SCOPE.to_owned()],
             amount: None,
+            approval_digest: (class == ProviderEffectClass::Mutation)
+                .then(provider_approval_request_digest),
             request_key,
         })
         .expect("provider intent"),
         ProviderEffectAuthority::new(GRANT_ID, PRINCIPAL_REF).expect("provider authority"),
     )
     .expect("resolved provider effect")
+}
+
+fn provider_approval_request_digest() -> String {
+    let request = JsonObject::from([
+        (
+            "reason".to_owned(),
+            JsonValue::String("Approve this exact provider mutation.".to_owned()),
+        ),
+        (
+            "type".to_owned(),
+            JsonValue::String("provider_effect".to_owned()),
+        ),
+    ]);
+    sha256_prefixed(&serde_json::to_vec(&request).expect("approval request JSON"))
 }
 
 fn provider_claim(

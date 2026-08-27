@@ -1,5 +1,5 @@
 skill: skill-lab
-version: "0.9.6"
+version: "0.9.7"
 
 catalog:
   kind: graph
@@ -306,7 +306,6 @@ runners:
           scopes:
             - fs.write
             - fs.delete
-          mutation: true
           inputs:
             target_dir: $input.target_dir
             repo_root: $input.repo_root
@@ -446,7 +445,6 @@ runners:
           scopes:
             - fs.write
             - fs.delete
-          mutation: true
           inputs:
             target_dir: $input.target_dir
             repo_root: $input.repo_root
@@ -562,7 +560,6 @@ runners:
           scopes:
             - fs.write
             - fs.delete
-          mutation: true
           inputs:
             target_dir: $input.target_dir
             repo_root: $input.repo_root

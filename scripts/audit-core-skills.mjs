@@ -487,7 +487,7 @@ function validateSemanticReport(name, report) {
   if (!report || typeof report !== "object") {
     return [`${name}: native inspection omitted its catalog semantic report`];
   }
-  if (report.mode !== "enforced") {
+  if (report.mode !== "operator_readiness") {
     findings.push(`${name}: semantic report mode is ${report.mode ?? "<missing>"}`);
   }
   if (report.skill !== name) {
@@ -790,7 +790,7 @@ function runSelfTests() {
       declared_artifact: false,
     },
     semantic_report: {
-      mode: "enforced",
+      mode: "operator_readiness",
       skill: "alpha",
       defaultRunner: "default",
       diagnostics: [],
@@ -799,7 +799,6 @@ function runSelfTests() {
         coldSelection: true,
         standaloneDefault: true,
         composedReuse: true,
-        providerProof: "none",
         suppliedAgentAnswers: false,
         coldSelectionConfusors: ["extract", "issue-intake", "research"],
         standaloneCase: "standalone",

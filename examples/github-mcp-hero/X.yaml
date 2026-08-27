@@ -101,7 +101,6 @@ runners:
           skill: ./write-comment
           scopes:
             - repo.write
-          mutation: true
           idempotency_key: github-mcp-comment-refusal
           policy:
             provider_permission:

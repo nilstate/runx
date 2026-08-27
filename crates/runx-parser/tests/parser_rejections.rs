@@ -130,6 +130,20 @@ fn tool_manifests_reject_generated_parallel_contract_fields() -> Result<(), Stri
 }
 
 #[test]
+fn tool_manifests_reject_runtime_effect_claims_inside_risk_metadata() -> Result<(), String> {
+    let raw = parse_tool_manifest_yaml(
+        "schema: runx.tool.manifest.v1\nname: effect-claim\nsource:\n  type: cli-tool\n  command: /bin/true\nrisk:\n  mutating: true\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let error = validate_tool_manifest(raw)
+        .err()
+        .ok_or_else(|| "tool risk.mutating unexpectedly validated".to_owned())?;
+
+    assert!(error.to_string().contains("risk.mutating is not supported"));
+    Ok(())
+}
+
+#[test]
 fn tool_manifests_require_the_canonical_schema_marker() -> Result<(), String> {
     let raw = parse_tool_manifest_yaml(
         "name: missing-schema\nsource:\n  type: cli-tool\n  command: /bin/true\n",
@@ -260,7 +274,7 @@ steps:
     assert!(
         error
             .to_string()
-            .contains("effect ownership is derived from the resolved target"),
+            .contains("effect ownership belongs to the invoked capability"),
         "{error}"
     );
     Ok(())
@@ -530,6 +544,32 @@ steps:
 
     assert!(
         error.to_string().contains("stage is not supported"),
+        "{error}"
+    );
+    Ok(())
+}
+
+#[test]
+fn graph_rejects_caller_authored_mutation_claims() -> Result<(), String> {
+    let error = validate_graph(
+        parse_graph_yaml(
+            r#"
+name: claimed-mutation
+steps:
+  - id: publish
+    tool: provider.mutate
+    mutation: true
+"#,
+        )
+        .map_err(|error| error.to_string())?,
+    )
+    .err()
+    .ok_or_else(|| "expected mutation claim to be rejected".to_owned())?;
+
+    assert!(
+        error
+            .to_string()
+            .contains("approval and authority are owned by the invoked capability"),
         "{error}"
     );
     Ok(())

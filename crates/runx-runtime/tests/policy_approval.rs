@@ -11,7 +11,7 @@ use runx_runtime::{Host, Runtime, RuntimeError, RuntimeOptions};
 const CREATED_AT: &str = "2026-08-27T00:00:00Z";
 
 #[test]
-fn policy_capability_requires_exact_approval_and_binds_its_receipt()
+fn explicit_approval_guard_binds_its_receipt_to_the_governed_step()
 -> Result<(), Box<dyn std::error::Error>> {
     let workspace = tempfile::tempdir()?;
     let graph = policy_write_graph(workspace.path(), true)?;
@@ -46,27 +46,37 @@ fn policy_capability_requires_exact_approval_and_binds_its_receipt()
 }
 
 #[test]
-fn policy_capability_refuses_a_missing_or_denied_guard_before_writing()
+fn scoped_write_does_not_invent_approval_and_an_explicit_denied_guard_still_blocks()
 -> Result<(), Box<dyn std::error::Error>> {
-    for (with_guard, approved, expected) in [
-        (false, true, "requires an exact approved run:approval guard"),
-        (true, false, "approval guard"),
-    ] {
-        let workspace = tempfile::tempdir()?;
-        let graph = policy_write_graph(workspace.path(), with_guard)?;
-        let mut host = ApprovalHost::new(approved);
-        let error = runtime()
-            .run_graph_with_host(workspace.path(), graph, &mut host)
-            .expect_err("unapproved Policy mutation must fail closed");
-        assert!(matches!(error, RuntimeError::AuthorityDenied { .. }));
-        assert!(error.to_string().contains(expected));
-        assert!(!workspace.path().join("approved.txt").exists());
-    }
+    let routine_workspace = tempfile::tempdir()?;
+    let routine_graph = policy_write_graph(routine_workspace.path(), false)?;
+    runtime().run_graph_with_host(
+        routine_workspace.path(),
+        routine_graph,
+        &mut ApprovalHost::new(false),
+    )?;
+    assert_eq!(
+        std::fs::read_to_string(routine_workspace.path().join("approved.txt"))?,
+        "approved"
+    );
+
+    let guarded_workspace = tempfile::tempdir()?;
+    let guarded_graph = policy_write_graph(guarded_workspace.path(), true)?;
+    let error = runtime()
+        .run_graph_with_host(
+            guarded_workspace.path(),
+            guarded_graph,
+            &mut ApprovalHost::new(false),
+        )
+        .expect_err("an explicit denied approval guard must fail closed");
+    assert!(matches!(error, RuntimeError::AuthorityDenied { .. }));
+    assert!(error.to_string().contains("approval guard"));
+    assert!(!guarded_workspace.path().join("approved.txt").exists());
     Ok(())
 }
 
 #[test]
-fn verified_parent_approval_is_inherited_by_the_nested_policy_mutation_only()
+fn parent_approval_binds_the_composite_step_without_becoming_child_authority()
 -> Result<(), Box<dyn std::error::Error>> {
     let workspace = tempfile::tempdir()?;
     let child = workspace.path().join("child");
@@ -109,7 +119,6 @@ steps:
   - id: child
     skill: ./child
     runner: write
-    mutation: true
 policy:
   guards:
     - step: child
@@ -119,17 +128,31 @@ policy:
     ))?)?;
 
     let mut host = ApprovalHost::new(true);
-    runtime().run_graph_with_host(workspace.path(), parent, &mut host)?;
+    let run = runtime().run_graph_with_host(workspace.path(), parent, &mut host)?;
     assert_eq!(
         std::fs::read_to_string(workspace.path().join("nested.txt"))?,
         "nested"
     );
+    let approval = run
+        .steps
+        .iter()
+        .find(|step| step.step_id == "approve")
+        .ok_or("missing approval step")?;
+    let child_step = run
+        .steps
+        .iter()
+        .find(|step| step.step_id == "child")
+        .ok_or("missing child step")?;
+    let expected_uri = format!("runx:receipt:{}", approval.receipt.id);
+    assert!(child_step.receipt.acts.iter().any(|act| {
+        act.artifact_refs.iter().any(|reference| {
+            reference.reference_type == ReferenceType::Receipt
+                && reference.uri.as_str() == expected_uri
+        })
+    }));
 
     let child_graph = validate_graph(parse_graph_yaml(&child_graph)?)?;
-    let error = runtime()
-        .run_graph_with_host(&child, child_graph, &mut ApprovalHost::new(true))
-        .expect_err("the private child graph must not fabricate inherited approval");
-    assert!(matches!(error, RuntimeError::AuthorityDenied { .. }));
+    runtime().run_graph_with_host(&child, child_graph, &mut ApprovalHost::new(true))?;
     Ok(())
 }
 
@@ -140,7 +163,6 @@ result_from: [write]
 steps:
   - id: write
     tool: fs.write
-    mutation: true
     scopes: [fs.write]
     inputs:
       repo_root: {root:?}
@@ -178,7 +200,6 @@ steps:
       packet: runx.approval.decision.v1
   - id: write
     tool: fs.write
-    mutation: true
     scopes: [fs.write]
     inputs:
       repo_root: {root:?}

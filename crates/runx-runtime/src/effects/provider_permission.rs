@@ -8,7 +8,7 @@ use runx_contracts::{Reference, ReferenceType};
 #[cfg(feature = "catalog")]
 use super::EffectToolRequest;
 use super::{
-    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
+    EffectAdmission, EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest,
     EffectStepRequest, ProviderEffectResolved, RuntimeEffect, RuntimeEffectError,
 };
 use crate::CapabilityContract;
@@ -36,7 +36,7 @@ pub use scope_transport::{
 };
 
 use approval::{
-    prepare_provider_effect_output, resolve_provider_approval, resolved_provider_effect,
+    prepare_provider_effect_output, prepare_provider_execution, resolved_provider_effect,
 };
 use policy::{
     provider_permission_denial, provider_permission_plan, provider_permission_policy,
@@ -218,6 +218,7 @@ pub struct ProviderPermissionAdmission {
     #[cfg(feature = "catalog")]
     transport: identity::ProviderTransportSelection,
     provider_effect: Option<ProviderEffectResolved>,
+    approval_request: Option<contract::ProviderApprovalRequest>,
     mutation_authority: Option<approval::PaidExternalJobMutationAuthority>,
     attempt: Option<super::ProviderEffectAttempt>,
     recovery: Option<recovery::ProviderRecoveryContext>,
@@ -284,14 +285,13 @@ impl RuntimeEffect for ProviderPermissionEffect {
         recovery::recover_pending_provider_effect(request)
     }
 
-    fn resolve_approval(
+    fn prepare_execution(
         &self,
-        requirement: EffectApprovalRequirement,
         step: &runx_parser::GraphStep,
         admission: EffectAdmission,
         host: &mut dyn crate::Host,
-    ) -> Result<EffectAdmission, RuntimeEffectError> {
-        resolve_provider_approval(requirement, step, admission, host)
+    ) -> Result<EffectPreparationOutcome, RuntimeEffectError> {
+        prepare_provider_execution(step, admission, host)
     }
 
     fn prepare_output(&self, request: EffectOutputRequest<'_>) -> Result<(), RuntimeEffectError> {
@@ -359,6 +359,12 @@ fn build_provider_admission(
     resolution: Option<&identity::NativeProviderResolution>,
 ) -> Result<EffectAdmission, RuntimeEffectError> {
     let witness = provider_permission_witness(request, &plan);
+    let approval_request = contract::approval_request(request.inputs).map_err(|message| {
+        RuntimeEffectError::InvalidMetadata {
+            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+            message,
+        }
+    })?;
     let provider_effect = native_access
         .zip(resolution)
         .map(|(access, resolved)| {
@@ -372,6 +378,7 @@ fn build_provider_admission(
                 access,
                 &resolved.principal_ref,
                 resolved_target,
+                approval_request.as_ref(),
             )
         })
         .transpose()?;
@@ -393,6 +400,7 @@ fn build_provider_admission(
                 .map(|resolution| resolution.transport.clone())
                 .unwrap_or(identity::ProviderTransportSelection::Hosted),
             provider_effect,
+            approval_request,
             mutation_authority,
             attempt: None,
             recovery,

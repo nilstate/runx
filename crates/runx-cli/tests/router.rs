@@ -48,7 +48,7 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx new <name> --objective text [--project-context text] [--directory dir] [-R dir] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [-j|--json]",
+        "runx new <name> --objective text [--project-context text] [--directory dir] [-R dir] [--managed-agent [--managed-agent-rounds n]] [-j|--json]",
     );
     assert_help_line(
         &help,
@@ -56,7 +56,7 @@ fn top_level_help_and_version_are_native() {
     );
     assert_help_line(
         &help,
-        "runx resume <run-id> <answers.json|-> [-R dir] [--package-digest sha256] [--execution-closure-digest sha256] [--managed-agent [--managed-agent-rounds n]] [--non-interactive] [--diagnostics] [-j|--json]",
+        "runx resume <run-id> <answers.json|-> [-R dir] [--package-digest sha256] [--execution-closure-digest sha256] [--managed-agent [--managed-agent-rounds n]] [--diagnostics] [-j|--json]",
     );
     assert_help_line(
         &help,
@@ -168,7 +168,6 @@ fn nested_skill_history_verify_and_publish_help_are_native() {
     assert!(verify_help_text().contains("--allow-local-development-signatures"));
     assert!(history_help_text().contains("--limit n"));
     assert!(skill_help_text().contains("--credential-profile name"));
-    assert!(skill_help_text().contains("--non-interactive"));
     assert_help_line(
         &publish_help_text(),
         "runx publish <receipt.json> [--api-base-url url] [--token token] [--allow-local-api] [-j|--json]",
@@ -505,7 +504,6 @@ fn routes_canonical_skill_run_to_native_plan() {
             "--receipt-dir",
             ".runx/receipts",
             "--json",
-            "--non-interactive",
             "--input",
             "severity=low",
             "--thread-title",
@@ -524,7 +522,6 @@ fn routes_canonical_skill_run_to_native_plan() {
             expected_execution_closure_digest: None,
             json: true,
             diagnostics: false,
-            non_interactive: true,
             trusted_command_execution: false,
             full_operator_context: false,
             inputs: [
@@ -792,7 +789,6 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
             "tmp/docs-demo",
             "--receipt-dir",
             "tmp/receipts",
-            "--non-interactive",
             "--json",
         ]),
         RouterAction::RunNew(NewPlan {
@@ -802,7 +798,6 @@ fn routes_doctor_history_list_new_and_init_to_native_plans() {
             directory: Some(PathBuf::from("tmp/docs-demo")),
             receipt_dir: Some(PathBuf::from("tmp/receipts")),
             json: true,
-            non_interactive: true,
             managed_agent: runx_runtime::ManagedAgentPolicy::HostDriven,
         })
     );
@@ -850,7 +845,6 @@ fn new_requires_an_objective_and_explicit_managed_agent_consent() {
             directory: None,
             receipt_dir: None,
             json: false,
-            non_interactive: false,
             managed_agent: runx_runtime::ManagedAgentPolicy::Inline { max_rounds: 2 },
         })
     );

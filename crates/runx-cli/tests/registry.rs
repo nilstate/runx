@@ -259,7 +259,6 @@ runners:
             "skill",
             installed.to_str().ok_or("non-utf8 installed skill dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     assert_eq!(

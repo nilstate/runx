@@ -1,6 +1,6 @@
 ---
 name: audit-receipt
-description: Audit a sealed runx receipt for governance, comparing the authority a run exercised against what it was granted, and flag over-reach, ungated mutation, unrecorded refusals, or exposed secret material.
+description: Audit a sealed runx receipt for governance, comparing exercised authority and any declared approval requirement with signed evidence, and flag over-reach, approval inconsistency, unrecorded refusals, or exposed secret material.
 runx:
   category: security
 ---
@@ -14,9 +14,10 @@ Runx seals a receipt for every run. This skill resolves the exact receipt id
 through `ledger read`, which returns the Rust-owned redacted detail projection
 for signed authority, acts, decisions, artifacts, lineage, and verification. It answers one governance
 question: did the run stay inside the authority it was granted? It flags scopes
-exercised that were never granted, mutating acts that ran without an approval
-gate, refusals that were not recorded, and any raw secret material that leaked
-into the receipt. It pairs with `least-privilege`: that one narrows a
+exercised that were never granted, acts that claim an approval requirement or
+decision without matching host-attested evidence, refusals that were not
+recorded, and any raw secret material that leaked into the receipt. It pairs
+with `least-privilege`: that one narrows a
 grant from usage, this one verifies a run honored its grant.
 
 ## Composes
@@ -31,8 +32,10 @@ grant from usage, this one verifies a run honored its grant.
    authority (the proof) and the scopes the acts actually exercised.
 2. **Diff exercised against granted.** Any exercised scope not covered by the
    proof is over-reach.
-3. **Check the gates.** Every mutating act must show an approval gate in the
-   receipt; an ungated mutation is an anomaly.
+3. **Check declared approval.** When an act's authority or effect evidence says
+   exact approval was required, the receipt must carry the matching
+   host-attested decision. A routine write inside its admitted grant does not
+   acquire an approval requirement merely because it changed provider state.
 4. **Check exposure.** The receipt must carry only hashed material references; a
    raw secret in the receipt is a leak.
 5. **Verdict.** `clean`, `anomaly`, or `needs_more_evidence`, with the exact
@@ -44,8 +47,9 @@ grant from usage, this one verifies a run honored its grant.
   skill claims it did.
 - **Granted is the ceiling.** Exercised authority must be a subset of the proof;
   anything beyond is over-reach, full stop.
-- **Mutation needs a gate.** A mutating act with no approval gate in the receipt
-  is an anomaly even if it succeeded.
+- **Approval follows the act contract.** Missing or mismatched approval is an
+  anomaly only when the signed authority/effect evidence required that exact
+  decision. Never infer human-approval policy from a write-shaped verb.
 - **No raw material.** A receipt must reference material by hash; raw credential
   material in a receipt is a leak, not a convenience.
 - **Absence of evidence is not clean.** With no receipt or an unattributable
@@ -68,14 +72,15 @@ grant from usage, this one verifies a run honored its grant.
 
 - `receipt.authority.over_reach` (error): an exercised scope is not covered by
   the authority proof.
-- `receipt.mutation.ungated` (error): a mutating act ran without an approval gate
-  recorded in the receipt.
+- `receipt.approval.inconsistent` (error): an approval-bound act lacks its
+  matching host-attested decision, or the recorded decision does not match the
+  exact act.
 - `receipt.refusal.unrecorded` (warning): a denied request is not reflected as a
   sealed refusal.
 - `receipt.material.exposed` (error): raw credential material appears in the
   receipt instead of a hash reference.
-- `receipt.clean` (info): exercised authority is within the grant, mutations are
-  gated, and no material is exposed.
+- `receipt.clean` (info): exercised authority is within the grant, every
+  declared approval requirement is satisfied, and no material is exposed.
 
 ## Procedure
 
@@ -86,8 +91,9 @@ grant from usage, this one verifies a run honored its grant.
    material references, and receipt signature metadata.
 3. Normalize exercised scopes from the acts and compare them with the granted
    scopes. Exercised must be a subset of granted.
-4. Identify mutating acts and confirm each has an approval gate recorded in the
-   receipt.
+4. Identify acts whose signed authority/effect evidence explicitly required
+   approval. Confirm each has one matching host-attested approval decision. Do
+   not treat an ordinary write scope as an implicit approval requirement.
 5. Check that denied requests appear as sealed refusals when the receipt records
    the attempt.
 6. Scan receipt-visible material for raw credentials or secret-bearing payloads.
@@ -102,8 +108,11 @@ grant from usage, this one verifies a run honored its grant.
   grant data is supplied separately.
 - **Unknown scope name:** treat it as over-reach unless the grant explicitly
   covers it.
-- **Mutation without recorded gate:** emit `receipt.mutation.ungated` even if the
-  mutation succeeded and the outcome looks correct.
+- **Approval-bound act without matching decision:** emit
+  `receipt.approval.inconsistent` even if the provider operation succeeded.
+- **Granted routine write without an approval requirement:** audit authority,
+  idempotency, provider evidence, and finality normally; the absent approval is
+  not a finding.
 - **Raw token, key, or credential in the receipt:** emit
   `receipt.material.exposed` and recommend revocation/rotation.
 
@@ -132,12 +141,14 @@ A `clean` verdict requires zero `error` findings.
 ## Worked example
 
 A sealed run was granted `repo:read`. The receipt shows the acts exercised only
-`repo:read`, every act is an observation (no mutation), and material is
-referenced by hash. Exercised is a subset of granted, no mutation to gate, no
-exposure: `verdict: clean`. Had an act exercised `repo:write` while the proof
+`repo:read` and material is referenced by hash. Exercised is a subset of
+granted, no declared approval is unresolved, and no material is exposed:
+`verdict: clean`. Had an act exercised `repo:write` while the proof
 granted only `repo:read`, that would raise `receipt.authority.over_reach` and a
 `verdict: anomaly` with a recommendation to revoke the run's grant and
-investigate.
+investigate. Conversely, a run granted `repo:write` is not anomalous solely
+because it has no approval record; approval is checked only if that exact act's
+signed contract required it.
 
 ## Inputs
 
@@ -159,9 +170,9 @@ skill returns `needs_more_evidence`.
 
 ### `audit-receipt`
 
-Audit one run for authority over-reach, ungated mutation, unrecorded refusal, or exposed
+Audit one run for authority over-reach, inconsistent declared approval, unrecorded refusal, or exposed
 material. Native ledger evidence proves receipt identity, verification posture, signed
-authority, decisions, acts, artifacts, and lineage through its redacted detail projection. Treat
+authority, approval decisions, acts, artifacts, and lineage through its redacted detail projection. Treat
 receipt_summary and granted_scopes as supplemental operator context only. If a receipt id is not
 resolved, or native detail is insufficient, return needs_more_evidence rather than clean. Do not
-repair the skill or mutate the ledger.
+infer an approval requirement from a write-shaped verb. Do not repair the skill or mutate the ledger.

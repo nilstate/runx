@@ -18,8 +18,9 @@ local `gh` session and using Connect only when explicitly selected or needed—
 binds the returned snapshot and readback into the receipt, and turns it into a concise profile,
 recommended posture, draft reply, and follow-up plan. `discover` and `respond`
 remain explicit supplied-evidence lanes for offline queues and replay. Every
-lane stops at a draft. Select `post` explicitly to consume that exact packet,
-gate the GitHub comment, and require provider readback without repeating triage.
+analysis lane stops at a draft. Select `post` explicitly to consume that exact
+packet under a scoped comment grant and require provider readback without
+repeating triage.
 
 ## When to use it
 
@@ -30,8 +31,9 @@ being replayed. Use `issue-intake` when the material must first become an
 engineering change request, and `issue-to-pr` only after explicit promotion to
 implementation.
 
-Do not use this skill to close, label, assign, comment on, or promise work in a
-repository. It prepares the maintainer decision and draft only.
+Do not use the analysis runners to close, label, assign, comment on, or promise
+work in a repository. They prepare the maintainer decision and draft only; the
+explicit `post` runner performs only the exact accepted comment.
 
 ## Evidence and provider boundary
 
@@ -71,8 +73,9 @@ from supplied evidence.
 - Refuse a missing, ambiguous, wrong-provider, or under-scoped GitHub binding;
   use compatible local `gh` or an explicitly selected hosted connector instead
   of a raw token or package HTTP client.
-- Keep mutation outside this skill. An accepted draft must move to a scoped
-  GitHub comment operation with approval and provider readback.
+- Keep mutation out of the analysis lanes. An accepted draft moves explicitly
+  to `post`, which requires scoped GitHub comment authority and provider
+  readback.
 
 ## Example
 
@@ -80,7 +83,8 @@ A queue contains a reproducible regression, a broad feature request, and a stale
 question. Discovery can prioritize the regression and explain why. Response can
 draft a concise request for the missing version detail or describe a verified
 workaround. It cannot say “fixed in the next release” unless the snapshot or
-other admitted evidence establishes that fact, and it cannot post the reply.
+other admitted evidence establishes that fact. Posting requires the separate
+`post` invocation and its comment-scoped grant.
 
 ## Agent task contracts
 

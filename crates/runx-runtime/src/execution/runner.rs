@@ -201,13 +201,12 @@ pub struct Runtime<A> {
     javascript: crate::adapters::javascript::JavaScriptAdapter,
     local_artifacts: crate::services::LocalArtifactService,
     options: Arc<RuntimeOptions>,
-    inherited_policy_approval_refs: Arc<Vec<runx_contracts::Reference>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum BlockedGraphOutcome {
-    Error,
-    Receipt,
+enum GraphTerminalOutcome {
+    Propagate,
+    SealReceipt,
 }
 
 impl<A> Runtime<A>
@@ -223,7 +222,6 @@ where
             ),
             local_artifacts: crate::services::LocalArtifactService::default(),
             options: Arc::new(options),
-            inherited_policy_approval_refs: Arc::new(Vec::new()),
         }
     }
 
@@ -238,16 +236,7 @@ where
             javascript,
             local_artifacts,
             options: options.into(),
-            inherited_policy_approval_refs: Arc::new(Vec::new()),
         }
-    }
-
-    fn with_inherited_policy_approval_refs(
-        mut self,
-        references: Vec<runx_contracts::Reference>,
-    ) -> Self {
-        self.inherited_policy_approval_refs = Arc::new(references);
-        self
     }
 
     pub(crate) fn options(&self) -> &RuntimeOptions {
@@ -272,7 +261,7 @@ where
         let graph_path = self.resolved_graph_path(graph_path)?;
         let graph = load_graph(&graph_path)?;
         let graph_dir = graph_path.parent().unwrap_or_else(|| Path::new("/"));
-        self.run_graph_with_host_outcome(graph_dir, graph, host, BlockedGraphOutcome::Error)
+        self.run_graph_with_host_outcome(graph_dir, graph, host, GraphTerminalOutcome::Propagate)
     }
 
     pub(crate) fn run_graph_file_for_harness(
@@ -283,7 +272,7 @@ where
         let graph_path = self.resolved_graph_path(graph_path)?;
         let graph = load_graph(&graph_path)?;
         let graph_dir = graph_path.parent().unwrap_or_else(|| Path::new("/"));
-        self.run_graph_with_host_outcome(graph_dir, graph, host, BlockedGraphOutcome::Receipt)
+        self.run_graph_with_host_outcome(graph_dir, graph, host, GraphTerminalOutcome::SealReceipt)
     }
 
     pub fn run_graph_with_host(
@@ -292,7 +281,16 @@ where
         graph: ExecutionGraph,
         host: &mut dyn Host,
     ) -> Result<GraphRun, RuntimeError> {
-        self.run_graph_with_host_outcome(graph_dir, graph, host, BlockedGraphOutcome::Error)
+        self.run_graph_with_host_outcome(graph_dir, graph, host, GraphTerminalOutcome::Propagate)
+    }
+
+    pub(crate) fn run_graph_for_harness(
+        &self,
+        graph_dir: &Path,
+        graph: ExecutionGraph,
+        host: &mut dyn Host,
+    ) -> Result<GraphRun, RuntimeError> {
+        self.run_graph_with_host_outcome(graph_dir, graph, host, GraphTerminalOutcome::SealReceipt)
     }
 
     // Function rationale: graph execution drives one ordered
@@ -303,7 +301,7 @@ where
         graph_dir: &Path,
         graph: ExecutionGraph,
         host: &mut dyn Host,
-        blocked_outcome: BlockedGraphOutcome,
+        terminal_outcome: GraphTerminalOutcome,
     ) -> Result<GraphRun, RuntimeError> {
         let mut execution = GraphExecution::new(&graph);
         match execution.run(self, graph_dir, &graph, host, None) {
@@ -323,7 +321,7 @@ where
                 Ok(execution.finish(graph, receipt))
             }
             Err(RuntimeError::GraphBlocked { step_id, reason })
-                if blocked_outcome == BlockedGraphOutcome::Receipt =>
+                if terminal_outcome == GraphTerminalOutcome::SealReceipt =>
             {
                 let receipt = graph_receipt_with_disposition_and_policy(
                     &graph.name,
@@ -351,7 +349,7 @@ where
                 verb,
                 step_id,
                 reason,
-            }) if blocked_outcome == BlockedGraphOutcome::Receipt => {
+            }) if terminal_outcome == GraphTerminalOutcome::SealReceipt => {
                 let receipt = graph_receipt_with_disposition_and_policy(
                     &graph.name,
                     &mut execution.runs,
@@ -371,6 +369,28 @@ where
                 execution.record_lifecycle(
                     host,
                     LifecycleEvent::graph_blocked(&graph.name, &step_id, &receipt),
+                )?;
+                Ok(execution.finish(graph, receipt))
+            }
+            Err(RuntimeError::ResolutionPending { step_id, reason })
+                if terminal_outcome == GraphTerminalOutcome::SealReceipt =>
+            {
+                let receipt = graph_receipt_with_disposition_and_policy(
+                    &graph.name,
+                    &mut execution.runs,
+                    &execution.sync_points,
+                    &self.options.created_at,
+                    crate::receipts::GraphClosure {
+                        disposition: ClosureDisposition::Deferred,
+                        reason_code: "resolution_pending".to_owned(),
+                        summary: format!("graph {} deferred at {step_id}: {reason}", graph.name),
+                    },
+                    self.options.effects.clone(),
+                    self.options.signature_policy(),
+                )?;
+                execution.record_lifecycle(
+                    host,
+                    LifecycleEvent::graph_deferred(&graph.name, &step_id, &receipt),
                 )?;
                 Ok(execution.finish(graph, receipt))
             }

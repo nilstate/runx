@@ -186,10 +186,3 @@ pub(crate) fn field_value<'a>(
 ) -> Option<&'a JsonValue> {
     object.and_then(|object| object.get(field))
 }
-
-pub(crate) fn nested_value<'a>(value: Option<&'a JsonValue>, field: &str) -> Option<&'a JsonValue> {
-    match value {
-        Some(JsonValue::Object(object)) => object.get(field),
-        _ => None,
-    }
-}

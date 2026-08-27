@@ -40,7 +40,7 @@ caller:
         access: read
         result: { event_id: evt_zapier_demo_001, invocation_ref: zapier:run:001, status: accepted, idempotency_key: $previous.idempotency_key }
   approvals:
-    "provider-effect:sha256:458eede53654e480274fa370c0b98d8d8c8696286b62429cf27e225f38c5b1f8": true
+    "provider-effect:sha256:fa4be495e37188964928552e869b3d1ed6a84eb56381b89e0fb84b1da6b5d645": true
 expect:
   status: sealed
   steps: [build-handoff-context, invoke, readback]

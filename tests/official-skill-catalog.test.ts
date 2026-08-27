@@ -50,7 +50,7 @@ type CatalogSemanticDiagnostic = {
 };
 
 type CatalogSemanticReport = {
-  readonly mode: "enforced";
+  readonly mode: "operator_readiness";
   readonly skill: string;
   readonly defaultRunner?: string;
   readonly diagnostics: readonly CatalogSemanticDiagnostic[];
@@ -59,7 +59,6 @@ type CatalogSemanticReport = {
     readonly coldSelection: boolean;
     readonly standaloneDefault: boolean;
     readonly composedReuse: boolean;
-    readonly providerProof: "none" | "harness" | "live";
     readonly suppliedAgentAnswers: boolean;
     readonly coldSelectionConfusors?: readonly string[];
     readonly standaloneCase?: string;
@@ -339,13 +338,13 @@ describe("official skill catalog", () => {
       const inspection = inspectOfficialSkill(skillName);
       expect(inspection.status, skillName).toBe("ok");
       expect(inspection.catalog?.visibility, skillName).toBe("public");
-      expect(inspection.semantic_report.mode, skillName).toBe("enforced");
+      expect(inspection.semantic_report.mode, skillName).toBe("operator_readiness");
       expect(inspection.semantic_report.diagnostics, skillName).toEqual([]);
     }
 
     const internal = inspectOfficialSkill("mock-pay");
     expect(internal.catalog?.visibility).toBe("internal");
-    expect(internal.semantic_report.mode).toBe("enforced");
+    expect(internal.semantic_report.mode).toBe("operator_readiness");
     expect(internal.semantic_report.diagnostics).toEqual([]);
     const harness = runNativeJson(["harness", "skills/mock-pay", "--json"]);
     expect(harness).toMatchObject({ status: "passed", assertion_error_count: 0 });
@@ -356,7 +355,7 @@ describe("official skill catalog", () => {
     const second = inspectOfficialSkill("github-sync");
     expect(second.semantic_report).toEqual(first.semantic_report);
     expect(first.semantic_report).toMatchObject({
-      mode: "enforced",
+      mode: "operator_readiness",
       skill: "github-sync",
       defaultRunner: "github-sync",
       diagnostics: [],

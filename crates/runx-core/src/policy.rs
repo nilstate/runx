@@ -8,7 +8,6 @@ mod local;
 mod maturity;
 pub(crate) mod posix_basename;
 pub mod public_work;
-mod retry;
 mod rfc3339;
 pub mod scope;
 mod tool_ref;
@@ -34,7 +33,6 @@ pub use public_work::{
     default_public_work_policy, evaluate_public_comment_opportunity,
     evaluate_public_pull_request_candidate, normalize_public_work_policy,
 };
-pub use retry::admit_retry_policy;
 pub use rfc3339::parse_rfc3339_moment;
 pub use scope::{ScopeGrantPolicy, missing_granted_scopes, scope_grant_allows};
 pub use tool_ref::{ToolRefAdmission, admit_agent_tool_ref};
@@ -51,6 +49,6 @@ pub use types::{
     LocalAdmissionGrantStatus, LocalAdmissionOptions, LocalAdmissionSkill, LocalAdmissionSource,
     LocalExecutionPolicy, LocalScopeAdmissionOptions, PublicCommentOpportunityRequest,
     PublicCommentPolicyDecision, PublicPolicyDecision, PublicPullRequestCandidateRequest,
-    PublicRecentOutcome, PublicWorkPolicy, RequiredPublicWorkPolicy, RetryAdmissionRequest,
-    RetryPolicy, ScopeAdmission, ScopeAdmissionStatus,
+    PublicRecentOutcome, PublicWorkPolicy, RequiredPublicWorkPolicy, ScopeAdmission,
+    ScopeAdmissionStatus,
 };

@@ -5,5 +5,4 @@ steps:
     skill: ../post-merge-final-outcome-publisher
     scopes:
       - thread:push
-    mutation: true
     idempotency_key: post-merge-publish-final-outcome

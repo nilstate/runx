@@ -1,5 +1,5 @@
 skill: governed-outbound
-version: "0.3.3"
+version: "0.3.4"
 catalog:
   kind: graph
   audience: public
@@ -8,19 +8,19 @@ catalog:
   execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: required
+  approval: conditional
 harness:
   cases:
     - name: governed-outbound-approved-plan
       operator_journeys:
         - mode: standalone
-          request: Fetch this allowlisted source, remove personal data, and prepare the exact approved outbound handoff.
+          request: Fetch this allowlisted source, remove personal data, and prepare the exact outbound handoff.
           expected_outcome: Return a digest-bound scrubbed payload and truthful provider-neutral delivery handoff without leaking source PII.
         - mode: composed
           request: Continue outbound delivery from this already bounded source and target plan.
           expected_outcome: Reuse supplied source evidence and target intent without refetching, rescrubbing, or claiming delivery.
           prior_evidence:
-            - The allowlisted source, target intent, and approval context supplied in the fixture.
+            - The allowlisted source and target intent supplied in the fixture.
           must_not_repeat:
             - Do not fetch the external source again.
             - Do not repeat redaction after deterministic residual scanning has passed.
@@ -73,7 +73,7 @@ harness:
               gates:
                 preflight_required: true
                 human_approval_required: true
-                approval_ref: governed-outbound.send.approval
+                approval_ref: send-as.live-send.approval
               blockers: []
               provider_actions:
                 - channel.post
@@ -82,14 +82,11 @@ harness:
               success_checkpoint:
                 milestone: provider_delivery_required
                 description: Provider delivery and readback remain required after this plan.
-        approvals:
-          governed-outbound.send.approval: true
       expect:
         status: sealed
         steps:
           - fetch-source
           - scrub-content
-          - approve-send
           - plan-notice
           - finalize
         step_outputs:
@@ -205,7 +202,6 @@ runners:
             equals: ready
           skill: ../send-as
           runner: send
-          mutation: true
           inputs:
             objective: Deliver the exact scrubbed outbound content and verify provider readback.
             principal: $input.principal
@@ -262,26 +258,12 @@ runners:
             mode: redact
           context:
             content: fetch-source.fetch_result.data.extracted
-        - id: approve-send
-          label: approve the exact downstream plan
-          run:
-            type: approval
-          inputs:
-            gate_id: governed-outbound.send.approval
-            reason: Approve the exact scrubbed-content plan; provider execution and delivery readback remain separate.
-          context:
-            decision: scrub-content.redaction_report.data.decision
-            residual_risk: scrub-content.redaction_report.data.residual_risk
-            redacted_digest: scrub-content.redaction_report.data.redacted_digest
-          artifacts:
-            wrap_as: approval_decision
-            packet: runx.approval.decision.v1
         - id: plan-notice
-          label: authorize the governed notification plan
+          label: prepare the governed notification plan
           skill: ../send-as
           runner: plan
           inputs:
-            objective: Authorize the approved scrubbed update for a separate provider adapter.
+            objective: Prepare the scrubbed update for a separate provider adapter.
             principal: $input.principal
             audience: $input.channel
             provider_context: $input.operator_context
@@ -295,7 +277,6 @@ runners:
           context:
             source: fetch-source.fetch_result.data
             redaction: scrub-content.redaction_report.data
-            approval: approve-send.approval_decision.data
             send_plan: plan-notice.send_plan.data
           run:
             type: javascript
@@ -304,7 +285,7 @@ runners:
               outbound_plan:
                 type: object
                 schema:
-                  required: [decision, completion, provider_delivery, principal, audience, source, redaction, approval, provider_actions, send_plan]
+                  required: [decision, completion, provider_delivery, principal, audience, source, redaction, provider_actions, send_plan]
                   additionalProperties: false
                   properties:
                     decision: { const: ready }
@@ -327,13 +308,6 @@ runners:
                       properties:
                         digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
                         source_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
-                    approval:
-                      type: object
-                      required: [approved, gate_id]
-                      additionalProperties: false
-                      properties:
-                        approved: { const: true }
-                        gate_id: { type: string, minLength: 1 }
                     provider_actions: { type: array, items: { type: string }, uniqueItems: true }
                     send_plan:
                       type: object
@@ -362,18 +336,9 @@ runners:
             packet: runx.governed_outbound.plan.v1
       policy:
         guards:
-          - step: approve-send
-            field: scrub-content.redaction_report.data.decision
-            equals: ready
-          - step: plan-notice
-            field: approve-send.approval_decision.data.approved
-            equals: true
           - step: plan-notice
             field: scrub-content.redaction_report.data.decision
             equals: ready
-          - step: finalize
-            field: approve-send.approval_decision.data.approved
-            equals: true
           - step: finalize
             field: scrub-content.redaction_report.data.decision
             equals: ready

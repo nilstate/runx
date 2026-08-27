@@ -15,9 +15,9 @@ mod types;
 
 pub use catalog::{
     CatalogApproval, CatalogAudience, CatalogCompletion, CatalogExecution, CatalogKind,
-    CatalogMetadata, CatalogOperatorReadiness, CatalogProviderProof, CatalogRole,
-    CatalogSemanticCode, CatalogSemanticDiagnostic, CatalogSemanticReport, CatalogVisibility,
-    analyze_catalog_semantics, analyze_package_catalog_semantics,
+    CatalogMetadata, CatalogOperatorReadiness, CatalogRole, CatalogSemanticCode,
+    CatalogSemanticDiagnostic, CatalogSemanticReport, CatalogVisibility, analyze_catalog_semantics,
+    analyze_package_catalog_semantics,
 };
 pub use fixtures::{
     HarnessCallerFixture, HarnessExpectation, HarnessHttpResponseFixture, OperatorJourneyClaim,
@@ -48,8 +48,7 @@ pub(crate) use source::validate_inline_graph_source;
 use execution_semantics::validate_execution_semantics;
 use governance::validate_skill_governance;
 use governance::{
-    validate_allowed_tools, validate_artifact_contract, validate_idempotency, validate_mutating,
-    validate_retry,
+    validate_allowed_tools, validate_artifact_contract, validate_idempotency, validate_retry,
 };
 use source::default_agent_source;
 use source::flattened_source_record;
@@ -58,12 +57,11 @@ use source::validate_source_fields;
 
 const FIELDS: JsonFieldReader = JsonFieldReader::new("skill");
 
-pub(super) use crate::json_fields::{field_value, first_value, nested_value};
+pub(super) use crate::json_fields::{field_value, first_value};
 
 struct SkillGovernance {
     retry: Option<SkillRetryPolicy>,
     idempotency: Option<SkillIdempotencyPolicy>,
-    mutating: Option<bool>,
     artifacts: Option<SkillArtifactContract>,
     allowed_tools: Option<Vec<String>>,
     execution: Option<ExecutionSemantics>,
@@ -85,12 +83,14 @@ pub fn validate_skill_with_options(
         .transpose()?
         .flatten()
         .unwrap_or_else(default_agent_source);
+    reject_runtime_effect_claims(&raw, runx.as_ref())?;
     let risk = raw.frontmatter.get("risk").cloned();
-    let governance = validate_skill_governance(&raw, runx.as_ref(), risk.as_ref())?;
+    let governance = validate_skill_governance(&raw, runx.as_ref())?;
     let category = validate_portable_skill_category(&raw)?;
     let runx_category = validate_runx_skill_category(runx.as_ref())?;
     let registry_owner = validate_registry_owner(&raw)?;
 
+    let source = validate_source(&source)?;
     Ok(ValidatedSkill {
         name: FIELDS.required_string(raw.frontmatter.get("name"), "name")?,
         description: FIELDS.optional_string(raw.frontmatter.get("description"), "description")?,
@@ -98,7 +98,7 @@ pub fn validate_skill_with_options(
         runx_category,
         registry_owner,
         body: raw.body.clone(),
-        source: validate_source(&source)?,
+        source,
         inputs: validate_inputs(
             FIELDS
                 .optional_object(raw.frontmatter.get("inputs"), "inputs")?
@@ -106,17 +106,36 @@ pub fn validate_skill_with_options(
             "inputs",
         )?,
         auth: raw.frontmatter.get("auth").cloned(),
-        risk: risk.clone(),
+        risk,
         runtime: raw.frontmatter.get("runtime").cloned(),
         retry: governance.retry,
         idempotency: governance.idempotency,
-        mutating: governance.mutating,
         artifacts: governance.artifacts,
         allowed_tools: governance.allowed_tools,
         execution: governance.execution,
         runx,
         raw,
     })
+}
+
+fn reject_runtime_effect_claims(
+    raw: &RawSkillIr,
+    runx: Option<&JsonObject>,
+) -> Result<(), ValidationError> {
+    let risk_claim = raw
+        .frontmatter
+        .get("risk")
+        .and_then(JsonValue::as_object)
+        .is_some_and(|risk| risk.contains_key("mutating"));
+    if raw.frontmatter.contains_key("mutating")
+        || risk_claim
+        || runx.is_some_and(|metadata| metadata.contains_key("mutating"))
+    {
+        return Err(FIELDS.validation_error(
+            "mutating is not supported; approval and authority are owned by invoked capabilities",
+        ));
+    }
+    Ok(())
 }
 
 fn validate_registry_owner(raw: &RawSkillIr) -> Result<Option<String>, ValidationError> {

@@ -1,6 +1,6 @@
 ---
 name: github-sync
-description: Read or synchronize bounded GitHub issues, threads, and pull requests through the local authenticated gh CLI or any compatible hosted connector; writes require approval and readback.
+description: Read or synchronize bounded GitHub issues, threads, and pull requests through the local authenticated gh CLI or any compatible hosted connector, with scoped authority and readback.
 runx:
   category: ops
 ---
@@ -9,15 +9,15 @@ runx:
 
 Define one bounded synchronization between local Runx state and a GitHub
 repository. The skill makes direction, resource set, filters, content identity,
-scope, cursor, and approval posture explicit before the selected GitHub
+scope, cursor, and authority posture explicit before the selected GitHub
 transport is allowed to read or mutate GitHub.
 
 The default `github-sync` runner performs the requested pull or push. `plan`
 is the explicit no-effect runner; `pull` and `push` remain explicit execution
-lanes for compatible callers. Pulls need no human approval because they are
-bounded reads. A push carries one to eight typed mutations, uses one approval
-bound to the exact batch digest, and returns an individual status, sync
-reference, and mutation digest for every item. It closes only on independent
+lanes for compatible callers. Pulls are bounded reads. A push carries one to
+eight typed mutations under the admitted repository grant and returns an
+individual status, sync reference, and mutation digest for every item. It
+closes only on independent
 GitHub readback for every applied item. A partial or unknown item is deferred
 for reconciliation and is never silently retried. No GitHub token enters this
 package.
@@ -52,16 +52,16 @@ evidence. Do not silently turn a denied push into a pull.
    may fetch.
 3. A `push` plan requires write scope and one to eight typed mutations. It
    rejects unknown fields and oversized content, then returns
-   `ready_for_approval`; planning itself does not open or satisfy that gate.
+   `ready_for_execution`; planning itself does not grant provider authority.
 4. Optional `plan_and_append_cursor` composes the canonical `data-store` skill
    to append the bounded plan and read the projection back. That proves local
    cursor persistence, not GitHub synchronization; this package does not own a
    second cursor database or storage adapter.
 5. The default runner selects the same bounded read or write path from the
    validated direction. `pull` executes the plan with `repo.read`. `push`
-  hashes the exact mutation set
-   with the native digest tool, requests approval, executes it with
-   `repo.write`, verifies the returned digest, and reads the resource back.
+   hashes the exact mutation set with the native digest tool, executes it under
+   the admitted `repo.write` scope, verifies the returned digest, and reads the
+   resource back.
    Both runners use the native provider lane.
 
 ## Inputs and result
@@ -77,7 +77,7 @@ evidence. Do not silently turn a denied push into a pull.
 - `scope` is the requested read or write scope.
 
 The `runx.github_sync.v1` plan records exact direction, provider operation,
-scope, filters, blockers, approval posture, cursor state when used, and the
+scope, filters, blockers, authority posture, cursor state when used, and the
 explicit absence of remote effects. Execution additionally emits the native
 provider-operation packet; it does not rewrite the planning packet to imply a
 remote effect.
@@ -104,5 +104,6 @@ A caller wants to pull the next 50 open issues after cursor `2`. Planning can
 persist that cursor locally; `pull` then performs `issues.read` through the
 configured grant and returns the provider result. To close issue 241, a push
 carries `ref: issues/241`, `op: update`, and
-`payload: {state: closed, state_reason: completed}`. Runx hashes and approves
-that exact mutation, applies only that issue update, and reads issue 241 back.
+`payload: {state: closed, state_reason: completed}`. Runx hashes that exact
+mutation, applies only that issue update under the scoped grant, and reads issue
+241 back.

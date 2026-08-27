@@ -666,7 +666,7 @@ where
     let signature_config = options.receipt_signature.clone();
     let runtime = Runtime::new(adapter, options);
     let mut host = FixtureHost::new(fixture);
-    let graph_run = runtime.run_graph_with_host(&invocation.skill_directory, graph, &mut host)?;
+    let graph_run = runtime.run_graph_for_harness(&invocation.skill_directory, graph, &mut host)?;
     let replayed_answers = host.into_replayed_answers();
     // When the runner declares an `act:` block, seal the turn's primary receipt as
     // its domain act through the SAME production minting entry, so the fixture and

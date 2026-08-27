@@ -97,7 +97,7 @@ fn agent_handoff_journey_pauses_recovers_resumes_verifies_and_clears_history() -
         .arg(&skill_dir)
         .arg("--receipt-dir")
         .arg(&receipt_dir)
-        .args(["--thread-title", "Docs bug", "--non-interactive"])
+        .args(["--thread-title", "Docs bug"])
         .output()?;
     assert_exit(&pause, 2)?;
     let pause_text = String::from_utf8(pause.stdout)?;
@@ -200,7 +200,7 @@ fn declined_and_superseded_agent_runs_preserve_receipts_and_exit_nonzero() -> Te
             .arg(&skill_dir)
             .arg("--receipt-dir")
             .arg(&receipt_dir)
-            .args(["--json", "--non-interactive"])
+            .args(["--json"])
             .output()?;
         let pause = assert_json(&pause, 2)?;
         let run_id = json_string(&pause, "run_id")?;
@@ -929,39 +929,17 @@ esac
         .arg("issue-to-pr-inputs.json")
         .arg("--receipt-dir")
         .arg(&receipt_dir)
-        .args(["--json", "--diagnostics", "--non-interactive"])
+        .args(["--json", "--diagnostics"])
         .output()?;
-    let start = assert_json(&start, 2)?;
-    assert_eq!(start["status"], "needs_approval", "{start}");
-    assert_eq!(start["requests"].as_array().map(Vec::len), Some(1));
-    let request = &start["requests"][0];
-    assert_eq!(request["kind"], "approval");
-    let request_id = json_string(request, "id")?;
-    let run_id = json_string(&start, "run_id")?;
-
-    let approval = serde_json::json!({
-        "approvals": { (request_id): { "approved": true, "reason": "Publish the exact tested change." } }
-    })
-    .to_string();
-    let mut resume = command(&root);
-    local_env(&mut resume);
-    resume
-        .arg("resume")
-        .arg(run_id)
-        .arg("-")
-        .arg("--receipt-dir")
-        .arg(&receipt_dir)
-        .args(["--json", "--diagnostics"]);
-    let resume = output_with_stdin(&mut resume, &approval)?;
-    let resume = assert_json(&resume, 0)?;
-    assert_eq!(resume["status"], "sealed", "{resume}");
-    assert_eq!(resume["outcome"], "completed");
+    let result = assert_json(&start, 0)?;
+    assert_eq!(result["status"], "sealed", "{result}");
+    assert_eq!(result["outcome"], "completed");
     assert_eq!(
-        resume["result"]["issue_to_pr_result"]["data"]["publication"]["status"],
+        result["result"]["issue_to_pr_result"]["data"]["publication"]["status"],
         "published"
     );
     assert_eq!(
-        resume["result"]["issue_to_pr_result"]["data"]["publication"]["pr_number"],
+        result["result"]["issue_to_pr_result"]["data"]["publication"]["pr_number"],
         "77"
     );
 
@@ -987,12 +965,12 @@ esac
             .lines()
             .filter(|line| line.contains("graphql"))
             .count(),
-        2,
-        "the non-interactive approval resume must revalidate, but never multiply, GitHub identity: {gh_log}"
+        1,
+        "the scoped write must validate GitHub identity exactly once: {gh_log}"
     );
     assert!(
         gh_log.lines().all(|line| !line.contains("/issues/442")),
-        "resume must not repeat issue discovery: {gh_log}"
+        "publication must not repeat issue discovery: {gh_log}"
     );
     let approved_body: Value =
         serde_json::from_slice(&fs::read(fake_bin.join("approved-pr-body.json"))?)?;
@@ -1039,7 +1017,7 @@ fn stdin_resume_reuses_run_and_rejects_digest_drift() -> TestResult {
         .arg(&skill_dir)
         .arg("--receipt-dir")
         .arg(&receipt_dir)
-        .args(["--json", "--non-interactive"])
+        .args(["--json"])
         .output()?;
     let pause = assert_json(&pause, 2)?;
     assert_eq!(pause["status"], "needs_agent");

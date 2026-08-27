@@ -62,9 +62,6 @@ pub fn parse_resume_plan(args: &[OsString]) -> Result<ResumePlan, String> {
                 diagnostics = true;
                 index += 1;
             }
-            "--non-interactive" => {
-                index += 1;
-            }
             "--managed-agent" => {
                 managed_agent = true;
                 index += 1;
@@ -263,7 +260,6 @@ pub fn run_native_resume_with_workspace(plan: ResumePlan, workspace: &WorkspaceE
         expected_execution_closure_digest,
         json: plan.json,
         diagnostics: plan.diagnostics,
-        non_interactive: true,
         trusted_command_execution: false,
         full_operator_context: false,
         inputs: BTreeMap::new(),

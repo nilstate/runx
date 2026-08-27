@@ -1,5 +1,5 @@
 skill: dispute-respond
-version: "0.5.1"
+version: "0.5.2"
 
 catalog:
   kind: graph
@@ -387,7 +387,6 @@ runners:
             field: validate.comparison.data.equal
             equals: true
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes:
             - dispute.file
@@ -398,6 +397,9 @@ runners:
             operation: dispute.file
             target: $input.dispute_packet.dispute.dispute_id
             expected_provider: $input.provider
+            approval:
+              reason: Approve filing this exact dispute response with the provider.
+              type: dispute_response
             idempotency_key: $input.idempotency_key
             expected_result:
               dispute_id: $input.dispute_packet.dispute.dispute_id

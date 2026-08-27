@@ -204,7 +204,7 @@ fn execute_mcp_server_graph(
     let checkpoint = match runtime.run_graph_until_steps_with_host(&graph_dir, &graph, 1, &mut host)
     {
         Ok(checkpoint) => checkpoint,
-        Err(RuntimeError::GraphBlocked { .. }) if !host.requests.is_empty() => {
+        Err(RuntimeError::ResolutionPending { .. }) if !host.requests.is_empty() => {
             return pending_mcp_resolution_result(run_id, &execution.skill_name, &host.requests[0]);
         }
         Err(error) => return Err(error),

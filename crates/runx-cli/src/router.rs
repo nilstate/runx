@@ -146,7 +146,6 @@ pub struct NewPlan {
     pub directory: Option<PathBuf>,
     pub receipt_dir: Option<PathBuf>,
     pub json: bool,
-    pub non_interactive: bool,
     pub managed_agent: ManagedAgentPolicy,
 }
 
@@ -589,7 +588,6 @@ fn parse_new_plan(args: &[OsString]) -> Result<NewPlan, String> {
         directory: parsed.directory,
         receipt_dir: parsed.receipt_dir,
         json: parsed.json,
-        non_interactive: parsed.non_interactive,
         managed_agent: managed_agent_policy(
             "new",
             parsed.managed_agent,
@@ -606,7 +604,6 @@ struct NewParseState {
     directory: Option<PathBuf>,
     receipt_dir: Option<PathBuf>,
     json: bool,
-    non_interactive: bool,
     managed_agent: bool,
     managed_agent_rounds: Option<u32>,
 }
@@ -666,13 +663,6 @@ fn parse_new_flag(
             let (value, next_index) = os_flag_value(args, index, flag, inline_value)?;
             parsed.receipt_dir = Some(PathBuf::from(value));
             Ok(next_index)
-        }
-        "--non-interactive" => {
-            if inline_value.is_some() {
-                return Err("--non-interactive does not take a value".to_owned());
-            }
-            parsed.non_interactive = true;
-            Ok(index + 1)
         }
         "--managed-agent" => {
             parsed.managed_agent = match inline_value {

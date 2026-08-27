@@ -51,7 +51,6 @@ fn native_cli_smoke_runs_without_node_or_typescript_env() -> Result<(), Box<dyn 
             "--receipt-dir",
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     assert_eq!(

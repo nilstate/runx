@@ -12,7 +12,7 @@ Deliver exact scrubbed outbound content in this order:
 3. The exact scrubbed content and digest pass directly to `send-as`; the caller
    selects only the provider and bounded target, never provider request grammar.
 4. `send-as#send` plans principal and audience, derives the provider request and
-   idempotency key, gates the consequential send,
+   idempotency key, requests exact approval for the consequential send,
    performs it once, and requires independent provider readback.
 
 The provider adapter remains separately configured and tenant-agnostic. Missing
@@ -32,14 +32,15 @@ handoff is the requested outcome.
 ## Stop conditions
 
 - Missing or disallowed fetch inputs stop in `web-fetch`.
-- `needs_review` or `blocked` redaction skips approval and planning.
-- Denied or absent approval skips planning.
+- `needs_review` or `blocked` redaction skips planning and delivery.
+- The plan runner never asks for performative approval; approval belongs to the
+  exact live send in `send-as#send`.
 - A send plan whose principal, audience, or digest differs from the approved redaction fails deterministic finalization.
 - Provider execution and readback must occur in the selected downstream adapter before any caller reports delivery.
 
 ## Output
 
-`outbound_plan` records `completion: plan_only`, `provider_delivery: not_executed`, source and redaction digests, the approval reference, the bounded send plan, and the selected provider actions. The scrubbed content remains available only in the redaction step output for the authorized downstream adapter.
+`outbound_plan` records `completion: plan_only`, `provider_delivery: not_executed`, source and redaction digests, the bounded send plan, and the selected provider actions. The scrubbed content remains available only in the redaction step output for the authorized downstream adapter.
 
 Default delivery inputs are `url`, `allowlist`, `channel`, `principal`, and a
 tenant-owned `connector` containing only `provider` and exact `target`.

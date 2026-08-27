@@ -92,22 +92,6 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "const": "policy.admitRetryPolicy"
-            },
-            "request": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind",
-            "request"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
               "const": "policy.admitGraphStepScopes"
             },
             "request": {

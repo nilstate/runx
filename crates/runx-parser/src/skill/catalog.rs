@@ -181,13 +181,6 @@ pub struct CatalogMetadata {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CatalogSemanticCode {
-    PublicPromiseMismatch,
-    DefaultRunnerIsPlanningOnly,
-    ProviderReadbackUnreachable,
-    AdapterUnreachable,
-    ApprovalUnreachable,
-    MockDefault,
-    FixtureDefault,
     MissingColdSelectionProof,
     MissingStandaloneDefaultProof,
     MissingComposedReuseProof,
@@ -197,27 +190,11 @@ impl CatalogSemanticCode {
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::PublicPromiseMismatch => "public_promise_mismatch",
-            Self::DefaultRunnerIsPlanningOnly => "default_runner_is_planning_only",
-            Self::ProviderReadbackUnreachable => "provider_readback_unreachable",
-            Self::AdapterUnreachable => "adapter_unreachable",
-            Self::ApprovalUnreachable => "approval_unreachable",
-            Self::MockDefault => "mock_default",
-            Self::FixtureDefault => "fixture_default",
             Self::MissingColdSelectionProof => "missing_cold_selection_proof",
             Self::MissingStandaloneDefaultProof => "missing_standalone_default_proof",
             Self::MissingComposedReuseProof => "missing_composed_reuse_proof",
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CatalogProviderProof {
-    #[default]
-    None,
-    Harness,
-    Live,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -227,7 +204,6 @@ pub struct CatalogOperatorReadiness {
     pub cold_selection: bool,
     pub standalone_default: bool,
     pub composed_reuse: bool,
-    pub provider_proof: CatalogProviderProof,
     pub supplied_agent_answers: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cold_selection_confusors: Vec<String>,
@@ -262,24 +238,9 @@ pub struct CatalogSemanticReport {
     pub readiness: CatalogOperatorReadiness,
 }
 
-#[derive(Default)]
-struct DefaultRunnerFacts {
-    observations: BTreeSet<String>,
-    provider_readback: bool,
-    provider_boundary: bool,
-    mutation: bool,
-    adapter: bool,
-    artifact: bool,
-    agent: bool,
-    mock: bool,
-    fixture: bool,
-    planning_name: bool,
-}
-
-/// Report semantic drift between a public catalog promise and its selected
-/// default runner. Aggregate package admission rejects any diagnostic; raw
-/// manifest callers may still inspect the structured report to explain the
-/// required correction.
+/// Project catalog metadata into a stable report. Runtime execution facts are
+/// deliberately absent: only the resolved execution closure can establish
+/// which native capabilities a composed runner reaches.
 #[must_use]
 pub fn analyze_catalog_semantics(
     skill: &str,
@@ -296,121 +257,27 @@ pub fn analyze_catalog_semantics(
         });
     let Some(runner) = default else {
         return CatalogSemanticReport {
-            mode: "enforced".to_owned(),
+            mode: "operator_readiness".to_owned(),
             skill: skill.to_owned(),
             default_runner: None,
             diagnostics: Vec::new(),
             readiness: CatalogOperatorReadiness::default(),
         };
     };
-    let Some(catalog) = manifest.catalog.as_ref() else {
+    let Some(_catalog) = manifest.catalog.as_ref() else {
         return CatalogSemanticReport {
-            mode: "enforced".to_owned(),
+            mode: "operator_readiness".to_owned(),
             skill: skill.to_owned(),
             default_runner: Some(runner.name.clone()),
             diagnostics: Vec::new(),
             readiness: CatalogOperatorReadiness::default(),
         };
     };
-    let facts = default_runner_facts(skill, manifest, runner);
-    let observed = facts.observations.iter().cloned().collect::<Vec<_>>();
-    let mut diagnostics = Vec::new();
-    let public = catalog.visibility == CatalogVisibility::Public;
-    let inferred_operation = public && inferred_operation_promise(skill);
-    if inferred_operation && catalog.execution != Some(CatalogExecution::Execute) {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::PublicPromiseMismatch,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "declare execute/provider_readback for the operation promise or refocus the public capability so its name promises only the returned artifact",
-        ));
-    }
-    if (catalog.execution == Some(CatalogExecution::Execute) || inferred_operation)
-        && !facts.mutation
-        && !facts.provider_readback
-        && !facts.adapter
-        && !facts.agent
-    {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::DefaultRunnerIsPlanningOnly,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "make the default runner reach the advertised terminal operation; retain this runner as an explicit plan or inspect runner",
-        ));
-    } else if inferred_operation
-        && facts.planning_name
-        && !facts.mutation
-        && !facts.provider_readback
-    {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::DefaultRunnerIsPlanningOnly,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "select an end-to-end default and keep the planning runner explicitly named",
-        ));
-    }
-    if catalog.completion == Some(CatalogCompletion::ProviderReadback) && !facts.provider_readback {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::ProviderReadbackUnreachable,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "route the default execution closure through provider.read/provider.mutate and return its durable readback, or correct completion metadata",
-        ));
-    }
-    if catalog.requires_adapter == Some(true) && !facts.provider_readback && !facts.adapter {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::AdapterUnreachable,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "make a declared provider or adapter boundary reachable from the default runner, or remove requires_adapter",
-        ));
-    }
-    if catalog.approval == Some(CatalogApproval::Required) && !facts.mutation {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::ApprovalUnreachable,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "place one exact approval at the reachable consequential mutation, or correct approval metadata",
-        ));
-    }
-    if public && facts.mock {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::MockDefault,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "move mock execution to an explicit test runner and select a real or truthfully blocked production default",
-        ));
-    }
-    if public && facts.fixture {
-        diagnostics.push(semantic_diagnostic(
-            CatalogSemanticCode::FixtureDefault,
-            skill,
-            runner,
-            catalog,
-            &observed,
-            "move fixture execution to harness-only coverage and select an operator-facing default",
-        ));
-    }
-    diagnostics.sort_by_key(|diagnostic| diagnostic.code);
     CatalogSemanticReport {
-        mode: "enforced".to_owned(),
+        mode: "operator_readiness".to_owned(),
         skill: skill.to_owned(),
         default_runner: Some(runner.name.clone()),
-        diagnostics,
+        diagnostics: Vec::new(),
         readiness: CatalogOperatorReadiness::default(),
     }
 }
@@ -438,8 +305,7 @@ pub fn analyze_package_catalog_semantics(
     let Some(runner) = manifest.runners.get(default_runner) else {
         return report;
     };
-    let facts = default_runner_facts(skill, manifest, runner);
-    let readiness = package_operator_readiness(skill, manifest, fixtures, default_runner, &facts);
+    let readiness = package_operator_readiness(skill, manifest, fixtures, default_runner);
     let observed = readiness_observations(&readiness);
     if !readiness.cold_selection {
         report.diagnostics.push(semantic_diagnostic(
@@ -481,7 +347,6 @@ fn package_operator_readiness(
     manifest: &crate::SkillRunnerManifest,
     fixtures: &BTreeMap<String, crate::harness_fixture::HarnessFixture>,
     default_runner: &str,
-    facts: &DefaultRunnerFacts,
 ) -> CatalogOperatorReadiness {
     let mut readiness = CatalogOperatorReadiness {
         evaluated: true,
@@ -501,7 +366,6 @@ fn package_operator_readiness(
                     .as_ref()
                     .is_some_and(|answers| !answers.is_empty()),
                 case.expect.status.as_ref(),
-                facts,
                 &mut readiness,
             );
         }
@@ -523,7 +387,6 @@ fn package_operator_readiness(
                 .and_then(runx_contracts::JsonValue::as_object)
                 .is_some_and(|answers| !answers.is_empty()),
             fixture.expect.status.as_ref(),
-            facts,
             &mut readiness,
         );
     }
@@ -540,7 +403,6 @@ fn update_operator_readiness(
     journeys: &[crate::OperatorJourneyClaim],
     supplied_agent_answers: bool,
     expected_status: Option<&crate::harness_fixture::HarnessExpectedStatus>,
-    facts: &DefaultRunnerFacts,
     readiness: &mut CatalogOperatorReadiness,
 ) {
     for journey in journeys {
@@ -571,15 +433,6 @@ fn update_operator_readiness(
                     readiness.cold_selection_confusors =
                         confusors.into_iter().map(str::to_owned).collect();
                 }
-                if facts.provider_readback
-                    && !supplied_agent_answers
-                    && matches!(
-                        expected_status,
-                        Some(crate::harness_fixture::HarnessExpectedStatus::Sealed)
-                    )
-                {
-                    readiness.provider_proof = CatalogProviderProof::Harness;
-                }
             }
             crate::OperatorJourneyMode::Composed if completed => {
                 readiness.composed_reuse = true;
@@ -608,7 +461,6 @@ fn readiness_observations(readiness: &CatalogOperatorReadiness) -> Vec<String> {
     if readiness.supplied_agent_answers {
         observed.push("supplied_agent_answers".to_owned());
     }
-    observed.push(format!("provider_proof:{:?}", readiness.provider_proof).to_lowercase());
     observed
 }
 
@@ -629,304 +481,6 @@ fn semantic_diagnostic(
         observed: observed.to_vec(),
         required_correction: required_correction.to_owned(),
     }
-}
-
-fn default_runner_facts(
-    skill: &str,
-    manifest: &crate::SkillRunnerManifest,
-    runner: &super::SkillRunnerDefinition,
-) -> DefaultRunnerFacts {
-    let mut facts = DefaultRunnerFacts {
-        planning_name: contains_word(&runner.name, &["plan", "draft", "prepare"]),
-        mock: contains_word(&runner.name, &["mock", "demo"]),
-        fixture: contains_word(&runner.name, &["fixture", "harness", "test"]),
-        artifact: runner.artifacts.is_some(),
-        agent: matches!(
-            runner.source.source_type,
-            super::SourceKind::Agent | super::SourceKind::AgentStep
-        ),
-        mutation: runner.mutating.unwrap_or(false),
-        ..Default::default()
-    };
-    observe_source(manifest, &runner.source, &mut facts, &mut BTreeSet::new());
-    facts.provider_readback = source_readback_reaches_result(
-        manifest,
-        &runner.source,
-        &mut BTreeSet::from([runner.name.clone()]),
-    );
-    if facts.planning_name {
-        facts.observations.insert("planning_runner_name".to_owned());
-    }
-    if facts.artifact {
-        facts.observations.insert("declared_artifact".to_owned());
-    }
-    if facts.agent {
-        facts.observations.insert("agent_act".to_owned());
-    }
-    if facts.provider_boundary {
-        facts
-            .observations
-            .insert("provider_boundary_reachable".to_owned());
-    }
-    if facts.provider_readback {
-        facts
-            .observations
-            .insert("provider_readback_result_path".to_owned());
-    }
-    if facts.mock || contains_word(skill, &["mock"]) {
-        facts.observations.insert("mock_path".to_owned());
-    }
-    if facts.fixture {
-        facts.observations.insert("fixture_path".to_owned());
-    }
-    facts
-}
-
-fn observe_source(
-    manifest: &crate::SkillRunnerManifest,
-    source: &super::SkillSource,
-    facts: &mut DefaultRunnerFacts,
-    visited_runners: &mut BTreeSet<String>,
-) {
-    match source.source_type {
-        super::SourceKind::Graph => {
-            if let Some(graph) = source.graph.as_ref() {
-                for step in &graph.steps {
-                    if step.artifacts.as_ref().is_some_and(|artifacts| {
-                        artifacts.packets.as_ref().is_some_and(|packets| {
-                            packets
-                                .values()
-                                .any(|packet| packet == "runx.external_job_schedule_intent.v1")
-                        })
-                    }) {
-                        facts.adapter = true;
-                        facts
-                            .observations
-                            .insert("native_external_job_schedule_boundary".to_owned());
-                    }
-                    if let Some(tool) = step.tool.as_deref() {
-                        facts.observations.insert(format!("tool:{tool}"));
-                        if matches!(tool, "provider.read" | "provider.mutate") {
-                            facts.provider_boundary = true;
-                        }
-                        if tool == "provider.mutate" {
-                            facts.mutation = true;
-                        }
-                        if matches!(
-                            tool,
-                            "data.append_event"
-                                | "data.read_events"
-                                | "data.read_projection"
-                                | "data.list_stream_heads"
-                        ) {
-                            facts.adapter = true;
-                            facts
-                                .observations
-                                .insert("native_data_adapter_boundary".to_owned());
-                        }
-                        if tool == "data.append_event" {
-                            facts.mutation = true;
-                        }
-                        if matches!(tool, "http.read" | "http.execute" | "web.fetch") {
-                            facts.adapter = true;
-                            facts.provider_boundary = true;
-                            facts
-                                .observations
-                                .insert("native_network_boundary".to_owned());
-                        }
-                        if matches!(tool, "http.execute" | "command.execute") {
-                            facts.mutation = true;
-                            facts.provider_boundary = true;
-                        }
-                        if tool == "receipt.attest" {
-                            facts.mutation = true;
-                            facts
-                                .observations
-                                .insert("native_receipt_boundary".to_owned());
-                        }
-                    }
-                    facts.mutation |= step.mutating;
-                    if let Some(reference) = step.skill.as_deref() {
-                        facts.observations.insert(format!("skill:{reference}"));
-                        if reference
-                            .trim_end_matches('/')
-                            .split('/')
-                            .next_back()
-                            .is_some_and(|name| name == "data-store")
-                        {
-                            facts.adapter = true;
-                            facts
-                                .observations
-                                .insert("native_data_adapter_boundary".to_owned());
-                        }
-                        if reference.contains("provider-operation") {
-                            facts.adapter = true;
-                            facts.provider_boundary = true;
-                            facts
-                                .observations
-                                .insert("provider_operation_boundary".to_owned());
-                        }
-                        facts.mock |= contains_word(reference, &["mock", "demo"])
-                            || step
-                                .runner
-                                .as_deref()
-                                .is_some_and(|runner| contains_word(runner, &["mock", "demo"]));
-                        facts.fixture |= contains_word(reference, &["fixture", "harness"]);
-                        if !matches!(reference, "." | "./") && step.mutating {
-                            facts.adapter = true;
-                            facts.provider_boundary = true;
-                            facts
-                                .observations
-                                .insert("external_mutation_boundary".to_owned());
-                        }
-                        if matches!(reference, "." | "./")
-                            && let Some(runner_name) = step.runner.as_deref()
-                            && visited_runners.insert(runner_name.to_owned())
-                            && let Some(child) = manifest.runners.get(runner_name)
-                        {
-                            observe_source(manifest, &child.source, facts, visited_runners);
-                        }
-                    }
-                    if let Some(run) = step.run.as_ref().and_then(|run| run.source()) {
-                        observe_source(manifest, run, facts, visited_runners);
-                    }
-                }
-            }
-        }
-        super::SourceKind::ExternalAdapter | super::SourceKind::ThreadOutboxProvider => {
-            facts.adapter = true;
-            facts.mutation = true;
-            facts.provider_boundary = true;
-            facts
-                .observations
-                .insert(format!("source:{}", source.source_type.as_str()));
-        }
-        super::SourceKind::Agent | super::SourceKind::AgentStep => {
-            facts.agent = true;
-            facts.observations.insert("agent_act".to_owned());
-        }
-        _ => {
-            facts
-                .observations
-                .insert(format!("source:{}", source.source_type.as_str()));
-        }
-    }
-}
-
-fn source_readback_reaches_result(
-    manifest: &crate::SkillRunnerManifest,
-    source: &super::SkillSource,
-    visited_runners: &mut BTreeSet<String>,
-) -> bool {
-    match source.source_type {
-        super::SourceKind::ExternalAdapter | super::SourceKind::ThreadOutboxProvider => true,
-        super::SourceKind::Graph => source.graph.as_ref().is_some_and(|graph| {
-            let mut effect_steps = BTreeSet::new();
-            for step in &graph.steps {
-                let direct_effect = step.tool.as_deref().is_some_and(|tool| {
-                    matches!(
-                        tool,
-                        "provider.read"
-                            | "provider.mutate"
-                            | "http.read"
-                            | "http.execute"
-                            | "web.fetch"
-                            | "command.execute"
-                    )
-                }) || step.skill.as_deref().is_some_and(|reference| {
-                    if matches!(reference, "." | "./") {
-                        let Some(runner_name) = step.runner.as_deref() else {
-                            return false;
-                        };
-                        if !visited_runners.insert(runner_name.to_owned()) {
-                            return false;
-                        }
-                        let result = manifest.runners.get(runner_name).is_some_and(|runner| {
-                            source_readback_reaches_result(
-                                manifest,
-                                &runner.source,
-                                visited_runners,
-                            )
-                        });
-                        visited_runners.remove(runner_name);
-                        result
-                    } else {
-                        step.mutating || reference.contains("provider-operation")
-                    }
-                }) || step
-                    .run
-                    .as_ref()
-                    .and_then(|run| run.source())
-                    .is_some_and(|run| {
-                        source_readback_reaches_result(manifest, run, visited_runners)
-                    });
-                if direct_effect || step_depends_on_any(step, &effect_steps) {
-                    effect_steps.insert(step.id.clone());
-                }
-            }
-            graph
-                .result_from
-                .iter()
-                .any(|result| effect_steps.contains(result))
-        }),
-        _ => false,
-    }
-}
-
-fn step_depends_on_any(step: &crate::GraphStep, producers: &BTreeSet<String>) -> bool {
-    step.context
-        .values()
-        .any(|reference| reference_names_step(reference, producers))
-        || step
-            .context_edges
-            .iter()
-            .any(|edge| producers.contains(&edge.from_step))
-        || step
-            .when
-            .as_ref()
-            .is_some_and(|when| reference_names_step(&when.field, producers))
-        || step
-            .inputs
-            .values()
-            .any(|value| value_references_any_step(value, producers))
-}
-
-fn value_references_any_step(
-    value: &runx_contracts::JsonValue,
-    producers: &BTreeSet<String>,
-) -> bool {
-    match value {
-        runx_contracts::JsonValue::String(value) => reference_names_step(value, producers),
-        runx_contracts::JsonValue::Array(values) => values
-            .iter()
-            .any(|value| value_references_any_step(value, producers)),
-        runx_contracts::JsonValue::Object(values) => values
-            .values()
-            .any(|value| value_references_any_step(value, producers)),
-        _ => false,
-    }
-}
-
-fn reference_names_step(reference: &str, producers: &BTreeSet<String>) -> bool {
-    reference
-        .split_once('.')
-        .is_some_and(|(step, _)| producers.contains(step))
-}
-
-fn inferred_operation_promise(skill: &str) -> bool {
-    contains_word(
-        skill,
-        &[
-            "send", "sync", "notify", "spend", "refund", "settle", "publish", "file", "unseal",
-            "pay", "charge", "release",
-        ],
-    ) || matches!(skill, "issue-to-pr" | "dispute-respond")
-}
-
-fn contains_word(value: &str, words: &[&str]) -> bool {
-    value
-        .split(|character: char| !character.is_ascii_alphanumeric())
-        .any(|segment| words.contains(&segment))
 }
 
 pub(crate) fn validate_catalog_metadata(
@@ -1168,8 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn catalog_semantic_report_flags_plan_only_default_and_unreachable_readback_for_enforcement()
-    -> Result<(), String> {
+    fn catalog_report_does_not_guess_runtime_effects_from_names() -> Result<(), String> {
         let manifest = manifest(
             r#"skill: github-sync
 catalog:
@@ -1194,92 +747,9 @@ runners:
 "#,
         )?;
         let report = analyze_catalog_semantics("github-sync", &manifest);
-        assert_eq!(report.mode, "enforced");
+        assert_eq!(report.mode, "operator_readiness");
         assert_eq!(report.default_runner.as_deref(), Some("plan"));
-        let codes = report
-            .diagnostics
-            .iter()
-            .map(|diagnostic| diagnostic.code)
-            .collect::<Vec<_>>();
-        assert!(codes.contains(&CatalogSemanticCode::DefaultRunnerIsPlanningOnly));
-        assert!(codes.contains(&CatalogSemanticCode::ProviderReadbackUnreachable));
-        assert!(codes.contains(&CatalogSemanticCode::AdapterUnreachable));
-        assert!(codes.contains(&CatalogSemanticCode::ApprovalUnreachable));
-        assert!(report.diagnostics.iter().all(|diagnostic| {
-            diagnostic.skill == "github-sync"
-                && diagnostic.runner == "plan"
-                && !diagnostic.required_correction.is_empty()
-        }));
-        Ok(())
-    }
-
-    #[test]
-    fn catalog_semantic_report_recognizes_native_external_job_handoff() -> Result<(), String> {
-        let manifest = manifest(
-            r#"skill: media-transcription
-catalog:
-  kind: skill
-  audience: operator
-  visibility: internal
-  role: canonical
-  execution: execute
-  completion: runtime_receipt
-  requires_adapter: true
-  approval: none
-runners:
-  execute:
-    default: true
-    type: graph
-    graph:
-      name: schedule-transcription
-      result_from: [schedule]
-      steps:
-        - id: schedule
-          run:
-            type: javascript
-            module: schedule.mjs
-            outputs: { schedule_intent: object }
-          artifacts:
-            named_emits: { schedule_intent: schedule_intent }
-            packets: { schedule_intent: runx.external_job_schedule_intent.v1 }
-"#,
-        )?;
-        let report = analyze_catalog_semantics("media-transcription", &manifest);
-        assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
-        Ok(())
-    }
-
-    #[test]
-    fn catalog_semantic_report_identifies_mock_default_deterministically() -> Result<(), String> {
-        let manifest = manifest(
-            r#"skill: spend
-catalog:
-  kind: skill
-  audience: public
-  visibility: public
-  role: canonical
-  execution: execute
-  completion: runtime_receipt
-  requires_adapter: false
-  approval: required
-runners:
-  mock:
-    default: true
-    type: javascript
-    module: mock.mjs
-    mutating: true
-    idempotency: { required: true }
-"#,
-        )?;
-        let first = analyze_catalog_semantics("spend", &manifest);
-        let second = analyze_catalog_semantics("spend", &manifest);
-        assert_eq!(first, second);
-        assert!(
-            first
-                .diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.code == CatalogSemanticCode::MockDefault)
-        );
+        assert!(report.diagnostics.is_empty());
         Ok(())
     }
 
@@ -1336,8 +806,7 @@ runners:
     }
 
     #[test]
-    fn package_semantic_report_never_upgrades_supplied_agent_answers_to_provider_proof()
-    -> Result<(), String> {
+    fn package_semantic_report_records_supplied_agent_answers() -> Result<(), String> {
         let manifest = manifest(
             r#"skill: provider-reader
 catalog:
@@ -1393,7 +862,6 @@ runners:
             analyze_package_catalog_semantics("provider-reader", &manifest, &BTreeMap::new());
         assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
         assert!(report.readiness.supplied_agent_answers);
-        assert_eq!(report.readiness.provider_proof, CatalogProviderProof::None);
         Ok(())
     }
 }

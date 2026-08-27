@@ -1,5 +1,5 @@
 skill: sourcey
-version: "0.1.7"
+version: "0.1.8"
 
 catalog:
   kind: skill
@@ -9,7 +9,7 @@ catalog:
   execution: execute
   completion: runtime_receipt
   requires_adapter: false
-  approval: required
+  approval: none
 
 runners:
   sourcey:
@@ -77,18 +77,6 @@ runners:
               discovery_report: discovery_report
             packets:
               discovery_report: runx.sourcey.discovery.v1
-        - id: approve
-          label: approve docs plan
-          run:
-            type: approval
-          inputs:
-            gate_id: sourcey.discovery.approval
-            reason: Approve the discovered documentation plan before writing or building.
-          context:
-            discovery_report: discover.discovery_report.data
-          artifacts:
-            wrap_as: approval_decision
-            packet: runx.approval.decision.v1
         - id: author
           label: draft docs
           run:
@@ -116,7 +104,6 @@ runners:
           scopes:
             - fs.delete
             - fs.write
-          mutation: true
           inputs:
             repo_root: $input.repo_root
           context:
@@ -183,7 +170,6 @@ runners:
           scopes:
             - fs.delete
             - fs.write
-          mutation: true
           inputs:
             repo_root: $input.repo_root
           context:
@@ -226,18 +212,6 @@ runners:
             sourcey_verification_proof: verify.sourcey_verification_proof.data
       policy:
         guards:
-          - step: write-docs
-            field: approve.approval_decision.data.approved
-            equals: true
-          - step: write-revisions
-            field: approve.approval_decision.data.approved
-            equals: true
-          - step: author
-            field: approve.approval_decision.data.approved
-            equals: true
-          - step: build
-            field: approve.approval_decision.data.approved
-            equals: true
           - step: critique
             field: build.sourcey_build_report.data.generated
             equals: true

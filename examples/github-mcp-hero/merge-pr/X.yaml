@@ -16,7 +16,6 @@ runners:
       repository: string
       number: string
       merge_commit_sha: string
-    mutating: true
     scopes: [github:write, net:http]
     timeout_seconds: 15
     inputs:

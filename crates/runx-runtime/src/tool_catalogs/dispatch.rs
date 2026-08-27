@@ -5,7 +5,7 @@ use std::time::Instant;
 
 #[cfg(feature = "agent")]
 use runx_contracts::tools::ToolInspectResult;
-use runx_contracts::{JsonObject, JsonValue, Reference};
+use runx_contracts::{JsonObject, JsonValue};
 use runx_parser::SkillArtifactContract;
 
 use crate::RuntimeError;
@@ -34,10 +34,6 @@ pub(crate) struct ToolDispatchRequest<'a> {
     pub skill_name: &'a str,
     pub allow_explicit_manifest_path: bool,
     pub effect_admission: Option<&'a EffectAdmission>,
-    /// Runtime-verified approval receipts for a Policy capability. This is
-    /// internal execution state, never model- or caller-authored input.
-    pub policy_approval_refs: &'a [Reference],
-    pub step_id: &'a str,
 }
 
 /// Inspect a model-callable tool through the same native/local catalog roots
@@ -245,8 +241,6 @@ fn invoke_native_tool(
             credential_delivery: request.credential_delivery,
             local_artifacts: request.local_artifacts,
             effect_admission: request.effect_admission,
-            policy_approval_verified: !request.policy_approval_refs.is_empty(),
-            step_id: request.step_id,
             effects,
         })
     else {

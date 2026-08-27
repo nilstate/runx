@@ -11,10 +11,10 @@ use crate::credentials::CredentialDelivery;
 
 use super::{EffectAdmission, EffectReplay, RuntimeEffectError};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum EffectApprovalRequirement {
-    Forbidden,
-    Required,
+#[derive(Clone, Debug)]
+pub enum EffectPreparationOutcome {
+    Ready(Box<EffectAdmission>),
+    Pending { reason: String },
 }
 
 pub trait RuntimeEffect: Send + Sync {
@@ -69,26 +69,17 @@ pub trait RuntimeEffect: Send + Sync {
         Ok(None)
     }
 
-    /// Resolve approval at the effect boundary after authority is known and
-    /// before any provider attempt. Effect-owned capabilities that declare
-    /// `CapabilityApproval::Effect` must override this method; the default
-    /// fails closed instead of trusting graph-authored control flow.
-    fn resolve_approval(
+    /// Prepare an admitted effect immediately before dispatch. The effect owner
+    /// creates any attempt state and may return a host-resolution request when
+    /// this exact act also requires approval.
+    fn prepare_execution(
         &self,
-        requirement: EffectApprovalRequirement,
         step: &GraphStep,
         admission: EffectAdmission,
         host: &mut dyn crate::Host,
-    ) -> Result<EffectAdmission, RuntimeEffectError> {
+    ) -> Result<EffectPreparationOutcome, RuntimeEffectError> {
         let _ = (step, host);
-        match requirement {
-            EffectApprovalRequirement::Forbidden => Ok(admission),
-            EffectApprovalRequirement::Required => Err(RuntimeEffectError::InvalidMetadata {
-                family: self.family().to_owned(),
-                message: "effect-owned capability requires approval but its owner does not implement the approval transition"
-                    .to_owned(),
-            }),
-        }
+        Ok(EffectPreparationOutcome::Ready(Box::new(admission)))
     }
 
     fn prepare_output(&self, request: EffectOutputRequest<'_>) -> Result<(), RuntimeEffectError> {

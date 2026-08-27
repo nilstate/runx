@@ -243,7 +243,7 @@ pub(super) fn execute_graph_skill_run(
                 )?;
                 checkpoint = next_checkpoint;
             }
-            Err(RuntimeError::GraphBlocked { .. }) if host.pending_request().is_some() => {
+            Err(RuntimeError::ResolutionPending { .. }) if host.pending_request().is_some() => {
                 write_graph_state(
                     request,
                     workspace,
@@ -281,6 +281,11 @@ pub(super) fn execute_graph_skill_run(
                     &run_id,
                     request_id,
                     request_value.clone(),
+                )));
+            }
+            Err(RuntimeError::ResolutionPending { step_id, reason }) => {
+                return Err(invalid(format!(
+                    "graph step {step_id:?} suspended without a pending host request: {reason}"
                 )));
             }
             Err(RuntimeError::GraphBlocked { step_id, reason }) => {

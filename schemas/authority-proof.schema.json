@@ -264,9 +264,6 @@
         "connected_auth": {
           "type": "boolean"
         },
-        "mutating": {
-          "type": "boolean"
-        },
         "scope_family": {
           "minLength": 1,
           "type": "string"
@@ -289,8 +286,7 @@
       },
       "required": [
         "connected_auth",
-        "scopes",
-        "mutating"
+        "scopes"
       ],
       "type": "object"
     },

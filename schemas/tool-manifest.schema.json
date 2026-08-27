@@ -78,9 +78,6 @@
       },
       "type": "object"
     },
-    "mutating": {
-      "type": "boolean"
-    },
     "name": {
       "type": "string"
     },

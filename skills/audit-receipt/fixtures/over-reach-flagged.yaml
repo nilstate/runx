@@ -81,17 +81,13 @@ caller:
           - id: receipt.authority.over_reach
             severity: error
             message: "The run exercised repo:write, which the authority proof did not grant (granted: repo:read)."
-          - id: receipt.mutation.ungated
-            severity: error
-            message: The repo:write mutation ran with no approval gate recorded in the receipt.
         verdict: anomaly
-        rationale: The receipt shows repo:write exercised against a proof that granted only repo:read, and the mutation has no approval gate. Both are governance violations recorded in the run's own evidence.
+        rationale: The receipt shows repo:write exercised against a proof that granted only repo:read. That authority over-reach is a governance violation regardless of whether the act required approval.
         recommendations:
           - Revoke this run's grant and investigate how repo:write was exercised against a repo:read proof.
-          - Require an approval gate on any mutating act before re-enabling the skill.
         success_checkpoint:
           milestone: audit_anomaly
-          description: A sealed run flagged for over-reach and ungated mutation, with remediation named.
+          description: A sealed run flagged for authority over-reach, with remediation named.
 expect:
   status: sealed
   receipt:

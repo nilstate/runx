@@ -126,10 +126,10 @@ need to be visible in the execution record.
 
 The line between them is not how many model calls there are; it is **what must be
 guaranteed**. The model is for judgment and authoring, never for guaranteeing a
-side effect: an agent handed a mutating tool may narrate the action ("done,
+side effect: an agent handed a write-capable tool may narrate the action ("done,
 claimed it") instead of calling it. So an action that *must* happen, a mutation,
-an API call, a payment, belongs in a deterministic step (`tool:`, `http:`, or
-`skill:`), not in an agent's `allowed_tools` where the call is optional. The
+an API call, or a payment belongs in a deterministic `tool:` or `skill:` step,
+not in an agent's `allowed_tools` where the call is optional. The
 governed shape is a graph where an agent step authors or decides and the next
 deterministic step performs the act; one receipt seals both. Agent steps yield
 `needs_agent` unless the current invocation explicitly supplies

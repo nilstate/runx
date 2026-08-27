@@ -134,8 +134,6 @@ fn run_tool_fixture_inner(
             skill_name: "runx-dev",
             allow_explicit_manifest_path: false,
             effect_admission: None,
-            policy_approval_refs: &[],
-            step_id: fixture.target().reference.as_str(),
         },
         &crate::effects::RuntimeEffectRegistry::empty(),
         crate::time::DEFAULT_CREATED_AT,

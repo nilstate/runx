@@ -545,7 +545,6 @@ mod tests {
                 "tool".to_owned(),
                 JsonValue::String("provider.mutate".to_owned()),
             ),
-            ("mutation".to_owned(), JsonValue::Bool(true)),
             (
                 "idempotency_key".to_owned(),
                 JsonValue::String(value.to_owned()),

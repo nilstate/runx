@@ -3,31 +3,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 #[test]
-fn kernel_eval_policy_fixture_json() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
-        .args([
-            "kernel",
-            "eval",
-            "--input",
-            "fixtures/kernel/policy/retry-admission-denies-mutating-without-key.json",
-            "--json",
-        ])
-        .output()?;
-
-    assert!(output.status.success());
-    assert_eq!(String::from_utf8(output.stderr)?, "");
-    let value = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
-    assert_eq!(value["status"], "success");
-    assert_eq!(value["result"]["kind"], "output");
-    assert_eq!(value["result"]["value"]["status"], "deny");
-    assert_eq!(
-        value["result"]["value"]["reasons"][0],
-        "step 'deploy' declares mutating retry without an idempotency key"
-    );
-    Ok(())
-}
-
-#[test]
 fn kernel_eval_state_machine_fixture_json() -> Result<(), Box<dyn std::error::Error>> {
     let output = runx_command()
         .args([

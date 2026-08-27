@@ -65,7 +65,7 @@ fn catalog_enforcement_keeps_explicit_internal_mock_runners_admissible() {
         ("SKILL.md", manual("mock-pay")),
         (
             "X.yaml",
-            "skill: mock-pay\ncatalog:\n  kind: skill\n  audience: system\n  visibility: internal\n  role: harness-fixture\n  part_of: [runx/spend]\n  execution: execute\n  completion: runtime_receipt\n  requires_adapter: false\n  approval: none\nrunners:\n  mock:\n    default: true\n    type: javascript\n    module: main.mjs\n    mutating: true\n    idempotency: { required: true }\n"
+            "skill: mock-pay\ncatalog:\n  kind: skill\n  audience: system\n  visibility: internal\n  role: harness-fixture\n  part_of: [runx/spend]\n  execution: execute\n  completion: runtime_receipt\n  requires_adapter: false\n  approval: none\nrunners:\n  mock:\n    default: true\n    type: javascript\n    module: main.mjs\n    idempotency: { required: true }\n"
                 .to_owned(),
         ),
         (

@@ -74,7 +74,6 @@ fn test_step(id: &str, scopes: &[&str], verb: &str) -> GraphStep {
         )])),
         fanout_group: None,
         when: None,
-        mutating: verb != "read",
         idempotency_key: Some(format!("{id}-key")),
         mint_authority: None,
         requested_scope_from: None,
@@ -160,6 +159,8 @@ fn test_provider_resolved(grant_id: &str, access: ProviderNativeAccess) -> Provi
             payload: &JsonObject::new(),
             required_scopes: vec!["messages.search".to_owned()],
             amount: None,
+            approval_digest: (access == ProviderNativeAccess::Mutate)
+                .then(|| "sha256:approval-request".to_owned()),
             request_key,
         })
         .expect("provider intent"),
@@ -242,6 +243,10 @@ fn local_github_mutation_recovery_preserves_stable_idempotency_and_readback() {
         #[cfg(feature = "catalog")]
         transport: ProviderTransportSelection::Hosted,
         provider_effect: Some(resolved.clone()),
+        approval_request: Some(super::contract::ProviderApprovalRequest {
+            reason: "Approve the recovery test mutation.".to_owned(),
+            gate_type: Some("test_mutation".to_owned()),
+        }),
         mutation_authority: None,
         attempt: Some(first_attempt.clone()),
         recovery: Some(first_recovery),
@@ -277,7 +282,10 @@ fn local_github_mutation_recovery_preserves_stable_idempotency_and_readback() {
         plan_digest: resolved.plan_digest().to_owned(),
     };
     let retry = resolved
-        .begin_retry(approval, recovered.previous_attempt().expect("attempt"))
+        .begin_retry(
+            Some(approval),
+            recovered.previous_attempt().expect("attempt"),
+        )
         .expect("retry attempt");
     assert_eq!(retry.idempotency_key(), first_attempt.idempotency_key());
     admission.attempt = Some(retry.clone());

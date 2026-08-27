@@ -1,5 +1,5 @@
 skill: n8n-handoff
-version: "0.2.0"
+version: "0.2.1"
 catalog:
   kind: graph
   audience: operator
@@ -184,7 +184,6 @@ runners:
             receiver: $input.receiver
         - id: invoke
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.event_id
           scopes: [orchestrator.n8n.workflow.invoke]
           policy:
@@ -193,6 +192,9 @@ runners:
             expected_provider: n8n
             operation: workflow.invoke
             target: $input.webhook_host
+            approval:
+              reason: Approve invoking this exact n8n workflow handoff.
+              type: workflow_handoff
             idempotency_key: $input.event_id
             result_fields: [event_id, invocation_ref, status, idempotency_key]
             expected_result: { event_id: $input.event_id, status: accepted }

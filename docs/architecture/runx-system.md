@@ -176,8 +176,8 @@ silently lose official JavaScript skills.
 ## Native capability boundary
 
 A native capability has one typed definition containing its stable id, input,
-output, defaults, summary, owner, effect class, authority rule, approval rule,
-and executor. Schema generation, deserialization, inspection, search, managed
+output, defaults, summary, owner, effect class, authority rule, effect-owned
+approval mode, and executor. Schema generation, deserialization, inspection, search, managed
 agent exposure, and dispatch all originate from that definition. Parallel
 string maps or effect registries are not contract owners.
 
@@ -199,12 +199,44 @@ its waiver are deleted when typed capabilities land.
 
 ## Effect and finality boundary
 
-The registered target capability or provider adapter owns the effect family.
-Graph/package authors do not supply `effect_family`. Consequential provider
-mutation follows one chain:
+The registered native capability owns the effect classification, admission,
+approval policy, execution boundary, and finality preparation. Graph, skill,
+runner, and tool manifests do not redeclare `mutation`, `mutating`, or an
+`effect_family`; those parallel claims inevitably drift from the code that can
+actually perform the effect. Catalog approval metadata is an operator-facing
+promise, not an enforcement source.
+
+A scoped grant answers **may this principal call this provider operation?** It
+does not pretend a human approved the exact act. Most bounded provider
+mutations need only admitted grant authority. When the owning skill decides an
+act is consequential, it supplies an optional typed `approval` request to
+`provider.mutate`. The provider effect hashes that request into the exact plan,
+asks the host for one human decision, and refuses agent-authored approval.
+There is no generic mutation flag and no adjacent graph gate for the same act.
+
+Generic local capabilities do not impose human approval merely because they
+write a file, execute a command, or send a bounded HTTP request. Their declared
+scopes, workspace/target containment, and host grant are the permission
+boundary. When a domain workflow genuinely needs a human decision and no
+effect owns it, one explicit `run: approval` step may guard that exact action;
+its verified receipt is bound to the governed step. The decision does not
+become ambient authority for nested work.
+
+An unresolved approval suspends the run after sealing its checkpoint; it is not
+a failure or a blocked graph. The host protocol keeps the generic
+`needs_agent` resolution envelope, while CLI JSON and operator output present an
+approval-only request set as `needs_approval`. The caller or an integrated host
+records the human decision under `approvals` and continues the same execution
+through `runx resume`. Runx never opens a blocking terminal prompt, and there
+is no interactive/non-interactive mode split. Exact paid-job authority may
+satisfy the same approval slot when its principal, operation, plan, and
+continuation bindings match; it is preauthorization, not a global auto-approval
+bypass.
+
+A consequential provider mutation therefore follows one chain:
 
     resolved authority
-      -> exact approval when the act is consequential
+      -> exact effect-owned approval when explicitly required
       -> idempotent attempt
       -> provider acknowledgement
       -> identity-bound independent readback

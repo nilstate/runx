@@ -47,7 +47,7 @@ caller:
         access: read
         result: { message_locator: slack://T123/C456/1750000000.000001, conversation_locator: slack://T123/C456, content_digest: sha256:2497ff7c585df614f84f034872869ceff21afbaaab7230fb9b1fa0d271a122fb, occurred_at: "2026-08-11T00:00:00Z" }
   approvals:
-    "provider-effect:sha256:bfd867182dc55865db156c10c41a0bf24c84e66dfa1b52d202466b5c5b09fe89": true
+    "provider-effect:sha256:c2d20aeee14b921317e19cb74847501dc55772e67fe762029625a0e33a5e5de7": true
 expect:
   status: sealed
   steps: [digest, bind-plan, bind-content, deliver, readback]

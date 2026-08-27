@@ -149,17 +149,6 @@ pub fn required_number(value: Option<&JsonValue>, field: &str) -> Result<f64, Va
     optional_number(value, field)?.ok_or_else(|| validation_error(format!("{field} is required.")))
 }
 
-pub fn optional_bool(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<bool>, ValidationError> {
-    match value {
-        None | Some(JsonValue::Null) => Ok(None),
-        Some(JsonValue::Bool(value)) => Ok(Some(*value)),
-        Some(_) => Err(validation_error(format!("{field} must be a boolean."))),
-    }
-}
-
 pub fn number_to_positive_integer(value: f64, field: &str) -> Result<u64, ValidationError> {
     if value.fract() == 0.0 && value >= 1.0 && value <= u64::MAX as f64 {
         Ok(value as u64)

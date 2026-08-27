@@ -184,7 +184,6 @@ function runRegistryResolverDogfood() {
         "--registry",
         registryDir,
         "--json",
-        "--non-interactive",
       ],
       {
         stdio: ["ignore", "pipe", "pipe"],

@@ -155,8 +155,6 @@ pub struct BuildAuthorityProofOptions {
     pub execution_boundary: ExecutionBoundaryObservation,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approval: Option<AuthorityProofApproval>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -263,24 +261,6 @@ pub struct PublicCommentPolicyDecision {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RetryAdmissionRequest {
-    pub step_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub retry: Option<RetryPolicy>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub idempotency_key: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RetryPolicy {
-    pub max_attempts: i64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct GraphScopeGrant {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -347,10 +327,8 @@ mod tests {
         LocalAdmissionGrantStatus,
     };
 
-    // Allow and Deny wire shapes are pinned end-to-end by the kernel policy
-    // fixtures (fixtures/kernel/policy/retry-admission-*.json) walked in
-    // tests/policy_fixtures.rs and tests/kernel_eval.rs; AllowMarked has no
-    // fixture producing it, so its wire shape is pinned here.
+    // AllowMarked has no kernel fixture producing it, so its wire shape is
+    // pinned directly here.
     #[test]
     fn admission_decision_round_trips_allow_marked() -> Result<(), serde_json::Error> {
         let decision = AdmissionDecision::AllowMarked {

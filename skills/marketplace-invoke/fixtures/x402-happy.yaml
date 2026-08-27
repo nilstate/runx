@@ -38,7 +38,7 @@ inputs:
   parent_payment_authority: { term_id: authority-test-1, currency: USD, max_amount_minor: 25, counterparty: https://vendor.example/v1/invocations }
   idempotency_seed: marketplace-test-payment-001
 caller:
-  approvals: { "provider-effect:sha256:1287a90807b4371c1902280fa826fec8cd371e5b124b44273035290eb5053589": true }
+  approvals: { "provider-effect:sha256:382e00242896f89e34ef409e9ce011d302f14ee6fa26214c9a1dc7208ca5eaad": true }
   provider_responses:
     principal_id: marketplace-fixture
     grants: [{ grant_id: marketplace-fixture, provider: x402, scopes: [payment.x402, payment.x402.read] }]

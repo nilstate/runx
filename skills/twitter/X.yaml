@@ -1,5 +1,5 @@
 skill: twitter
-version: "0.4.0"
+version: "0.4.1"
 catalog:
   kind: skill
   audience: public
@@ -826,7 +826,6 @@ runners:
           when:
             field: prepare.twitter_execution_plan.decision
             equals: ready
-          mutation: true
           idempotency_key: "$input.idempotency_key"
           inputs:
             stop_on_error: true

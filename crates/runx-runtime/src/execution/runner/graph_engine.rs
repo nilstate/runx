@@ -28,11 +28,11 @@ use super::scheduler::{
 use super::step_handlers::{output_error, runtime_error_step_run};
 use super::sync::fanout_sync_point;
 use super::{GraphCheckpoint, GraphRun, Runtime, StepRun};
+use crate::RuntimeError;
 use crate::adapter::{BorrowedSkillAdapter, SkillAdapter};
 use crate::host::{Host, RejectingParallelHost};
 use crate::journal::ExecutionJournal;
 use crate::lifecycle::LifecycleEvent;
-use crate::{CapabilityApproval, RuntimeError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum StepFailureMode {
@@ -538,7 +538,7 @@ impl GraphExecution {
                     )
                 })?;
                 let policy_approval_refs =
-                    verified_policy_approval_references(runtime, graph, planned.step, &self.runs)?;
+                    verified_approval_references(runtime, graph, planned.step, &self.runs)?;
                 Ok(Mutex::new(Some(ParallelFanoutJob {
                     attempt: planned.attempt,
                     step: planned.step,
@@ -749,12 +749,8 @@ impl GraphExecution {
         A: SkillAdapter,
     {
         enforce_guards(context.graph, context.step, &self.runs)?;
-        let policy_approval_refs = verified_policy_approval_references(
-            context.runtime,
-            context.graph,
-            context.step,
-            &self.runs,
-        )?;
+        let policy_approval_refs =
+            verified_approval_references(context.runtime, context.graph, context.step, &self.runs)?;
         let retry_remaining = retry_budget_remaining(context.step, context.plan.attempt);
         self.record_lifecycle(
             context.host,
@@ -1249,11 +1245,7 @@ pub(super) fn enforce_guards(
                 && gate.field.ends_with(".approval_decision.data.approved")
             {
                 return Err(crate::RuntimeError::AuthorityDenied {
-                    verb: if step.mutating {
-                        runx_contracts::AuthorityVerb::Write
-                    } else {
-                        runx_contracts::AuthorityVerb::Execute
-                    },
+                    verb: runx_contracts::AuthorityVerb::Execute,
                     step_id: step.id.clone(),
                     reason: format!("approval guard '{}' was denied", gate.field),
                 });
@@ -1285,7 +1277,7 @@ pub(super) fn enforce_guards(
     Ok(())
 }
 
-fn verified_policy_approval_references<A>(
+fn verified_approval_references<A>(
     runtime: &Runtime<A>,
     graph: &ExecutionGraph,
     step: &GraphStep,
@@ -1294,24 +1286,6 @@ fn verified_policy_approval_references<A>(
 where
     A: SkillAdapter,
 {
-    let tool_ref = step.tool.as_deref();
-    let requires_policy = tool_ref.is_some_and(|tool_ref| {
-        crate::tool_catalogs::native::approval(tool_ref, &runtime.options.effects)
-            == Some(CapabilityApproval::Policy)
-    });
-    if !step.mutating && !requires_policy {
-        return Ok(Vec::new());
-    }
-    if requires_policy && !step.mutating {
-        return Err(RuntimeError::InvalidRunStep {
-            step_id: step.id.clone(),
-            reason: format!(
-                "Policy capability '{}' must be declared as a mutating graph step",
-                tool_ref.unwrap_or_default()
-            ),
-        });
-    }
-
     let mut references = Vec::new();
     for guard in graph
         .policy
@@ -1371,19 +1345,6 @@ where
     }
     references.sort_by(|left, right| left.uri.cmp(&right.uri));
     references.dedup();
-    if references.is_empty() && requires_policy {
-        references.extend(runtime.inherited_policy_approval_refs.iter().cloned());
-    }
-    if references.is_empty() && requires_policy {
-        return Err(RuntimeError::AuthorityDenied {
-            verb: runx_contracts::AuthorityVerb::Write,
-            step_id: step.id.clone(),
-            reason: format!(
-                "Policy capability '{}' requires an exact approved run:approval guard",
-                tool_ref.unwrap_or_default()
-            ),
-        });
-    }
     Ok(references)
 }
 

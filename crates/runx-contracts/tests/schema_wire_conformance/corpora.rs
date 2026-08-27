@@ -214,7 +214,6 @@ pub(super) fn tool_manifest_corpus() -> Vec<(&'static str, Value)> {
         },
         "retry": { "max_attempts": 2 },
         "idempotency": { "key": "path" },
-        "mutating": false,
         "source_hash": "sha256:source",
         "schema_hash": "sha256:schema"
     });
@@ -586,7 +585,6 @@ fn authority_proof_requested() -> Value {
     json!({
         "connected_auth": true,
         "scopes": ["issues:write"],
-        "mutating": false,
     })
 }
 
@@ -628,7 +626,6 @@ pub(super) fn authority_proof_corpus() -> Vec<(&'static str, Value)> {
             v["requested"] = json!({
                 "connected_auth": true,
                 "scopes": ["issues:write"],
-                "mutating": true,
                 "scope_family": "github",
                 "authority_kind": "constructive",
                 "target_repo": "acme/widgets",

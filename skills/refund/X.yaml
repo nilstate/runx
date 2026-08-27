@@ -1,5 +1,5 @@
 skill: refund
-version: "0.6.0"
+version: "0.6.1"
 catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   refund:
@@ -17,7 +17,6 @@ runners:
       steps:
         - id: refund
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes: [payment.refund]
           policy: { provider_permission: { verb: write } }
@@ -25,6 +24,10 @@ runners:
             operation: payment.refund
             target: $input.original_receipt_ref
             expected_provider: $input.settlement_family
+            approval:
+              reason: Approve this exact refund against the original payment.
+              type: payment_refund
+            amount: { units: $input.refund_request.amount_minor, unit: $input.refund_request.currency }
             idempotency_key: $input.idempotency_key
             result_fields: [refund_ref, original_receipt_ref, amount_minor, currency, status]
             input: { original_receipt_ref: $input.original_receipt_ref, refund_request: $input.refund_request, parent_payment_authority: $input.parent_payment_authority }

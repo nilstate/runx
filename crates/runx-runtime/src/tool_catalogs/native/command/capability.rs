@@ -162,7 +162,7 @@ static EXECUTE: TypedNativeCapability<CommandInput, CommandExecutionOutput> =
             summary: "Execute exact argv under runtime-owned process supervision.",
             scopes: &["process.exec"],
             effect: CapabilityEffect::Mutate,
-            approval: CapabilityApproval::Policy,
+            approval: CapabilityApproval::None,
             artifacts: CapabilityArtifacts::Named {
                 output: "command_execution",
                 packet: "runx.command.execution.v1",

@@ -4,9 +4,9 @@ use crate::ValidationError;
 
 use super::{
     FIELDS, SkillGovernance, SkillRunnerDefinition, field_value, first_value,
-    flattened_source_record, nested_value, validate_allowed_tools, validate_artifact_contract,
-    validate_execution_semantics, validate_idempotency, validate_inputs, validate_mutating,
-    validate_retry, validate_source, validate_source_fields,
+    flattened_source_record, validate_allowed_tools, validate_artifact_contract,
+    validate_execution_semantics, validate_idempotency, validate_inputs, validate_retry,
+    validate_source, validate_source_fields,
 };
 
 const RUNNER_FIELDS: &[&str] = &[
@@ -39,7 +39,6 @@ const RUNNER_FIELDS: &[&str] = &[
     "inputs",
     "method",
     "module",
-    "mutating",
     "outputs",
     "pages",
     "policy",
@@ -70,10 +69,20 @@ pub(crate) fn validate_runner_definition(
     }
     FIELDS.reject_unknown_fields(&runner, &format!("runners.{name}"), RUNNER_FIELDS)?;
     let runx = FIELDS.optional_object(runner.get("runx"), &format!("runners.{name}.runx"))?;
+    if runner
+        .get("risk")
+        .and_then(JsonValue::as_object)
+        .is_some_and(|risk| risk.contains_key("mutating"))
+    {
+        return Err(FIELDS.validation_error(format!(
+            "runners.{name}.risk.mutating is not supported; approval and authority are owned by invoked capabilities"
+        )));
+    }
     for field in [
         "auth",
         "credential",
         "environment",
+        "mutating",
         "runtime",
         "sandbox",
         "scopes",
@@ -96,8 +105,7 @@ pub(crate) fn validate_runner_definition(
             }
             None => flattened_source_record(&runner),
         };
-    let risk = runner.get("risk").cloned();
-    let governance = validate_runner_governance(name, &runner, runx.as_ref(), risk.as_ref())?;
+    let governance = validate_runner_governance(name, &runner, runx.as_ref())?;
     let source = validate_source(&source_record)?;
     validate_runner_lane_constraints(name, &runner, &source, governance.artifacts.as_ref())?;
     let inputs = validate_inputs(
@@ -127,11 +135,10 @@ pub(crate) fn validate_runner_definition(
             &format!("runners.{name}.credential"),
         )?,
         auth: runner.get("auth").cloned(),
-        risk: risk.clone(),
+        risk: runner.get("risk").cloned(),
         runtime: runner.get("runtime").cloned(),
         retry: governance.retry,
         idempotency: governance.idempotency,
-        mutating: governance.mutating,
         artifacts: governance.artifacts,
         allowed_tools: governance.allowed_tools,
         execution: governance.execution,
@@ -241,7 +248,6 @@ fn validate_runner_governance(
     name: &str,
     runner: &JsonObject,
     runx: Option<&JsonObject>,
-    risk: Option<&JsonValue>,
 ) -> Result<SkillGovernance, ValidationError> {
     Ok(SkillGovernance {
         retry: validate_retry(
@@ -251,13 +257,6 @@ fn validate_runner_governance(
         idempotency: validate_idempotency(
             first_value(runner.get("idempotency"), field_value(runx, "idempotency")),
             &format!("runners.{name}.idempotency"),
-        )?,
-        mutating: validate_mutating(
-            first_value(
-                first_value(runner.get("mutating"), nested_value(risk, "mutating")),
-                field_value(runx, "mutating"),
-            ),
-            &format!("runners.{name}.mutating"),
         )?,
         artifacts: validate_artifact_contract(
             first_value(runner.get("artifacts"), field_value(runx, "artifacts")),

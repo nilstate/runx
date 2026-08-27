@@ -13,7 +13,6 @@ runners:
       repository: "{{repository}}"
       number: "{{issue_number}}"
       body: "{{body}}"
-    mutating: true
     scopes: [github:write, net:http]
     timeout_seconds: 15
     inputs:

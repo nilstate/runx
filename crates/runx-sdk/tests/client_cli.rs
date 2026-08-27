@@ -16,7 +16,6 @@ fn search_and_run_use_runx_cli_json() -> Result<(), Box<dyn std::error::Error>> 
     let report = client.run_skill(
         "skills/example",
         RunSkillOptions {
-            non_interactive: true,
             ..RunSkillOptions::default().with_input("message", "hi")
         },
     )?;
@@ -26,7 +25,7 @@ fn search_and_run_use_runx_cli_json() -> Result<(), Box<dyn std::error::Error>> 
     assert_eq!(report.status(), Some("success"));
     assert_eq!(
         fs::read_to_string(fixture.args_path())?,
-        "skill\nskills/example\n--message\nhi\n--non-interactive\n--json\n"
+        "skill\nskills/example\n--message\nhi\n--json\n"
     );
     Ok(())
 }

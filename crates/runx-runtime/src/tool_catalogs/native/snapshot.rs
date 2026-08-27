@@ -59,7 +59,6 @@ pub fn native_capability_snapshot() -> NativeCapabilitySnapshot {
                 },
                 approval: match definition.approval {
                     CapabilityApproval::None => "none",
-                    CapabilityApproval::Policy => "policy",
                     CapabilityApproval::Effect => "effect",
                 },
                 artifacts: match definition.artifacts {

@@ -29,8 +29,8 @@ use super::super::skill_context::load_context_skills;
 use super::admission::{
     EffectReceiptContext, StepAuthorityContext, enforce_step_authority_admission,
     finalize_effect_output_before_success, find_effect_replay, persist_effect_state_for_step,
-    prepare_effect_output_before_gate, prepare_replay_output, recover_pending_effects,
-    resolve_effect_approval, validate_replayed_effect,
+    prepare_effect_execution, prepare_effect_output_before_gate, prepare_replay_output,
+    recover_pending_effects, validate_replayed_effect,
 };
 use super::{GraphRun, Runtime, StepRun, graph_run_result, graph_run_skill_output};
 use crate::RuntimeError;
@@ -225,7 +225,7 @@ where
         graph_dir,
         &runtime.options.effects,
     )?;
-    let authority = resolve_effect_approval(
+    let authority = prepare_effect_execution(
         EffectStepRequest {
             step,
             target: effect_target,
@@ -337,12 +337,7 @@ where
     let skill_directory = invocation.skill_directory.clone();
     let invocation_env = invocation.env.clone();
     let policy_approval_refs = request.policy_approval_refs.clone();
-    let run = execute_nested_graph(
-        request.runtime,
-        request.host,
-        &invocation,
-        policy_approval_refs.clone(),
-    )?;
+    let run = execute_nested_graph(request.runtime, request.host, &invocation)?;
     let result = graph_run_result(&run)?;
     let mut output = graph_run_skill_output(&result, &run)?;
     let mut projection = build_step_output_projection(request.step, &output, None, None)?;
@@ -390,7 +385,6 @@ fn execute_nested_graph<A>(
     runtime: &Runtime<A>,
     host: &mut dyn Host,
     invocation: &SkillInvocation,
-    policy_approval_refs: Vec<Reference>,
 ) -> Result<GraphRun, RuntimeError>
 where
     A: SkillAdapter,
@@ -413,8 +407,7 @@ where
         child_options,
         runtime.javascript.clone(),
         runtime.local_artifacts.clone(),
-    )
-    .with_inherited_policy_approval_refs(policy_approval_refs);
+    );
     child_runtime.run_graph_with_host(&invocation.skill_directory, graph, host)
 }
 
@@ -1090,7 +1083,7 @@ where
         data: Some(resolution_event_data(step, &request)?),
     })?;
     let Some(response) = host.resolve(request)? else {
-        return Err(RuntimeError::GraphBlocked {
+        return Err(RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("agent act {request_id} requires resolution"),
         });
@@ -1198,7 +1191,7 @@ fn resolve_agent_act(
         data: Some(resolution_event_data(step, &request)?),
     })?;
     host.resolve(request)?
-        .ok_or_else(|| RuntimeError::GraphBlocked {
+        .ok_or_else(|| RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("agent act {request_id} requires resolution"),
         })
@@ -1292,8 +1285,6 @@ where
             skill_name: tool_ref,
             allow_explicit_manifest_path: true,
             effect_admission: authority.as_ref().map(StepAuthorityContext::admission),
-            policy_approval_refs: &policy_approval_refs,
-            step_id: &step.id,
         };
         // Source the tool manifest's artifact contract so the wrapped packet the
         // dispatcher folds into the claim (e.g. `data_operation_result`) is
@@ -1510,7 +1501,7 @@ fn completed_approval_resolution(
     resolution: ApprovalResolution,
 ) -> Result<ApprovalResolution, RuntimeError> {
     if matches!(resolution, ApprovalResolution::Pending { .. }) {
-        return Err(RuntimeError::GraphBlocked {
+        return Err(RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("approval gate '{}' is pending", gate.id),
         });

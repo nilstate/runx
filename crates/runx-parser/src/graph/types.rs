@@ -274,7 +274,6 @@ pub struct GraphStep {
     pub fanout_group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub when: Option<GraphWhen>,
-    pub mutating: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency_key: Option<String>,
     /// Compute path: when present, the runtime mints this step's child authority

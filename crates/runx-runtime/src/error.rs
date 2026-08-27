@@ -50,6 +50,8 @@ pub enum RuntimeError {
     UnsupportedRunStep { step_id: String, run_type: String },
     #[error("graph step '{step_id}' is blocked: {reason}")]
     GraphBlocked { step_id: String, reason: String },
+    #[error("graph step '{step_id}' is waiting for host resolution: {reason}")]
+    ResolutionPending { step_id: String, reason: String },
     #[error(transparent)]
     ContextEdgeUnresolved(Box<ContextEdgeUnresolvedError>),
     #[error("authority {verb:?} denied graph step '{step_id}': {reason}")]
@@ -175,6 +177,7 @@ impl RuntimeError {
         match source {
             source @ (Self::AuthorityDenied { .. }
             | Self::GraphBlocked { .. }
+            | Self::ResolutionPending { .. }
             | Self::GraphPaused { .. }
             | Self::GraphEscalated { .. }
             | Self::ProviderReadbackPending { .. }) => source,
@@ -209,6 +212,7 @@ impl RuntimeError {
             | Self::InvalidRunStep { .. }
             | Self::UnsupportedRunStep { .. }
             | Self::GraphBlocked { .. }
+            | Self::ResolutionPending { .. }
             | Self::ContextEdgeUnresolved(_)
             | Self::AuthorityDenied { .. }
             | Self::GraphPaused { .. }
@@ -314,6 +318,7 @@ impl RuntimeError {
             | Self::InvalidRunStep { step_id, .. }
             | Self::UnsupportedRunStep { step_id, .. }
             | Self::GraphBlocked { step_id, .. }
+            | Self::ResolutionPending { step_id, .. }
             | Self::AuthorityDenied { step_id, .. }
             | Self::GraphPlanningFailed { step_id, .. }
             | Self::GraphPaused { step_id, .. }
@@ -349,6 +354,10 @@ impl RuntimeError {
     pub(crate) fn at_graph_step(self, step_id: &str) -> Self {
         match self {
             Self::GraphBlocked { reason, .. } => Self::GraphBlocked {
+                step_id: step_id.to_owned(),
+                reason,
+            },
+            Self::ResolutionPending { reason, .. } => Self::ResolutionPending {
                 step_id: step_id.to_owned(),
                 reason,
             },

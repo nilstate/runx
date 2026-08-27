@@ -68,9 +68,10 @@ For GitHub, an explicit project binding wins. Otherwise a compatible existing
 authenticated local `gh` session is preferred for supported reads and writes;
 Runx Connect remains the tenant-agnostic hosted transport when selected or when
 no compatible local driver exists. A connector account never determines the
-repository target. Reads do not acquire approval ceremony. Remote mutations
-retain exact approval, stable idempotency, recovery, and independent readback
-regardless of transport.
+repository target. Reads do not acquire approval ceremony. Routine remote
+mutations use their exact scoped grant, stable idempotency, recovery, and
+independent readback regardless of transport. A skill adds one exact resumable
+human approval only when the action itself warrants that extra decision.
 
 Changing an implicit default is a versioned behavior change, not an immediate
 release. Existing explicitly named runners whose semantics remain truthful are
@@ -79,16 +80,17 @@ behavior must select the named `plan` runner; unqualified invocation follows
 the new advertised default. Publication and deployment remain separate
 operator decisions.
 
-Package admission and `core-skills:audit` reject public promise/default drift,
-unreachable required adapters or provider readback, and public mock or fixture
-defaults. The same native semantic report requires an executable cold-selection
+Package admission and `core-skills:audit` require an executable cold-selection
 journey with at least two real public confusors, a standalone journey through
 the actual default runner, and a composed journey that reuses named prior
-evidence without repeating completed work. Inspection reports deterministic
-provider replay as `harness` and reserves `live` for separately identified live
-provider evidence; caller-supplied agent answers never count as provider proof.
-Internal rails and harness fixtures remain executable through their own
-explicit identities but are excluded from normal discovery.
+evidence without repeating completed work. The native semantic report owns
+only those operator-readiness facts. The separate native execution closure is
+the source of truth for resolved runners, tools, package bindings, and
+unresolved edges; authoring and review compare catalog promises with that
+closure instead of guessing effects from runner or tool names. Internal rails
+and harness fixtures remain executable through explicit identities but are
+excluded from normal discovery. Deterministic harness replay and separately
+identified live-provider evidence remain distinct proof levels.
 
 ## Naming a skill
 

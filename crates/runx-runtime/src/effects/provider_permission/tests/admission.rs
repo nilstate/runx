@@ -83,6 +83,7 @@ fn provider_capabilities_bind_idempotency_and_approval_to_mutation_only() {
             .contains_key("idempotency_key")
     );
     assert!(mutate.catalog_inputs().expect("mutate inputs")["idempotency_key"].required);
+    assert!(!mutate.catalog_inputs().expect("mutate inputs")["amount"].required);
     assert_eq!(read.definition().approval, crate::CapabilityApproval::None);
     assert_eq!(
         mutate.definition().approval,

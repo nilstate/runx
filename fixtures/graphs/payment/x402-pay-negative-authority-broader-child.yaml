@@ -30,7 +30,6 @@ steps:
     skill: ../../skills/x402-pay-paid-echo-fulfill
     scopes:
       - payment:spend
-    mutation: true
     idempotency_key: paid-echo-broader-child-fulfill
     context:
       reserved_payment_authority: reserve.payment_reservation_packet.data.reserved_payment_authority

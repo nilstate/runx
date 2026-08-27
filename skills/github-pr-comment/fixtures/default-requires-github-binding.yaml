@@ -11,9 +11,6 @@ inputs:
   pr_number: "42"
   body: The reviewed path is sound; please add the missing harness case.
   idempotency_key: runxhq-runx-pr-42-connect-note-v1
-caller:
-  approvals:
-    "provider-effect:sha256:059ee0a4e400a412a35f8bf305dc2f63fde8d6aee25dc0d4e5e4e9d001d4423a": false
 expect:
   status: policy_denied
 metadata: { public_skill: github-pr-comment, source_case: direct-default-preflight, source: skills-fixture }

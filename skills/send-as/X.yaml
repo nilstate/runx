@@ -1,5 +1,5 @@
 skill: send-as
-version: "0.3.1"
+version: "0.3.2"
 
 catalog:
   kind: graph
@@ -189,7 +189,6 @@ runners:
 
         - id: deliver
           tool: provider.mutate
-          mutation: true
           idempotency_key: bind.delivery_request.idempotency_key
           scopes: [message.send]
           policy:
@@ -199,6 +198,9 @@ runners:
             expected_provider: $input.connector.provider
             operation: message.send
             target: $input.connector.target
+            approval:
+              reason: Approve delivering this exact digest-bound message.
+              type: message_delivery
             result_fields: [message_id, principal_ref, audience_ref, content_digest, status, sent_at, idempotency_key]
           context:
             idempotency_key: bind.delivery_request.idempotency_key

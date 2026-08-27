@@ -5,10 +5,8 @@ use std::sync::Arc;
 use runx_contracts::Reference;
 use runx_parser::GraphStep;
 
-use crate::CapabilityApproval;
-
 use super::{
-    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
+    EffectAdmission, EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest,
     EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest,
     RuntimeEffect, RuntimeEffectError,
 };
@@ -144,25 +142,14 @@ impl RuntimeEffectRegistry {
         Ok(None)
     }
 
-    pub(crate) fn resolve_approval(
+    pub(crate) fn prepare_execution(
         &self,
         request: EffectStepRequest<'_>,
         admission: EffectAdmission,
         host: &mut dyn crate::Host,
-    ) -> Result<EffectAdmission, RuntimeEffectError> {
+    ) -> Result<EffectPreparationOutcome, RuntimeEffectError> {
         let effect = self.require_effect(admission.family())?;
-        let requirement = request
-            .target
-            .tool_ref
-            .and_then(|tool_ref| self.capability(tool_ref))
-            .map_or(EffectApprovalRequirement::Forbidden, |capability| {
-                if capability.definition().approval == CapabilityApproval::Effect {
-                    EffectApprovalRequirement::Required
-                } else {
-                    EffectApprovalRequirement::Forbidden
-                }
-            });
-        effect.resolve_approval(requirement, request.step, admission, host)
+        effect.prepare_execution(request.step, admission, host)
     }
 
     pub(crate) fn prepare_output(

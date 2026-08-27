@@ -1,4 +1,4 @@
-name: github-sync-plans-push-for-later-approval
+name: github-sync-plans-bounded-push
 kind: skill
 target: ..
 runner: plan
@@ -18,13 +18,12 @@ expect:
   output:
     subset:
       sync_plan:
-        decision: ready_for_approval
+        decision: ready_for_execution
         scope_used: repo.write
         mutation:
           ref: issues/241
           op: update
           payload: { labels: [triage] }
         provider_status: not_called
-        gates: { approval_required: true, approval_ref: "" }
   receipt: { schema: runx.receipt.v1 }
 metadata: { public_skill: github-sync, source_case: bounded-push-plan, source: skills-fixture }

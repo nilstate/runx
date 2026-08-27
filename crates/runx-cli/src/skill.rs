@@ -50,7 +50,6 @@ pub struct SkillPlan {
     pub expected_execution_closure_digest: Option<String>,
     pub json: bool,
     pub diagnostics: bool,
-    pub non_interactive: bool,
     /// Internal command authorization for composite CLI commands such as
     /// `runx new`. User-supplied `runx skill` invocations cannot set this.
     pub trusted_command_execution: bool,

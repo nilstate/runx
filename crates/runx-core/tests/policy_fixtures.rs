@@ -3,10 +3,10 @@ use runx_core::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest, ScopeGrantPolicy, admit_graph_step_scopes, admit_local_skill,
-    admit_retry_policy, build_authority_proof_metadata, build_local_scope_admission,
-    evaluate_public_comment_opportunity, evaluate_public_pull_request_candidate,
-    normalize_public_work_policy, scope_grant_allows, validate_credential_binding,
+    ScopeGrantPolicy, admit_graph_step_scopes, admit_local_skill, build_authority_proof_metadata,
+    build_local_scope_admission, evaluate_public_comment_opportunity,
+    evaluate_public_pull_request_candidate, normalize_public_work_policy, scope_grant_allows,
+    validate_credential_binding,
 };
 use serde::Deserialize;
 
@@ -164,16 +164,6 @@ const FIXTURES: &[(&str, &str)] = &[
         include_str!("../../../fixtures/kernel/policy/public-work-normalizes-empty-arrays.json"),
     ),
     (
-        "retry-admission-allows-readonly-retry",
-        include_str!("../../../fixtures/kernel/policy/retry-admission-allows-readonly-retry.json"),
-    ),
-    (
-        "retry-admission-denies-mutating-without-key",
-        include_str!(
-            "../../../fixtures/kernel/policy/retry-admission-denies-mutating-without-key.json"
-        ),
-    ),
-    (
         "scope-grant-delegated-allows-one-segment",
         include_str!(
             "../../../fixtures/kernel/policy/scope-grant-delegated-allows-one-segment.json"
@@ -225,8 +215,6 @@ enum PolicyInput {
         #[serde(default)]
         options: LocalAdmissionOptions,
     },
-    #[serde(rename = "policy.admitRetryPolicy")]
-    AdmitRetryPolicy { request: RetryAdmissionRequest },
     #[serde(rename = "policy.admitGraphStepScopes")]
     AdmitGraphStepScopes { request: GraphScopeAdmissionRequest },
     #[serde(rename = "policy.buildLocalScopeAdmission")]
@@ -286,9 +274,6 @@ fn evaluate_policy_input(input: PolicyInput) -> Result<serde_json::Value, serde_
     match input {
         PolicyInput::AdmitLocalSkill { skill, options } => {
             serde_json::to_value(admit_local_skill(&skill, &options))
-        }
-        PolicyInput::AdmitRetryPolicy { request } => {
-            serde_json::to_value(admit_retry_policy(&request))
         }
         PolicyInput::AdmitGraphStepScopes { request } => {
             serde_json::to_value(admit_graph_step_scopes(&request))

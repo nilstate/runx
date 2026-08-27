@@ -171,7 +171,6 @@ runners:
             equals: ready
           tool: http.execute
           scopes: [nitrosend:write, net:http]
-          mutation: true
           idempotency_key: nitrosend-provider-operation
           inputs:
             stop_on_error: true

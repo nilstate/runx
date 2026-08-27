@@ -44,7 +44,6 @@ const validAuthorityProof: AuthorityProofContract = {
   requested: {
     connected_auth: true,
     scopes: ["repo:read"],
-    mutating: false,
     scope_family: "github_repo",
     authority_kind: "constructive",
     target_repo: "runxhq/runx",

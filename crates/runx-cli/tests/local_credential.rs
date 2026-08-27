@@ -353,7 +353,6 @@ fn resume_loads_workspace_env_from_discovered_project_root()
         .arg("--receipt-dir")
         .arg(&receipt_dir)
         .arg("--json")
-        .arg("--non-interactive")
         .output()?;
     assert_eq!(pause.status.code(), Some(2));
     let pause_json = serde_json::from_slice::<Value>(&pause.stdout)?;
@@ -429,7 +428,6 @@ fn resume_persists_only_profile_selector_and_resolves_rotated_material()
         .arg("--receipt-dir")
         .arg(&receipt_dir)
         .arg("--json")
-        .arg("--non-interactive")
         .output()?;
     assert_eq!(pause.status.code(), Some(2));
     let pause_json = serde_json::from_slice::<Value>(&pause.stdout)?;

@@ -29,7 +29,6 @@ Run the skill directly through the CLI:
 export RUNX_RECEIPT_DIR="$(mktemp -d)"
 crates/target/debug/runx skill examples/hello-world \
   --message "hello from docs" \
-  --non-interactive \
   --json
 ```
 

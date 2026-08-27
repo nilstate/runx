@@ -76,7 +76,7 @@ class RunxClientTests(unittest.TestCase):
             self.assertEqual(results[0].skill_id, "acme/sourcey")
             self.assertEqual(
                 run_report["args"],
-                ["skill", "skills/example", "--message", "hi", "--non-interactive", "--json"],
+                ["skill", "skills/example", "--message", "hi", "--json"],
             )
 
     def test_continue_run_invokes_skill_with_run_id_and_answers_file(self) -> None:
@@ -105,7 +105,6 @@ class RunxClientTests(unittest.TestCase):
                     "resume",
                     "run-123",
                     str(answers_path),
-                    "--non-interactive",
                     "--json",
                 ],
             )

@@ -64,7 +64,6 @@ fn input_document_supports_file_and_stdin_without_a_second_input_map()
             "--inputs",
             "inputs.json",
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let value = assert_json(&output, Some(2))?;
@@ -83,7 +82,6 @@ fn input_document_supports_file_and_stdin_without_a_second_input_map()
             "--inputs",
             "-",
             "--json",
-            "--non-interactive",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -126,7 +124,6 @@ fn input_document_rejects_paths_outside_the_invocation_workspace()
                 "--inputs",
                 &path,
                 "--json",
-                "--non-interactive",
             ])
             .output()?;
 
@@ -170,7 +167,6 @@ fn native_skill_resolves_bare_local_skill_and_documented_input_flags()
             "severity",
             "low",
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -199,7 +195,6 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
             "skill",
             skill_dir.to_str().ok_or("non-utf8 skill dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
 
@@ -236,7 +231,6 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
             "skill",
             skill_dir.to_str().ok_or("non-utf8 skill dir")?,
             "--json",
-            "--non-interactive",
             "--full-operator-context",
         ])
         .output()?;
@@ -258,42 +252,8 @@ fn native_skill_prints_operator_context_and_admits_safe_run_by_default()
 }
 
 #[test]
-fn native_mutating_skill_prepares_once_and_defers_its_action_gate()
--> Result<(), Box<dyn std::error::Error>> {
-    let root = crate::support::temp_root("runx-skill-mutating-operator-context");
-    let skill_dir = write_operator_context_skill(&root)?;
-    let child_profile = skill_dir.join("nested-review/X.yaml");
-    let profile = fs::read_to_string(&child_profile)?;
-    fs::write(
-        &child_profile,
-        profile.replace(
-            "          tool: example.record\n",
-            "          tool: example.record\n          mutation: true\n",
-        ),
-    )?;
-
-    let output = runx_command()
-        .args([
-            "skill",
-            skill_dir.to_str().ok_or("non-utf8 skill dir")?,
-            "--json",
-            "--non-interactive",
-        ])
-        .output()?;
-    assert_eq!(output.status.code(), Some(2));
-    let stderr = String::from_utf8(output.stderr)?;
-    assert!(stderr.contains("1 mutating"));
-    assert_eq!(stderr.matches("Prepared run").count(), 1);
-    let stdout = serde_json::from_slice::<serde_json::Value>(&output.stdout)?;
-    assert_eq!(stdout["status"], "needs_agent");
-    assert!(stdout.get("approval_flag").is_none());
-
-    Ok(())
-}
-
-#[test]
-fn graph_action_approval_remains_the_only_operator_resolution()
--> Result<(), Box<dyn std::error::Error>> {
+fn graph_action_approval_yields_one_operator_resolution() -> Result<(), Box<dyn std::error::Error>>
+{
     let root = crate::support::temp_root("runx-explicit-approval");
     fs::create_dir_all(&root)?;
     let receipt_dir = root.join(".runx/receipts");
@@ -308,7 +268,6 @@ fn graph_action_approval_remains_the_only_operator_resolution()
             "--receipt-dir",
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     assert_eq!(
@@ -322,44 +281,6 @@ fn graph_action_approval_remains_the_only_operator_resolution()
     assert_eq!(graph_json["status"], "needs_approval");
     assert_eq!(graph_json["requests"][0]["kind"], "approval");
 
-    let mutating_skill = write_operator_context_skill(&root.join("mutating"))?;
-    let child_profile = mutating_skill.join("nested-review/X.yaml");
-    let profile = fs::read_to_string(&child_profile)?;
-    fs::write(
-        &child_profile,
-        profile.replace(
-            "          tool: example.record\n",
-            "          tool: example.record\n          mutation: true\n",
-        ),
-    )?;
-    let prepared_run = crate::support::unsigned_runx_command_at(&root)
-        .args([
-            "skill",
-            mutating_skill
-                .to_str()
-                .ok_or("non-utf8 mutating skill dir")?,
-            "--receipt-dir",
-            receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
-            "--json",
-            "--non-interactive",
-        ])
-        .output()?;
-    assert_eq!(
-        prepared_run.status.code(),
-        Some(2),
-        "stdout={}\nstderr={}",
-        String::from_utf8_lossy(&prepared_run.stdout),
-        String::from_utf8_lossy(&prepared_run.stderr)
-    );
-    let prepared_json = serde_json::from_slice::<serde_json::Value>(&prepared_run.stdout)?;
-    assert_eq!(prepared_json["status"], "needs_agent");
-    assert_eq!(
-        String::from_utf8_lossy(&prepared_run.stderr)
-            .matches("Prepared run")
-            .count(),
-        1
-    );
-
     let signed_run = runx_command()
         .current_dir(&root)
         .env("RUNX_HOME", root.join("home"))
@@ -371,7 +292,6 @@ fn graph_action_approval_remains_the_only_operator_resolution()
             "--receipt-dir",
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     assert_eq!(signed_run.status.code(), Some(2));
@@ -398,7 +318,6 @@ fn native_skill_positional_runner_selects_non_default_runner()
             "--receipt-dir",
             receipt_dir.to_str().ok_or("non-utf8 receipt dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -525,7 +444,6 @@ fn native_skill_exported_shim_resolves_to_source_skill() -> Result<(), Box<dyn s
             "--thread-title",
             "Docs bug",
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -554,7 +472,6 @@ fn native_skill_resolves_trusted_registry_ref() -> Result<(), Box<dyn std::error
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&output, Some(2))?;
@@ -579,7 +496,6 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(2))?;
@@ -617,7 +533,6 @@ fn native_skill_registry_run_reports_provenance() -> Result<(), Box<dyn std::err
             "acme/echo@1.0.0",
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
-            "--non-interactive",
         ])
         .output()?;
     assert_eq!(text_output.status.code(), Some(2));
@@ -649,7 +564,6 @@ fn native_skill_registry_run_reports_provenance_on_execution_error()
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let output_json = assert_json(&json_output, Some(1))?;
@@ -685,7 +599,6 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let v1_json = assert_json(&v1, Some(2))?;
@@ -698,7 +611,6 @@ fn native_skill_resolves_registry_versions_side_by_side() -> Result<(), Box<dyn 
             "--registry",
             registry_dir.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let v2_json = assert_json(&v2, Some(2))?;
@@ -731,7 +643,6 @@ fn native_skill_rejects_untrusted_registry_refs() -> Result<(), Box<dyn std::err
             "--registry",
             unsigned_registry.to_str().ok_or("non-utf8 registry dir")?,
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let unsigned_json = assert_json(&unsigned, Some(1))?;
@@ -756,7 +667,6 @@ fn native_skill_rejects_untrusted_registry_refs() -> Result<(), Box<dyn std::err
             "--digest",
             "sha256:0000000000000000000000000000000000000000000000000000000000000000",
             "--json",
-            "--non-interactive",
         ])
         .output()?;
     let mismatch_json = assert_json(&mismatch, Some(1))?;
@@ -947,7 +857,6 @@ sleep 30
             "--input",
             &sentinel_input,
             "--json",
-            "--non-interactive",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -1019,7 +928,6 @@ runners:
             "skill",
             skill_dir.to_str().ok_or("non-utf8 skill dir")?,
             "--json",
-            "--non-interactive",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())

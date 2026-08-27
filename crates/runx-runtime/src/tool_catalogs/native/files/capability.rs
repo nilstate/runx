@@ -280,7 +280,7 @@ static WRITE: TypedNativeCapability<FileWriteInput, FileWriteOutput> = TypedNati
         summary: "Write one bounded UTF-8 file through transactional workspace containment.",
         scopes: &["fs.write"],
         effect: CapabilityEffect::Mutate,
-        approval: CapabilityApproval::Policy,
+        approval: CapabilityApproval::None,
         artifacts: CapabilityArtifacts::Wrapped {
             output: "file_write",
             packet: "runx.fs.file_write.v1",
@@ -298,7 +298,7 @@ static APPLY: TypedNativeCapability<FileApplyBundleInput, FileApplyBundleOutput>
             summary: "Apply bounded text writes and deletions transactionally inside one workspace root.",
             scopes: &["fs.write", "fs.delete"],
             effect: CapabilityEffect::Mutate,
-            approval: CapabilityApproval::Policy,
+            approval: CapabilityApproval::None,
             artifacts: CapabilityArtifacts::Wrapped {
                 output: "file_bundle_apply",
                 packet: "runx.fs.apply_bundle.v1",

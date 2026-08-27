@@ -1,5 +1,5 @@
 skill: issue-to-pr
-version: "0.4.0"
+version: "0.4.1"
 
 catalog:
   kind: graph
@@ -9,7 +9,7 @@ catalog:
   execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: required
+  approval: none
 
 harness:
   files:
@@ -163,7 +163,6 @@ runners:
             field: admit-host-result.host_admission.path
             equals: publish
           tool: provider.mutate
-          mutation: true
           idempotency_key: host-work.host_result.data.publication.idempotency_key
           scopes: [repo.write, pr.write]
           policy:
@@ -305,7 +304,6 @@ runners:
             field: admit-host-result.host_admission.path
             equals: publish
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.host_result.publication.idempotency_key
           scopes: [repo.write, pr.write]
           policy:
@@ -468,7 +466,6 @@ runners:
 
         - id: publish-pr
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.host_result.publication.idempotency_key
           scopes: [repo.write, pr.write]
           policy:

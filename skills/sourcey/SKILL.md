@@ -16,13 +16,13 @@ specs, Doxygen XML, and MCP server snapshots.
 By default, runx executes Sourcey as a governed mixed-runner skill:
 
 1. discover the bounded documentation scope, evidence, and plan
-2. request approval
-3. author the bounded docs/config bundle
-4. write the source bundle deterministically
-5. build docs deterministically
-6. critique the built output in one bounded pass
-7. apply at most one bounded revision pass
-8. rebuild and verify the output deterministically
+2. author the bounded docs/config bundle
+3. write the source bundle deterministically under the runner's declared
+   workspace scopes
+4. build docs deterministically
+5. critique the built output in one bounded pass
+6. apply at most one bounded revision pass
+7. rebuild and verify the output deterministically
 
 For already-configured projects, the same `sourcey` runner stays narrow: the
 discover step can confirm existing config, the author/revise passes can return
@@ -44,7 +44,7 @@ HTML, search indexes, or OG assets back into the authored docs tree.
 - A project needs a maintainer-grade documentation site generated from real
   repository evidence, existing docs, API specs, Doxygen XML, or MCP snapshots.
 - A branded package or product needs Sourcey output with governed discovery,
-  approval, authoring, deterministic build, critique, revision, and receipt
+  bounded authoring, deterministic build, critique, revision, and receipt
   proof.
 - A workflow needs to separate authored docs source from generated site output
   while preserving a reviewable receipt trail.
@@ -57,8 +57,8 @@ HTML, search indexes, or OG assets back into the authored docs tree.
   `needs_more_evidence` or `needs_review` instead of confident filler.
 - To write generated HTML, search indexes, or Open Graph assets back into the
   source docs tree.
-- To bypass approval for a new docs plan or to run open-ended critique/revision
-  loops.
+- To run open-ended critique/revision loops or write outside the declared
+  workspace root.
 - To document APIs by hand when an OpenAPI, Doxygen, or MCP source can be used
   directly by Sourcey.
 
@@ -100,7 +100,8 @@ Complex runx skills share a reusable phase language:
 The current Sourcey runner deliberately uses a bounded subset:
 
 - `discover` folds `scope + ingest + model`
-- `approve` is `ratify`
+- invoking the scoped runner is the operator's authorization to perform its
+  reversible local writes
 - `author + write-docs + build` form `materialize`
 - `critique` is `evaluate`
 - `revise + write-revisions + rebuild` form `revise`
@@ -117,15 +118,14 @@ thin. Missing evidence is not the same as missing files.
 ## Procedure
 
 1. Inspect the current workspace by default, or the explicit project root supplied by a chain, and discover a bounded documentation plan from real project evidence.
-2. Approve the discovered plan before authoring.
-3. Author the bounded Sourcey source bundle.
-4. Persist that bundle deterministically.
-5. Run `sourcey build` deterministically with the discovered or authored config.
-6. Critique the built output in one bounded evaluation pass.
-7. Apply at most one bounded revision pass from that critique.
-8. Rebuild deterministically after the revision bundle is written.
-9. Verify the output directory contains `index.html`.
-10. Inspect the receipt and generated site.
+2. Author the bounded Sourcey source bundle.
+3. Persist that bundle deterministically inside `repo_root`.
+4. Run `sourcey build` deterministically with the discovered or authored config.
+5. Critique the built output in one bounded evaluation pass.
+6. Apply at most one bounded revision pass from that critique.
+7. Rebuild deterministically after the revision bundle is written.
+8. Verify the output directory contains `index.html`.
+9. Inspect the receipt and generated site.
 
 The deterministic build report should carry enough rendered evidence for an
 external reviewer to reason about the site without hidden file access. At
@@ -173,7 +173,7 @@ sourcey_verification_proof:
   verified: boolean
   index_path: string
 receipt_notes:
-  authority: governed docs plan approval
+  authority: invoked runner with bounded workspace scopes
   mutation: authored docs source writes only
 ```
 
@@ -182,7 +182,7 @@ receipt_notes:
 Input: a project contains `README.md`, `package.json`, and a partial `docs/`
 tree, but no Sourcey config.
 
-Output: `decision: ready` after approval; Sourcey discovers the project name,
+Output: `decision: ready`; Sourcey discovers the project name,
 homepage, and docs inputs, writes a bounded `docs/sourcey.config.ts` plus only
 the highest-value missing docs pages, builds to `.sourcey/runx-docs`, critiques
 the rendered `index.html`, applies at most one revision bundle, verifies the
@@ -417,7 +417,7 @@ this canonical shape: {
 
 ### `sourcey-author`
 
-Author a bounded Sourcey source bundle from the approved discovery plan. doc_bundle must include
+Author a bounded Sourcey source bundle from the bounded discovery plan. doc_bundle must include
 a files array of { path, contents } entries to write under the target project, plus a summary of
 what was authored. When the project already has a complete Sourcey config and pages, keep the
 bundle minimal. When config or pages are missing, create only the files required to build a
@@ -427,7 +427,7 @@ preserve the existing repo contents and return an empty files array rather than 
 config with a weaker placeholder bundle. Lack of repository inspection evidence is not evidence
 that the files are absent. Only write source docs, config, assets, and minimal supporting repo
 metadata. Never write generated HTML, search indexes, or OG assets into the source docs tree.
-When the approved plan uses a generated output_dir under the repo root and the repo does not
+When the bounded plan uses a generated output_dir under the repo root and the repo does not
 already ignore it, include the minimal .gitignore change needed to ignore that build artifact.
 This is one bounded materialize pass, not an open-ended iteration loop. When project_brief is
 supplied, it is the quality bar:

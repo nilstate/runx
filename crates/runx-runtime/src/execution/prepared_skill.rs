@@ -92,7 +92,6 @@ pub struct PreparedRequestSummary {
 pub struct PreparedGovernanceSummary {
     pub declared_steps: usize,
     pub conditional_steps: usize,
-    pub mutating_steps: Vec<String>,
     pub tool_refs: Vec<String>,
     pub authority_scopes: Vec<String>,
     pub execution_boundaries: Vec<ExecutionBoundaryKind>,
@@ -673,7 +672,6 @@ fn json_type(value: &JsonValue) -> &'static str {
 fn governance_summary(chain: &SkillOperatorContextChain) -> PreparedGovernanceSummary {
     let mut summary = PreparedGovernanceSummary::default();
     summarize_node(&chain.entry, &mut summary);
-    summary.mutating_steps.sort();
     summary.tool_refs.sort();
     summary.tool_refs.dedup();
     summary.authority_scopes.sort();
@@ -690,9 +688,6 @@ fn governance_summary(chain: &SkillOperatorContextChain) -> PreparedGovernanceSu
 }
 
 fn summarize_node(node: &SkillOperatorContextNode, summary: &mut PreparedGovernanceSummary) {
-    if node.runner.mutating {
-        summary.mutating_steps.push(node.node_path.clone());
-    }
     summary
         .authority_scopes
         .extend(node.runner.scopes.iter().cloned());
@@ -714,9 +709,6 @@ fn summarize_node(node: &SkillOperatorContextNode, summary: &mut PreparedGoverna
             summary.conditional_steps += 1;
         } else {
             summary.declared_steps += 1;
-        }
-        if definition.mutating {
-            summary.mutating_steps.push(step.node_path.clone());
         }
         summary.tool_refs.extend(step.tool_refs.iter().cloned());
         if let Some(observation) = step.execution_boundary {
@@ -1278,14 +1270,13 @@ mod tests {
     "command": "sh",
     "args": ["-c", "touch \"$RUNX_CWD/tool-ran\""],
     "input_mode": "none"
-  },
-  "mutating": true
+  }
 }
 "#,
         )?;
         fs::write(
             temp.path().join("X.yaml"),
-            "skill: prepared\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: prepared\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          mutation: true\n          idempotency_key: record-1\n",
+            "skill: prepared\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: prepared\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          idempotency_key: record-1\n",
         )?;
 
         let prepared = prepare_skill_run(
@@ -1335,7 +1326,6 @@ runners:
           when:
             field: input.ready
             equals: true
-          mutation: true
           idempotency_key: release-publish-1
 "#,
         )?;
@@ -1349,7 +1339,6 @@ runners:
 
         assert_eq!(governance.declared_steps, 0);
         assert_eq!(governance.conditional_steps, 1);
-        assert_eq!(governance.mutating_steps, ["entry.approve-publish"]);
         assert_eq!(governance.authority_scopes, ["release:publish"]);
         assert_eq!(governance.gates, ["release.publish.approval"]);
         assert_eq!(
@@ -1362,8 +1351,7 @@ runners:
     }
 
     #[test]
-    fn prepared_governance_includes_terminal_runner_mutation_and_scopes()
-    -> Result<(), Box<dyn Error>> {
+    fn prepared_governance_includes_terminal_runner_scopes() -> Result<(), Box<dyn Error>> {
         let temp = tempdir()?;
         write_manual(temp.path(), "prepared", "# Prepared")?;
         fs::write(
@@ -1374,7 +1362,6 @@ runners:
     default: true
     type: cli-tool
     command: example-mutator
-    mutating: true
     scopes: [example:write]
 "#,
         )?;
@@ -1385,7 +1372,6 @@ runners:
             PreparedEntryProvenance::default(),
         )?;
 
-        assert_eq!(prepared.report().governance.mutating_steps, ["entry"]);
         assert_eq!(
             prepared.report().governance.authority_scopes,
             ["example:write"]
@@ -1455,30 +1441,6 @@ runners:
             orchestrator.run_prepared_skill(&prepared)?.status,
             RunStatus::NeedsAgent
         );
-        Ok(())
-    }
-
-    #[test]
-    fn prepared_context_binding_does_not_fabricate_mutation_approval() -> Result<(), Box<dyn Error>>
-    {
-        let temp = tempdir()?;
-        write_skill(temp.path(), "", "# Prepared")?;
-        let mut prepared = prepare_skill_run(
-            request(temp.path()),
-            None,
-            PreparedEntryProvenance::default(),
-        )?;
-        prepared
-            .report
-            .governance
-            .mutating_steps
-            .push("entry.publish".to_owned());
-
-        prepared.bind_context()?;
-        assert!(prepared.is_context_bound());
-        let references = prepared_receipt_references(&prepared.request().env);
-        assert_eq!(references.len(), 1);
-        assert_eq!(references[0].reference_type, ReferenceType::Artifact);
         Ok(())
     }
 

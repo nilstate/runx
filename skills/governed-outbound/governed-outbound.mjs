@@ -3,11 +3,9 @@ export default function validatePlan(inputs) {
   const channel = requiredString(inputs.channel, "channel");
   const source = requiredRecord(inputs.source, "source");
   const redaction = requiredRecord(inputs.redaction, "redaction");
-  const approval = requiredRecord(inputs.approval, "approval");
   const sendPlan = requiredRecord(inputs.send_plan, "send_plan");
   if (source.decision !== "ready") throw new Error("source provider readback must be ready");
   if (redaction.decision !== "ready") throw new Error("redaction must be ready");
-  if (approval.approved !== true) throw new Error("the exact outbound plan must be approved");
   if (sendPlan.decision !== "ready") throw new Error("send plan must be ready");
   assertEqual(requiredString(record(sendPlan.principal).ref, "send_plan.principal.ref"), principal, "send plan principal differs from the approved principal");
   assertEqual(requiredString(record(sendPlan.audience).ref, "send_plan.audience.ref"), channel, "send plan audience differs from the approved audience");
@@ -35,7 +33,6 @@ export default function validatePlan(inputs) {
         digest: redactedDigest,
         source_digest: requiredDigest(redaction.source_digest, "redaction.source_digest"),
       },
-      approval: { approved: true, gate_id: optionalString(approval.gate_id) || "governed-outbound.send.approval" },
       provider_actions: strings(sendPlan.provider_actions),
       send_plan: sendPlan,
     },

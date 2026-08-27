@@ -7,7 +7,7 @@ use crate::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
     PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
-    RetryAdmissionRequest, ScopeGrantPolicy,
+    ScopeGrantPolicy,
 };
 use crate::state_machine::{
     FanoutBranchResult, FanoutGroupPolicy, SequentialGraphEvent, SequentialGraphState,
@@ -38,8 +38,6 @@ pub(super) enum KernelInput {
         #[serde(default)]
         options: LocalAdmissionOptions,
     },
-    #[serde(rename = "policy.admitRetryPolicy")]
-    AdmitRetryPolicy { request: RetryAdmissionRequest },
     #[serde(rename = "policy.admitGraphStepScopes")]
     AdmitGraphStepScopes { request: GraphScopeAdmissionRequest },
     #[serde(rename = "policy.buildLocalScopeAdmission")]
@@ -137,7 +135,6 @@ pub(super) fn is_supported_kernel_kind(kind: &str) -> bool {
     matches!(
         kind,
         "policy.admitLocalSkill"
-            | "policy.admitRetryPolicy"
             | "policy.admitGraphStepScopes"
             | "policy.buildLocalScopeAdmission"
             | "policy.buildAuthorityProofMetadata"

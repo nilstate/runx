@@ -118,7 +118,6 @@ pub struct SkillOperatorContextRunner {
     pub source_type: String,
     pub selection: String,
     pub requested_name: Option<String>,
-    pub mutating: bool,
     pub scopes: Vec<String>,
     pub execution_boundary: Option<ExecutionBoundaryObservation>,
     pub declared_source_output: bool,
@@ -633,7 +632,6 @@ fn runner_context(
         source_type: runner.source.source_type.to_string(),
         selection: selection.to_owned(),
         requested_name: requested_runner.map(str::to_owned),
-        mutating: runner.mutating.unwrap_or(false),
         scopes: runner.scopes.clone(),
         execution_boundary: execution_boundary_for_source(runner.source.source_type),
         declared_source_output,
@@ -1252,8 +1250,7 @@ runners:
     }
 
     #[test]
-    fn operator_context_surfaces_local_tool_manifest_and_mutating_step()
-    -> Result<(), Box<dyn Error>> {
+    fn operator_context_surfaces_local_tool_manifest() -> Result<(), Box<dyn Error>> {
         let temp = tempdir()?;
         let entry = temp.path().join("entry");
         write_skill(&entry, "entry", "# Entry")?;
@@ -1276,7 +1273,7 @@ runners:
         )?;
         write_file(
             &entry.join("X.yaml"),
-            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          mutation: true\n          idempotency_key: record-1\n",
+            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          idempotency_key: record-1\n",
         )?;
 
         let chain = load_skill_operator_context_chain(
@@ -1284,7 +1281,6 @@ runners:
             None,
             SkillOperatorContextOptions::new(BTreeMap::new(), temp.path().to_path_buf()),
         )?;
-        assert!(chain.entry.steps[0].definition.mutating);
         assert_eq!(chain.entry.steps[0].tool_refs, ["example.record"]);
         assert_eq!(chain.entry.tools.len(), 1);
         assert_eq!(chain.entry.tools[0].name, "example.record");
@@ -1320,14 +1316,13 @@ runners:
     "command": "sh",
     "args": ["-c", "touch \"$RUNX_CWD/tool-ran\""],
     "input_mode": "none"
-  },
-  "mutating": true
+  }
 }
 "#,
         )?;
         write_file(
             &entry.join("X.yaml"),
-            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          mutation: true\n          idempotency_key: record-1\n",
+            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [record]\n      steps:\n        - id: record\n          tool: example.record\n          idempotency_key: record-1\n",
         )?;
 
         let error = operator_context_error(
@@ -1386,7 +1381,7 @@ runners:
         write_skill(&entry, "entry", "# Entry")?;
         write_file(
             &entry.join("X.yaml"),
-            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [apply]\n      steps:\n        - id: apply\n          tool: runx.skill.apply\n          mutation: true\n          idempotency_key: apply-1\n",
+            "skill: entry\nrunners:\n  main:\n    default: true\n    type: graph\n    graph:\n      name: entry\n      result_from: [apply]\n      steps:\n        - id: apply\n          tool: runx.skill.apply\n          idempotency_key: apply-1\n",
         )?;
 
         let chain = load_skill_operator_context_chain(

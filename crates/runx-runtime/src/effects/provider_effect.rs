@@ -19,7 +19,9 @@ pub enum ProviderEffectClass {
     Mutation,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, Serialize, Deserialize, runx_contracts::schema::RunxSchema,
+)]
 #[serde(deny_unknown_fields)]
 pub struct ProviderEffectAmount {
     pub units: u64,
@@ -35,6 +37,7 @@ pub struct ProviderEffectIntentInput<'a> {
     pub payload: &'a JsonObject,
     pub required_scopes: Vec<String>,
     pub amount: Option<ProviderEffectAmount>,
+    pub approval_digest: Option<String>,
     pub request_key: Option<&'a str>,
 }
 
@@ -47,6 +50,7 @@ pub struct ProviderEffectIntent {
     payload_digest: String,
     required_scopes: Vec<String>,
     amount: Option<ProviderEffectAmount>,
+    approval_digest: Option<String>,
     request_key_digest: Option<String>,
 }
 
@@ -146,7 +150,7 @@ pub enum ProviderEffectError {
     MissingScopes,
     #[error("draft provider effects cannot be attempted")]
     DraftCannotExecute,
-    #[error("provider mutation requires exact approval")]
+    #[error("provider mutation requested exact approval but none was admitted")]
     ApprovalRequired,
     #[error("provider mutation approval actor is not an admitted authority lane")]
     ApprovalActorInvalid,

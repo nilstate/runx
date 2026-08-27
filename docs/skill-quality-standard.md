@@ -68,7 +68,8 @@ Proof must match the claim:
 `caller.answers` can prove graph wiring and an agent-artifact contract. It
 cannot prove a provider mutation, network result, payment, send, publish, or
 other external effect. Live destructive proof is never required when a faithful
-isolated fixture plus refusal and approval cases establish the same boundary safely.
+isolated fixture plus refusal and, when requested, approval cases establish the
+same boundary safely.
 
 ## Provider operation contract
 
@@ -77,10 +78,11 @@ A reusable provider operation keeps governance, transport, and proof separate:
 1. Resolve a bounded provider operation and credential grant without exposing
    provider secrets to the model, skill inputs, command arguments, or artifacts.
 2. Validate scope, audience, payload bounds, and idempotency before the provider
-   call. Reads need no human approval; an external mutation is approved at the
-   consequential boundary, not during harmless planning or inspection. Pass one
-   stable retry identity through native `provider.mutate.idempotency_key`; Runx
-   injects it into the provider payload and rejects a duplicated payload copy.
+   call. The admitted grant is sufficient for a routine bounded write. If the
+   action warrants a separate human decision, request it once at the native
+   effect boundary, not during harmless planning or inspection. Pass one stable
+   retry identity through native `provider.mutate.idempotency_key`; Runx binds
+   it to the attempt outside provider-specific payload JSON.
 3. Execute through a declared tool, adapter, MCP server, or HTTP boundary. For
    hosted drivers, use native `provider.read` or `provider.mutate`; Runx resolves
    the unique active provider/scope grant and Cloud verifies the driver's
@@ -101,8 +103,8 @@ A reusable provider operation keeps governance, transport, and proof separate:
 7. Seal the receipt with the attempted scope, idempotency key when relevant,
    provider evidence reference, truthful terminal state, and recovery posture.
 
-Fixtures prove request construction, refusal, approval, retry, and readback
-parsing. They do not prove a live provider accepted or applied an operation.
+Fixtures prove request construction, refusal, optional approval, retry, and
+readback parsing. They do not prove a live provider accepted or applied an operation.
 The keyless NWS forecast lane is the reference read shape; Nitrosend is the
 reference credentialed account-operation shape. New provider skills should
 reuse this contract instead of inventing adjacent credential loading, approval,
@@ -134,10 +136,11 @@ credentials, and raw provider or tool bodies are never failure telemetry.
 Prepared context is always digest-bound and drift-checked, but it is not an
 approval gate. It proves what was selected and prevents context or artifact
 drift without fabricating human authority. Each consequential action has one
-approval owner at the point of use: an effect-owned capability such as
-`provider.mutate`, or an explicit graph approval when no native effect owns the
-decision. Never place a second approval immediately before an effect that
-already requires exact human approval.
+approval owner at the point of use. A native effect such as `provider.mutate`
+owns any optional exact approval it declares; an explicit graph approval is
+valid only when no native effect owns the decision. Never place a second
+approval immediately before an effect that already requested exact human
+approval, and never invent approval merely because a capability mutates state.
 
 ## `SKILL.md` content
 
@@ -183,7 +186,8 @@ operator.
 
 - Name the evidence and distinguish source facts from inference.
 - Name the authority; intent alone does not grant permission.
-- Name the gate before any mutation, charge, delegation, publish, or send.
+- Name a separate human gate when an action genuinely requires that decision;
+  do not invent one merely because a scoped capability writes state.
 - Name finality precisely: a plan is not a delivery, and an accepted request is
   not a verified external effect.
 - Fail closed on stale evidence, replay, scope mismatch, ambiguous ownership,
@@ -358,22 +362,21 @@ Local cross-package edges are carried in that package bundle; a harness may
 not borrow sibling files from the source checkout that are absent from the
 published artifact.
 
-The catalog gate blocks structural dishonesty and unusable packages:
+The catalog and package gates block structurally invalid or unusable packages:
 
 - unresolved or cyclic default closures;
-- a claimed adapter with no reachable adapter boundary;
 - agent-authored work with no declared artifact packet;
-- no executable contract or operation proof;
 - no cold-selection proof against at least two real nearby public skills;
 - no standalone journey through the actual advertised default runner;
 - no composed journey that names reused evidence and work that must not repeat;
 - a missing product archetype review.
 
-The native semantic report owns those readiness facts. TypeScript catalog
-checks, inspection, and review tooling consume the report instead of
-reclassifying fixtures. Provider proof remains graded: deterministic provider
-replay is `harness`, live-provider evidence is `live`, and supplied agent
-answers never upgrade either. Harness execution strips ambient Runx grants,
+The native semantic report owns the operator-readiness facts. The native
+execution closure separately owns resolved package, runner, tool, and edge
+truth; reviewers compare capability metadata with that closure rather than
+reimplementing effect classification in TypeScript or package code. Provider
+evidence remains graded: deterministic replay is `harness`, live-provider
+evidence is `live`, and supplied agent answers never upgrade either. Harness execution strips ambient Runx grants,
 tokens, credential deliveries, and global configuration before applying the
 fixture's explicit fake bindings.
 

@@ -107,9 +107,6 @@ fn insert_runner_contract_metadata(
             ),
         );
     }
-    if let Some(mutating) = runner.mutating {
-        output.insert("mutating".to_owned(), JsonValue::Bool(mutating));
-    }
     Ok(())
 }
 

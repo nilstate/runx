@@ -84,7 +84,6 @@ fn parse_skill_plan_inner(args: &[OsString]) -> Result<SkillPlan, String> {
         expected_execution_closure_digest: state.expected_execution_closure_digest,
         json: state.json,
         diagnostics: state.diagnostics,
-        non_interactive: state.non_interactive,
         trusted_command_execution: false,
         full_operator_context: state.full_operator_context,
         inputs: state.inputs,
@@ -107,7 +106,6 @@ struct SkillParseState {
     expected_execution_closure_digest: Option<String>,
     json: bool,
     diagnostics: bool,
-    non_interactive: bool,
     full_operator_context: bool,
     inspect: bool,
     force_run: bool,
@@ -376,7 +374,6 @@ fn parse_skill_arg(
                 &string_arg(args, index)?,
             )?);
         }
-        "--non-interactive" => state.non_interactive = true,
         value if value.starts_with("--") => {
             index = parse_direct_input_arg(args, index, value, &mut state.inputs)?;
         }

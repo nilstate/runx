@@ -24,7 +24,7 @@ export default function planSync(inputs) {
     blockers.push("pull requires requested read scope");
     decision = "refused";
   } else if (blockers.length === 0 && direction === "push") {
-    decision = "ready_for_approval";
+    decision = "ready_for_execution";
   }
 
   const providerOperation = direction === "push"
@@ -63,7 +63,6 @@ export default function planSync(inputs) {
       })),
       provider_operation: providerOperation,
       scope_used: direction === "push" ? "repo.write" : "repo.read",
-      gates: { approval_required: direction === "push", approval_ref: "" },
       provider_status: "not_called",
       blockers,
     },

@@ -35,8 +35,6 @@ pub struct ValidatedTool {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub idempotency: Option<SkillIdempotencyPolicy>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutating: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<SkillArtifactContract>,
 }
 
@@ -88,12 +86,20 @@ pub fn validate_tool_manifest(raw: RawToolManifestIr) -> Result<ValidatedTool, V
             "risk",
             "retry",
             "idempotency",
-            "mutating",
             "artifacts",
         ],
     )?;
     validate_required_contract::<ToolManifestSchema>(raw.document.get("schema"), "schema")?;
     let risk = raw.document.get("risk").cloned();
+    if risk
+        .as_ref()
+        .and_then(JsonValue::as_object)
+        .is_some_and(|risk| risk.contains_key("mutating"))
+    {
+        return Err(FIELDS.validation_error(
+            "risk.mutating is not supported; effect ownership belongs to the invoking capability",
+        ));
+    }
     let source = validate_tool_source(
         validate_skill_source(
             &FIELDS
@@ -121,7 +127,6 @@ pub fn validate_tool_manifest(raw: RawToolManifestIr) -> Result<ValidatedTool, V
         risk,
         retry: validate_retry(raw.document.get("retry"), "retry")?,
         idempotency: validate_idempotency(raw.document.get("idempotency"), "idempotency")?,
-        mutating: validate_mutating(raw.document.get("mutating"), "mutating")?,
         artifacts: validate_skill_artifact_contract(raw.document.get("artifacts"), "artifacts")?,
     })
 }
@@ -209,11 +214,4 @@ fn validate_idempotency(
             }))
         }
     }
-}
-
-fn validate_mutating(
-    value: Option<&JsonValue>,
-    field: &str,
-) -> Result<Option<bool>, ValidationError> {
-    FIELDS.optional_bool(value, field)
 }

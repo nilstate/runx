@@ -1,5 +1,5 @@
 skill: charge
-version: "0.6.0"
+version: "0.6.1"
 catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   charge:
@@ -17,7 +17,6 @@ runners:
       steps:
         - id: settle
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.charge]
           policy: { provider_permission: { verb: write } }
@@ -25,6 +24,10 @@ runners:
             operation: payment.charge
             target: $input.provider_policy.counterparty
             expected_provider: $input.returned_credential.family
+            approval:
+              reason: Approve this exact provider charge before settlement.
+              type: payment_charge
+            amount: { units: $input.provider_policy.price_minor, unit: $input.provider_policy.currency }
             idempotency_key: $input.idempotency_seed
             result_fields: [charge_ref, settlement_family, status, credential_ref]
             input: { mcp_tool_call: $input.mcp_tool_call, provider_policy: $input.provider_policy, credential_ref: $input.returned_credential.credential_ref, verify_capability_ref: $input.verify_capability_ref }

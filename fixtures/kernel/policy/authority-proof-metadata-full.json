@@ -46,7 +46,6 @@
         "requested": {
           "authority_kind": "read_only",
           "connected_auth": true,
-          "mutating": true,
           "scope_family": "github_repo",
           "scopes": [
             "opaque capability with spaces",
@@ -137,7 +136,6 @@
           "target_repo": "runxhq/runx"
         }
       ],
-      "mutating": true,
       "runId": "run_policy_fixture",
       "scopes": [
         "opaque capability with spaces"

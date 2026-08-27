@@ -1,5 +1,5 @@
 skill: slack
-version: "0.2.7"
+version: "0.2.8"
 
 catalog:
   kind: graph
@@ -313,7 +313,6 @@ runners:
         - id: deliver
           tool: provider.mutate
           scopes: [thread.reply]
-          mutation: true
           idempotency_key: $input.idempotency_key
           when:
             field: bind-content.comparison.data.equal
@@ -325,6 +324,9 @@ runners:
             operation: thread.reply
             target: $input.thread_locator
             expected_provider: slack
+            approval:
+              reason: Approve posting this exact digest-bound Slack thread reply.
+              type: slack_message
             idempotency_key: $input.idempotency_key
             expected_result:
               thread_locator: $input.thread_locator

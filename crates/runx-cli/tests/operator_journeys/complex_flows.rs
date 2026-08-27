@@ -309,7 +309,7 @@ fn publishing_journey_plans_once_gates_once_and_closes_on_provider_readback() ->
         ])
         .arg("--receipt-dir")
         .arg(&receipt_dir)
-        .args(["--json", "--non-interactive"])
+        .args(["--json"])
         .output()?;
     let pause = assert_json(&pause, 2)?;
     assert_eq!(pause["status"], "needs_agent", "{pause}");
@@ -708,7 +708,7 @@ fn incident_turn_reuses_case_approval_across_agent_resume_without_claiming_deliv
         .arg("incident-inputs.json")
         .arg("--receipt-dir")
         .arg(&receipt_dir)
-        .args(["--json", "--non-interactive"])
+        .args(["--json"])
         .output()?;
     let pause = assert_json(&pause, 2)?;
     assert_eq!(pause["status"], "needs_agent");

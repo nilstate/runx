@@ -68,7 +68,6 @@ export type ToolManifestContract = DeepReadonly<{
   artifacts?: ToolManifestArtifactContract;
   retry?: ToolRetryPolicyContract;
   idempotency?: ToolIdempotencyPolicyContract;
-  mutating?: boolean;
 }>;
 
 export const toolManifestV1Schema = runxSchemaArtifacts[

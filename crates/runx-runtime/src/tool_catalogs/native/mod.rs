@@ -8,7 +8,6 @@ use runx_contracts::JsonObject;
 #[cfg(feature = "catalog")]
 use runx_contracts::JsonValue;
 
-use crate::CapabilityApproval;
 #[cfg(feature = "catalog")]
 use crate::RuntimeError;
 use crate::credentials::CredentialDelivery;
@@ -166,8 +165,6 @@ pub(crate) struct NativeToolInvocation<'a> {
     pub credential_delivery: &'a CredentialDelivery,
     pub local_artifacts: &'a crate::services::LocalArtifactService,
     pub effect_admission: Option<&'a crate::effects::EffectAdmission>,
-    pub policy_approval_verified: bool,
-    pub step_id: &'a str,
     pub effects: &'a RuntimeEffectRegistry,
 }
 
@@ -180,21 +177,6 @@ pub(crate) struct NativeToolInvocationResult {
 #[cfg(feature = "catalog")]
 pub(crate) fn invoke(request: NativeToolInvocation<'_>) -> Option<NativeToolInvocationResult> {
     if let Some(tool) = definition(request.tool_ref) {
-        if tool.definition().approval == CapabilityApproval::Policy
-            && !request.policy_approval_verified
-        {
-            return Some(NativeToolInvocationResult {
-                result: Err(RuntimeError::AuthorityDenied {
-                    verb: runx_contracts::AuthorityVerb::Write,
-                    step_id: request.step_id.to_owned(),
-                    reason: format!(
-                        "native capability '{}' requires verified policy approval evidence",
-                        request.tool_ref
-                    ),
-                }),
-                execution_boundary: tool.execution_boundary(),
-            });
-        }
         let invocation = RawNativeInvocation {
             inputs: request.inputs,
             scopes: request.scopes,
@@ -250,19 +232,6 @@ fn definition(tool_ref: &str) -> Option<&'static dyn NativeCapability> {
         return None;
     }
     index.by_id.get(tool_ref).copied()
-}
-
-pub(crate) fn approval(
-    tool_ref: &str,
-    effects: &RuntimeEffectRegistry,
-) -> Option<CapabilityApproval> {
-    definition(tool_ref)
-        .map(|capability| capability.definition().approval)
-        .or_else(|| {
-            effects
-                .capability(tool_ref)
-                .map(|capability| capability.definition().approval)
-        })
 }
 
 #[cfg(test)]

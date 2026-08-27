@@ -34,7 +34,6 @@ impl CapabilityEffect {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CapabilityApproval {
     None,
-    Policy,
     Effect,
 }
 
@@ -182,10 +181,10 @@ pub(crate) fn validate_capability_contract(
 }
 
 fn validate_capability_approval(definition: &CapabilityDefinition) -> Result<(), RuntimeError> {
-    if definition.approval == CapabilityApproval::Policy && !definition.effect.mutating() {
+    if definition.approval == CapabilityApproval::Effect && !definition.effect.mutating() {
         return Err(invalid(
             definition.id,
-            "Policy approval is valid only for a mutating capability",
+            "effect-owned approval is valid only for a mutating capability",
         ));
     }
     Ok(())

@@ -1,4 +1,4 @@
-use runx_contracts::JsonObject;
+use runx_contracts::{JsonObject, JsonValue, sha256_prefixed};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -7,6 +7,7 @@ use crate::{
 };
 
 use super::{PROVIDER_MUTATE_TOOL, PROVIDER_READ_TOOL};
+use crate::ProviderEffectAmount;
 
 fn is_false(value: &bool) -> bool {
     !*value
@@ -35,6 +36,20 @@ struct ProviderReadInput {
 
 impl CapabilityInput for ProviderReadInput {}
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProviderApprovalRequest {
+    pub reason: String,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub gate_type: Option<String>,
+}
+
+impl ProviderApprovalRequest {
+    pub(super) fn digest(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_vec(self).map(|bytes| sha256_prefixed(&bytes))
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
 #[serde(deny_unknown_fields)]
 struct ProviderMutateInput {
@@ -51,6 +66,10 @@ struct ProviderMutateInput {
     optional_result_fields: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_result: Option<JsonObject>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    approval: Option<ProviderApprovalRequest>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    amount: Option<ProviderEffectAmount>,
     idempotency_key: String,
     expected_provider: String,
 }
@@ -101,12 +120,59 @@ const MUTATE_FIELDS: &[CapabilityField] = &[
     READ_FIELDS[5],
     READ_FIELDS[6],
     field(
+        "approval",
+        "Optional exact human approval request. Omit when the admitted grant is sufficient; the effect owner returns a resumable host request when present.",
+    ),
+    field(
+        "amount",
+        "Optional exact amount shown in approval context and bound into the provider plan.",
+    ),
+    field(
         "idempotency_key",
         "Stable request identity hashed into the provider idempotency key by Runx.",
     ),
     READ_FIELDS[7],
     READ_FIELDS[8],
 ];
+
+pub(super) fn approval_request(
+    inputs: &JsonObject,
+) -> Result<Option<ProviderApprovalRequest>, String> {
+    let request = inputs
+        .get("approval")
+        .cloned()
+        .map(JsonValue::deserialize_into)
+        .transpose()
+        .map_err(|error| format!("approval request is invalid: {error}"))?;
+    request
+        .map(|mut request: ProviderApprovalRequest| {
+            request.reason = bounded_text(request.reason, "approval.reason")?;
+            request.gate_type = request
+                .gate_type
+                .map(|value| bounded_text(value, "approval.type"))
+                .transpose()?;
+            Ok(request)
+        })
+        .transpose()
+}
+
+pub(super) fn effect_amount(inputs: &JsonObject) -> Result<Option<ProviderEffectAmount>, String> {
+    inputs
+        .get("amount")
+        .cloned()
+        .map(JsonValue::deserialize_into)
+        .transpose()
+        .map_err(|error| format!("provider effect amount is invalid: {error}"))
+}
+
+fn bounded_text(value: String, field: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() || value.len() > 512 || value.chars().any(char::is_control) {
+        Err(format!("{field} must be a safe non-empty value"))
+    } else {
+        Ok(value.to_owned())
+    }
+}
 
 const fn field(name: &'static str, description: &'static str) -> CapabilityField {
     CapabilityField { name, description }

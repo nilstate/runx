@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.3.2"
+version: "0.3.3"
 catalog:
   kind: skill
   audience: public
@@ -115,7 +115,6 @@ runners:
         - id: apply
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: $input.idempotency_key
           inputs:
             operation: configure_sender
@@ -334,7 +333,6 @@ runners:
         - id: apply
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-approve-delivery
           inputs:
             operation: control_delivery
@@ -412,7 +410,6 @@ runners:
         - id: deliver
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-send-campaign
           inputs:
             operation: control_delivery
@@ -479,7 +476,6 @@ runners:
         - id: activate
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-activate-flow
           inputs:
             operation: control_delivery
@@ -537,7 +533,6 @@ runners:
         - id: apply
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-apply-draft
           inputs:
             operation: "$input.operation"
@@ -842,7 +837,6 @@ runners:
         - id: send
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-send-transactional
           inputs:
             operation: send_transactional
@@ -1147,7 +1141,6 @@ runners:
         - id: import
           skill: graph/provider-operation
           runner: act
-          mutation: true
           idempotency_key: nitrosend-import-contacts
           inputs:
             operation: import_contacts
@@ -1233,7 +1226,6 @@ runners:
           tool: nitrosend.bulk_import
           scopes:
             - nitrosend:write
-          mutation: true
           idempotency_key: nitrosend-import-contacts-csv
           inputs:
             csv_path: "$input.csv_path"

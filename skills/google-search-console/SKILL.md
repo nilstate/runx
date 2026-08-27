@@ -30,7 +30,7 @@ Start with the narrowest question.
   already supplied by a trusted import or connector test. Its packet says
   `provider_status: not_called`; it is not live-provider proof.
 - Use `plan-sitemap` and then `submit-sitemap` for an exact, reviewable sitemap
-  mutation. Submission requires human approval and a provider readback.
+  mutation. Submission requires a matching scoped grant and provider readback.
 - Use `plan-indexing` to test whether a request belongs in Google's restricted
   Indexing API lane. Ordinary page-indexing requests are refused.
 
@@ -64,9 +64,9 @@ before proposing remediation.
 
 `plan-sitemap` validates the property boundary and produces a native
 digest-bound plan. It does not call Google. `submit-sitemap` recomputes that
-binding, requires approval for the exact property and sitemap URL, sends one
-idempotent mutation through the configured connector, and reads the same sitemap
-back. Only the final submission packet may say `provider_status:
+binding, requires an admitted `sitemaps.submit` grant for the exact property and
+sitemap URL, sends one idempotent mutation through the configured connector, and
+reads the same sitemap back. Only the final submission packet may say `provider_status:
 readback_verified`.
 
 A failed, missing, or identity-mismatched readback is not success. Keep the plan
@@ -108,11 +108,11 @@ claim without analytics, deployment, content, and business-context evidence.
 Stop when the property is ambiguous, the connector lacks the exact capability,
 the date range or dimensions do not match the decision, data is incomplete
 beyond the operator's tolerance, a supplied packet lacks provenance, the sitemap
-falls outside the property, approval is absent, or provider readback cannot bind
+falls outside the property, provider authority is absent, or provider readback cannot bind
 the exact resource.
 
 The deterministic module exists only for Search Console domain work that generic
 Runx tools cannot express: mapping ordered row keys to named dimensions,
 preserving incomplete-data semantics, validating property coverage, and
-classifying restricted indexing requests. Runx owns digesting, approvals,
+classifying restricted indexing requests. Runx owns digesting, authority,
 provider execution, idempotency, and receipts.

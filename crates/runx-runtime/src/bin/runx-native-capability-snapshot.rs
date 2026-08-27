@@ -23,10 +23,6 @@ fn main() -> Result<(), io::Error> {
                 options.out.display()
             )));
         }
-        println!(
-            "checked native capability snapshot: {}",
-            options.out.display()
-        );
         return Ok(());
     }
 
@@ -34,10 +30,6 @@ fn main() -> Result<(), io::Error> {
         fs::create_dir_all(parent)?;
     }
     fs::write(&options.out, rendered)?;
-    println!(
-        "generated native capability snapshot: {}",
-        options.out.display()
-    );
     Ok(())
 }
 

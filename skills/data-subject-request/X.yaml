@@ -1,5 +1,5 @@
 skill: data-subject-request
-version: "0.1.0"
+version: "0.1.1"
 
 catalog:
   kind: graph
@@ -256,7 +256,6 @@ runners:
         - id: persist-verdict
           skill: ../data-store
           runner: append_event
-          mutation: true
           inputs:
             data_source_ref: $input.data_source_ref
             resource: $input.resource

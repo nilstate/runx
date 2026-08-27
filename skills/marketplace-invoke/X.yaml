@@ -1,5 +1,5 @@
 skill: marketplace-invoke
-version: "0.2.1"
+version: "0.2.2"
 catalog:
   kind: graph
   audience: operator
@@ -82,7 +82,6 @@ runners:
             equals: x402
           skill: ../x402-pay
           runner: pay
-          mutation: true
           inputs:
             payment_signal: $input.settlement_signal
             parent_payment_authority: $input.parent_payment_authority

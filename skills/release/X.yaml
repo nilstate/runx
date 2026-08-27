@@ -1,5 +1,5 @@
 skill: release
-version: "0.4.4"
+version: "0.4.5"
 
 catalog:
   kind: graph
@@ -122,19 +122,8 @@ runners:
             cwd: inspect-profile.release_context.data.commands.verify.cwd
             env: inspect-profile.release_context.data.commands.verify.env
             timeout_ms: inspect-profile.release_context.data.commands.verify.timeout_ms
-        - id: approve-prepare
-          run: { type: approval }
-          inputs:
-            gate_id: release.prepare.approval
-            reason: Approve execution of this exact digest-bound release preparation command.
-          context:
-            command_plan: plan-prepare.command_plan.data
-          artifacts:
-            wrap_as: approval_decision
-            packet: runx.approval.decision.v1
         - id: execute-prepare
           tool: command.execute
-          mutation: true
           scopes: [process.exec, runx:release:prepare]
           inputs:
             output_mode: json
@@ -254,10 +243,6 @@ runners:
           artifacts:
             named_emits: { release_context: release_context, release_brief: release_brief }
             packets: { release_context: runx.release.context.v1, release_brief: runx.release.brief.v1 }
-      policy:
-        guards:
-          - { step: execute-prepare, field: approve-prepare.approval_decision.data.approved, equals: true }
-
   release:
     default: true
     type: graph
@@ -293,7 +278,6 @@ runners:
             packet: runx.approval.decision.v1
         - id: execute-publish
           tool: command.execute
-          mutation: true
           scopes: [process.exec, runx:release:publish]
           inputs:
             output_mode: json
@@ -320,7 +304,6 @@ runners:
             packets: { publication: runx.release.phase_result.v1 }
         - id: execute-verify
           tool: command.execute
-          mutation: true
           scopes: [process.exec, runx:release:verify]
           inputs:
             output_mode: json

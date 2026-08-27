@@ -65,7 +65,7 @@ caller:
         access: read
         result: { message_id: msg_incident_001, principal_ref: account:ops-bot, audience_ref: "#incidents", content_digest: sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9, status: sent, sent_at: "2026-08-11T00:00:00Z", idempotency_key: $previous.idempotency_key }
   approvals:
-    "provider-effect:sha256:57f2c542e8537cdc5d083ca5b15f657ce2e87197e19e055ec882f4e7d50f4e2c": true
+    "provider-effect:sha256:9806544d0c10b0011dbb04ce21acda01217f84c41983312e90996047eaac1d8c": true
 expect:
   status: sealed
   steps: [fetch-source, scrub-content, send]

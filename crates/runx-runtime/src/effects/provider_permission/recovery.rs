@@ -306,6 +306,12 @@ fn validate_entry_for_plan(
             "pending provider mutation does not match the currently resolved authority and plan",
         ));
     }
+    let has_approval = entry.approval_key.is_some() && entry.approval_actor.is_some();
+    if has_approval != resolved.intent().requires_approval() {
+        return Err(state_error(
+            "pending provider mutation approval does not match the current plan",
+        ));
+    }
     Ok(())
 }
 
@@ -339,14 +345,18 @@ fn validate_entry_for_attempt_store(
 }
 
 fn validate_entry_shape(entry: &ProviderEffectStateEntry) -> Result<(), RuntimeEffectError> {
+    let approval_complete = match (&entry.approval_key, &entry.approval_actor) {
+        (None, None) => true,
+        (Some(key), Some(actor)) => !key.trim().is_empty() && !actor.trim().is_empty(),
+        _ => false,
+    };
     if entry.attempt == 0
         || entry.plan_digest.trim().is_empty()
         || entry.idempotency_key.trim().is_empty()
         || entry.provider.trim().is_empty()
         || entry.operation.trim().is_empty()
         || entry.target.trim().is_empty()
-        || entry.approval_key.as_deref().is_none_or(str::is_empty)
-        || entry.approval_actor.as_deref().is_none_or(str::is_empty)
+        || !approval_complete
     {
         return Err(state_error("pending provider mutation state is incomplete"));
     }

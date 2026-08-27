@@ -69,7 +69,6 @@ fn authority_proof_requested(
     AuthorityProofRequested {
         connected_auth: requirement.is_some(),
         scopes: non_empty_vec(unique_strings(&requested_scopes)),
-        mutating: options.mutating.unwrap_or(false),
         scope_family: requirement
             .as_ref()
             .and_then(|value| non_empty_option(value.scope_family.clone())),

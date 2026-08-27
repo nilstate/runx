@@ -34,7 +34,6 @@ pub struct RunxClient {
 pub struct RunSkillOptions {
     pub runner: Option<String>,
     pub inputs: BTreeMap<String, String>,
-    pub non_interactive: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -109,9 +108,6 @@ impl RunxClient {
         for (name, value) in options.inputs {
             args.push(format!("--{name}"));
             args.push(value);
-        }
-        if options.non_interactive {
-            args.push("--non-interactive".to_owned());
         }
         Ok(RunxJsonReport::new(self.run_json(args, None)?))
     }

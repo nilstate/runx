@@ -613,7 +613,6 @@ steps:
   - id: provider-effect
     tool: provider.mutate
     scopes: [runtime:perf:write]
-    mutation: true
     idempotency_key: benchmark-request
     policy:
       provider_permission:

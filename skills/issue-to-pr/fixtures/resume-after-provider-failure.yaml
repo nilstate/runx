@@ -52,9 +52,6 @@ inputs:
       draft: false
       idempotency_key: issue-to-pr-442-v1
     errors: []
-caller:
-  approvals:
-    "provider-effect:sha256:64a177e04231a2ae95fd738ee72279f30cc3e607266995a3bd778decd7c6b696": true
 expect:
   status: sealed
   receipt: { schema: runx.receipt.v1 }

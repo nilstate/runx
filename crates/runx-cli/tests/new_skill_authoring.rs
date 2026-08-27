@@ -26,7 +26,6 @@ fn new_skill_authoring_waits_for_agent_then_applies_one_validated_package() -> T
         .arg(&target)
         .arg("--receipt-dir")
         .arg(&receipts)
-        .arg("--non-interactive")
         .output()?;
     assert_exit(&pending, 2)?;
     let pending_text = String::from_utf8(pending.stdout)?;

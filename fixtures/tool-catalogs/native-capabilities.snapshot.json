@@ -77,7 +77,7 @@
         "process.exec"
       ],
       "effect": "mutate",
-      "approval": "policy",
+      "approval": "none",
       "artifacts": {
         "kind": "named",
         "output": "command_execution",
@@ -242,7 +242,7 @@
         "fs.write"
       ],
       "effect": "mutate",
-      "approval": "policy",
+      "approval": "none",
       "artifacts": {
         "kind": "wrapped",
         "output": "file_bundle_apply",
@@ -287,7 +287,7 @@
         "fs.write"
       ],
       "effect": "mutate",
-      "approval": "policy",
+      "approval": "none",
       "artifacts": {
         "kind": "wrapped",
         "output": "file_write",
@@ -360,7 +360,7 @@
         "net:http"
       ],
       "effect": "mutate",
-      "approval": "policy",
+      "approval": "none",
       "artifacts": {
         "kind": "named",
         "output": "http_execution",

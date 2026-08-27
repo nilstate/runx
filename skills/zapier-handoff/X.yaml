@@ -1,5 +1,5 @@
 skill: zapier-handoff
-version: "0.2.0"
+version: "0.2.1"
 catalog:
   kind: graph
   audience: operator
@@ -183,7 +183,6 @@ runners:
             receiver: $input.receiver
         - id: invoke
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.event_id
           scopes: [orchestrator.zapier.workflow.invoke]
           policy:
@@ -192,6 +191,9 @@ runners:
             expected_provider: zapier
             operation: hook.invoke
             target: $input.zapier_account_id
+            approval:
+              reason: Approve invoking this exact Zapier handoff.
+              type: workflow_handoff
             idempotency_key: $input.event_id
             result_fields: [event_id, invocation_ref, status, idempotency_key]
             expected_result: { event_id: $input.event_id, status: accepted }

@@ -374,7 +374,6 @@ describe("@runxhq/contracts", () => {
       requested: {
         connected_auth: true,
         scopes: ["repo:read"],
-        mutating: false,
         scope_family: "github_repo",
         authority_kind: "read_only",
         target_repo: "runxhq/runx",

@@ -55,7 +55,8 @@ concurrent branches; and provider-permission admission through receipt sealing
 without contacting a live provider.
 
 `provider_effect_finality` is the production authority-to-finality workload. It
-executes `provider.mutate` through human approval, durable attempt state,
+executes a `provider.mutate` request that explicitly asks for human approval,
+then covers durable attempt state,
 provider acknowledgement, identity-bound readback, finality proof, and receipt
 sealing. The retired `provider_effect_transition` row measured a synthetic read
 plus `data.digest`; it remains in the original Phase 1 report as historical
@@ -142,10 +143,9 @@ real contained document reader and selected-runner path; it is not the separate
 
 Fanout defaults to the host's available parallelism, capped at 64. Set
 `RUNX_MAX_FANOUT_CONCURRENCY` in `RuntimeOptions.env` or the process environment
-to restrict that ceiling. The runtime uses parallel capacity only for isolated,
-non-mutating branches whose effect and adapter lanes explicitly admit it;
-native run steps, tool-resolution paths, host-resolution paths,
-effect-authority inputs, and custom adapters without the capability stay
+to restrict that ceiling. The runtime uses parallel capacity only for isolated
+JavaScript or explicitly isolated adapter lanes. Native run steps, tool and
+host resolution, effect-authority inputs, and adapters without isolation stay
 serial.
 
 ## Runtime Boundaries

@@ -106,8 +106,6 @@ impl ToolExecutor for RuntimeToolExecutor {
             skill_name: tool,
             allow_explicit_manifest_path: false,
             effect_admission: None,
-            policy_approval_refs: &[],
-            step_id: tool,
         };
         dispatch_tool(request, &self.effects, &self.observed_at, Instant::now())
     }
@@ -173,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn managed_agent_cannot_invoke_a_policy_capability_directly()
+    fn managed_agent_uses_an_explicitly_allowed_and_scoped_write()
     -> Result<(), Box<dyn std::error::Error>> {
         let workspace = tempfile::tempdir()?;
         let executor = RuntimeToolExecutor::new(
@@ -195,21 +193,21 @@ mod tests {
             ),
             (
                 "path".to_owned(),
-                JsonValue::String("unapproved.txt".to_owned()),
+                JsonValue::String("scoped.txt".to_owned()),
             ),
             (
                 "contents".to_owned(),
-                JsonValue::String("must not be written".to_owned()),
+                JsonValue::String("scoped write".to_owned()),
             ),
         ]));
 
         let output = executor.execute("fs.write", &input)?;
 
-        assert_eq!(output.status, InvocationStatus::Failure);
-        assert!(output.failure_message().is_some_and(|message| {
-            message.contains("requires verified policy approval evidence")
-        }));
-        assert!(!workspace.path().join("unapproved.txt").exists());
+        assert_eq!(output.status, InvocationStatus::Success);
+        assert_eq!(
+            std::fs::read_to_string(workspace.path().join("scoped.txt"))?,
+            "scoped write"
+        );
         Ok(())
     }
 

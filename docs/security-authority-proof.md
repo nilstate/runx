@@ -9,7 +9,7 @@ it is part of the signed receipt body rather than unsigned read metadata.
 Allowed public fields:
 
 - `run_id`, `skill_name`, and `source_type`
-- requested connected-auth scopes and whether the skill declared mutating work
+- requested connected-auth scopes and the admitted execution boundary
 - scope admission status, granted scopes, grant id, and decision summary
 - provider, connection id, grant reference, and `material_ref` hash
 - typed execution-boundary observation and approval result
@@ -83,6 +83,14 @@ The native boundary can also require exact `expected_result` identity fields
 and project only declared `result_fields` before the result enters a receipt.
 This prevents a correctly scoped call from being mistaken for the wrong
 resource and keeps undeclared secret-adjacent material out of skill output.
+
+The admitted grant is sufficient for a routine provider mutation. A
+consequential mutation may additionally include the typed
+`provider.mutate.inputs.approval` request. The native effect binds that request
+to its exact plan and suspends for host-attested human resolution; the package
+must not place a second graph approval beside the same effect. Approval is
+therefore an explicit property of one act, not a generic consequence of write
+scope.
 
 When more than one active grant matches, resolution fails as ambiguous. Set
 `RUNX_PROVIDER_PERMISSION_GRANT_ID` to select one; Runx then reads that grant's

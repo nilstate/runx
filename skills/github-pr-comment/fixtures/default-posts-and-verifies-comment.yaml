@@ -38,8 +38,6 @@ caller:
           comment_ref: github:runxhq/runx/pull/42#issuecomment-1001
           body_digest: sha256:df26f05463c360a9196935701b95e515768bf4fcecdd0bf721b8a1f1823c9278
           state: published
-  approvals:
-    "provider-effect:sha256:3af8edab95cebc6bb41d0ec9416e0355a657e2b83d68abcb8bbd813498f496f3": true
 expect:
   status: sealed
   steps: [digest-body, post-comment, bind-body, readback]

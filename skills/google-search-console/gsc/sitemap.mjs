@@ -33,7 +33,7 @@ export function prepareSitemapPlan(inputs) {
   return {
     sitemap_plan_draft: {
       schema: "runx.search.sitemap_plan.v1",
-      decision: findings.length === 0 ? "ready_for_approval" : "blocked",
+      decision: findings.length === 0 ? "ready_for_execution" : "blocked",
       ...digestSubject,
       provider_status: "not_called",
       external_status: "not_submitted",
@@ -63,8 +63,8 @@ export function admitSitemapSubmission(inputs) {
   if (text(plan.schema) !== "runx.search.sitemap_plan.v1") {
     findings.push(finding("gsc.sitemap_plan.schema_invalid", "sitemap plan schema is not supported"));
   }
-  if (text(plan.decision) !== "ready_for_approval") {
-    findings.push(finding("gsc.sitemap_plan.not_ready", "sitemap plan is not ready for approval"));
+  if (text(plan.decision) !== "ready_for_execution") {
+    findings.push(finding("gsc.sitemap_plan.not_ready", "sitemap plan is not ready for execution"));
   }
   if (text(plan.provider) !== "google-search-console" || text(plan.operation) !== "sitemaps.submit") {
     findings.push(finding("gsc.sitemap_plan.operation_mismatch", "sitemap plan does not bind the Search Console submit operation"));

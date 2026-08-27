@@ -15,8 +15,6 @@ pub enum RuntimeEffectError {
         verb: AuthorityVerb,
         message: String,
     },
-    #[error("effect family {family} is waiting for approval: {message}")]
-    ApprovalPending { family: String, message: String },
     #[error("effect family {family} failed during {operation}: {message}")]
     Failed {
         family: String,

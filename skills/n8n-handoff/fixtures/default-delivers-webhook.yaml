@@ -40,7 +40,7 @@ caller:
         access: read
         result: { event_id: evt_n8n_demo_001, invocation_ref: n8n:execution:001, status: accepted, idempotency_key: $previous.idempotency_key }
   approvals:
-    "provider-effect:sha256:ad289e0d9074e02432aa0e6e08e75cac04dc56756d792fd0af5657028595250d": true
+    "provider-effect:sha256:e3dcd112841e76f19602acf4805e16687319f9b4f81e1867b2d65b176ed1d605": true
 expect:
   status: sealed
   steps: [build-handoff-context, invoke, readback]

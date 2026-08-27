@@ -37,9 +37,9 @@ pub use provider_permission::{
 pub use registry::RuntimeEffectRegistry;
 pub use state::{EffectAdmission, EffectReplay};
 pub use types::{
-    EffectApprovalRequirement, EffectOutputRequest, EffectReceiptRequest,
-    EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest, EffectToolRequest,
-    ResolvedEffectTarget, RuntimeEffect,
+    EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest, EffectReplayOutputRequest,
+    EffectReplayReceiptRequest, EffectStepRequest, EffectToolRequest, ResolvedEffectTarget,
+    RuntimeEffect,
 };
 
 #[cfg(test)]
@@ -417,7 +417,6 @@ mod tests {
             policy: None,
             fanout_group: None,
             when: None,
-            mutating: false,
             idempotency_key: None,
             mint_authority: None,
             requested_scope_from: None,

@@ -1,5 +1,5 @@
 skill: github-sync
-version: "0.5.1"
+version: "0.5.2"
 
 catalog:
   kind: skill
@@ -11,7 +11,7 @@ catalog:
   execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: required
+  approval: none
 
 input_definitions:
   repository:
@@ -321,7 +321,7 @@ runners:
         - id: digest-mutation
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: data.digest
           context:
             value: plan.sync_plan.data.mutations
@@ -329,9 +329,8 @@ runners:
         - id: push
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes: [repo.write]
           policy:
@@ -351,7 +350,7 @@ runners:
         - id: bind-mutation
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: data.compare
           context:
             actual: push.provider_operation.data.result.batch_digest
@@ -486,7 +485,7 @@ runners:
         - id: digest-mutation
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: data.digest
           context:
             value: plan.sync_plan.data.mutations
@@ -494,9 +493,8 @@ runners:
         - id: push
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_key
           scopes:
             - repo.write
@@ -517,7 +515,7 @@ runners:
         - id: bind-mutation
           when:
             field: plan.sync_plan.data.decision
-            equals: ready_for_approval
+            equals: ready_for_execution
           tool: data.compare
           context:
             actual: push.provider_operation.data.result.batch_digest

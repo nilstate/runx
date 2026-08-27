@@ -8,13 +8,13 @@ operator_journeys:
     request: Generate and verify this project's documentation with Sourcey.
     expected_outcome: Complete discovery, bounded authoring, critique, verification, and package handoff with truthful artifacts.
   - mode: composed
-    request: Continue Sourcey documentation from this approved discovery plan and existing source set.
+    request: Continue Sourcey documentation from this bounded discovery plan and existing source set.
     expected_outcome: Reuse the discovery report and existing sources without rediscovery, then verify and package the documentation result.
     prior_evidence:
-      - The approved Sourcey discovery report, configuration, and existing source inventory supplied by the fixture.
+      - The bounded Sourcey discovery report, configuration, and existing source inventory supplied by the fixture.
     must_not_repeat:
       - Do not rediscover the project identity or documentation inputs.
-      - Do not rewrite sources already accepted by the approved plan.
+      - Do not rewrite sources already accepted by the bounded plan.
 caller:
   answers:
     agent_task.sourcey-discover.output:
@@ -30,7 +30,7 @@ caller:
     agent_task.sourcey-author.output:
       doc_bundle:
         files: []
-        summary: Existing fixture sources already satisfy the approved plan.
+        summary: Existing fixture sources already satisfy the bounded plan.
     agent_task.sourcey-critique.output:
       evaluation_report:
         quality:
@@ -42,8 +42,6 @@ caller:
       revision_bundle:
         files: []
         summary: No revision is required after the passing build review.
-  approvals:
-    sourcey.discovery.approval: true
 expect:
   status: sealed
   receipt:

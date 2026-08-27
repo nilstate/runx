@@ -1,5 +1,5 @@
 skill: spend
-version: "0.5.0"
+version: "0.5.1"
 catalog: { kind: graph, audience: operator, visibility: public, role: canonical, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 runners:
   spend:
@@ -19,7 +19,6 @@ runners:
       steps:
         - id: spend
           tool: provider.mutate
-          mutation: true
           idempotency_key: $input.idempotency_seed
           scopes: [payment.spend]
           policy: { provider_permission: { verb: write } }
@@ -27,6 +26,10 @@ runners:
             operation: payment.spend
             target: $input.payment_signal.counterparty
             expected_provider: $input.rail
+            approval:
+              reason: Approve this exact outbound payment.
+              type: payment_spend
+            amount: { units: $input.payment_signal.amount_minor, unit: $input.payment_signal.currency }
             idempotency_key: $input.idempotency_seed
             result_fields: [payment_ref, rail, amount_minor, currency, status]
             input: { payment_signal: $input.payment_signal, parent_payment_authority: $input.parent_payment_authority, rail_profile_ref: $input.rail_profile_ref, payment_admission: $input.payment_admission, realm: $input.realm }

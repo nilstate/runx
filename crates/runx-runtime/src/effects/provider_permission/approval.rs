@@ -3,6 +3,7 @@ use runx_contracts::{
     Reference, ReferenceType, ResolutionResponseActor,
 };
 
+use super::contract::ProviderApprovalRequest;
 use super::policy::{ProviderPermissionPlan, provider_permission_policy_error};
 use super::{
     PROVIDER_PERMISSION_EFFECT_FAMILY, PROVIDER_PERMISSION_PAID_EXTERNAL_JOB_AUTHORITY_ENV,
@@ -10,7 +11,7 @@ use super::{
 };
 use crate::approval::ApprovalResolution;
 use crate::effects::{
-    EffectAdmission, EffectApprovalRequirement, EffectOutputRequest, EffectStepRequest,
+    EffectAdmission, EffectOutputRequest, EffectPreparationOutcome, EffectStepRequest,
     ProviderApprovalEvidence, ProviderEffectAuthority, ProviderEffectClass, ProviderEffectIntent,
     ProviderEffectIntentInput, ProviderEffectResolved, RuntimeEffectError,
 };
@@ -107,6 +108,7 @@ pub(super) fn resolved_provider_effect(
     access: ProviderNativeAccess,
     principal_ref: &str,
     resolved_target: Option<&str>,
+    approval_request: Option<&ProviderApprovalRequest>,
 ) -> Result<ProviderEffectResolved, RuntimeEffectError> {
     let provider = required_provider_input(request.inputs, "expected_provider")?;
     let operation = required_provider_input(request.inputs, "operation")?;
@@ -137,7 +139,12 @@ pub(super) fn resolved_provider_effect(
         target,
         payload: &payload,
         required_scopes: plan.required_scopes.clone(),
-        amount: None,
+        amount: super::contract::effect_amount(request.inputs)
+            .map_err(provider_permission_policy_error)?,
+        approval_digest: approval_request
+            .map(ProviderApprovalRequest::digest)
+            .transpose()
+            .map_err(provider_effect_state_error)?,
         request_key,
     })
     .map_err(provider_effect_state_error)?;
@@ -158,103 +165,105 @@ pub(super) fn required_provider_input<'a>(
         .ok_or_else(|| provider_permission_policy_error(format!("{field} is required")))
 }
 
-pub(super) fn resolve_provider_approval(
-    requirement: EffectApprovalRequirement,
+pub(super) fn prepare_provider_execution(
     step: &runx_parser::GraphStep,
     admission: EffectAdmission,
     host: &mut dyn crate::Host,
-) -> Result<EffectAdmission, RuntimeEffectError> {
+) -> Result<EffectPreparationOutcome, RuntimeEffectError> {
     let mut context = admission
         .context::<ProviderPermissionAdmission>()
         .cloned()
         .ok_or_else(|| RuntimeEffectError::Failed {
             family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            operation: "resolve provider approval",
+            operation: "prepare provider execution",
             message: "provider permission admission context is missing".to_owned(),
         })?;
     let Some(resolved) = context.provider_effect.clone() else {
-        if requirement == EffectApprovalRequirement::Required {
-            return Err(RuntimeEffectError::InvalidMetadata {
+        return Ok(EffectPreparationOutcome::Ready(Box::new(admission)));
+    };
+    let approval = if resolved.intent().requires_approval() {
+        let request = context.approval_request.as_ref().ok_or_else(|| {
+            RuntimeEffectError::InvalidMetadata {
                 family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-                message: "effect approval is required for a target without a provider effect plan"
+                message: "provider effect plan requires approval but its request is missing"
                     .to_owned(),
-            });
-        }
-        return Ok(admission);
-    };
-    let approval = match (resolved.intent().class(), requirement) {
-        (ProviderEffectClass::Read, EffectApprovalRequirement::Forbidden) => None,
-        (ProviderEffectClass::Mutation, EffectApprovalRequirement::Required) => Some(
-            if let Some(authority) = context.mutation_authority.as_ref() {
-                authority.approval(&resolved)
-            } else if let Some(approval_key) = context
-                .recovery
-                .as_ref()
-                .and_then(super::recovery::ProviderRecoveryContext::approval_key)
-            {
-                if context
-                    .recovery
-                    .as_ref()
-                    .and_then(super::recovery::ProviderRecoveryContext::approval_actor)
-                    != Some("human")
-                {
-                    return Err(RuntimeEffectError::Denied {
-                        family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-                        verb: AuthorityVerb::Write,
-                        message: "pending provider mutation requires its original authority lane"
-                            .to_owned(),
-                    });
+            }
+        })?;
+        if let Some(authority) = context.mutation_authority.as_ref() {
+            Some(authority.approval(&resolved))
+        } else if let Some(recovery) = context.recovery.as_ref()
+            && let Some(approval_key) = recovery.approval_key()
+        {
+            let actor = recovery
+                .approval_actor()
+                .ok_or_else(|| RuntimeEffectError::Denied {
+                    family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+                    verb: AuthorityVerb::Write,
+                    message: "pending provider mutation approval lost its authority lane"
+                        .to_owned(),
+                })?;
+            if actor != "human" {
+                return Err(RuntimeEffectError::Denied {
+                    family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
+                    verb: AuthorityVerb::Write,
+                    message: "pending provider mutation requires its original authority lane"
+                        .to_owned(),
+                });
+            }
+            Some(ProviderApprovalEvidence {
+                actor: actor.to_owned(),
+                approval_key: approval_key.to_owned(),
+                plan_digest: resolved.plan_digest().to_owned(),
+            })
+        } else {
+            match request_exact_provider_approval(step, &resolved, request, host)? {
+                ProviderApprovalOutcome::Approved(evidence) => Some(evidence),
+                ProviderApprovalOutcome::Pending { reason } => {
+                    return Ok(EffectPreparationOutcome::Pending { reason });
                 }
-                ProviderApprovalEvidence {
-                    actor: "human".to_owned(),
-                    approval_key: approval_key.to_owned(),
-                    plan_digest: resolved.plan_digest().to_owned(),
-                }
-            } else {
-                request_exact_provider_approval(step, &resolved, host)?
-            },
-        ),
-        (class, requirement) => {
-            return Err(RuntimeEffectError::InvalidMetadata {
-                family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-                message: format!(
-                    "provider effect class {class:?} is inconsistent with approval requirement {requirement:?}"
-                ),
-            });
+            }
         }
+    } else {
+        None
     };
-    context.attempt = Some(match (approval, context.recovery.as_ref()) {
-        (Some(approval), Some(recovery)) => match recovery.previous_attempt() {
+    context.attempt = Some(
+        match context
+            .recovery
+            .as_ref()
+            .and_then(super::recovery::ProviderRecoveryContext::previous_attempt)
+        {
             Some(previous_attempt) => resolved
                 .begin_retry(approval, previous_attempt)
                 .map_err(provider_effect_state_error)?,
             None => resolved
-                .begin(Some(approval))
+                .begin(approval)
                 .map_err(provider_effect_state_error)?,
         },
-        (approval, _) => resolved
-            .begin(approval)
-            .map_err(provider_effect_state_error)?,
-    });
-    Ok(admission.with_context(context))
+    );
+    Ok(EffectPreparationOutcome::Ready(Box::new(
+        admission.with_context(context),
+    )))
+}
+
+enum ProviderApprovalOutcome {
+    Approved(ProviderApprovalEvidence),
+    Pending { reason: String },
 }
 
 fn request_exact_provider_approval(
     step: &runx_parser::GraphStep,
     resolved: &ProviderEffectResolved,
+    request: &ProviderApprovalRequest,
     host: &mut dyn crate::Host,
-) -> Result<ProviderApprovalEvidence, RuntimeEffectError> {
+) -> Result<ProviderApprovalOutcome, RuntimeEffectError> {
     let gate_id = format!("provider-effect:{}", resolved.plan_digest());
     let gate = ApprovalGate {
         id: gate_id.clone().into(),
-        reason: format!(
-            "Approve {} on {} for {}.",
-            resolved.intent().operation(),
-            resolved.intent().provider(),
-            resolved.intent().target()
-        )
-        .into(),
-        gate_type: Some("provider_effect".to_owned()),
+        reason: request.reason.clone().into(),
+        gate_type: request
+            .gate_type
+            .clone()
+            .or_else(|| Some("provider_effect".to_owned())),
         summary: Some(resolved.approval_summary()),
     };
     let resolution = crate::request_approval(host, gate_id.clone(), gate).map_err(|error| {
@@ -269,11 +278,13 @@ fn request_exact_provider_approval(
             actor: ResolutionResponseActor::Human,
             idempotency_key,
             ..
-        } => Ok(ProviderApprovalEvidence {
-            actor: "human".to_owned(),
-            approval_key: idempotency_key,
-            plan_digest: resolved.plan_digest().to_owned(),
-        }),
+        } => Ok(ProviderApprovalOutcome::Approved(
+            ProviderApprovalEvidence {
+                actor: "human".to_owned(),
+                approval_key: idempotency_key,
+                plan_digest: resolved.plan_digest().to_owned(),
+            },
+        )),
         ApprovalResolution::Approved {
             actor: ResolutionResponseActor::Agent,
             ..
@@ -291,9 +302,8 @@ fn request_exact_provider_approval(
             message: reason
                 .unwrap_or_else(|| format!("provider effect for step '{}' was denied", step.id)),
         }),
-        ApprovalResolution::Pending { .. } => Err(RuntimeEffectError::ApprovalPending {
-            family: PROVIDER_PERMISSION_EFFECT_FAMILY.to_owned(),
-            message: format!(
+        ApprovalResolution::Pending { .. } => Ok(ProviderApprovalOutcome::Pending {
+            reason: format!(
                 "exact provider effect approval {gate_id:?} for step '{}' is pending",
                 step.id,
             ),

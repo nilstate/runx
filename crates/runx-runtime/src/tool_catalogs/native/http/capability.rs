@@ -85,7 +85,7 @@ static EXECUTE: TypedNativeCapability<HttpBatchInput, HttpBatchOutput> = TypedNa
         summary: "Execute a bounded allowlisted HTTP mutation batch through the governed transport.",
         scopes: &["net:http"],
         effect: CapabilityEffect::Mutate,
-        approval: CapabilityApproval::Policy,
+        approval: CapabilityApproval::None,
         artifacts: CapabilityArtifacts::Named {
             output: "http_execution",
             packet: "runx.http.execution.v1",

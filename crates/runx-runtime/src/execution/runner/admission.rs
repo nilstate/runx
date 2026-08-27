@@ -9,9 +9,9 @@ use runx_parser::GraphStep;
 use crate::RuntimeError;
 use crate::adapter::InvocationOutput;
 use crate::effects::{
-    EffectAdmission, EffectOutputRequest, EffectReceiptRequest, EffectReplay,
-    EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest, ResolvedEffectTarget,
-    RuntimeEffectError, RuntimeEffectRegistry,
+    EffectAdmission, EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest,
+    EffectReplay, EffectReplayOutputRequest, EffectReplayReceiptRequest, EffectStepRequest,
+    ResolvedEffectTarget, RuntimeEffectError, RuntimeEffectRegistry,
 };
 
 pub(super) fn find_effect_replay(
@@ -72,7 +72,7 @@ pub(super) fn enforce_step_authority_admission(
         .map_err(|source| runtime_effect_error(step, source))
 }
 
-pub(super) fn resolve_effect_approval(
+pub(super) fn prepare_effect_execution(
     request: EffectStepRequest<'_>,
     authority: Option<StepAuthorityContext>,
     host: &mut dyn crate::Host,
@@ -82,10 +82,16 @@ pub(super) fn resolve_effect_approval(
         return Ok(None);
     };
     let step = request.step;
-    effects
-        .resolve_approval(request, authority.admission, host)
-        .map(|admission| Some(StepAuthorityContext::new(admission)))
-        .map_err(|source| runtime_effect_error(step, source))
+    match effects.prepare_execution(request, authority.admission, host) {
+        Ok(EffectPreparationOutcome::Ready(admission)) => {
+            Ok(Some(StepAuthorityContext::new(*admission)))
+        }
+        Ok(EffectPreparationOutcome::Pending { reason }) => Err(RuntimeError::ResolutionPending {
+            step_id: step.id.clone(),
+            reason,
+        }),
+        Err(source) => Err(runtime_effect_error(step, source)),
+    }
 }
 
 pub(super) fn prepare_effect_output_before_gate(
@@ -210,10 +216,6 @@ fn effect_receipt_request<'a>(
 
 fn runtime_effect_error(step: &GraphStep, source: RuntimeEffectError) -> RuntimeError {
     match source {
-        RuntimeEffectError::ApprovalPending { message, .. } => RuntimeError::GraphBlocked {
-            step_id: step.id.clone(),
-            reason: message,
-        },
         RuntimeEffectError::Denied { verb, message, .. } => authority_denied(step, verb, message),
         RuntimeEffectError::Failed {
             operation, message, ..

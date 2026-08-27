@@ -41,10 +41,11 @@ publish, install, push, or mutate an external provider. Native harness replay
 runs with isolated Runx home, receipts, and no operator credentials. Invalid
 staged packages stop before the target package is touched. Design, inspection,
 validation, and the bounded transactional workspace write do not add a human
-approval gate; the operator authorizes that reversible local mutation by
-invoking the mutating runner. Publication, installation, provider effects, and
-other consequential boundaries remain outside this skill and keep their own
-approval rules.
+approval gate; the operator authorizes those reversible local writes by
+invoking a runner whose native filesystem steps request
+`fs.write`/`fs.delete`. Publication, installation, provider effects, and other
+consequential boundaries remain outside this skill and keep their own approval
+rules.
 
 A validated local write is not a published skill. For a shared or public
 package, the validated `X.yaml` identity and the exact `target_dir` and
@@ -145,13 +146,19 @@ authoring.
   or hosted service as a substitute.
 - For hosted provider work, compose native `provider.read` or
   `provider.mutate`; declare exact scopes and provider operations, and require
-  provider readback. `provider.mutate` owns the exact human approval at the
-  effect boundary, so never add an adjacent graph approval for the same action.
-  Use an explicit graph approval only for a consequential action whose native
-  capability does not already own one. One action has one approval owner. Use
+  provider readback. A scoped provider grant is sufficient by default. When an
+  act genuinely needs a human decision, put one typed `approval` request in the
+  `provider.mutate` inputs with a concrete reason and action-specific type. The
+  native provider effect constructs the exact operator summary, binds the
+  request to the plan, and suspends for `runx resume`; never add an adjacent
+  graph approval for the same action. Use an explicit graph approval only for a
+  consequential decision no native capability owns. One action has one
+  approval owner. Payment effects must also provide the typed
+  `amount: {units, unit}` input so the exact amount is visible and plan-bound;
+  do not bury it only inside provider-specific payload JSON. Use
   `expected_result` to bind the returned resource identity and `result_fields`
   to admit only the fields the receipt needs. Secret-adjacent operations must
-  project their result. Pass mutation retry identity through the native
+  project their result. Pass retry identity through the native
   `idempotency_key` input; do not copy it into the provider payload. Never add a
   package token loader or request client.
 - Never model human authority as a caller-supplied approval string, boolean, or
@@ -268,8 +275,10 @@ authoring.
   cannot express it. Do not add code merely to transform Runx contracts.
 - For a genuinely separate CLI or protocol tool, keep one canonical
   `manifest.json`. It owns source, inputs and defaults, artifact projection,
-  scopes, retry/idempotency, and mutation metadata. Never persist generated
-  `runtime`, `output`, `runx`, hash, or toolkit fields beside that contract.
+  scopes and retry/idempotency. Effect and approval stay with the capability
+  that invokes the tool; never duplicate them in this manifest. Never persist
+  generated `runtime`, `output`, `runx`, hash, or toolkit fields beside that
+  contract.
   `runx tool build` validates and reports derived hashes without rewriting the
   package. The extension SDK may carry the already-materialized JSON request
   and response across a process boundary; it must not become a second manifest
@@ -393,7 +402,7 @@ authoring.
   classification in package code, prose, or a second test script. Public work is
   not ready unless `evaluated`, `coldSelection`, `standaloneDefault`, and
   `composedReuse` are true and native semantic diagnostics are empty.
-- Keep provider proof labels exact. Deterministic replay is `harness`, not
+- Keep provider evidence labels exact. Deterministic replay is `harness`, not
   `live`. A sealed provider-readback case supplied through caller agent answers
   does not prove provider execution. Harnesses must not inherit local Runx
   grants, tokens, credential delivery, or global configuration; every fake
@@ -444,7 +453,7 @@ do not compensate with more fixtures, prose padding, or a bespoke wrapper.
   package; use it for `SKILL.md` and `X.yaml` even when the target directory has
   a different basename.
 - `repo_root` (optional): workspace root; defaults to the caller workspace.
-- `target_dir` (required for mutating runners): repo-relative package directory.
+- `target_dir` (required for `build`, `improve`, and `harness`): repo-relative package directory.
 - `project_context` (optional): product, repository, and operator constraints.
 - `receipt_id`, `receipt_summary`, `harness_output`, `failure_packet` (improve):
   failure evidence, including the stable packet from `diagnose-skill-run`.
@@ -520,9 +529,10 @@ trial to the proposed public result and chain before choosing a disposition.
 Classify every potentially large value as control input,
 immutable artifact, durable cursor/projection, or bounded domain result, and
 name its production owner plus small/large proof. Reads, drafts, local
-validation, and reversible package writes do not gain ceremonial human
-approval. Provider mutations and other consequential effects keep their real
-gates. Assign each consequential action exactly one approval owner; never pair
+validation, reversible package writes, and routine grant-scoped provider
+mutations do not gain ceremonial human approval. Add an exact resumable gate
+only when the action genuinely requires a separate human decision. Assign each
+such action exactly one approval owner; never pair
 an explicit graph approval with an effect-owned approval for the same action.
 Budgets are operational ceilings, not guesses to be widened after validation.
 Do not write files, calculate a digest, invent provider proof, or solve an
