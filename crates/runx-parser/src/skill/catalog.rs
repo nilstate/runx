@@ -692,6 +692,18 @@ fn observe_source(
         super::SourceKind::Graph => {
             if let Some(graph) = source.graph.as_ref() {
                 for step in &graph.steps {
+                    if step.artifacts.as_ref().is_some_and(|artifacts| {
+                        artifacts.packets.as_ref().is_some_and(|packets| {
+                            packets
+                                .values()
+                                .any(|packet| packet == "runx.external_job_schedule_intent.v1")
+                        })
+                    }) {
+                        facts.adapter = true;
+                        facts
+                            .observations
+                            .insert("native_external_job_schedule_boundary".to_owned());
+                    }
                     if let Some(tool) = step.tool.as_deref() {
                         facts.observations.insert(format!("tool:{tool}"));
                         if matches!(tool, "provider.read" | "provider.mutate") {
@@ -1198,6 +1210,42 @@ runners:
                 && diagnostic.runner == "plan"
                 && !diagnostic.required_correction.is_empty()
         }));
+        Ok(())
+    }
+
+    #[test]
+    fn catalog_semantic_report_recognizes_native_external_job_handoff() -> Result<(), String> {
+        let manifest = manifest(
+            r#"skill: media-transcription
+catalog:
+  kind: skill
+  audience: operator
+  visibility: internal
+  role: canonical
+  execution: execute
+  completion: runtime_receipt
+  requires_adapter: true
+  approval: none
+runners:
+  execute:
+    default: true
+    type: graph
+    graph:
+      name: schedule-transcription
+      result_from: [schedule]
+      steps:
+        - id: schedule
+          run:
+            type: javascript
+            module: schedule.mjs
+            outputs: { schedule_intent: object }
+          artifacts:
+            named_emits: { schedule_intent: schedule_intent }
+            packets: { schedule_intent: runx.external_job_schedule_intent.v1 }
+"#,
+        )?;
+        let report = analyze_catalog_semantics("media-transcription", &manifest);
+        assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
         Ok(())
     }
 

@@ -35,6 +35,9 @@ use crate::{
 pub struct SchemaArtifact {
     pub file_name: &'static str,
     pub schema: schema_json::Value,
+    /// True when the generated Rust schema is the complete public packet
+    /// contract and may be embedded by the native runtime.
+    pub native_packet: bool,
 }
 
 #[must_use]
@@ -128,7 +131,9 @@ pub fn generated_schema_artifacts() -> Vec<SchemaArtifact> {
             "orchestrator-handoff-context.schema.json",
         ),
         schema_artifact::<RegistryBinding>("registry-binding.schema.json"),
-        public_packet_artifact::<ProviderOperationPacket>("provider-operation.schema.json"),
+        public_packet_artifact_with_external_contract::<ProviderOperationPacket>(
+            "provider-operation.schema.json",
+        ),
         public_packet_artifact::<ExternalJobContinuation>("external-job-continuation.schema.json"),
         public_packet_artifact::<ExternalJobSchedule>("external-job-schedule.schema.json"),
         public_packet_artifact::<ExternalJobScheduleIntent>(
@@ -178,6 +183,7 @@ pub fn schema_artifact<T: RunxSchema>(file_name: &'static str) -> SchemaArtifact
     SchemaArtifact {
         file_name,
         schema: T::json_schema(),
+        native_packet: false,
     }
 }
 
@@ -187,6 +193,7 @@ pub fn schema_artifact<T: RunxSchema>(file_name: &'static str) -> SchemaArtifact
 /// instead.
 pub fn public_packet_artifact<T: RunxSchema>(file_name: &'static str) -> SchemaArtifact {
     let mut artifact = schema_artifact::<T>(file_name);
+    artifact.native_packet = true;
     if let schema_json::Value::Object(schema) = &mut artifact.schema {
         schema.insert("x-runx-packet".to_owned(), schema_json::Value::Bool(true));
     } else {
@@ -196,5 +203,16 @@ pub fn public_packet_artifact<T: RunxSchema>(file_name: &'static str) -> SchemaA
             "x-runx-packet": true,
         });
     }
+    artifact
+}
+
+/// Mark a public packet whose checked-in manual schema is deliberately
+/// stronger than the generated Rust projection. It remains distributable but
+/// cannot be embedded as though the generated projection were authoritative.
+fn public_packet_artifact_with_external_contract<T: RunxSchema>(
+    file_name: &'static str,
+) -> SchemaArtifact {
+    let mut artifact = public_packet_artifact::<T>(file_name);
+    artifact.native_packet = false;
     artifact
 }

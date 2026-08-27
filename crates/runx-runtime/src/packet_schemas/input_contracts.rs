@@ -23,7 +23,7 @@ pub(crate) fn hydrate_packet_input_contracts(
         return Ok(BTreeMap::new());
     }
 
-    let mut catalog = PacketSchemaCatalog::default();
+    let mut catalog = PacketSchemaCatalog::native_public().map_err(package_error)?;
     catalog
         .discover_validated_package(package, package_root)
         .map_err(package_error)?;

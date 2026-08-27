@@ -240,6 +240,8 @@ pub(crate) enum PacketSchemaCatalogError {
     InvalidPath { path: PathBuf },
     #[error("packet schema is not valid UTF-8: {path}")]
     InvalidSource { path: PathBuf },
+    #[error("native packet schema {file_name} is invalid: {message}")]
+    Native { file_name: String, message: String },
     #[error(
         "packet schema id '{packet_id}' resolves to conflicting documents at {existing_path} and {path}"
     )]
@@ -256,10 +258,63 @@ pub(crate) struct PacketSchemaCatalog {
 }
 
 impl PacketSchemaCatalog {
+    /// Start with reusable packet contracts owned by the native Runx contract
+    /// catalog. Product packages consume these contracts by id and never carry
+    /// private copies of Runx-owned schema bytes.
+    pub(crate) fn native_public() -> Result<Self, PacketSchemaCatalogError> {
+        let mut catalog = Self::default();
+        for artifact in runx_contracts::generated_schema_artifacts() {
+            if !artifact.native_packet {
+                continue;
+            }
+            let Some(schema) = artifact.schema.as_object() else {
+                continue;
+            };
+            if schema
+                .get("x-runx-packet")
+                .and_then(serde_json::Value::as_bool)
+                != Some(true)
+            {
+                continue;
+            }
+            let Some(packet_id) = schema
+                .get("x-runx-schema")
+                .and_then(serde_json::Value::as_str)
+                .filter(|value| !value.trim().is_empty())
+            else {
+                continue;
+            };
+            let mut document = schema.clone();
+            document.insert(
+                runx_parser::PACKET_ID_FIELD.to_owned(),
+                serde_json::Value::String(packet_id.to_owned()),
+            );
+            document.insert(
+                "x-runx-generated-from".to_owned(),
+                serde_json::Value::String(format!("schemas/{}", artifact.file_name)),
+            );
+            let source = serde_json::to_string_pretty(&serde_json::Value::Object(document))
+                .map(|source| format!("{source}\n"))
+                .map_err(|error| PacketSchemaCatalogError::Native {
+                    file_name: artifact.file_name.to_owned(),
+                    message: error.to_string(),
+                })?;
+            let path = PathBuf::from("[runx-native-packets]").join(artifact.file_name);
+            let entry = packet_schema_entry(path, source)?.ok_or_else(|| {
+                PacketSchemaCatalogError::Native {
+                    file_name: artifact.file_name.to_owned(),
+                    message: "generated public packet has no packet identity".to_owned(),
+                }
+            })?;
+            catalog.insert(entry)?;
+        }
+        Ok(catalog)
+    }
+
     pub(crate) fn discover(
         directories: impl IntoIterator<Item = PathBuf>,
     ) -> Result<Self, PacketSchemaCatalogError> {
-        let mut catalog = Self::default();
+        let mut catalog = Self::native_public()?;
         catalog.discover_directories(directories)?;
         Ok(catalog)
     }
@@ -322,7 +377,7 @@ impl PacketSchemaCatalog {
     ) -> Result<(), PacketSchemaCatalogError> {
         let packet_id = &entry.schema.packet_id;
         if let Some(existing) = self.entries.get(packet_id) {
-            if existing.schema.sha256 != entry.schema.sha256 {
+            if existing.schema.value != entry.schema.value {
                 return Err(PacketSchemaCatalogError::Conflict {
                     packet_id: packet_id.clone(),
                     existing_path: existing.path.clone(),
@@ -520,6 +575,14 @@ mod tests {
             packet_schema_entry(PathBuf::from("second.json"), source.to_owned())?
                 .ok_or("second schema missing")?,
         )?;
+        catalog.insert(
+            packet_schema_entry(
+                PathBuf::from("formatted.json"),
+                "{\n  \"type\": \"object\",\n  \"x-runx-packet-id\": \"runx.test.plan.v1\"\n}\n"
+                    .to_owned(),
+            )?
+            .ok_or("formatted schema missing")?,
+        )?;
 
         let conflict = packet_schema_entry(
             PathBuf::from("conflict.json"),
@@ -530,6 +593,29 @@ mod tests {
             catalog.insert(conflict),
             Err(PacketSchemaCatalogError::Conflict { .. })
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn native_public_packets_are_available_without_workspace_files()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let catalog = PacketSchemaCatalog::native_public()?;
+        assert!(catalog.get("runx.external_job_stage.request.v1").is_some());
+        assert!(catalog.get("runx.external_job_stage.result.v1").is_some());
+        assert!(
+            catalog
+                .get("runx.external_job_schedule_intent.v1")
+                .is_some()
+        );
+        let repository_packets = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("dist/packets");
+        let discovered = PacketSchemaCatalog::discover([repository_packets])?;
+        assert!(
+            discovered
+                .get("runx.external_job_stage.request.v1")
+                .is_some()
+        );
         Ok(())
     }
 
