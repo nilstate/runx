@@ -1,0 +1,545 @@
+{
+  "schema": "runx.native_capability_snapshot.v1",
+  "profile": {
+    "name": "runx-runtime/catalog",
+    "features": [
+      "async-http",
+      "catalog",
+      "cli-tool"
+    ]
+  },
+  "capability_count": 37,
+  "capabilities": [
+    {
+      "id": "artifact.admit",
+      "owner": "runx-runtime/local-artifacts",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "local_artifact",
+        "packet": "runx.local_artifact.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "artifact.allocate",
+      "owner": "runx-runtime/hosted-artifacts",
+      "scopes": [
+        "runx:artifact:write"
+      ],
+      "effect": "mutate",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "artifact_operation",
+        "packet": "runx.provider.operation.v1"
+      },
+      "execution_boundary": "remote_provider"
+    },
+    {
+      "id": "artifact.read",
+      "owner": "runx-runtime/local-artifacts",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "artifact_page",
+        "packet": "runx.local_artifact.page.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "cli.capture_help",
+      "owner": "runx-runtime/cli",
+      "scopes": [
+        "cli.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "cli_help",
+        "packet": "runx.cli.help.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "command.execute",
+      "owner": "runx-runtime/command",
+      "scopes": [
+        "process.exec"
+      ],
+      "effect": "mutate",
+      "approval": "policy",
+      "artifacts": {
+        "kind": "named",
+        "output": "command_execution",
+        "packet": "runx.command.execution.v1"
+      },
+      "execution_boundary": "trusted_host_process"
+    },
+    {
+      "id": "command.plan",
+      "owner": "runx-runtime/command",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "command_plan",
+        "packet": "runx.command.plan.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "control.capture_harness_context",
+      "owner": "runx-runtime/control",
+      "scopes": [
+        "runx:control:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "harness_context",
+        "packet": "runx.control.harness_context.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "control.prepare_handoff",
+      "owner": "runx-runtime/control",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "handoff_context",
+        "packet": "runx.orchestrator.handoff_context.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.append_event",
+      "owner": "runx-runtime/event-store",
+      "scopes": [
+        "runx:data:append"
+      ],
+      "effect": "mutate",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "data_operation_result",
+        "packet": "runx.data.operation_result.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.compare",
+      "owner": "runx-runtime/data",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "comparison",
+        "packet": "runx.data.comparison.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.digest",
+      "owner": "runx-runtime/data",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "digest_result",
+        "packet": "runx.data.digest.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.list_stream_heads",
+      "owner": "runx-runtime/event-store",
+      "scopes": [
+        "runx:data:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "data_operation_result",
+        "packet": "runx.data.operation_result.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.read_events",
+      "owner": "runx-runtime/event-store",
+      "scopes": [
+        "runx:data:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "data_operation_result",
+        "packet": "runx.data.operation_result.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "data.read_projection",
+      "owner": "runx-runtime/event-store",
+      "scopes": [
+        "runx:data:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "data_operation_result",
+        "packet": "runx.data.operation_result.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "evidence.index_sources",
+      "owner": "runx-runtime/evidence",
+      "scopes": [
+        "runx:evidence:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": null,
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "evidence.verify_artifact",
+      "owner": "runx-runtime/evidence",
+      "scopes": [
+        "runx:evidence:read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": null,
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "fs.apply_bundle",
+      "owner": "runx-runtime/filesystem",
+      "scopes": [
+        "fs.delete",
+        "fs.write"
+      ],
+      "effect": "mutate",
+      "approval": "policy",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "file_bundle_apply",
+        "packet": "runx.fs.apply_bundle.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "fs.read",
+      "owner": "runx-runtime/filesystem",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "file_read",
+        "packet": "runx.fs.file_read.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "fs.read_bundle",
+      "owner": "runx-runtime/filesystem",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "file_read_bundle",
+        "packet": "runx.fs.file_read_bundle.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "fs.write",
+      "owner": "runx-runtime/filesystem",
+      "scopes": [
+        "fs.write"
+      ],
+      "effect": "mutate",
+      "approval": "policy",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "file_write",
+        "packet": "runx.fs.file_write.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "git.blob_digest",
+      "owner": "runx-runtime/git",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "git_blob_digest",
+        "packet": "runx.git.blob_digest.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "git.current_branch",
+      "owner": "runx-runtime/git",
+      "scopes": [
+        "git.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "git_branch",
+        "packet": "runx.git.branch.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "git.diff_name_only",
+      "owner": "runx-runtime/git",
+      "scopes": [
+        "git.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "git_diff",
+        "packet": "runx.git.diff.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "git.status",
+      "owner": "runx-runtime/git",
+      "scopes": [
+        "git.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "wrapped",
+        "output": "git_status",
+        "packet": "runx.git.status.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "http.execute",
+      "owner": "runx-runtime/http",
+      "scopes": [
+        "net:http"
+      ],
+      "effect": "mutate",
+      "approval": "policy",
+      "artifacts": {
+        "kind": "named",
+        "output": "http_execution",
+        "packet": "runx.http.execution.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "http.query",
+      "owner": "runx-runtime/http",
+      "scopes": [
+        "net:http"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "http_execution",
+        "packet": "runx.http.execution.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "http.read",
+      "owner": "runx-runtime/http",
+      "scopes": [
+        "net:http"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "http_execution",
+        "packet": "runx.http.execution.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "policy.lint",
+      "owner": "runx-core/policy",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "policy_lint",
+        "packet": "runx.policy.lint.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "receipt.attest",
+      "owner": "runx-runtime/receipts",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "attestation",
+        "packet": "runx.attestation.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "receipt.prove",
+      "owner": "runx-runtime/receipts",
+      "scopes": [
+        "receipt.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "receipt_proof",
+        "packet": "runx.receipt.proof.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "receipt.query",
+      "owner": "runx-runtime/receipts",
+      "scopes": [
+        "receipt.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "receipt_query",
+        "packet": "runx.receipt.query.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "runx.skill.apply",
+      "owner": "runx-runtime/authoring",
+      "scopes": [
+        "fs.delete",
+        "fs.write"
+      ],
+      "effect": "mutate",
+      "approval": "policy",
+      "artifacts": {
+        "kind": "named",
+        "output": "apply_result",
+        "packet": "runx.skill.apply_result.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "runx.skill.bind",
+      "owner": "runx-runtime/authoring",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "change_bundle",
+        "packet": "runx.skill.change_bundle.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "runx.skill.inspect",
+      "owner": "runx-runtime/authoring",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "authoring_context",
+        "packet": "runx.skill_lab.authoring_context.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "runx.skill.plan",
+      "owner": "runx-runtime/authoring",
+      "scopes": [],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "architecture_plan",
+        "packet": "runx.skill.architecture_plan.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "runx.skill.validate",
+      "owner": "runx-runtime/authoring",
+      "scopes": [
+        "fs.read"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "skill_validation",
+        "packet": "runx.skill.validation.v1"
+      },
+      "execution_boundary": "native_capability"
+    },
+    {
+      "id": "web.fetch",
+      "owner": "runx-runtime/web",
+      "scopes": [
+        "net:allowlist"
+      ],
+      "effect": "read",
+      "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "fetch_result",
+        "packet": "runx.fetch.v1"
+      },
+      "execution_boundary": "native_capability"
+    }
+  ]
+}

@@ -233,6 +233,27 @@ graph runner is a composition boundary, not a second producer: it must end in
 an explicit package/finalize step when the workflow needs one reusable result,
 and that terminal producer owns the output and packet contract.
 
+## Packet versions and native catalog drift
+
+Public packet ids use lowercase
+`<publisher>.<name>[.<name>...].vN`, where `N` is a positive integer without
+leading zeroes. Runx-owned packets use the `runx` publisher namespace; product
+and extension owners retain their own namespace. Runtime capability admission
+enforces this shape; `.v1` is not an informal label. Before the first stable
+public catalog release, internal V1
+contracts remain greenfield and change in place, with every intentional native
+catalog change visible in the generated capability snapshot. Do not add V2,
+aliases, or compatibility readers during that phase.
+
+After a capability is present in a stable public catalog release, an
+incompatible packet change mints a new packet id and the superseded contract
+receives at least 180 days of announced deprecation before removal. A
+deprecation retains only the narrow public projection needed for migration; it
+must not fork domain state, payment state, provider effects, or business logic.
+Removal before the window expires requires a security or legal emergency with
+an explicit operator record. Compatible documentation changes do not mint a
+packet version; wire-shape or semantic reinterpretation does.
+
 It does not own static model instructions. Keep those exclusively in the
 owning `SKILL.md`; the runtime supplies the current task and contracts
 separately.

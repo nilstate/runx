@@ -38,6 +38,13 @@ host or provider boundaries remain feature gated:
 `cli-tool`, `catalog`, `mcp`, `mcp-http-server`, `external-adapter`, `agent`,
 and `thread-outbox-provider`. `cli-tool` enables `async-http` transitively.
 
+The generated catalog-profile capability snapshot lives at
+`fixtures/tool-catalogs/native-capabilities.snapshot.json`. It pins the
+runtime-owned roster, scopes, effect and approval posture, packet binding, and
+execution boundary for the explicit `catalog`/`cli-tool`/`async-http` feature
+set. Run `pnpm capabilities:snapshot:generate` only for an intentional contract
+change; `pnpm catalog:check` is the freshness wall.
+
 ## Doctor
 
 The native Rust doctor API is wired into `runx-cli` for the read-only

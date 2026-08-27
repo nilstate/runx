@@ -20,6 +20,13 @@ const rustHarnessFixtureOracleBin = path.join(
   "debug",
   process.platform === "win32" ? "runx-harness-fixture-oracles.exe" : "runx-harness-fixture-oracles",
 );
+const rustCapabilitySnapshotBin = path.join(
+  cargoTargetDir,
+  "debug",
+  process.platform === "win32"
+    ? "runx-native-capability-snapshot.exe"
+    : "runx-native-capability-snapshot",
+);
 const rustSchemaArtifactsBin = path.join(
   cargoTargetDir,
   "debug",
@@ -56,6 +63,7 @@ const rustReceiptCompositionFixturesBin = path.join(
 const evalBinEnv = {
   RUNX_RUST_CLI_BIN: rustKernelBin,
   RUNX_HARNESS_FIXTURE_ORACLE_BIN: rustHarnessFixtureOracleBin,
+  RUNX_CAPABILITY_SNAPSHOT_BIN: rustCapabilitySnapshotBin,
   RUNX_SCHEMA_ARTIFACTS_BIN: rustSchemaArtifactsBin,
   RUNX_PAID_INVOCATION_FIXTURES_BIN: rustPaidInvocationFixturesBin,
   RUNX_PRINCIPAL_ID_FIXTURES_BIN: rustPrincipalIdFixturesBin,
@@ -122,6 +130,8 @@ const rustBuild = await runStep(
     "runx",
     "--bin",
     "runx-harness-fixture-oracles",
+    "--bin",
+    "runx-native-capability-snapshot",
     "--bin",
     "runx-js-worker",
     "--bin",

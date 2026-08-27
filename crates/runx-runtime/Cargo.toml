@@ -120,6 +120,13 @@ path = "src/bin/runx-mcp-session-probe.rs"
 test = false
 bench = false
 
+[[bin]]
+name = "runx-native-capability-snapshot"
+path = "src/bin/runx-native-capability-snapshot.rs"
+required-features = ["catalog"]
+test = false
+bench = false
+
 [[test]]
 name = "integration"
 path = "tests/integration.rs"

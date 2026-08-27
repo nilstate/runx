@@ -264,9 +264,39 @@ fn validate_capability_artifacts(definition: &CapabilityDefinition) -> Result<()
                 "output name and packet schema must not be empty",
             ));
         }
-        CapabilityArtifacts::Named { .. } | CapabilityArtifacts::Wrapped { .. } => {}
+        CapabilityArtifacts::Named { packet, .. } | CapabilityArtifacts::Wrapped { packet, .. } => {
+            if !valid_public_packet_id(packet) {
+                return Err(invalid(
+                    definition.id,
+                    "packet id must use lowercase <publisher>.<name>[.<name>...].vN with a positive version",
+                ));
+            }
+        }
     }
     Ok(())
+}
+
+fn valid_public_packet_id(packet: &str) -> bool {
+    let parts = packet.split('.').collect::<Vec<_>>();
+    if parts.len() < 3 {
+        return false;
+    }
+    let Some(version) = parts.last().and_then(|part| part.strip_prefix('v')) else {
+        return false;
+    };
+    if version.is_empty()
+        || version.starts_with('0')
+        || !version.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return false;
+    }
+    parts[..parts.len() - 1].iter().all(|part| {
+        let mut bytes = part.bytes();
+        bytes.next().is_some_and(|byte| byte.is_ascii_lowercase())
+            && bytes.all(|byte| {
+                byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+            })
+    })
 }
 
 fn validate_capability_fields(
@@ -312,5 +342,34 @@ fn invalid(id: &str, message: impl Into<String>) -> RuntimeError {
             id.to_owned()
         },
         message: message.into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_public_packet_id;
+
+    #[test]
+    fn public_packet_ids_are_namespaced_and_positively_versioned() {
+        for packet in [
+            "runx.attestation.v1",
+            "runx.skill.apply_result.v1",
+            "runx.scope-bounds.subset.v12",
+            "ausca.document_ocr.result.v1",
+            "mock.deployment.v1",
+        ] {
+            assert!(valid_public_packet_id(packet), "{packet}");
+        }
+        for packet in [
+            "attestation.v1",
+            "runx.v1",
+            "runx.Attestation.v1",
+            "runx.attestation",
+            "runx.attestation.v0",
+            "runx.attestation.v01",
+            "runx.attestation.latest",
+        ] {
+            assert!(!valid_public_packet_id(packet), "{packet}");
+        }
     }
 }

@@ -65,6 +65,8 @@ pub use tool_catalogs::native::{
     EventStoreMigrationProof, EventStoreMigrationRequest, EventStoreMigrationStatus,
     migrate_event_store,
 };
+#[cfg(feature = "catalog")]
+pub use tool_catalogs::native::{NativeCapabilitySnapshot, native_capability_snapshot};
 
 pub mod adapters;
 

@@ -43,6 +43,8 @@ mod http;
 mod input;
 mod policy;
 mod receipt_tools;
+#[cfg(feature = "catalog")]
+mod snapshot;
 #[cfg(feature = "async-http")]
 mod web;
 mod workspace;
@@ -65,6 +67,8 @@ pub(crate) use catalog::artifacts;
 #[cfg(feature = "catalog")]
 pub(crate) use catalog::inventory;
 pub(crate) use catalog::{inspect, list_items, search};
+#[cfg(feature = "catalog")]
+pub use snapshot::{NativeCapabilitySnapshot, native_capability_snapshot};
 
 const CAPABILITY_GROUPS: &[&[&dyn NativeCapability]] = &[
     #[cfg(feature = "cli-tool")]

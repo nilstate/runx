@@ -37,6 +37,60 @@ fn capability_registry_definitions_are_unique_and_valid() {
     }
 }
 
+#[cfg(feature = "catalog")]
+#[test]
+fn capability_snapshot_is_sorted_and_pins_the_catalog_feature_profile() {
+    let snapshot = serde_json::to_value(super::native_capability_snapshot())
+        .expect("snapshot should serialize");
+    assert_eq!(
+        snapshot.get("schema").and_then(serde_json::Value::as_str),
+        Some("runx.native_capability_snapshot.v1")
+    );
+    assert_eq!(
+        snapshot
+            .pointer("/profile/features")
+            .and_then(serde_json::Value::as_array),
+        Some(&vec![
+            serde_json::Value::String("async-http".to_owned()),
+            serde_json::Value::String("catalog".to_owned()),
+            serde_json::Value::String("cli-tool".to_owned()),
+        ])
+    );
+    let capabilities = snapshot
+        .get("capabilities")
+        .and_then(serde_json::Value::as_array)
+        .expect("snapshot should contain capabilities");
+    assert_eq!(capabilities.len(), super::core_capabilities().count());
+    let ids = capabilities
+        .iter()
+        .filter_map(|capability| capability.get("id"))
+        .filter_map(serde_json::Value::as_str)
+        .collect::<Vec<_>>();
+    assert!(ids.windows(2).all(|pair| pair[0] < pair[1]));
+    for capability in capabilities {
+        for field in [
+            "id",
+            "owner",
+            "scopes",
+            "effect",
+            "approval",
+            "artifacts",
+            "execution_boundary",
+        ] {
+            assert!(capability.get(field).is_some(), "missing {field}");
+        }
+        if let Some(packet) = capability
+            .pointer("/artifacts/packet")
+            .and_then(serde_json::Value::as_str)
+        {
+            assert!(
+                packet.starts_with("runx."),
+                "runtime-owned packet must use the runx namespace: {packet}"
+            );
+        }
+    }
+}
+
 #[test]
 fn capability_registry_defaults_keep_declared_json_types() {
     let capability = definition("evidence.index_sources")
