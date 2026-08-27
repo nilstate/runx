@@ -7,6 +7,12 @@ runx:
 
 # Marketplace Invoke
 
+The body sent to the vendor is the complete current V1 invocation envelope.
+The listing signal supplies immutable offer revision and schema digests,
+canonicalizer, and product input. The hosted x402 buyer derives the stable
+idempotency key from the admitted operation and adds the current outer
+`parent_binding`; neither callers nor listing facades may forge either field.
+
 `marketplace-invoke` is the buyer-facing marketplace skill called through the
 existing `runx skill` surface. Paid listing
 admission injects the immutable listing, vendor, exact endpoint, vendor price,

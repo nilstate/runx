@@ -13,7 +13,17 @@ inputs:
     expected_receipt_class: executed
     vendor_ref: { type: principal, uri: runx:principal:ausca }
   settlement_signal:
-    resource: { url: https://vendor.example/v1/invocations, method: POST, body: { offer_id: document-ocr } }
+    resource:
+      url: https://vendor.example/v1/invocations
+      method: POST
+      body:
+        offer_id: document-ocr
+        offer_revision: ocr-fixed-r2
+        offer_revision_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        input_schema_digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        output_schema_digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        canonicalizer_version: runx.receipt.c14n.v1
+        input: { artifact_ref: "runx:artifact:document-1" }
     amount_minor: 25
     pay_to: "0x0000000000000000000000000000000000000002"
   parent_payment_authority: { term_id: authority-test-1, currency: USD, max_amount_minor: 25, counterparty: https://vendor.example/v1/invocations }
