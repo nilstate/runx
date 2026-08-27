@@ -1256,7 +1256,14 @@ where
     #[cfg(not(feature = "catalog"))]
     {
         let _ = (
-            runtime, graph_dir, graph_name, step, attempt, inputs, authority,
+            runtime,
+            graph_dir,
+            graph_name,
+            step,
+            attempt,
+            inputs,
+            policy_approval_refs,
+            authority,
         );
         Err(RuntimeError::UnsupportedAdapter {
             adapter_type: "catalog".to_owned(),

@@ -213,6 +213,7 @@ export function checkHttpTransportOwnership(findings) {
   const requestOwners = [
     "crates/runx-runtime/src/hosted_api/environment.rs",
     "crates/runx-runtime/src/hosted_api/request.rs",
+    "crates/runx-runtime/src/hosted_api/skill_endpoint.rs",
     "crates/runx-runtime/src/registry/http.rs",
     "crates/runx-runtime/src/adapters/agent_anthropic.rs",
     "crates/runx-runtime/src/tool_catalogs/native/web.rs",

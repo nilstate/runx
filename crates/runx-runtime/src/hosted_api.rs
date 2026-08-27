@@ -10,6 +10,7 @@ mod error;
 mod login;
 mod receipts;
 pub(crate) mod request;
+mod skill_endpoint;
 
 pub use connect::{HostedConnectAction, HostedConnectStart, execute_hosted_connect};
 pub use environment::{
@@ -25,6 +26,9 @@ pub use login::{
     complete_hosted_login, exchange_hosted_provider_token, start_hosted_login,
 };
 pub use receipts::{ReceiptPublishResponse, publish_hosted_receipt};
+pub use skill_endpoint::{
+    HostedSkillChallenge, HostedSkillEndpointError, request_hosted_skill_challenge,
+};
 
 pub const DEFAULT_HOSTED_API_BASE_URL: &str = "https://api.runx.ai";
 pub const HOSTED_API_BASE_URL_ENV: &str = "RUNX_PUBLIC_API_BASE_URL";

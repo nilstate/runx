@@ -14,7 +14,6 @@ use crate::RuntimeError;
 use crate::credentials::CredentialDelivery;
 #[cfg(feature = "catalog")]
 use crate::effects::EffectToolRequest;
-#[cfg(feature = "catalog")]
 use crate::effects::RuntimeEffectRegistry;
 
 mod artifacts;

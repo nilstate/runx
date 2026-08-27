@@ -32,6 +32,7 @@ runx-contracts.workspace = true
 runx-parser.workspace = true
 runx-receipts.workspace = true
 runx-runtime = { workspace = true, features = ["cli-tool", "catalog", "mcp", "mcp-http-server", "external-adapter", "agent", "thread-outbox-provider"] }
+runx-x402.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import {
   isArchitectureCheckFile,
+  productionRustSource,
   relative,
   rustFiles,
   splitIdentifierParts,
@@ -112,7 +113,12 @@ export function checkRetiredRuntimeSurfaces(findings) {
     "crates/runx-contracts/src",
   ]) {
     for (const filePath of rustFiles(root)) {
-      let source = readFileSync(filePath, "utf8");
+      if (
+        filePath.includes(`${path.sep}tests${path.sep}`)
+        || path.basename(filePath) === "tests.rs"
+        || path.basename(filePath).endsWith("_tests.rs")
+      ) continue;
+      let source = productionRustSource(readFileSync(filePath, "utf8"));
       if (
         filePath === paidInvocationContractOwner
         || filePath === paidInvocationFingerprintOwner

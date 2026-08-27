@@ -1,32 +1,17 @@
 // Module rationale: paid registry skills keep the ordinary `runx skill`
-// command while the hosted HTTP boundary owns x402 wire semantics. The CLI
-// validates and renders the challenge; payment remains an ordinary payment
+// command while a named runtime service owns the hosted HTTP boundary. The CLI
+// validates and renders the x402 presentation; settlement remains an ordinary
 // skill and never enters this router.
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD;
 use runx_contracts::{JsonObject, JsonValue, X402_PAYMENT_REQUIRED_HEADER, X402PaymentRequired};
-use runx_runtime::{HttpMethod, ReqwestHttpTransport, RuntimeHttpRequest, RuntimeHttpTransport};
-use url::Url;
+use runx_runtime::{HostedSkillChallenge, request_hosted_skill_challenge};
+use runx_x402::decode_payment_required_header;
 
 use super::resolver::ResolvedSkillRef;
-
-const MAX_CHALLENGE_BYTES: usize = 256 * 1024;
 
 pub(super) fn discover_paid_skill(
     resolved: &ResolvedSkillRef,
     requested_runner: Option<&str>,
     inputs: &JsonObject,
-) -> Result<JsonValue, String> {
-    let transport = ReqwestHttpTransport::new()
-        .map_err(|error| format!("failed to initialize marketplace HTTP: {error}"))?;
-    discover_paid_skill_with_transport(resolved, requested_runner, inputs, &transport)
-}
-
-fn discover_paid_skill_with_transport<T: RuntimeHttpTransport>(
-    resolved: &ResolvedSkillRef,
-    requested_runner: Option<&str>,
-    inputs: &JsonObject,
-    transport: &T,
 ) -> Result<JsonValue, String> {
     let listing = resolved
         .paid_listing
@@ -37,18 +22,21 @@ fn discover_paid_skill_with_transport<T: RuntimeHttpTransport>(
         .hosted_registry_url
         .as_deref()
         .ok_or_else(|| "paid registry skill has no hosted execution surface".to_owned())?;
-    let resource_url = paid_skill_resource_url(base_url, listing.skill_id.as_str())?;
-    let response = transport
-        .send_limited(
-            RuntimeHttpRequest {
-                method: HttpMethod::Post,
-                url: resource_url.clone(),
-                headers: Vec::new(),
-                body: None,
-            },
-            MAX_CHALLENGE_BYTES,
-        )
+    let challenge = request_hosted_skill_challenge(base_url, listing.skill_id.as_str())
         .map_err(|error| format!("marketplace discovery failed: {error}"))?;
+    render_paid_skill_challenge(listing, runner, inputs, challenge)
+}
+
+fn render_paid_skill_challenge(
+    listing: &runx_contracts::PaidSkillListing,
+    runner: String,
+    inputs: &JsonObject,
+    challenge: HostedSkillChallenge,
+) -> Result<JsonValue, String> {
+    let HostedSkillChallenge {
+        resource_url,
+        response,
+    } = challenge;
     if response.status != 402 {
         return Err(format!(
             "marketplace discovery returned HTTP {}; expected 402",
@@ -67,10 +55,7 @@ fn discover_paid_skill_with_transport<T: RuntimeHttpTransport>(
         })
         .map(|header| header.value.as_str())
         .ok_or_else(|| "marketplace 402 omitted PAYMENT-REQUIRED".to_owned())?;
-    let decoded = STANDARD
-        .decode(encoded)
-        .map_err(|error| format!("marketplace PAYMENT-REQUIRED is not valid base64: {error}"))?;
-    let header: X402PaymentRequired = serde_json::from_slice(&decoded)
+    let header = decode_payment_required_header(encoded)
         .map_err(|error| format!("marketplace PAYMENT-REQUIRED is invalid: {error}"))?;
     if header != body {
         return Err("marketplace x402 header and body challenges differ".to_owned());
@@ -121,51 +106,70 @@ fn selected_runner(
     Err("paid listing has multiple offers; select a runner explicitly".to_owned())
 }
 
-fn paid_skill_resource_url(base_url: &str, skill_id: &str) -> Result<String, String> {
-    let (owner, name) =
-        runx_runtime::registry::split_skill_id(skill_id).map_err(|error| error.to_string())?;
-    let mut url =
-        Url::parse(base_url).map_err(|error| format!("hosted registry URL is invalid: {error}"))?;
-    if !matches!(url.scheme(), "http" | "https") || url.cannot_be_a_base() {
-        return Err("hosted registry URL must be HTTP(S)".to_owned());
-    }
-    url.set_query(None);
-    url.set_fragment(None);
-    url.path_segments_mut()
-        .map_err(|_| "hosted registry URL cannot carry skill routes".to_owned())?
-        .pop_if_empty()
-        .extend(["v1", "skills", owner, name, "run"]);
-    Ok(url.to_string())
-}
-
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
-
     use runx_contracts::PaidSkillListing;
     use runx_runtime::{RuntimeHttpHeader, RuntimeHttpResponse};
 
     use super::*;
-    use crate::skill::resolver::{RegistryTrustState, SkillRefKind};
-
-    struct FakeTransport {
-        response: RuntimeHttpResponse,
-        requests: RefCell<Vec<RuntimeHttpRequest>>,
-    }
-
-    impl RuntimeHttpTransport for FakeTransport {
-        fn send(
-            &self,
-            request: RuntimeHttpRequest,
-        ) -> Result<RuntimeHttpResponse, runx_runtime::RuntimeHttpError> {
-            self.requests.borrow_mut().push(request);
-            Ok(self.response.clone())
-        }
-    }
 
     #[test]
     fn paid_registry_skill_renders_the_exact_hosted_x402_challenge() {
-        let body = serde_json::json!({
+        let body = challenge_body("300000");
+        let challenge = hosted_challenge(&body, &body);
+        let listing = listing();
+        let output = render_paid_skill_challenge(
+            &listing,
+            "invoke".to_owned(),
+            &JsonObject::from([("document".to_owned(), JsonValue::String("ref".to_owned()))]),
+            challenge,
+        )
+        .expect("paid discovery");
+
+        let output: serde_json::Value =
+            serde_json::to_value(output).expect("serializable challenge output");
+        assert_eq!(output["status"], "payment_required");
+        assert_eq!(output["runner"], "invoke");
+        assert_eq!(output["result"]["payment_required"], body);
+    }
+
+    #[test]
+    fn paid_registry_skill_rejects_different_header_and_body_challenges() {
+        let body = challenge_body("300000");
+        let header = challenge_body("400000");
+
+        let error = render_paid_skill_challenge(
+            &listing(),
+            "invoke".to_owned(),
+            &JsonObject::new(),
+            hosted_challenge(&body, &header),
+        )
+        .expect_err("different challenge declarations must fail");
+
+        assert!(error.contains("header and body challenges differ"));
+    }
+
+    fn hosted_challenge(
+        body: &serde_json::Value,
+        header: &serde_json::Value,
+    ) -> HostedSkillChallenge {
+        let header: X402PaymentRequired =
+            serde_json::from_value(header.clone()).expect("typed challenge header");
+        let encoded =
+            runx_x402::encode_payment_required_header(&header).expect("encoded challenge header");
+        let mut response = RuntimeHttpResponse::new(402, body.to_string());
+        response.headers = vec![RuntimeHttpHeader::new(
+            X402_PAYMENT_REQUIRED_HEADER,
+            encoded,
+        )];
+        HostedSkillChallenge {
+            resource_url: "https://api.runx.test/v1/skills/ausca/document-ocr/run".to_owned(),
+            response,
+        }
+    }
+
+    fn challenge_body(amount: &str) -> serde_json::Value {
+        serde_json::json!({
             "x402Version": 2,
             "resource": {
                 "url": "https://api.runx.test/v1/skills/ausca/document-ocr/run",
@@ -175,61 +179,12 @@ mod tests {
             "accepts": [{
                 "scheme": "exact",
                 "network": "eip155:8453",
-                "amount": "300000",
+                "amount": amount,
                 "asset": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
                 "payTo": "0x26572ff23c6c52bfb1a69cb0c9114a8be443b422",
                 "maxTimeoutSeconds": 300
             }]
-        });
-        let encoded = STANDARD.encode(serde_json::to_vec(&body).expect("challenge JSON"));
-        let mut response = RuntimeHttpResponse::new(402, body.to_string());
-        response.headers = vec![RuntimeHttpHeader::new(
-            X402_PAYMENT_REQUIRED_HEADER,
-            encoded,
-        )];
-        let transport = FakeTransport {
-            response,
-            requests: RefCell::new(Vec::new()),
-        };
-        let resolved = resolved_paid_listing();
-        let output = discover_paid_skill_with_transport(
-            &resolved,
-            None,
-            &JsonObject::from([("document".to_owned(), JsonValue::String("ref".to_owned()))]),
-            &transport,
-        )
-        .expect("paid discovery");
-
-        let output: serde_json::Value =
-            serde_json::to_value(output).expect("serializable challenge output");
-        assert_eq!(output["status"], "payment_required");
-        assert_eq!(output["runner"], "invoke");
-        assert_eq!(output["result"]["payment_required"], body);
-        assert_eq!(transport.requests.borrow()[0].method, HttpMethod::Post);
-        assert_eq!(
-            transport.requests.borrow()[0].url,
-            "https://api.runx.test/v1/skills/ausca/document-ocr/run"
-        );
-        assert!(transport.requests.borrow()[0].body.is_none());
-    }
-
-    fn resolved_paid_listing() -> ResolvedSkillRef {
-        ResolvedSkillRef {
-            kind: SkillRefKind::Registry,
-            skill_id: Some("ausca/document-ocr".to_owned()),
-            version: Some("0.1.0".to_owned()),
-            digest: Some(format!("sha256:{}", "a".repeat(64))),
-            profile_digest: Some(format!("sha256:{}", "b".repeat(64))),
-            package_digest: None,
-            registry_source: Some("remote https://api.runx.test".to_owned()),
-            registry_source_fingerprint: Some("remote:https://api.runx.test".to_owned()),
-            trust_state: Some(RegistryTrustState::Trusted),
-            trust_tier: Some("community".to_owned()),
-            registry_key_id: Some("test".to_owned()),
-            paid_listing: Some(listing()),
-            hosted_registry_url: Some("https://api.runx.test".to_owned()),
-            runnable_path: "unused".into(),
-        }
+        })
     }
 
     fn listing() -> PaidSkillListing {

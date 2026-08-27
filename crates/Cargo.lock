@@ -2429,6 +2429,7 @@ dependencies = [
  "runx-parser",
  "runx-receipts",
  "runx-runtime",
+ "runx-x402",
  "rusqlite",
  "rustix",
  "serde",
