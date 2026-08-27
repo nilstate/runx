@@ -418,6 +418,60 @@ impl RunxSchema for PaymentReference {
     }
 }
 
+/// The exact hosted run attached to a paid invocation.
+///
+/// The paid-invocation feature owns only this reference. Hosted run state and
+/// output remain behind the run-control service and its own store.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+pub struct PaidInvocationRunReference(Reference);
+
+impl PaidInvocationRunReference {
+    pub fn new(value: Reference) -> Option<Self> {
+        let identifier = value.uri.as_str().strip_prefix("runx:run:")?;
+        let valid_identifier = !identifier.is_empty()
+            && identifier.len() <= 256
+            && identifier.bytes().enumerate().all(|(index, byte)| {
+                byte.is_ascii_alphanumeric()
+                    || (index > 0 && matches!(byte, b'.' | b'_' | b':' | b'-'))
+            });
+        (value.reference_type == ReferenceType::Act && valid_identifier).then_some(Self(value))
+    }
+
+    pub fn as_reference(&self) -> &Reference {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for PaidInvocationRunReference {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Reference::deserialize(deserializer)?;
+        Self::new(value).ok_or_else(|| {
+            de::Error::custom("run_ref must be an act reference with a runx:run: URI")
+        })
+    }
+}
+
+impl RunxSchema for PaidInvocationRunReference {
+    fn json_schema() -> Value {
+        let mut schema = Reference::json_schema();
+        if let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) {
+            properties.insert("type".to_owned(), const_string("act"));
+            properties.insert(
+                "uri".to_owned(),
+                json!({
+                    "type": "string",
+                    "pattern": "^runx:run:[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$",
+                }),
+            );
+        }
+        schema
+    }
+}
+
 /// The sole V1 canonicalization identifier for digest-bound inputs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 pub enum PaidInvocationCanonicalizerVersion {
@@ -691,6 +745,8 @@ pub struct GetPaidInvocationRequest {
 pub struct GetPaidInvocationAdmission {
     pub invocation: PaidInvocation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_ref: Option<PaidInvocationRunReference>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub receipt_ref: Option<Reference>,
 }
 
@@ -752,5 +808,20 @@ mod tests {
         assert!(CurrencyCode::new("usd").is_none());
         assert!(SettlementFamily::new("hosted.mock-v1").is_some());
         assert!(SettlementFamily::new("Hosted").is_none());
+    }
+
+    #[test]
+    fn paid_run_reference_requires_the_exact_run_namespace() {
+        let run = Reference::with_uri(ReferenceType::Act, "runx:run:hosted-1");
+        assert!(PaidInvocationRunReference::new(run).is_some());
+        let authority = Reference::with_uri(ReferenceType::Act, "runx:act:hosted-1");
+        assert!(PaidInvocationRunReference::new(authority).is_none());
+        let wrong_type = Reference::with_uri(ReferenceType::Artifact, "runx:run:hosted-1");
+        assert!(PaidInvocationRunReference::new(wrong_type).is_none());
+        let malformed = Reference::with_uri(ReferenceType::Act, "runx:run:-hosted");
+        assert!(PaidInvocationRunReference::new(malformed).is_none());
+        let oversized =
+            Reference::with_uri(ReferenceType::Act, format!("runx:run:{}", "r".repeat(257)));
+        assert!(PaidInvocationRunReference::new(oversized).is_none());
     }
 }

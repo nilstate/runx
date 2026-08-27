@@ -269,6 +269,27 @@ fn vectors() -> io::Result<Vec<Vector>> {
                 true,
             )),
         )?,
+        valid::<GetPaidInvocationResult>(
+            "get-run-reference.json",
+            "A completed invocation exposes its hosted run without embedding run-domain state.",
+            "GetPaidInvocation",
+            "runx.payment.get_paid_invocation.result.v1",
+            json!({
+                "status": "admitted",
+                "value": {
+                    "invocation": invocation(
+                        "paid_run",
+                        "settled",
+                        "succeeded",
+                        "fulfilment_won",
+                        None,
+                        true,
+                    ),
+                    "receipt_ref": reference("receipt", "runx:receipt:paid-run-1"),
+                    "run_ref": reference("act", "runx:run:hosted-1")
+                }
+            }),
+        )?,
         valid::<GetPaidInvocationRequest>(
             "get-request.json",
             "Lookup names only the commercial invocation.",

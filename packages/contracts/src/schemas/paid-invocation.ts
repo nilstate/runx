@@ -53,6 +53,12 @@ export type PrincipalReferenceContract = DeepReadonly<
   Omit<ReferenceContract, "type"> & { readonly type: "principal" }
 >;
 export type PaymentReferenceContract = ReferenceContract;
+export type PaidInvocationRunReferenceContract = DeepReadonly<
+  Omit<ReferenceContract, "type" | "uri"> & {
+    readonly type: "act";
+    readonly uri: `runx:run:${string}`;
+  }
+>;
 
 export type PaymentIdempotencyBindingContract = DeepReadonly<{
   key: string;
@@ -214,6 +220,7 @@ export type GetPaidInvocationResultContract =
       status: "admitted";
       value: {
         invocation: PaidInvocationContract;
+        run_ref?: PaidInvocationRunReferenceContract;
         receipt_ref?: ReferenceContract;
       };
     }>
