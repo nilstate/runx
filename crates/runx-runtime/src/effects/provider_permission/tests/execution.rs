@@ -79,17 +79,38 @@ fn hosted_grant_selection_is_unique_scope_bound_and_explicit() {
     ];
     let scopes = vec!["channel.post".to_owned()];
 
-    assert!(select_hosted_provider_grant(&grants, "slack", &scopes, None).is_err());
+    assert!(select_hosted_provider_grant(&grants, "slack", &scopes, None, None).is_err());
     assert_eq!(
-        select_hosted_provider_grant(&grants, "slack", &scopes, Some("grant_b"))
+        select_hosted_provider_grant(&grants, "slack", &scopes, None, Some("grant_b"))
             .expect("explicit grant")
             .grant_id,
         "grant_b"
     );
     assert!(
-        select_hosted_provider_grant(&grants, "slack", &["channel.delete".to_owned()], None,)
+        select_hosted_provider_grant(&grants, "slack", &["channel.delete".to_owned()], None, None,)
             .is_err()
     );
+}
+
+#[test]
+fn hosted_grant_selection_prefers_the_exact_operation_target() {
+    let mut exact = hosted_grant("grant_exact", "x402", &["payment.x402"], "active");
+    exact.target_locator = Some("https://vendor.example/v1/invocations".to_owned());
+    let mut other = hosted_grant("grant_other", "x402", &["payment.x402"], "active");
+    other.target_locator = Some("https://other.example/v1/invocations".to_owned());
+    let broad = hosted_grant("grant_broad", "x402", &["payment.x402"], "active");
+    let grants = [broad, other, exact];
+
+    let selected = select_hosted_provider_grant(
+        &grants,
+        "x402",
+        &["payment.x402".to_owned()],
+        Some("https://vendor.example/v1/invocations"),
+        None,
+    )
+    .expect("exact target grant");
+
+    assert_eq!(selected.grant_id, "grant_exact");
 }
 
 #[test]
@@ -97,9 +118,14 @@ fn hosted_grant_selection_preserves_the_admitted_target() {
     let mut grant = hosted_grant("grant_aws", "aws", &["aws.textract.read"], "active");
     grant.target_locator = Some("aws://account/123456789012".to_owned());
     let grants = [grant];
-    let selected =
-        select_hosted_provider_grant(&grants, "aws", &["aws.textract.read".to_owned()], None)
-            .expect("unique AWS grant");
+    let selected = select_hosted_provider_grant(
+        &grants,
+        "aws",
+        &["aws.textract.read".to_owned()],
+        Some("aws://account/123456789012"),
+        None,
+    )
+    .expect("unique AWS grant");
 
     assert_eq!(
         selected.target_locator.as_deref(),

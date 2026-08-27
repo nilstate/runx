@@ -280,17 +280,24 @@ fn hosted_provider_explicit_binding_and_unambiguous_fallback_remain_supported() 
             provider: "github",
             scopes: &github_scopes,
             status: "active",
+            target_locator: None,
         },
         HostedGrantView {
             grant_id: "grant_only",
             provider: "slack",
             scopes: &slack_scopes,
             status: "active",
+            target_locator: None,
         },
     ];
-    let selected =
-        select_hosted_provider_grant_index(&grants, "slack", &["messages.search".to_owned()], None)
-            .expect("unambiguous hosted fallback");
+    let selected = select_hosted_provider_grant_index(
+        &grants,
+        "slack",
+        &["messages.search".to_owned()],
+        None,
+        None,
+    )
+    .expect("unambiguous hosted fallback");
     assert_eq!(grants[selected].grant_id, "grant_only");
 }
 
@@ -304,24 +311,32 @@ fn hosted_provider_grants_use_bounded_delegated_wildcards() {
             provider: "github",
             scopes: &delegated_scopes,
             status: "active",
+            target_locator: None,
         },
         HostedGrantView {
             grant_id: "grant_universal",
             provider: "github",
             scopes: &universal_scopes,
             status: "active",
+            target_locator: None,
         },
     ];
 
-    let selected =
-        select_hosted_provider_grant_index(&grants, "github", &["repo:read".to_owned()], None)
-            .expect("bounded delegated grant");
+    let selected = select_hosted_provider_grant_index(
+        &grants,
+        "github",
+        &["repo:read".to_owned()],
+        None,
+        None,
+    )
+    .expect("bounded delegated grant");
     assert_eq!(grants[selected].grant_id, "grant_delegated");
     assert!(
         select_hosted_provider_grant_index(
             &grants,
             "github",
             &["repo:admin:keys".to_owned()],
+            None,
             None,
         )
         .is_err()

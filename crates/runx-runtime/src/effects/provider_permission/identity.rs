@@ -258,6 +258,7 @@ impl ProviderPermissionEffect {
             &grants,
             provider,
             &required_scopes,
+            target.value.as_deref(),
             explicit_grant.as_deref(),
         )
         .map_err(|message| RuntimeEffectError::Denied {
@@ -469,6 +470,7 @@ pub(super) fn select_hosted_provider_grant<'a>(
     grants: &'a [HostedProviderGrant],
     provider: &str,
     required_scopes: &[String],
+    target: Option<&str>,
     explicit_grant: Option<&str>,
 ) -> Result<&'a HostedProviderGrant, String> {
     let views = grants
@@ -478,9 +480,10 @@ pub(super) fn select_hosted_provider_grant<'a>(
             provider: &grant.provider,
             scopes: &grant.scopes,
             status: &grant.status,
+            target_locator: grant.target_locator.as_deref(),
         })
         .collect::<Vec<_>>();
-    select_hosted_provider_grant_index(&views, provider, required_scopes, explicit_grant)
+    select_hosted_provider_grant_index(&views, provider, required_scopes, target, explicit_grant)
         .map(|index| &grants[index])
 }
 
@@ -491,6 +494,7 @@ pub(super) struct HostedGrantView<'a> {
     pub(super) provider: &'a str,
     pub(super) scopes: &'a [String],
     pub(super) status: &'a str,
+    pub(super) target_locator: Option<&'a str>,
 }
 
 #[cfg(any(feature = "catalog", test))]
@@ -498,6 +502,7 @@ pub(super) fn select_hosted_provider_grant_index(
     grants: &[HostedGrantView<'_>],
     provider: &str,
     required_scopes: &[String],
+    target: Option<&str>,
     explicit_grant: Option<&str>,
 ) -> Result<usize, String> {
     let mut candidates = grants
@@ -507,10 +512,25 @@ pub(super) fn select_hosted_provider_grant_index(
         .filter(|(_, grant)| grant.provider == provider)
         .filter(|(_, grant)| explicit_grant.is_none_or(|expected| grant.grant_id == expected))
         .filter(|(_, grant)| {
+            target.is_none_or(|expected| {
+                grant
+                    .target_locator
+                    .is_none_or(|locator| locator == expected)
+            })
+        })
+        .filter(|(_, grant)| {
             missing_granted_scopes(required_scopes, grant.scopes, ScopeGrantPolicy::Delegated)
                 .is_empty()
         })
         .collect::<Vec<_>>();
+    if explicit_grant.is_none() && target.is_some() {
+        let has_exact_target = candidates
+            .iter()
+            .any(|(_, grant)| grant.target_locator == target);
+        if has_exact_target {
+            candidates.retain(|(_, grant)| grant.target_locator == target);
+        }
+    }
     candidates.sort_by(|(_, left), (_, right)| left.grant_id.cmp(right.grant_id));
     match candidates.as_slice() {
         [(index, _)] => Ok(*index),
