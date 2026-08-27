@@ -84,9 +84,9 @@ fn run_registry(
     }
     let target = resolve_registry_target(&plan, env, cwd);
     match plan.action {
-        RegistryAction::Search => run_search(plan, target),
-        RegistryAction::Read => run_read(plan, target),
-        RegistryAction::Resolve => run_resolve(plan, target),
+        RegistryAction::Search => run_search(plan, target, env),
+        RegistryAction::Read => run_read(plan, target, env),
+        RegistryAction::Resolve => run_resolve(plan, target, env),
         RegistryAction::Install => run_install(plan, target, env, cwd),
         RegistryAction::Package => unreachable!("package handled before registry resolution"),
         RegistryAction::Publish => run_publish(plan, target, env, cwd),
@@ -124,11 +124,12 @@ fn run_package(
 fn run_search(
     plan: RegistryPlan,
     target: RegistryTarget,
+    env: &BTreeMap<String, String>,
 ) -> Result<RegistryCliOutput, RegistryCliError> {
     let source = target.label();
     let query = plan.subject;
     let results = match target {
-        RegistryTarget::Remote { registry_url } => RegistryClient::new(&registry_url)?
+        RegistryTarget::Remote { registry_url } => remote_registry_client(&registry_url, env)?
             .search_with_limit(&query, plan.limit.unwrap_or(20))?,
         RegistryTarget::Local {
             registry_path,
@@ -161,10 +162,11 @@ fn run_search(
 fn run_read(
     plan: RegistryPlan,
     target: RegistryTarget,
+    env: &BTreeMap<String, String>,
 ) -> Result<RegistryCliOutput, RegistryCliError> {
     let source = target.label();
     let skill = match target {
-        RegistryTarget::Remote { registry_url } => RegistryClient::new(&registry_url)?
+        RegistryTarget::Remote { registry_url } => remote_registry_client(&registry_url, env)?
             .read(&plan.subject, plan.version.as_deref())?
             .ok_or_else(|| not_found(&plan.subject))?,
         RegistryTarget::Local {
@@ -197,11 +199,12 @@ fn run_read(
 fn run_resolve(
     plan: RegistryPlan,
     target: RegistryTarget,
+    env: &BTreeMap<String, String>,
 ) -> Result<RegistryCliOutput, RegistryCliError> {
     let source = target.label();
     let resolution = match target {
         RegistryTarget::Remote { registry_url } => {
-            let client = RegistryClient::new(&registry_url)?;
+            let client = remote_registry_client(&registry_url, env)?;
             let resolved = client
                 .resolve_ref(&plan.subject, plan.version.as_deref())?
                 .ok_or_else(|| not_found(&plan.subject))?;
@@ -384,7 +387,7 @@ pub(crate) fn install_candidate(
     match target {
         RegistryTarget::Remote { registry_url } => {
             let installation_id = remote_installation_id(env, cwd)?;
-            let acquired = RegistryClient::new(&registry_url)?.acquire(
+            let acquired = remote_registry_client(&registry_url, env)?.acquire(
                 &plan.subject,
                 AcquireOptions {
                     installation_id: &installation_id,
@@ -417,6 +420,17 @@ pub(crate) fn install_candidate(
             ))
         }
     }
+}
+
+fn remote_registry_client(
+    registry_url: &str,
+    env: &BTreeMap<String, String>,
+) -> Result<RegistryClient, RegistryCliError> {
+    let transport = runx_runtime::hosted_api_transport(
+        runx_runtime::hosted_private_network_allowed(false, env),
+    )
+    .map_err(|error| internal_error(error.to_string()))?;
+    RegistryClient::with_transport(registry_url, transport).map_err(RegistryCliError::from)
 }
 
 fn remote_installation_id(
