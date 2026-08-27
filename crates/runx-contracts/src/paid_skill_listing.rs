@@ -12,18 +12,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::paid_invocation::{
-    CurrencyCode, MediatedReceiptClass, MediationEndpointUrl, MediationListingRef,
-    OfferRevisionRef, PaidInvocationMediation, PortableAmountMinor, PrincipalReference,
-    SettlementFamilies, SettlementFamily, Sha256Digest,
+    CurrencyCode, EmbeddedOfferRevisionRef, MediatedReceiptClass, MediationEndpointUrl,
+    MediationListingRef, OfferRevisionRef, PaidInvocationMediation, PortableAmountMinor,
+    PrincipalReference, SettlementFamilies, SettlementFamily, Sha256Digest,
 };
 use crate::schema::{NonEmptyString, RunxSchema};
 
 pub const PAID_SKILL_LISTING_SCHEMA: &str = "runx.marketplace.paid_skill_listing.v1";
 
 /// Provider-neutral commercial terms authored for one ordinary skill runner.
+///
+/// Fixed and prepared prices are distinct whole-contract variants. A fixed
+/// offer always carries one exact buyer total. A prepared offer delegates only
+/// the vendor amount to an immutable direct paid invocation; its platform fee
+/// and admitted amount range remain fixed by the public listing.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(untagged)]
+pub enum PaidSkillOfferTerms {
+    Fixed(PaidSkillFixedOfferTerms),
+    Prepared(PaidSkillPreparedOfferTerms),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
-pub struct PaidSkillOfferTerms {
+pub struct PaidSkillFixedOfferTerms {
     pub amount_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub accepted_settlement_families: SettlementFamilies,
@@ -40,11 +52,103 @@ pub struct PaidSkillOfferTerms {
 #[serde(deny_unknown_fields)]
 pub struct PaidSkillMediationTerms {
     pub endpoint_url: MediationEndpointUrl,
+    pub vendor_offer_revision: EmbeddedOfferRevisionRef,
+    pub vendor_package_digest: Sha256Digest,
     pub vendor_amount_minor: PortableAmountMinor,
     pub platform_fee_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub settlement_family: SettlementFamily,
     pub expected_receipt_class: MediatedReceiptClass,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillVendorAmountRange {
+    pub minimum_minor: PortableAmountMinor,
+    pub maximum_minor: PortableAmountMinor,
+}
+
+impl PaidSkillVendorAmountRange {
+    pub fn new(
+        minimum_minor: PortableAmountMinor,
+        maximum_minor: PortableAmountMinor,
+    ) -> Option<Self> {
+        (minimum_minor <= maximum_minor).then_some(Self {
+            minimum_minor,
+            maximum_minor,
+        })
+    }
+
+    pub fn contains(&self, amount: PortableAmountMinor) -> bool {
+        (self.minimum_minor..=self.maximum_minor).contains(&amount)
+    }
+}
+
+impl<'de> Deserialize<'de> for PaidSkillVendorAmountRange {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct WireRange {
+            minimum_minor: PortableAmountMinor,
+            maximum_minor: PortableAmountMinor,
+        }
+
+        let value = WireRange::deserialize(deserializer)?;
+        Self::new(value.minimum_minor, value.maximum_minor)
+            .ok_or_else(|| de::Error::custom("vendor amount range minimum must not exceed maximum"))
+    }
+}
+
+/// Seller-authored mediated terms whose vendor amount is resolved from a
+/// previously prepared direct invocation.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillPreparedMediationTerms {
+    pub endpoint_url: MediationEndpointUrl,
+    pub vendor_amount_range: PaidSkillVendorAmountRange,
+    pub vendor_offer_revision: EmbeddedOfferRevisionRef,
+    pub vendor_package_digest: Sha256Digest,
+    pub platform_fee_minor: PortableAmountMinor,
+    pub currency: CurrencyCode,
+    pub settlement_family: SettlementFamily,
+    pub expected_receipt_class: MediatedReceiptClass,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillPreparedOfferTerms {
+    pub currency: CurrencyCode,
+    pub accepted_settlement_families: SettlementFamilies,
+    pub input_schema_digest: Sha256Digest,
+    pub output_schema_digest: Sha256Digest,
+    pub mediation: PaidSkillPreparedMediationTerms,
+    pub executor: PaidSkillExecutorBinding,
+}
+
+impl PaidSkillOfferTerms {
+    pub fn input_schema_digest(&self) -> &Sha256Digest {
+        match self {
+            Self::Fixed(terms) => &terms.input_schema_digest,
+            Self::Prepared(terms) => &terms.input_schema_digest,
+        }
+    }
+
+    pub fn output_schema_digest(&self) -> &Sha256Digest {
+        match self {
+            Self::Fixed(terms) => &terms.output_schema_digest,
+            Self::Prepared(terms) => &terms.output_schema_digest,
+        }
+    }
+
+    pub fn mediation_and_executor_are_consistent(&self) -> bool {
+        match self {
+            Self::Fixed(terms) => terms.mediation.is_some() == terms.executor.is_some(),
+            Self::Prepared(_) => true,
+        }
+    }
 }
 
 /// Exact public execution package selected by an endpoint listing.
@@ -63,9 +167,16 @@ pub struct PaidSkillExecutorBinding {
 
 /// One immutable, registry-resolved runner offer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(untagged)]
+pub enum PaidSkillRunnerOffer {
+    Fixed(PaidSkillFixedRunnerOffer),
+    Prepared(PaidSkillPreparedRunnerOffer),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
-pub struct PaidSkillRunnerOffer {
-    pub offer_revision: OfferRevisionRef,
+pub struct PaidSkillFixedRunnerOffer {
+    pub offer_revision: EmbeddedOfferRevisionRef,
     pub amount_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub accepted_settlement_families: SettlementFamilies,
@@ -75,50 +186,109 @@ pub struct PaidSkillRunnerOffer {
     pub executor: Option<PaidSkillExecutorBinding>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillPreparedMediation {
+    pub listing_ref: MediationListingRef,
+    pub endpoint_url: MediationEndpointUrl,
+    pub vendor_amount_range: PaidSkillVendorAmountRange,
+    pub vendor_offer_revision: EmbeddedOfferRevisionRef,
+    pub vendor_package_digest: Sha256Digest,
+    pub platform_fee_minor: PortableAmountMinor,
+    pub currency: CurrencyCode,
+    pub settlement_family: SettlementFamily,
+    pub expected_receipt_class: MediatedReceiptClass,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidSkillPreparedRunnerOffer {
+    pub offer_revision: EmbeddedOfferRevisionRef,
+    pub currency: CurrencyCode,
+    pub accepted_settlement_families: SettlementFamilies,
+    pub mediation: PaidSkillPreparedMediation,
+    pub executor: PaidSkillExecutorBinding,
+}
+
 impl PaidSkillRunnerOffer {
     pub fn from_terms(
         offer_revision: OfferRevisionRef,
         listing_ref: MediationListingRef,
         terms: &PaidSkillOfferTerms,
     ) -> Option<Self> {
-        if terms.mediation.is_some() != terms.executor.is_some() {
-            return None;
-        }
-        let mediation = terms
-            .mediation
-            .as_ref()
-            .map(|mediation| PaidInvocationMediation {
-                listing_ref,
-                endpoint_url: mediation.endpoint_url.clone(),
-                vendor_amount_minor: mediation.vendor_amount_minor,
-                platform_fee_minor: mediation.platform_fee_minor,
-                currency: mediation.currency.clone(),
-                settlement_family: mediation.settlement_family.clone(),
-                expected_receipt_class: mediation.expected_receipt_class,
-            });
-        if let Some(mediation) = &mediation {
-            let total = mediation
-                .vendor_amount_minor
-                .get()
-                .checked_add(mediation.platform_fee_minor.get())?;
-            if total != terms.amount_minor.get()
-                || mediation.currency != terms.currency
-                || !terms
-                    .accepted_settlement_families
-                    .as_slice()
-                    .contains(&mediation.settlement_family)
-            {
-                return None;
+        match terms {
+            PaidSkillOfferTerms::Fixed(terms) => {
+                if terms.mediation.is_some() != terms.executor.is_some() {
+                    return None;
+                }
+                let mediation = terms
+                    .mediation
+                    .as_ref()
+                    .map(|mediation| PaidInvocationMediation {
+                        listing_ref,
+                        endpoint_url: mediation.endpoint_url.clone(),
+                        vendor_offer_revision: mediation.vendor_offer_revision.clone(),
+                        vendor_package_digest: mediation.vendor_package_digest.clone(),
+                        vendor_amount_minor: mediation.vendor_amount_minor,
+                        platform_fee_minor: mediation.platform_fee_minor,
+                        currency: mediation.currency.clone(),
+                        settlement_family: mediation.settlement_family.clone(),
+                        expected_receipt_class: mediation.expected_receipt_class,
+                        prepared_price: None,
+                    });
+                if let Some(mediation) = &mediation {
+                    let total = mediation
+                        .vendor_amount_minor
+                        .get()
+                        .checked_add(mediation.platform_fee_minor.get())?;
+                    if total != terms.amount_minor.get()
+                        || mediation.currency != terms.currency
+                        || !terms
+                            .accepted_settlement_families
+                            .as_slice()
+                            .contains(&mediation.settlement_family)
+                    {
+                        return None;
+                    }
+                }
+                Some(Self::Fixed(PaidSkillFixedRunnerOffer {
+                    offer_revision: offer_revision.into(),
+                    amount_minor: terms.amount_minor,
+                    currency: terms.currency.clone(),
+                    accepted_settlement_families: terms.accepted_settlement_families.clone(),
+                    mediation,
+                    executor: terms.executor.clone(),
+                }))
+            }
+            PaidSkillOfferTerms::Prepared(terms) => {
+                let mediation = &terms.mediation;
+                if mediation.currency != terms.currency
+                    || !terms
+                        .accepted_settlement_families
+                        .as_slice()
+                        .contains(&mediation.settlement_family)
+                {
+                    return None;
+                }
+                Some(Self::Prepared(PaidSkillPreparedRunnerOffer {
+                    offer_revision: offer_revision.into(),
+                    currency: terms.currency.clone(),
+                    accepted_settlement_families: terms.accepted_settlement_families.clone(),
+                    mediation: PaidSkillPreparedMediation {
+                        listing_ref,
+                        endpoint_url: mediation.endpoint_url.clone(),
+                        vendor_amount_range: mediation.vendor_amount_range.clone(),
+                        vendor_offer_revision: mediation.vendor_offer_revision.clone(),
+                        vendor_package_digest: mediation.vendor_package_digest.clone(),
+                        platform_fee_minor: mediation.platform_fee_minor,
+                        currency: mediation.currency.clone(),
+                        settlement_family: mediation.settlement_family.clone(),
+                        expected_receipt_class: mediation.expected_receipt_class,
+                    },
+                    executor: terms.executor.clone(),
+                }))
             }
         }
-        Some(Self {
-            offer_revision,
-            amount_minor: terms.amount_minor,
-            currency: terms.currency.clone(),
-            accepted_settlement_families: terms.accepted_settlement_families.clone(),
-            mediation,
-            executor: terms.executor.clone(),
-        })
     }
 }
 
@@ -205,10 +375,10 @@ mod tests {
                 "accepted_settlement_families": ["rail-a", "rail-b"]
             }}
         }))?;
-        assert_eq!(
-            listing.offers.as_map()["transcribe"].amount_minor.get(),
-            125
-        );
+        let PaidSkillRunnerOffer::Fixed(offer) = &listing.offers.as_map()["transcribe"] else {
+            panic!("fixed offer decoded as prepared pricing");
+        };
+        assert_eq!(offer.amount_minor.get(), 125);
 
         let schema = PaidSkillListing::json_schema().to_string();
         assert!(!schema.contains("PAYMENT-REQUIRED"));
@@ -259,6 +429,14 @@ mod tests {
             },
             "mediation": {
                 "endpoint_url": "https://vendor.example/v1/invocations",
+                "vendor_offer_revision": {
+                    "offer_id": "vendor/transcribe",
+                    "revision": "vendor-r1",
+                    "revision_digest": format!("sha256:{}", "1".repeat(64)),
+                    "input_schema_digest": format!("sha256:{}", "2".repeat(64)),
+                    "output_schema_digest": format!("sha256:{}", "3".repeat(64))
+                },
+                "vendor_package_digest": format!("sha256:{}", "4".repeat(64)),
                 "vendor_amount_minor": 100,
                 "platform_fee_minor": 25,
                 "currency": "USD",
@@ -277,6 +455,9 @@ mod tests {
             .ok_or("invalid test listing ref")?;
         let offer = PaidSkillRunnerOffer::from_terms(revision.clone(), listing_ref, &terms)
             .ok_or("valid mediation was refused")?;
+        let PaidSkillRunnerOffer::Fixed(offer) = offer else {
+            return Err("fixed terms produced a prepared offer".into());
+        };
         assert_eq!(
             offer
                 .mediation
@@ -290,7 +471,11 @@ mod tests {
         );
 
         let mut wrong_total = terms.clone();
-        wrong_total.amount_minor = PortableAmountMinor::new(126).ok_or("invalid test amount")?;
+        let PaidSkillOfferTerms::Fixed(wrong_total_terms) = &mut wrong_total else {
+            return Err("fixed terms decoded as prepared pricing".into());
+        };
+        wrong_total_terms.amount_minor =
+            PortableAmountMinor::new(126).ok_or("invalid test amount")?;
         assert!(
             PaidSkillRunnerOffer::from_terms(
                 revision.clone(),
@@ -302,7 +487,11 @@ mod tests {
         );
 
         let mut wrong_rail = terms.clone();
-        wrong_rail.accepted_settlement_families = serde_json::from_value(json!(["other-rail"]))?;
+        let PaidSkillOfferTerms::Fixed(wrong_rail_terms) = &mut wrong_rail else {
+            return Err("fixed terms decoded as prepared pricing".into());
+        };
+        wrong_rail_terms.accepted_settlement_families =
+            serde_json::from_value(json!(["other-rail"]))?;
         assert!(
             PaidSkillRunnerOffer::from_terms(
                 revision.clone(),
@@ -314,7 +503,10 @@ mod tests {
         );
 
         let mut missing_executor = terms;
-        missing_executor.executor = None;
+        let PaidSkillOfferTerms::Fixed(missing_executor_terms) = &mut missing_executor else {
+            return Err("fixed terms decoded as prepared pricing".into());
+        };
+        missing_executor_terms.executor = None;
         assert!(
             PaidSkillRunnerOffer::from_terms(
                 revision,
@@ -324,6 +516,92 @@ mod tests {
             )
             .is_none()
         );
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_offer_binds_vendor_source_without_a_rail_payload()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let terms: PaidSkillOfferTerms = serde_json::from_value(json!({
+            "currency": "USD",
+            "accepted_settlement_families": ["x402"],
+            "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "e".repeat(64)),
+            "executor": {
+                "skill": "marketplace-invoke",
+                "runner": "invoke",
+                "package_digest": format!("sha256:{}", "6".repeat(64)),
+                "execution_closure_digest": format!("sha256:{}", "7".repeat(64))
+            },
+            "mediation": {
+                "endpoint_url": "https://vendor.example/v1/invocations",
+                "vendor_amount_range": {"minimum_minor": 30, "maximum_minor": 75},
+                "vendor_offer_revision": {
+                    "offer_id": "vendor/documents#analysis",
+                    "revision": "analysis-r1",
+                    "revision_digest": format!("sha256:{}", "1".repeat(64)),
+                    "input_schema_digest": format!("sha256:{}", "2".repeat(64)),
+                    "output_schema_digest": format!("sha256:{}", "3".repeat(64))
+                },
+                "vendor_package_digest": format!("sha256:{}", "4".repeat(64)),
+                "platform_fee_minor": 5,
+                "currency": "USD",
+                "settlement_family": "x402",
+                "expected_receipt_class": "executed"
+            }
+        }))?;
+        let revision: OfferRevisionRef = serde_json::from_value(json!({
+            "offer_id": "acme/document-analysis#invoke",
+            "revision": "1.0.0",
+            "revision_digest": format!("sha256:{}", "b".repeat(64)),
+            "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "e".repeat(64))
+        }))?;
+        let offer = PaidSkillRunnerOffer::from_terms(
+            revision,
+            MediationListingRef::new("runx:listing:acme/document-analysis@1.0.0#invoke")
+                .ok_or("invalid test listing ref")?,
+            &terms,
+        )
+        .ok_or("valid prepared mediation was refused")?;
+        let PaidSkillRunnerOffer::Prepared(offer) = offer else {
+            return Err("prepared terms produced a fixed offer".into());
+        };
+        assert_eq!(offer.mediation.vendor_amount_range.minimum_minor.get(), 30);
+        assert_eq!(
+            offer.mediation.listing_ref.as_str(),
+            "runx:listing:acme/document-analysis@1.0.0#invoke"
+        );
+
+        let reversed = serde_json::from_value::<PaidSkillOfferTerms>(json!({
+            "currency": "USD",
+            "accepted_settlement_families": ["x402"],
+            "input_schema_digest": format!("sha256:{}", "d".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "e".repeat(64)),
+            "executor": {
+                "skill": "marketplace-invoke",
+                "runner": "invoke",
+                "package_digest": format!("sha256:{}", "6".repeat(64)),
+                "execution_closure_digest": format!("sha256:{}", "7".repeat(64))
+            },
+            "mediation": {
+                "endpoint_url": "https://vendor.example/v1/invocations",
+                "vendor_amount_range": {"minimum_minor": 76, "maximum_minor": 75},
+                "vendor_offer_revision": {
+                    "offer_id": "vendor/documents#analysis",
+                    "revision": "analysis-r1",
+                    "revision_digest": format!("sha256:{}", "1".repeat(64)),
+                    "input_schema_digest": format!("sha256:{}", "2".repeat(64)),
+                    "output_schema_digest": format!("sha256:{}", "3".repeat(64))
+                },
+                "vendor_package_digest": format!("sha256:{}", "4".repeat(64)),
+                "platform_fee_minor": 5,
+                "currency": "USD",
+                "settlement_family": "x402",
+                "expected_receipt_class": "executed"
+            }
+        }));
+        assert!(reversed.is_err());
         Ok(())
     }
 }

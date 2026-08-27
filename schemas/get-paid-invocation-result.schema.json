@@ -814,6 +814,25 @@
                       "minimum": 1,
                       "type": "integer"
                     },
+                    "prepared_price": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "input_digest": {
+                          "pattern": "^sha256:[0-9a-f]{64}$",
+                          "type": "string"
+                        },
+                        "source_invocation_id": {
+                          "maxLength": 128,
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "source_invocation_id",
+                        "input_digest"
+                      ],
+                      "type": "object"
+                    },
                     "settlement_family": {
                       "maxLength": 64,
                       "minLength": 1,
@@ -824,11 +843,50 @@
                       "maximum": 9007199254740991,
                       "minimum": 1,
                       "type": "integer"
+                    },
+                    "vendor_offer_revision": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "input_schema_digest": {
+                          "pattern": "^sha256:[0-9a-f]{64}$",
+                          "type": "string"
+                        },
+                        "offer_id": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "output_schema_digest": {
+                          "pattern": "^sha256:[0-9a-f]{64}$",
+                          "type": "string"
+                        },
+                        "revision": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "revision_digest": {
+                          "pattern": "^sha256:[0-9a-f]{64}$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "offer_id",
+                        "revision",
+                        "revision_digest",
+                        "input_schema_digest",
+                        "output_schema_digest"
+                      ],
+                      "type": "object"
+                    },
+                    "vendor_package_digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
                     }
                   },
                   "required": [
                     "listing_ref",
                     "endpoint_url",
+                    "vendor_offer_revision",
+                    "vendor_package_digest",
                     "vendor_amount_minor",
                     "platform_fee_minor",
                     "currency",

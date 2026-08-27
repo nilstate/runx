@@ -212,6 +212,14 @@ fn composite() -> Result<(Receipt, Receipt), Box<dyn Error>> {
         .mediation = Some(serde_json::from_value(serde_json::json!({
         "listing_ref": "runx:listing:ausca/document-ocr@1.0.0#invoke",
         "endpoint_url": "https://vendor.example/v1/invocations",
+        "vendor_offer_revision": {
+            "offer_id": "ocr-v1",
+            "revision": "2026-08-22.1",
+            "revision_digest": format!("sha256:{}", "4".repeat(64)),
+            "input_schema_digest": format!("sha256:{}", "2".repeat(64)),
+            "output_schema_digest": format!("sha256:{}", "3".repeat(64))
+        },
+        "vendor_package_digest": format!("sha256:{}", "8".repeat(64)),
         "vendor_amount_minor": 100,
         "platform_fee_minor": 25,
         "currency": "USD",

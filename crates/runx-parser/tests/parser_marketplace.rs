@@ -1,3 +1,4 @@
+use runx_contracts::PaidSkillOfferTerms;
 use runx_parser::{SkillRunnerManifest, parse_runner_manifest_yaml, validate_runner_manifest};
 
 const DIGEST_A: &str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -45,6 +46,9 @@ fn marketplace_paid_and_free_runners_share_one_manifest() -> Result<(), String> 
     let offer = offers
         .get("transcribe")
         .ok_or_else(|| "missing paid runner".to_owned())?;
+    let PaidSkillOfferTerms::Fixed(offer) = offer else {
+        return Err("fixed offer decoded as prepared pricing".to_owned());
+    };
     assert_eq!(offer.amount_minor.get(), 125);
     assert_eq!(offer.currency.as_str(), "USD");
     assert_eq!(
@@ -85,6 +89,13 @@ fn marketplace_accepts_rail_neutral_mediated_endpoint_terms() -> Result<(), Stri
         execution_closure_digest: {DIGEST_B}
       mediation:
         endpoint_url: https://vendor.example/v1/invocations
+        vendor_offer_revision:
+          offer_id: vendor/transcribe
+          revision: vendor-r1
+          revision_digest: {DIGEST_A}
+          input_schema_digest: {DIGEST_A}
+          output_schema_digest: {DIGEST_B}
+        vendor_package_digest: {DIGEST_A}
         vendor_amount_minor: 100
         platform_fee_minor: 25
         currency: USD
@@ -95,6 +106,9 @@ fn marketplace_accepts_rail_neutral_mediated_endpoint_terms() -> Result<(), Stri
         .marketplace
         .ok_or_else(|| "missing marketplace".to_owned())?
         .offers["transcribe"];
+    let PaidSkillOfferTerms::Fixed(offer) = offer else {
+        return Err("fixed offer decoded as prepared pricing".to_owned());
+    };
     let mediation = offer
         .mediation
         .as_ref()
@@ -195,6 +209,13 @@ fn marketplace_rejects_partial_endpoint_execution_binding() -> Result<(), String
       output_schema_digest: {DIGEST_B}
       mediation:
         endpoint_url: https://vendor.example/v1/invocations
+        vendor_offer_revision:
+          offer_id: vendor/transcribe
+          revision: vendor-r1
+          revision_digest: {DIGEST_A}
+          input_schema_digest: {DIGEST_A}
+          output_schema_digest: {DIGEST_B}
+        vendor_package_digest: {DIGEST_A}
         vendor_amount_minor: 100
         platform_fee_minor: 25
         currency: USD

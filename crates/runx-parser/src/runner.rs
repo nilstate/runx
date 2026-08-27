@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use runx_contracts::{
     ExecutionCredentialRequirement, ExecutionRequirements, JsonObject, JsonValue,
-    PaidSkillOfferTerms,
+    PaidSkillFixedOfferTerms, PaidSkillOfferTerms, PaidSkillPreparedOfferTerms,
 };
 use serde::{Deserialize, Serialize};
 
@@ -196,10 +196,17 @@ fn validate_marketplace(
                 "marketplace.offers.{runner} could not be materialized: {error}"
             ))
         })?;
-        let terms = serde_json::from_value::<PaidSkillOfferTerms>(serialized).map_err(|error| {
+        let terms = if serialized.get("amount_minor").is_some() {
+            serde_json::from_value::<PaidSkillFixedOfferTerms>(serialized)
+                .map(PaidSkillOfferTerms::Fixed)
+        } else {
+            serde_json::from_value::<PaidSkillPreparedOfferTerms>(serialized)
+                .map(PaidSkillOfferTerms::Prepared)
+        }
+        .map_err(|error| {
             FIELDS.validation_error(format!("marketplace.offers.{runner} is invalid: {error}"))
         })?;
-        if terms.mediation.is_some() != terms.executor.is_some() {
+        if !terms.mediation_and_executor_are_consistent() {
             return Err(FIELDS.validation_error(format!(
                 "marketplace.offers.{runner} must declare executor and mediation together."
             )));

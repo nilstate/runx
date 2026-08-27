@@ -1,3 +1,4 @@
+use runx_contracts::PaidSkillRunnerOffer;
 use runx_runtime::registry::{
     FileRegistryStore, IngestSkillOptions, RegistryPackageFile, RegistryPublisher,
     RegistryResolveOptions, ingest_skill_markdown, read_registry_skill, resolve_registry_skill,
@@ -62,6 +63,13 @@ fn mediated_profile(vendor_amount_minor: u64, platform_fee_minor: u64) -> String
         execution_closure_digest: {DIGEST_B}
       mediation:
         endpoint_url: https://vendor.example/v1/invocations
+        vendor_offer_revision:
+          offer_id: vendor/transcribe
+          revision: vendor-r1
+          revision_digest: {DIGEST_A}
+          input_schema_digest: {DIGEST_A}
+          output_schema_digest: {DIGEST_B}
+        vendor_package_digest: {DIGEST_A}
         vendor_amount_minor: {vendor_amount_minor}
         platform_fee_minor: {platform_fee_minor}
         currency: USD
@@ -89,7 +97,9 @@ fn registry_paid_listing_is_resolved_once_and_returned_without_profile_reparsing
         "runx:principal:acme"
     );
     assert_eq!(listing.offers.as_map().len(), 1);
-    let offer = &listing.offers.as_map()["transcribe"];
+    let PaidSkillRunnerOffer::Fixed(offer) = &listing.offers.as_map()["transcribe"] else {
+        return Err("fixed offer decoded as prepared pricing".into());
+    };
     assert_eq!(offer.amount_minor.get(), 125);
     assert_eq!(offer.currency.as_str(), "USD");
     assert_eq!(
@@ -135,17 +145,16 @@ fn registry_paid_listing_price_change_revisions_profile_not_package()
     assert_ne!(first.profile_digest, second.profile_digest);
     assert_eq!(first.package_digest, second.package_digest);
     assert_ne!(first.paid_listing, second.paid_listing);
-    assert_eq!(
-        second
-            .paid_listing
-            .as_ref()
-            .ok_or("missing second listing")?
-            .offers
-            .as_map()["transcribe"]
-            .amount_minor
-            .get(),
-        250
-    );
+    let PaidSkillRunnerOffer::Fixed(second_offer) = &second
+        .paid_listing
+        .as_ref()
+        .ok_or("missing second listing")?
+        .offers
+        .as_map()["transcribe"]
+    else {
+        return Err("fixed offer decoded as prepared pricing".into());
+    };
+    assert_eq!(second_offer.amount_minor.get(), 250);
     Ok(())
 }
 
@@ -155,15 +164,16 @@ fn registry_derives_mediated_listing_identity_and_refuses_split_drift()
     let temp = tempdir()?;
     let store = FileRegistryStore::new(temp.path());
     let version = ingest_skill_markdown(&store, MARKDOWN, options(mediated_profile(100, 25)))?;
-    let mediation = version
+    let offer = &version
         .paid_listing
         .as_ref()
         .ok_or("missing paid listing")?
         .offers
-        .as_map()["transcribe"]
-        .mediation
-        .as_ref()
-        .ok_or("missing mediation")?;
+        .as_map()["transcribe"];
+    let PaidSkillRunnerOffer::Fixed(offer) = offer else {
+        return Err("fixed offer decoded as prepared pricing".into());
+    };
+    let mediation = offer.mediation.as_ref().ok_or("missing mediation")?;
     assert_eq!(
         mediation.listing_ref.as_str(),
         format!(

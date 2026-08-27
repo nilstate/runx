@@ -253,11 +253,27 @@ impl RunxSchema for SettlementFamilies {
 pub struct PaidInvocationMediation {
     pub listing_ref: MediationListingRef,
     pub endpoint_url: MediationEndpointUrl,
+    pub vendor_offer_revision: EmbeddedOfferRevisionRef,
+    pub vendor_package_digest: Sha256Digest,
     pub vendor_amount_minor: PortableAmountMinor,
     pub platform_fee_minor: PortableAmountMinor,
     pub currency: CurrencyCode,
     pub settlement_family: SettlementFamily,
     pub expected_receipt_class: MediatedReceiptClass,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prepared_price: Option<PreparedInvocationPriceBinding>,
+}
+
+/// Immutable evidence that resolved a measured marketplace price.
+///
+/// The source invocation is read through the paid-invocation service before
+/// the outer quote is admitted. Rail adapters then compare the fresh vendor
+/// challenge with these exact commercial and input identities before signing.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PreparedInvocationPriceBinding {
+    pub source_invocation_id: BoundedString<128>,
+    pub input_digest: Sha256Digest,
 }
 
 /// Content identity for an immutable marketplace listing revision.
@@ -501,6 +517,42 @@ pub struct OfferRevisionRef {
     pub revision_digest: Sha256Digest,
     pub input_schema_digest: Sha256Digest,
     pub output_schema_digest: Sha256Digest,
+}
+
+/// The exact `OfferRevisionRef` wire value embedded inside another contract.
+///
+/// Standalone contract identity belongs only on the top-level schema. This
+/// transparent wrapper prevents duplicate `$id` declarations when a document
+/// contains more than one offer revision reference.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct EmbeddedOfferRevisionRef(OfferRevisionRef);
+
+impl EmbeddedOfferRevisionRef {
+    pub fn as_offer_revision(&self) -> &OfferRevisionRef {
+        &self.0
+    }
+}
+
+impl From<OfferRevisionRef> for EmbeddedOfferRevisionRef {
+    fn from(value: OfferRevisionRef) -> Self {
+        Self(value)
+    }
+}
+
+impl RunxSchema for EmbeddedOfferRevisionRef {
+    fn json_schema() -> Value {
+        let mut schema = OfferRevisionRef::json_schema();
+        if let Some(object) = schema.as_object_mut() {
+            object.remove("$id");
+            object.remove("$schema");
+            object.remove("x-runx-schema");
+            if let Some(properties) = object.get_mut("properties").and_then(Value::as_object_mut) {
+                properties.remove("schema");
+            }
+        }
+        schema
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]

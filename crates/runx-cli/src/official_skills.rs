@@ -187,8 +187,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/marketplace-invoke",
-        version: "sha-fbca5b1aca21",
-        digest: "c408e7a3ae21338a9158a0d085bdefacc8b3c2dc50047ec16aa088ea16d21560",
+        version: "sha-ee900340416a",
+        digest: "8b37832bb3d1257b3d9421dcb439bd357255d88d1a113e0a604005d68eacfe0b",
     },
     OfficialSkillLockEntry {
         skill_id: "zhtwangk/meeting-followup",
@@ -407,7 +407,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/x402-pay",
-        version: "sha-97c351c21385",
+        version: "sha-b43c66779ccf",
         digest: "156cff81915fa2b642b4ccf1bee412df54ceb99bd69d1b323319726ce550e4d1",
     },
     OfficialSkillLockEntry {

@@ -213,7 +213,7 @@ pub use paid_invocation::{
     CANCEL_PAID_INVOCATION, CANCEL_PAID_INVOCATION_REQUEST_SCHEMA,
     CANCEL_PAID_INVOCATION_RESULT_SCHEMA, CancelPaidInvocationRequest, CancelPaidInvocationResult,
     CurrencyCode, EXECUTE_PAID_INVOCATION, EXECUTE_PAID_INVOCATION_REQUEST_SCHEMA,
-    EXECUTE_PAID_INVOCATION_RESULT_SCHEMA, ExecutePaidInvocationRequest,
+    EXECUTE_PAID_INVOCATION_RESULT_SCHEMA, EmbeddedOfferRevisionRef, ExecutePaidInvocationRequest,
     ExecutePaidInvocationResult, GET_PAID_INVOCATION, GET_PAID_INVOCATION_REQUEST_SCHEMA,
     GET_PAID_INVOCATION_RESULT_SCHEMA, GetPaidInvocationRequest, GetPaidInvocationResult,
     MediatedReceiptClass, MediationEndpointUrl, MediationListingRef, OFFER_REVISION_REF_SCHEMA,
@@ -222,17 +222,21 @@ pub use paid_invocation::{
     PaidInvocationMediation, PaidInvocationOutcomeGate, PaidInvocationPaymentChallenge,
     PaidInvocationPaymentState, PaidInvocationRefusalCode, PaidInvocationRefusalReason,
     ParentInvocationBinding, PaymentIdempotencyBinding, PaymentReference, PortableAmountMinor,
-    PrincipalReference, QUOTE_PAID_INVOCATION, QUOTE_PAID_INVOCATION_REQUEST_SCHEMA,
-    QUOTE_PAID_INVOCATION_RESULT_SCHEMA, QuotePaidInvocationAdmission, QuotePaidInvocationRequest,
-    QuotePaidInvocationResult, SettlementFamilies, SettlementFamily, Sha256Digest,
+    PreparedInvocationPriceBinding, PrincipalReference, QUOTE_PAID_INVOCATION,
+    QUOTE_PAID_INVOCATION_REQUEST_SCHEMA, QUOTE_PAID_INVOCATION_RESULT_SCHEMA,
+    QuotePaidInvocationAdmission, QuotePaidInvocationRequest, QuotePaidInvocationResult,
+    SettlementFamilies, SettlementFamily, Sha256Digest,
 };
 pub use paid_invocation_fingerprint::{
     PAID_INVOCATION_REQUEST_FINGERPRINT_SCHEMA, fingerprint_cancel_paid_invocation_request,
     fingerprint_execute_paid_invocation_request, fingerprint_quote_paid_invocation_request,
 };
 pub use paid_skill_listing::{
-    PAID_SKILL_LISTING_SCHEMA, PaidSkillExecutorBinding, PaidSkillListing, PaidSkillMediationTerms,
-    PaidSkillOfferTerms, PaidSkillOffers, PaidSkillRunnerOffer,
+    PAID_SKILL_LISTING_SCHEMA, PaidSkillExecutorBinding, PaidSkillFixedOfferTerms,
+    PaidSkillFixedRunnerOffer, PaidSkillListing, PaidSkillMediationTerms, PaidSkillOfferTerms,
+    PaidSkillOffers, PaidSkillPreparedMediation, PaidSkillPreparedMediationTerms,
+    PaidSkillPreparedOfferTerms, PaidSkillPreparedRunnerOffer, PaidSkillRunnerOffer,
+    PaidSkillVendorAmountRange,
 };
 pub use policy_proof::{
     AuthorityKind, AuthorityProof, AuthorityProofApprovalDecision,
