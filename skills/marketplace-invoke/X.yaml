@@ -134,7 +134,7 @@ runners:
             module: readback.mjs
             export: scheduleMarketplaceReadback
             timeout_seconds: 5
-            outputs: { schedule_intent: object }
+            outputs: { schedule_intent: { type: object } }
           artifacts:
             named_emits: { schedule_intent: schedule_intent }
             packets: { schedule_intent: runx.external_job_schedule_intent.v1 }
@@ -186,7 +186,7 @@ runners:
             module: readback.mjs
             export: finishMarketplaceWaiting
             timeout_seconds: 5
-            outputs: { stage_result: object }
+            outputs: { stage_result: { type: object } }
           artifacts:
             named_emits: { stage_result: stage_result }
             packets: { stage_result: runx.external_job_stage.result.v1 }
@@ -206,7 +206,7 @@ runners:
             module: readback.mjs
             export: finishMarketplaceFailure
             timeout_seconds: 5
-            outputs: { stage_result: object }
+            outputs: { stage_result: { type: object } }
           artifacts:
             named_emits: { stage_result: stage_result }
             packets: { stage_result: runx.external_job_stage.result.v1 }
@@ -236,7 +236,7 @@ runners:
             module: readback.mjs
             export: finishMarketplaceReady
             timeout_seconds: 5
-            outputs: { stage_result: object }
+            outputs: { stage_result: { type: object } }
           artifacts:
             named_emits: { stage_result: stage_result }
             packets: { stage_result: runx.external_job_stage.result.v1 }

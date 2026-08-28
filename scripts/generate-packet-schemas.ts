@@ -457,6 +457,34 @@ function schemaView(
     for (const field of view.required) required.add(field);
     for (const [name, value] of view.properties) properties.set(name, value);
   }
+  for (const keyword of ["anyOf", "oneOf"] as const) {
+    const alternatives = Array.isArray(schema[keyword])
+      ? schema[keyword].filter(isRecord)
+      : [];
+    if (alternatives.length === 0) continue;
+    const views = alternatives.map((alternative) =>
+      schemaView(alternative, root, new Set(visitedRefs))
+    );
+    const alternativeType = views[0]?.type;
+    if (alternativeType && views.every((view) => view.type === alternativeType)) {
+      type ??= alternativeType;
+    }
+    closed ||= views.every((view) => view.closed);
+    const commonRequired = views.slice(1).reduce(
+      (common, view) => new Set([...common].filter((field) => view.required.has(field))),
+      new Set(views[0]?.required ?? []),
+    );
+    for (const field of commonRequired) required.add(field);
+    const commonProperties = views.slice(1).reduce(
+      (common, view) => new Set([...common].filter((field) => view.properties.has(field))),
+      new Set(views[0]?.properties.keys() ?? []),
+    );
+    for (const field of commonProperties) {
+      properties.set(field, {
+        [keyword]: views.map((view) => view.properties.get(field)),
+      });
+    }
+  }
   return { type, required, properties, closed };
 }
 

@@ -187,7 +187,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/marketplace-invoke",
-        version: "sha-cc704a2cd120",
+        version: "sha-c41ee376ce4d",
         digest: "7e1932eece4df9ead658f466bb6863edf86b180a084151efa71a02f5f3a41d75",
     },
     OfficialSkillLockEntry {
