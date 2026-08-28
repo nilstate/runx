@@ -228,9 +228,7 @@ function listingReference(value) {
 
 function httpsUrl(value, label) {
   const url = boundedText(value, 2_048, label);
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash
-    || parsed.toString() !== url) {
+  if (!/^https:\/\/[^/?#@\s]+(?:[/?][^#\s]*)?$/u.test(url)) {
     throw new Error(`${label} is invalid.`);
   }
   return url;

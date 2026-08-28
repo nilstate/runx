@@ -407,7 +407,7 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/x402-pay",
-        version: "sha-9029f30de488",
+        version: "sha-415f484d74ae",
         digest: "8fa61bfd7235e1860f3410a40fe56d60e5b22e68cb782aa015b579092d7a3ef2",
     },
     OfficialSkillLockEntry {
