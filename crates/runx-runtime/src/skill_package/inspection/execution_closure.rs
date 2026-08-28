@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use runx_contracts::{JsonValue, sha256_prefixed};
+use runx_contracts::{EnvironmentRequirements, JsonValue, sha256_prefixed};
 use runx_parser::{GraphStep, SourceKind};
 use serde::Serialize;
 
@@ -22,6 +22,8 @@ struct ClosureAccumulator {
     local_packages: BTreeMap<PathBuf, BTreeSet<String>>,
     local_skill_edges: BTreeSet<LocalSkillEdge>,
     profiles: BTreeSet<String>,
+    environment_required: BTreeSet<String>,
+    environment_optional: BTreeSet<String>,
     agent_acts: usize,
     declared_artifact: bool,
 }
@@ -55,6 +57,8 @@ struct ExecutionClosure {
     agent_acts: u64,
     declared_artifact: bool,
     profiles: Vec<String>,
+    #[serde(skip_serializing_if = "EnvironmentRequirements::is_empty")]
+    environment: EnvironmentRequirements,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -390,6 +394,12 @@ impl<'a> ExecutionClosureInspector<'a> {
         declared_artifact: bool,
         walk: &mut ExecutionWalkState<'_>,
     ) -> Result<(), SkillInspectionError> {
+        walk.closure
+            .environment_required
+            .extend(source.environment.required.iter().cloned());
+        walk.closure
+            .environment_optional
+            .extend(source.environment.optional.iter().cloned());
         match source.source_type {
             SourceKind::Graph => {
                 let graph = source
@@ -650,6 +660,14 @@ fn canonical_directory(path: &Path, label: &'static str) -> Result<PathBuf, Skil
 }
 
 fn serialize_closure(closure: ClosureAccumulator) -> Result<JsonValue, SkillInspectionError> {
+    let environment = EnvironmentRequirements {
+        required: closure.environment_required.iter().cloned().collect(),
+        optional: closure
+            .environment_optional
+            .difference(&closure.environment_required)
+            .cloned()
+            .collect(),
+    };
     let components = closure.components.into_iter().collect::<Vec<_>>();
     let package_bindings = closure.package_bindings.into_iter().collect::<Vec<_>>();
     let unresolved_skill_edges = closure
@@ -669,6 +687,7 @@ fn serialize_closure(closure: ClosureAccumulator) -> Result<JsonValue, SkillInsp
         agent_acts: u64::try_from(closure.agent_acts).unwrap_or(u64::MAX),
         declared_artifact: closure.declared_artifact,
         profiles: closure.profiles.into_iter().collect(),
+        environment,
     };
     let serialized = serde_json::to_vec(&output).map_err(|source| SkillInspectionError::Json {
         context: "serializing execution closure",

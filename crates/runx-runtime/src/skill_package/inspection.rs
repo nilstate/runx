@@ -543,6 +543,93 @@ runners:
     }
 
     #[test]
+    fn execution_closure_projects_transitive_environment_requirements()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let temp = tempfile::tempdir().expect("temporary skill catalog");
+        let root = temp.path().join("root");
+        let child = root.join("child");
+        fs::create_dir_all(&child).expect("child skill directory");
+        fs::write(root.join("SKILL.md"), ROOT_MANUAL).expect("root manual");
+        fs::write(
+            root.join("X.yaml"),
+            r#"
+skill: root
+runners:
+  inspect:
+    default: true
+    type: graph
+    graph:
+      name: root
+      result_from: [inline]
+      steps:
+        - id: inline
+          run:
+            type: javascript
+            module: inline.mjs
+            environment:
+              required: [ROOT_REQUIRED]
+              optional: [ROOT_OPTIONAL, SHARED]
+            outputs: { value: string }
+        - id: child
+          skill: child
+"#,
+        )
+        .expect("root manifest");
+        fs::write(
+            root.join("inline.mjs"),
+            "export default () => ({ value: 'root' });\n",
+        )
+        .expect("root module");
+        fs::write(child.join("SKILL.md"), CHILD_MANUAL).expect("child manual");
+        fs::write(
+            child.join("X.yaml"),
+            r#"
+skill: child
+runners:
+  read:
+    default: true
+    type: javascript
+    module: child.mjs
+    environment:
+      required: [CHILD_REQUIRED, SHARED]
+      optional: [CHILD_OPTIONAL]
+    outputs: { value: string }
+"#,
+        )
+        .expect("child manifest");
+        fs::write(
+            child.join("child.mjs"),
+            "export default () => ({ value: 'child' });\n",
+        )
+        .expect("child module");
+
+        let inspected = inspect_skill_package(&root, None, None).expect("valid inspection");
+        let environment = inspected
+            .as_object()
+            .and_then(|value| value.get("execution_closure"))
+            .and_then(JsonValue::as_object)
+            .and_then(|value| value.get("environment"))
+            .and_then(JsonValue::as_object)
+            .expect("closure environment requirements");
+        assert_eq!(
+            environment.get("required"),
+            Some(&JsonValue::Array(vec![
+                JsonValue::String("CHILD_REQUIRED".to_owned()),
+                JsonValue::String("ROOT_REQUIRED".to_owned()),
+                JsonValue::String("SHARED".to_owned()),
+            ]))
+        );
+        assert_eq!(
+            environment.get("optional"),
+            Some(&JsonValue::Array(vec![
+                JsonValue::String("CHILD_OPTIONAL".to_owned()),
+                JsonValue::String("ROOT_OPTIONAL".to_owned()),
+            ]))
+        );
+        Ok(())
+    }
+
+    #[test]
     fn execution_closure_distinguishes_direct_external_skills_from_private_stages()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir().expect("temporary skill catalog");
