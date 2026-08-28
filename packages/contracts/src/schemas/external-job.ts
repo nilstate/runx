@@ -159,7 +159,39 @@ export function validateExternalJobScheduleIntentContract(
   const intent = validateContractSchema(externalJobScheduleIntentV1Schema, value, label);
   runner(intent.stage_runner, `${label}.stage_runner`);
   checkpoint(intent.checkpoint, `${label}.checkpoint`);
+  if (intent.initial_delay_ms > intent.deadline_ms) {
+    throw new Error(`${label}.initial_delay_ms must not exceed deadline_ms.`);
+  }
   return intent;
+}
+
+/**
+ * Reads the exact native Runx output envelope used to request a durable
+ * external job. A non-schedule output is not an error; an output that claims
+ * to be a schedule but changes the closed envelope is.
+ */
+export function externalJobScheduleIntentFromOutput(
+  value: unknown,
+  label = "external_job_schedule_intent_output",
+): ExternalJobScheduleIntentContract | undefined {
+  if (!value || Array.isArray(value) || typeof value !== "object") return undefined;
+  const output = value as Readonly<Record<string, unknown>>;
+  if (!Object.prototype.hasOwnProperty.call(output, "schedule_intent")) return undefined;
+  if (Object.keys(output).length !== 1) {
+    throw new Error(`${label} must contain only schedule_intent.`);
+  }
+  const envelope = output.schedule_intent;
+  if (!envelope || Array.isArray(envelope) || typeof envelope !== "object") {
+    throw new Error(`${label}.schedule_intent must be a Runx value envelope.`);
+  }
+  const wrapped = envelope as Readonly<Record<string, unknown>>;
+  if (Object.keys(wrapped).length !== 1 || !Object.prototype.hasOwnProperty.call(wrapped, "data")) {
+    throw new Error(`${label}.schedule_intent envelope is invalid.`);
+  }
+  return validateExternalJobScheduleIntentContract(
+    wrapped.data,
+    `${label}.schedule_intent.data`,
+  );
 }
 
 export function validateExternalJobStageRequestContract(

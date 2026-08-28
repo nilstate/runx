@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   externalJobContinuationV1Schema,
+  externalJobScheduleIntentFromOutput,
   validateExternalJobContinuationContract,
   validateExternalJobScheduleContract,
   validateExternalJobScheduleIntentContract,
@@ -120,14 +121,23 @@ describe("external job continuation contract", () => {
       created_at: "2026-08-27T00:00:00Z",
     } as const;
     expect(validateExternalJobScheduleContract(schedule)).toEqual(schedule);
-    expect(validateExternalJobScheduleIntentContract({
+    const intent = {
       schema: "runx.external_job_schedule_intent.v1",
       stage_runner: "continue",
       checkpoint: schedule.checkpoint,
       max_attempts: 6,
       initial_delay_ms: 0,
       deadline_ms: 60_000,
-    })).toMatchObject({ max_attempts: 6 });
+    } as const;
+    expect(validateExternalJobScheduleIntentContract(intent)).toMatchObject({ max_attempts: 6 });
+    expect(externalJobScheduleIntentFromOutput({
+      schedule_intent: { data: intent },
+    })).toEqual(intent);
+    expect(externalJobScheduleIntentFromOutput({ result: "ordinary" })).toBeUndefined();
+    expect(() => externalJobScheduleIntentFromOutput({
+      schedule_intent: { data: intent },
+      result: "smuggled",
+    })).toThrow("must contain only schedule_intent");
     expect(() => validateExternalJobScheduleIntentContract({
       schema: "runx.external_job_schedule_intent.v1",
       stage_runner: " continue ",
@@ -136,6 +146,18 @@ describe("external job continuation contract", () => {
       initial_delay_ms: 0,
       deadline_ms: 60_000,
     })).toThrow("stage_runner is invalid");
+    expect(() => validateExternalJobScheduleIntentContract({
+      ...intent,
+      initial_delay_ms: 60_001,
+      deadline_ms: 60_000,
+    })).toThrow("initial_delay_ms must not exceed deadline_ms");
+    expect(() => externalJobScheduleIntentFromOutput({
+      schedule_intent: { data: {
+        ...intent,
+        initial_delay_ms: 60_001,
+        deadline_ms: 60_000,
+      } },
+    })).toThrow("initial_delay_ms must not exceed deadline_ms");
     expect(validateExternalJobStageRequestContract({
       continuation: runnable(),
       checkpoint: schedule.checkpoint,

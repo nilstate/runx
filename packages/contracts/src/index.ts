@@ -325,6 +325,7 @@ export {
   validateExternalJobContinuationContract,
   validateExternalJobScheduleContract,
   validateExternalJobScheduleIntentContract,
+  externalJobScheduleIntentFromOutput,
   validateExternalJobStageRequestContract,
   validateExternalJobStageResultContract,
   type ExternalJobCheckpointContract,
