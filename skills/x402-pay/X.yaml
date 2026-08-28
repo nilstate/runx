@@ -1,5 +1,5 @@
 skill: x402-pay
-version: "0.8.2"
+version: "0.9.0"
 catalog: { kind: graph, audience: operator, visibility: public, role: branded, canonical_skill: runx/spend, provider: x402, runtime_path: hosted, execution: execute, completion: provider_readback, requires_adapter: true, approval: required }
 input_definitions:
   marketplace_offer:
@@ -87,6 +87,41 @@ runners:
       parent_payment_authority: { definition: payment_authority }
       marketplace_offer: { definition: marketplace_offer }
       idempotency_seed: { type: string, required: true, description: Stable purchase idempotency material, schema: { minLength: 16, maxLength: 500 } }
+    graph:
+      name: x402-pay
+      result_from: [readback]
+      steps:
+        - id: settle
+          skill: .
+          runner: settle
+          inputs:
+            payment_signal: $input.payment_signal
+            parent_payment_authority: $input.parent_payment_authority
+            marketplace_offer: $input.marketplace_offer
+            idempotency_seed: $input.idempotency_seed
+        - id: readback
+          skill: .
+          runner: readback
+          inputs:
+            resource_url: $input.payment_signal.resource.url
+          context:
+            payment_ref: settle.provider_operation.data.result.payment_ref
+        - id: verify
+          context: { readback: readback.provider_operation.data.result }
+          run:
+            type: javascript
+            module: readback.mjs
+            export: requireCompleteReadback
+            timeout_seconds: 5
+            outputs: { verified: object }
+
+  settle:
+    type: graph
+    inputs:
+      payment_signal: { definition: payment_signal }
+      parent_payment_authority: { definition: payment_authority }
+      marketplace_offer: { definition: marketplace_offer }
+      idempotency_seed: { type: string, required: true, description: Stable purchase idempotency material, schema: { minLength: 16, maxLength: 500 } }
     examples:
       - payment_signal:
           resource:
@@ -104,8 +139,8 @@ runners:
           counterparty: https://vendor.example/v1/invocations
         idempotency_seed: marketplace-purchase-0001
     graph:
-      name: x402-pay-hosted
-      result_from: [readback]
+      name: x402-settle-hosted
+      result_from: [pay]
       steps:
         - id: pay
           tool: provider.mutate
@@ -121,11 +156,39 @@ runners:
               type: x402_payment
             amount: { units: $input.payment_signal.amount_minor, unit: $input.parent_payment_authority.currency }
             idempotency_key: $input.idempotency_seed
-            result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest]
+            result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result]
+            optional_result_fields: [inner_receipt_ref]
             input: { payment_signal: $input.payment_signal, parent_payment_authority: $input.parent_payment_authority, marketplace_offer: $input.marketplace_offer }
+  readback:
+    type: graph
+    inputs:
+      resource_url:
+        type: string
+        required: true
+        description: Exact HTTPS resource URL used for settlement.
+        schema: { format: uri, maxLength: 2048 }
+      payment_ref:
+        type: string
+        required: true
+        description: Durable payment reference returned by the settle runner.
+        schema: { minLength: 1, maxLength: 300 }
+    graph:
+      name: x402-readback-hosted
+      result_from: [readback]
+      steps:
+        - id: prepare
+          inputs: { payment_ref: $input.payment_ref }
+          run:
+            type: javascript
+            module: readback.mjs
+            export: prepareReadback
+            timeout_seconds: 5
+            outputs: { readback_request: object }
         - id: readback
           tool: provider.read
           scopes: [payment.x402.read]
           policy: { provider_permission: { verb: read } }
-          inputs: { operation: payment.x402.read, target: $input.payment_signal.resource.url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, finality, block_number, inner_receipt_ref], optional_result_fields: [runx_composite] }
-          context: { input: pay.provider_operation.data.result, expected_result: pay.provider_operation.data.result }
+          inputs: { operation: payment.x402.read, target: $input.resource_url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, readback_status], optional_result_fields: [resource_state, finality, block_number, inner_receipt_ref, runx_composite] }
+          context:
+            input: prepare.readback_request
+            expected_result: prepare.readback_request

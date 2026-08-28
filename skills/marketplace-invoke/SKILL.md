@@ -31,7 +31,8 @@ settlement recovery, and database state remain in Runx Hosted.
 
 <!-- Generated from the native execution closure; run pnpm core-skills:composes:generate. -->
 
-- `x402-pay#pay`
+- `x402-pay#readback`
+- `x402-pay#settle`
 
 ## Operator guide
 
@@ -40,13 +41,15 @@ Supply the exact vendor invocation body and optional bounded transport limits.
 `marketplace_offer` and `idempotency_seed` are reserved for hosted admission;
 caller-supplied values are refused. Keep large inputs behind artifact references.
 
-The x402 branch delegates to `x402-pay`, which owns the single provider-effect
-approval, exact external V2 validation, durable signed-payload retry, transaction
-finality, and vendor receipt readback. This skill adds no wrapper approval: the
-delegated provider-effect request is returned as the one waiting-resolution gate
-for vendor spend. The skill never interprets wallet material.
+The x402 branch delegates settlement and each read observation to `x402-pay`.
+`marketplace-invoke` emits the existing current-V1 external-job schedule intent
+after settlement, then its package-owned `vendor-readback` runner performs one
+read per durable claim until the vendor receipt is ready or the bounded deadline
+ends. This skill adds no wrapper approval: the delegated settlement is the one
+waiting-resolution gate for vendor spend. The skill never interprets wallet
+material.
 
-Stop if the family is unsupported, terms drift, provider readback is incomplete,
-or the inner receipt is not available in hosted custody. A refusal or uncertain
-effect remains visible in the receipt and must be retried with the same hosted
-run idempotency identity.
+Stop if the family is unsupported, terms drift, the provider reports terminal
+failure, or the inner receipt cannot be verified from hosted custody. An
+incomplete readback remains durable waiting state; an uncertain settlement keeps
+the same hosted run and payment identity.

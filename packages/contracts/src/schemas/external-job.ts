@@ -49,6 +49,7 @@ export type ExternalJobContinuationContract = DeepReadonly<{
   deadline_at: string;
   provider_job_ref?: ReferenceContract;
   result_artifact_ref?: ReferenceContract;
+  terminal_execution_receipt_ref?: ReferenceContract;
   terminal_evidence_ref?: ReferenceContract;
   terminal_evidence_digest?: Sha256DigestContract;
   failure?: ExternalJobFailureContract;
@@ -236,6 +237,7 @@ function validateSemantics(
   if (!terminal) {
     if (
       continuation.result_artifact_ref
+      || continuation.terminal_execution_receipt_ref
       || continuation.terminal_evidence_ref
       || continuation.terminal_evidence_digest
       || continuation.failure
@@ -248,13 +250,22 @@ function validateSemantics(
     if (
       continuation.stage !== "finalize"
       || !continuation.result_artifact_ref
+      || !continuation.terminal_execution_receipt_ref
       || !continuation.terminal_evidence_ref
       || !continuation.terminal_evidence_digest
       || continuation.failure
     ) {
       throw new Error(`${label} succeeded state requires finalized artifact and evidence.`);
     }
+    referenceType(
+      continuation.terminal_execution_receipt_ref,
+      "receipt",
+      `${label}.terminal_execution_receipt_ref`,
+    );
     return;
+  }
+  if (continuation.terminal_execution_receipt_ref) {
+    throw new Error(`${label} non-success terminal state cannot expose an execution receipt.`);
   }
   if (continuation.result_artifact_ref) {
     throw new Error(`${label} non-success terminal state cannot expose a result artifact.`);

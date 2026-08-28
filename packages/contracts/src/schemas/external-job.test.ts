@@ -69,6 +69,28 @@ describe("external job continuation contract", () => {
     })).toThrow("cannot expose a result artifact");
   });
 
+  it("binds successful continuation state to the exact sealed stage receipt", () => {
+    const succeeded = {
+      ...runnable(),
+      stage: "finalize" as const,
+      status: "succeeded" as const,
+      next_attempt_at: undefined,
+      provider_job_ref: { type: "target" as const, uri: "runx:aws:textract-analysis:job-1" },
+      result_artifact_ref: { type: "artifact" as const, uri: "runx:artifact:result-1" },
+      terminal_evidence_ref: { type: "verification" as const, uri: "runx:verification:job-1" },
+      terminal_evidence_digest: DIGEST_A,
+    };
+    expect(() => validateExternalJobContinuationContract(succeeded))
+      .toThrow("requires finalized artifact and evidence");
+    expect(validateExternalJobContinuationContract({
+      ...succeeded,
+      terminal_execution_receipt_ref: {
+        type: "receipt",
+        uri: `runx:receipt:sha256:${"c".repeat(64)}`,
+      },
+    }).status).toBe("succeeded");
+  });
+
   it("bounds attempts and dead-letter failures", () => {
     expect(() => validateExternalJobContinuationContract({
       ...runnable(),

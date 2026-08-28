@@ -1,5 +1,5 @@
 skill: marketplace-invoke
-version: "0.3.0"
+version: "0.4.0"
 catalog:
   kind: graph
   audience: operator
@@ -100,11 +100,11 @@ runners:
         idempotency_seed: marketplace-purchase-0001
     graph:
       name: marketplace-invoke
-      result_from: [x402]
+      result_from: [schedule]
       steps:
         - id: x402
           skill: ../x402-pay
-          runner: pay
+          runner: settle
           inputs:
             payment_signal:
               resource:
@@ -123,3 +123,120 @@ runners:
               counterparty: $input.marketplace_offer.endpoint_url
             marketplace_offer: $input.marketplace_offer
             idempotency_seed: $input.idempotency_seed
+        - id: schedule
+          inputs:
+            marketplace_offer: $input.marketplace_offer
+            resource_url: $input.marketplace_offer.endpoint_url
+          context:
+            settlement: x402.provider_operation.data.result
+          run:
+            type: javascript
+            module: readback.mjs
+            export: scheduleMarketplaceReadback
+            timeout_seconds: 5
+            outputs: { schedule_intent: object }
+          artifacts:
+            named_emits: { schedule_intent: schedule_intent }
+            packets: { schedule_intent: runx.external_job_schedule_intent.v1 }
+
+  vendor-readback:
+    type: graph
+    inputs:
+      request:
+        type: json
+        required: true
+        description: Runx-owned current-V1 durable stage request.
+    graph:
+      name: marketplace-vendor-readback
+      result_from: [waiting-result, failed-result, ready-result]
+      steps:
+        - id: plan
+          inputs: { request: $input.request }
+          run:
+            type: javascript
+            module: readback.mjs
+            export: planMarketplaceReadback
+            timeout_seconds: 5
+            outputs: { readback_input: object, provider_job_ref: object, checkpoint: object }
+
+        - id: readback
+          skill: ../x402-pay
+          runner: readback
+          context:
+            resource_url: plan.readback_input.resource_url
+            payment_ref: plan.readback_input.payment_ref
+
+        - id: interpret
+          context:
+            checkpoint: plan.checkpoint
+            provider_job_ref: plan.provider_job_ref
+            readback: readback.provider_operation.data.result
+          run:
+            type: javascript
+            module: readback.mjs
+            export: interpretMarketplaceReadback
+            timeout_seconds: 5
+            outputs: { action: object }
+
+        - id: waiting-result
+          when: { field: interpret.action.kind, equals: waiting }
+          context: { action: interpret.action }
+          run:
+            type: javascript
+            module: readback.mjs
+            export: finishMarketplaceWaiting
+            timeout_seconds: 5
+            outputs: { stage_result: object }
+          artifacts:
+            named_emits: { stage_result: stage_result }
+            packets: { stage_result: runx.external_job_stage.result.v1 }
+
+        - id: digest-failure
+          when: { field: interpret.action.kind, equals: failed }
+          tool: data.digest
+          context: { value: interpret.action.evidence }
+
+        - id: failed-result
+          when: { field: interpret.action.kind, equals: failed }
+          context:
+            action: interpret.action
+            digest_result: digest-failure.digest_result.data
+          run:
+            type: javascript
+            module: readback.mjs
+            export: finishMarketplaceFailure
+            timeout_seconds: 5
+            outputs: { stage_result: object }
+          artifacts:
+            named_emits: { stage_result: stage_result }
+            packets: { stage_result: runx.external_job_stage.result.v1 }
+
+        - id: allocate-result
+          when: { field: interpret.action.kind, equals: ready }
+          tool: artifact.allocate
+          scopes: [runx:artifact:write]
+          inputs:
+            media_type: application/json
+            idempotency_scope: runx.marketplace.vendor-result.v1
+          context: { value: interpret.action.result }
+
+        - id: digest-completion
+          when: { field: interpret.action.kind, equals: ready }
+          tool: data.digest
+          context: { value: interpret.action.evidence }
+
+        - id: ready-result
+          when: { field: interpret.action.kind, equals: ready }
+          context:
+            action: interpret.action
+            artifact_result: allocate-result.artifact_operation.data.result
+            digest_result: digest-completion.digest_result.data
+          run:
+            type: javascript
+            module: readback.mjs
+            export: finishMarketplaceReady
+            timeout_seconds: 5
+            outputs: { stage_result: object }
+          artifacts:
+            named_emits: { stage_result: stage_result }
+            packets: { stage_result: runx.external_job_stage.result.v1 }

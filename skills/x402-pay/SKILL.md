@@ -7,14 +7,16 @@ runx:
 
 # X402 Pay
 
-`x402-pay` is the public x402 buyer contract. Its OSS graph submits the exact
-x402 payment signal, complete parent authority, and stable idempotency seed to
-the hosted `payment.x402` operation, then requires readback through
-`payment.x402.read`.
+`x402-pay` is the public x402 buyer contract. `settle` submits the exact payment
+signal once, and `readback` performs one observation of that durable payment and
+resource. The default `pay` runner composes both and requires immediate terminal
+readback, while durable callers compose `settle` once and re-enter `readback`
+through Runx's external-job scheduler.
 
 Runx Hosted owns challenge validation, authority attenuation and reservation,
-wallet or facilitator credentials, payload signing, paid-resource retry,
-settlement recovery, finality, and the private ledger. OSS contains the public
+wallet or facilitator credentials, payload signing, settlement recovery,
+finality, and the private ledger. The connector never sleeps or polls; durable
+continuation cadence belongs to Runx scheduling. OSS contains the public
 v1 Runx contract and generic provider-effect gate only. References to x402
 protocol version 2 in upstream conformance material describe the external
 standard, not a Runx v2 contract.

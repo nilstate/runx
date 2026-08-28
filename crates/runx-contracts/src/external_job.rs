@@ -45,15 +45,15 @@ pub enum ExternalJobScheduleIntentSchema {
     V1,
 }
 
-/// A deliberately small retry ceiling. A higher value is a new operator
-/// decision, not an unbounded caller-controlled integer.
+/// Bounded for durable scheduling while allowing multi-hour provider jobs to
+/// use a five-minute steady-state inspection cadence.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
 pub struct ExternalJobAttemptLimit(u8);
 
 impl ExternalJobAttemptLimit {
     pub fn new(value: u8) -> Option<Self> {
-        (1..=32).contains(&value).then_some(Self(value))
+        (1..=128).contains(&value).then_some(Self(value))
     }
 
     pub fn get(self) -> u8 {
@@ -67,13 +67,13 @@ impl<'de> Deserialize<'de> for ExternalJobAttemptLimit {
         D: Deserializer<'de>,
     {
         let value = u8::deserialize(deserializer)?;
-        Self::new(value).ok_or_else(|| de::Error::custom("max_attempts must be between 1 and 32"))
+        Self::new(value).ok_or_else(|| de::Error::custom("max_attempts must be between 1 and 128"))
     }
 }
 
 impl RunxSchema for ExternalJobAttemptLimit {
     fn json_schema() -> Value {
-        json!({ "type": "integer", "minimum": 1, "maximum": 32 })
+        json!({ "type": "integer", "minimum": 1, "maximum": 128 })
     }
 }
 
@@ -191,6 +191,8 @@ pub struct ExternalJobContinuation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result_artifact_ref: Option<Reference>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_execution_receipt_ref: Option<Reference>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_evidence_ref: Option<Reference>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_evidence_digest: Option<Sha256Digest>,
@@ -282,8 +284,8 @@ mod tests {
     #[test]
     fn attempt_limit_is_bounded() {
         assert!(ExternalJobAttemptLimit::new(1).is_some());
-        assert!(ExternalJobAttemptLimit::new(32).is_some());
+        assert!(ExternalJobAttemptLimit::new(128).is_some());
         assert!(ExternalJobAttemptLimit::new(0).is_none());
-        assert!(ExternalJobAttemptLimit::new(33).is_none());
+        assert!(ExternalJobAttemptLimit::new(129).is_none());
     }
 }

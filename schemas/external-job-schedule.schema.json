@@ -273,7 +273,7 @@
       "x-runx-schema": "runx.reference.v1"
     },
     "max_attempts": {
-      "maximum": 32,
+      "maximum": 128,
       "minimum": 1,
       "type": "integer"
     },

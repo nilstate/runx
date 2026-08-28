@@ -187,8 +187,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/marketplace-invoke",
-        version: "sha-ee900340416a",
-        digest: "8b37832bb3d1257b3d9421dcb439bd357255d88d1a113e0a604005d68eacfe0b",
+        version: "sha-cc704a2cd120",
+        digest: "7e1932eece4df9ead658f466bb6863edf86b180a084151efa71a02f5f3a41d75",
     },
     OfficialSkillLockEntry {
         skill_id: "zhtwangk/meeting-followup",
@@ -407,8 +407,8 @@ pub(crate) const OFFICIAL_SKILLS: &[OfficialSkillLockEntry] = &[
     },
     OfficialSkillLockEntry {
         skill_id: "runx/x402-pay",
-        version: "sha-b43c66779ccf",
-        digest: "156cff81915fa2b642b4ccf1bee412df54ceb99bd69d1b323319726ce550e4d1",
+        version: "sha-9029f30de488",
+        digest: "8fa61bfd7235e1860f3410a40fe56d60e5b22e68cb782aa015b579092d7a3ef2",
     },
     OfficialSkillLockEntry {
         skill_id: "runx/zapier-handoff",
