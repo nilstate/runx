@@ -185,7 +185,13 @@ where
         "caller.http_responses",
     )
     .map_err(HarnessFixtureError::Parser)?;
-    options.effects = super::effects_with_harness_http_responses(&options.effects, &http_responses);
+    let http_exchanges = runx_parser::harness_fixture::parse_harness_http_exchanges(
+        fixture.caller.get("http_exchanges"),
+        "caller.http_exchanges",
+    )
+    .map_err(HarnessFixtureError::Parser)?;
+    options.effects =
+        super::effects_with_harness_http(&options.effects, &http_responses, &http_exchanges);
     #[cfg(feature = "catalog")]
     {
         let provider_responses = runx_parser::harness_fixture::parse_harness_provider_responses(

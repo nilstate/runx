@@ -21,6 +21,21 @@ function mcpPayload(result, meta = { tool: "fixture" }) {
   };
 }
 
+function normalizedEvidence(plan, result) {
+  return normalizeOperation({
+    operation_plan: plan,
+    http_execution: {
+      responses: [{
+        id: `nitrosend-${plan.operation}`,
+        status: 200,
+        ok: true,
+        body_digest: "sha256:fixture",
+        json: mcpPayload(result, { tool: plan.tool }),
+      }],
+    },
+  }).provider_evidence;
+}
+
 test("presents step-qualified evidence without another provider layer", () => {
   const status_evidence = { decision: "ok", operation: "billing_status" };
   const plans_evidence = { decision: "ok", operation: "billing_plans" };
@@ -522,7 +537,7 @@ test("pins plan billing MCP sub-actions and caller retry identity", () => {
   }).operation_plan;
   assert.equal(checkout.decision, "ready");
   assert.equal(checkout.tool, "nitro_manage_billing");
-  assert.equal(checkout.requests[0].idempotency_key, "account-1-plan-202-v1");
+  assert.equal(checkout.requests[0].idempotency_key, undefined);
   assert.deepEqual(checkout.requests[0].body.params.arguments, {
     operation: "checkout",
     params: { plan_id: 202, confirm: true },
@@ -538,6 +553,56 @@ test("pins plan billing MCP sub-actions and caller retry identity", () => {
     operation: "checkout_status",
     params: { purchase_id: 701 },
   });
+});
+
+test("binds billing readback to the requested operation and purchase", () => {
+  const purchase701 = prepareOperation({
+    mode: "read",
+    operation: "plan_checkout_status",
+    arguments: { purchase_id: 701 },
+  }).operation_plan;
+  const purchase702 = prepareOperation({
+    mode: "read",
+    operation: "plan_checkout_status",
+    arguments: { purchase_id: 702 },
+  }).operation_plan;
+
+  const evidence701 = normalizedEvidence(purchase701, {
+    operation: "checkout_status",
+    purchase_id: 701,
+    status: "awaiting_provider_approval",
+  });
+  const evidence702 = normalizedEvidence(purchase702, {
+    operation: "checkout_status",
+    purchase_id: 702,
+    status: "active",
+  });
+  assert.equal(evidence701.decision, "ok");
+  assert.equal(evidence701.provider_ref, "nitrosend:plan_purchase:701");
+  assert.equal(evidence702.decision, "ok");
+  assert.equal(evidence702.provider_ref, "nitrosend:plan_purchase:702");
+
+  const mismatch = normalizedEvidence(purchase701, {
+    operation: "checkout_status",
+    purchase_id: 702,
+    status: "active",
+  });
+  assert.equal(mismatch.decision, "provider_error");
+  assert.equal(mismatch.provider_ref, null);
+  assert.deepEqual(mismatch.blockers, ["Nitrosend returned purchase_id 702; expected 701"]);
+
+  const status = prepareOperation({
+    mode: "read",
+    operation: "billing_status",
+    arguments: {},
+  }).operation_plan;
+  const wrongOperation = normalizedEvidence(status, {
+    operation: "checkout",
+    purchase_id: 701,
+  });
+  assert.equal(wrongOperation.decision, "provider_error");
+  assert.equal(wrongOperation.provider_ref, null);
+  assert.deepEqual(wrongOperation.blockers, ["Nitrosend returned operation checkout; expected status"]);
 });
 
 test("refuses widened or prepaid arguments on every plan billing lane", () => {

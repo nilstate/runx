@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.4.2"
+version: "0.4.3"
 catalog:
   kind: skill
   audience: public
@@ -120,26 +120,27 @@ runners:
           skill: graph/provider-operation
           runner: read
           inputs:
-            operation: billing_status
-            arguments: {}
+            operation: plan_checkout_status
+          context:
+            purchase_id: checkout.provider_evidence.data.result.purchase_id
         - id: present
           context:
             checkout_evidence: checkout.provider_evidence.data
-            status_evidence: readback.provider_evidence.data
+            purchase_evidence: readback.provider_evidence.data
           run:
             type: javascript
             module: graph/provider-operation/nitrosend-operation.mjs
             export: presentEvidence
             outputs:
               checkout_evidence: object
-              status_evidence: object
+              purchase_evidence: object
           artifacts:
             named_emits:
               checkout_evidence: checkout_evidence
-              status_evidence: status_evidence
+              purchase_evidence: purchase_evidence
             packets:
               checkout_evidence: nitrosend.provider_evidence.v1
-              status_evidence: nitrosend.provider_evidence.v1
+              purchase_evidence: nitrosend.provider_evidence.v1
     policy:
       guards:
         - step: approve
@@ -174,8 +175,7 @@ runners:
           runner: read
           inputs:
             operation: plan_checkout_status
-            arguments:
-              purchase_id: "$input.purchase_id"
+            purchase_id: "$input.purchase_id"
         - id: present
           context:
             purchase_evidence: status.provider_evidence.data

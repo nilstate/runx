@@ -161,6 +161,253 @@ caller:
 }
 
 #[test]
+fn admits_request_sensitive_harness_http_exchanges() -> Result<(), HarnessFixtureError> {
+    let fixture = parse_harness_fixture(
+        r#"
+name: deterministic-mcp
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body:
+          json: { jsonrpc: "2.0", method: tools/call, params: { name: billing } }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: '{"jsonrpc":"2.0","result":{"ok":true}}'
+    - request:
+        method: DELETE
+        url: https://fixture.runx.invalid/mcp
+        body: none
+      response: { status: 204, body: "" }
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body: { json: null }
+      response: { status: 200, body: '{"deleted":true}' }
+"#,
+    )?;
+
+    let exchanges = parse_harness_http_exchanges(
+        fixture.caller.get("http_exchanges"),
+        "caller.http_exchanges",
+    )?;
+    assert_eq!(exchanges.len(), 3);
+    assert_eq!(exchanges[0].request.method, "POST");
+    assert_eq!(exchanges[0].request.url, "https://fixture.runx.invalid/mcp");
+    assert_eq!(exchanges[0].response.status, 200);
+    Ok(())
+}
+
+#[test]
+fn harness_http_exchanges_reject_malformed_urls_and_bound_characters() {
+    for malformed in [
+        "https://",
+        "https://?query",
+        "ftp://fixture.runx.invalid/source",
+        "https://fixture.runx.invalid/source\u{0007}",
+        "https://user:pass@fixture.runx.invalid/source",
+        "https://fixture.runx.invalid/source#fragment",
+    ] {
+        assert!(
+            validate_harness_http_url(malformed, "caller.http_exchanges[0].request.url").is_err(),
+            "malformed URL must fail: {malformed:?}",
+        );
+    }
+
+    let prefix = "https://fixture.runx.invalid/";
+    let at_limit = format!("{prefix}{}", "é".repeat(2048 - prefix.chars().count()));
+    assert!(validate_harness_http_url(&at_limit, "caller.http_exchanges[0].request.url").is_ok());
+    let over_limit = format!("{at_limit}é");
+    assert!(
+        validate_harness_http_url(&over_limit, "caller.http_exchanges[0].request.url").is_err()
+    );
+}
+
+#[test]
+fn harness_http_exchanges_and_legacy_responses_reject_credentials_and_fragments() {
+    for url in [
+        "https://user:pass@fixture.runx.invalid/source",
+        "https://fixture.runx.invalid/source#fragment",
+    ] {
+        let fixture = format!(
+            r#"
+name: unreachable-url
+kind: skill
+target: ..
+caller:
+  http_responses:
+    "{url}": {{ status: 200, body: unreachable }}
+"#,
+        );
+        assert!(
+            parse_harness_fixture(&fixture).is_err(),
+            "legacy URL must fail: {url:?}",
+        );
+    }
+}
+
+#[test]
+fn harness_http_exchanges_canonicalize_final_urls_and_reject_aliases() {
+    for (first, alias) in [
+        ("https://api.example.com", "https://api.example.com/"),
+        ("https://API.example.com/mcp", "https://api.example.com/mcp"),
+        (
+            "https://api.example.com/π",
+            "https://api.example.com/%CF%80",
+        ),
+    ] {
+        let fixture = format!(
+            r#"
+name: canonical-url-alias
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request: {{ method: POST, url: "{first}", body: none }}
+      response: {{ status: 200, body: first }}
+    - request: {{ method: POST, url: "{alias}", body: none }}
+      response: {{ status: 200, body: alias }}
+"#,
+        );
+        let error = parse_harness_fixture(&fixture)
+            .expect_err("canonical final-URL aliases must be duplicate identities");
+        assert!(
+            matches!(error, HarnessFixtureError::Invalid { field, .. } if field == "caller.http_exchanges[1].request")
+        );
+    }
+}
+
+#[test]
+fn harness_http_exchanges_enforce_count_and_body_bounds() {
+    let empty = parse_harness_fixture(
+        "name: empty-exchanges\nkind: skill\ntarget: ..\ncaller:\n  http_exchanges: []\n",
+    )
+    .expect_err("an explicitly empty exchange list must fail");
+    assert!(
+        matches!(empty, HarnessFixtureError::Invalid { field, .. } if field == "caller.http_exchanges")
+    );
+
+    let entries = (0..33)
+        .map(|index| {
+            format!(
+                "    - request:\n        method: POST\n        url: https://fixture.runx.invalid/mcp\n        body: {{ json: {{ index: {index} }} }}\n      response: {{ status: 200, body: ok }}\n"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    let too_many = format!(
+        "name: too-many-exchanges\nkind: skill\ntarget: ..\ncaller:\n  http_exchanges:\n{entries}"
+    );
+    assert!(
+        parse_harness_fixture(&too_many).is_err(),
+        "33 exchanges must exceed the declared bound",
+    );
+
+    let oversized = "x".repeat(1_048_576);
+    let oversized_body = format!(
+        r#"
+name: oversized-exchange-body
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body: {{ json: "{oversized}" }}
+      response: {{ status: 200, body: ok }}
+"#,
+    );
+    assert!(
+        parse_harness_fixture(&oversized_body).is_err(),
+        "serialized JSON over 1 MiB must fail",
+    );
+}
+
+#[test]
+fn harness_http_exchanges_reject_unknown_body_fields() {
+    let error = parse_harness_fixture(
+        r#"
+name: widened-mcp-body
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body: { json: { operation: status }, extra: ignored }
+      response: { status: 200, body: ok }
+"#,
+    )
+    .expect_err("unknown body fields must fail instead of changing identity silently");
+
+    assert!(matches!(error, HarnessFixtureError::Invalid { .. }));
+}
+
+#[test]
+fn harness_http_exchanges_accept_json_bodies_for_get_and_delete() -> Result<(), HarnessFixtureError>
+{
+    let fixture = parse_harness_fixture(
+        r#"
+name: method-agnostic-body-identity
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: GET
+        url: https://fixture.runx.invalid/source
+        body: { json: { query: state } }
+      response: { status: 200, body: get }
+    - request:
+        method: DELETE
+        url: https://fixture.runx.invalid/source
+        body: { json: null }
+      response: { status: 200, body: delete }
+"#,
+    )?;
+    let exchanges = parse_harness_http_exchanges(
+        fixture.caller.get("http_exchanges"),
+        "caller.http_exchanges",
+    )?;
+    assert_eq!(exchanges.len(), 2);
+    assert_eq!(exchanges[0].request.method, "GET");
+    assert_eq!(exchanges[1].request.method, "DELETE");
+    Ok(())
+}
+
+#[test]
+fn rejects_duplicate_harness_http_exchanges() {
+    let error = parse_harness_fixture(
+        r#"
+name: duplicate-mcp
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request: &request
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body:
+          json: { operation: status }
+      response: { status: 200, body: first }
+    - request: *request
+      response: { status: 200, body: second }
+"#,
+    )
+    .expect_err("duplicate exact exchanges must fail");
+
+    assert!(
+        matches!(error, HarnessFixtureError::Invalid { field, .. } if field == "caller.http_exchanges[1].request")
+    );
+}
+
+#[test]
 fn rejects_non_http_harness_response_keys() {
     let error = parse_harness_fixture(
         r#"

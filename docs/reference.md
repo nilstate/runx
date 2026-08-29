@@ -801,16 +801,33 @@ caller:
       status: 200
       headers: { content-type: text/plain }
       body: hello world
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body: { json: { operation: status } }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: '{"ok":true}'
 ```
 
-The key is the exact requested URL. When this map is present, an unmatched URL
-fails instead of reaching the network. The lane admits GET reads plus only
-runtime-declared, idempotency-keyed POST requests such as `artifact.allocate`;
-other methods fail closed. Native `web.fetch`, `http.read`, and
-`artifact.allocate` still own their real admission, request preparation,
-response limits, digests, redaction, and provenance; only transport response
-bytes come from the harness. This lane is unavailable to skill inputs,
-environment configuration, and ordinary live runs.
+`http_responses` is the legacy exact-URL lane for GET reads and
+runtime-declared semantically read-only POST queries such as
+`artifact.allocate`. `http_exchanges` is matched first on the exact method,
+final URL, and explicit body identity: `body: none` means no body, while
+`body: {json: ...}` means one structural JSON value, including literal null.
+An exchange URL is canonicalized like the native final URL and cannot contain
+credentials or a fragment. An exact exchange may admit POST, PUT, PATCH, or
+DELETE; an unmatched mutation
+fails without reaching the network, and the legacy lane keeps its narrower
+method rules. Declaring either lane activates harness-only transport with no
+live fallback. Native `web.fetch`, `http.read`, `http.query`, and
+`http.execute` still own their real admission, request preparation, response
+limits, digests, redaction, and provenance; only transport response bytes come
+from the harness. Live `http.execute` mutations remain single-attempt. Neither
+fixture lane is available to skill inputs, environment configuration, or
+ordinary live runs.
 
 Package replay uses a disposable project-owned workspace below `.runx/harness`
 and a separate receipt store for every case, then cleans that scratch state.

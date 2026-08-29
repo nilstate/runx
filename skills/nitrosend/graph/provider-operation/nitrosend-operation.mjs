@@ -25,6 +25,12 @@ const ACT_OPERATIONS = new Map([
   ["define_segment", "nitro_define_segment"],
   ["ingest_image", "nitro_ingest"],
 ]);
+const BILLING_PROVIDER_OPERATIONS = new Map([
+  ["billing_status", "status"],
+  ["billing_plans", "plans"],
+  ["plan_checkout", "checkout"],
+  ["plan_checkout_status", "checkout_status"],
+]);
 const DELIVERY_OPERATIONS = new Set([
   "approve", "reject", "live", "schedule", "pause", "resume", "cancel",
   "archive", "restore", "delete",
@@ -44,7 +50,10 @@ export function prepareOperation(inputs) {
   const mode = text(inputs.mode);
   const operation = text(inputs.operation);
   const rawArguments = inputs.arguments;
-  const args = record(rawArguments);
+  const purchaseId = number(inputs.purchase_id);
+  const args = operation === "plan_checkout_status" && purchaseId > 0
+    ? { purchase_id: purchaseId }
+    : record(rawArguments);
   const brandSid = text(inputs.brand_sid);
   const operations = mode === "read" ? READ_OPERATIONS : mode === "act" ? ACT_OPERATIONS : null;
   const blockers = operations
@@ -69,15 +78,14 @@ export function prepareOperation(inputs) {
       mode,
       operation: operation || null,
       tool,
+      expected_provider_operation: BILLING_PROVIDER_OPERATIONS.get(operation) ?? null,
+      expected_purchase_id: operation === "plan_checkout_status" ? Number(args.purchase_id) : null,
       brand_sid: brandSid || null,
       requests: decision === "ready"
         ? [{
             id: requestId,
             method: "POST",
             url: API_URL,
-            ...(mode === "act" && text(args.idempotency_key)
-              ? { idempotency_key: args.idempotency_key }
-              : {}),
             headers: {
               accept: "application/json, text/event-stream",
               ...(brandSid ? { "x-brand-sid": brandSid } : {}),
@@ -121,15 +129,21 @@ export function normalizeOperation(inputs) {
     const payload = providerPayload(response);
     const result = parseToolContent(payload, text(plan.operation));
     const safeResult = redact(result);
-    const providerError = record(payload.result).isError === true ||
+    const contractBlocker = billingResultBlocker(plan, safeResult);
+    const explicitProviderError = record(payload.result).isError === true ||
       safeResult?.error === true || safeResult?.isError === true;
+    const providerError = explicitProviderError || Boolean(contractBlocker);
     return {
       provider_evidence: evidence(
         plan,
         providerError ? "provider_error" : "ok",
         response,
         safeResult,
-        providerError ? [safeResult?.message || "Nitrosend rejected the operation"] : [],
+        providerError
+          ? [explicitProviderError
+              ? safeResult?.message || "Nitrosend rejected the operation"
+              : contractBlocker]
+          : [],
       ),
     };
   } catch (error) {
@@ -143,6 +157,23 @@ export function normalizeOperation(inputs) {
       ),
     };
   }
+}
+
+function billingResultBlocker(plan, result) {
+  const expectedOperation = text(plan.expected_provider_operation);
+  if (!expectedOperation) return null;
+  const data = record(result?.data ?? result);
+  const actualOperation = text(data.operation);
+  if (actualOperation !== expectedOperation) {
+    return `Nitrosend returned operation ${actualOperation || "<missing>"}; expected ${expectedOperation}`;
+  }
+  if (expectedOperation !== "checkout_status") return null;
+  const expectedPurchaseId = number(plan.expected_purchase_id);
+  const actualPurchaseId = number(data.purchase_id);
+  if (actualPurchaseId !== expectedPurchaseId) {
+    return `Nitrosend returned purchase_id ${actualPurchaseId || "<missing>"}; expected ${expectedPurchaseId}`;
+  }
+  return null;
 }
 
 export function blockedOperation(inputs) {
@@ -456,7 +487,7 @@ function evidence(plan, decision, response, result, blockers) {
     mode: text(plan.mode),
     operation: plan.operation ?? null,
     tool: plan.tool ?? null,
-    provider_ref: providerReference(text(plan.operation), result),
+    provider_ref: decision === "ok" ? providerReference(text(plan.operation), result) : null,
     result,
     evidence: response
       ? {
