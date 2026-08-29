@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   blockedOperation,
   normalizeOperation,
+  presentEvidence,
   prepareOperation,
 } from "./nitrosend-operation.mjs";
 
@@ -19,6 +20,16 @@ function mcpPayload(result, meta = { tool: "fixture" }) {
     },
   };
 }
+
+test("presents step-qualified evidence without another provider layer", () => {
+  const status_evidence = { decision: "ok", operation: "billing_status" };
+  const plans_evidence = { decision: "ok", operation: "billing_plans" };
+
+  assert.deepEqual(presentEvidence({ status_evidence, plans_evidence }), {
+    status_evidence,
+    plans_evidence,
+  });
+});
 
 test("prepares a bounded read through native authenticated HTTP", () => {
   const { operation_plan: plan } = prepareOperation({
