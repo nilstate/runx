@@ -384,4 +384,103 @@ runners:
         assert_eq!(exchanges[0].request.method, "POST");
         Ok(())
     }
+
+    #[test]
+    fn inline_harness_http_exchanges_accept_get_and_delete_json_bodies()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for method in ["GET", "DELETE"] {
+            let yaml = format!(
+                r#"
+skill: fixture
+harness:
+  cases:
+    - name: exact-method-body
+      inputs: {{}}
+      caller:
+        http_exchanges:
+          - request:
+              method: {method}
+              url: https://fixture.runx.invalid/source
+              body:
+                json: null
+            response:
+              status: 200
+              body: matched
+      expect:
+        status: sealed
+runners:
+  fixture:
+    default: true
+    type: graph
+    graph:
+      name: fixture
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: fixture
+"#,
+            );
+            let raw = parse_runner_manifest_yaml(&yaml)?;
+            let manifest = validate_runner_manifest(raw)?;
+            let exchanges = &manifest
+                .harness
+                .as_ref()
+                .and_then(|harness| harness.cases.first())
+                .ok_or("inline case missing")?
+                .caller
+                .http_exchanges;
+            assert_eq!(exchanges[0].request.method, method);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn inline_harness_http_exchanges_reject_credentials_and_fragments()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for url in [
+            "https://user:pass@fixture.runx.invalid/source",
+            "https://fixture.runx.invalid/source#fragment",
+        ] {
+            let yaml = format!(
+                r#"
+skill: fixture
+harness:
+  cases:
+    - name: unreachable-url
+      inputs: {{}}
+      caller:
+        http_exchanges:
+          - request:
+              method: POST
+              url: "{url}"
+              body: none
+            response:
+              status: 200
+              body: unreachable
+      expect:
+        status: sealed
+runners:
+  fixture:
+    default: true
+    type: graph
+    graph:
+      name: fixture
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: fixture
+"#,
+            );
+            let raw = parse_runner_manifest_yaml(&yaml)?;
+            let Err(error) = validate_runner_manifest(raw) else {
+                return Err("inline credential and fragment URLs must fail validation".into());
+            };
+            assert!(error.to_string().contains("exact absolute HTTP(S) URL"));
+        }
+        Ok(())
+    }
 }

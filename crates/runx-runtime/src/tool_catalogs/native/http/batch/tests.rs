@@ -2,8 +2,11 @@
 
 use std::collections::BTreeMap;
 
+use runx_contracts::{JsonObject, JsonValue};
+
+use super::super::BatchMode;
 use super::super::HttpBatchInput;
-use super::{RequestAuth, admitted_hosts};
+use super::{RequestAuth, admitted_hosts, execute_batch};
 #[cfg(feature = "catalog")]
 use crate::RuntimeEffectRegistry;
 use crate::credentials::CredentialDelivery;
@@ -147,5 +150,125 @@ fn native_http_credential_binding_accepts_an_exact_bound_host()
         },
     )?;
     assert!(hosts.contains("api.example.com"));
+    Ok(())
+}
+
+#[cfg(feature = "catalog")]
+#[test]
+fn harness_http_exchanges_match_complete_requests_through_catalog()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = runx_parser::harness_fixture::parse_harness_fixture(
+        r#"
+name: exact-body-identity
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://API.Example.com/π
+        body: none
+      response: { status: 200, body: '{"case":"none"}' }
+    - request:
+        method: POST
+        url: https://API.Example.com/π
+        body: { json: null }
+      response: { status: 200, body: '{"case":"null"}' }
+    - request:
+        method: DELETE
+        url: https://API.Example.com/π
+        body: { json: null }
+      response: { status: 200, body: '{"case":"delete-null"}' }
+    - request:
+        method: GET
+        url: https://API.Example.com/π
+        body: { json: { query: state } }
+      response: { status: 200, body: '{"case":"get-json"}' }
+"#,
+    )?;
+    let exchanges = runx_parser::harness_fixture::parse_harness_http_exchanges(
+        fixture.caller.get("http_exchanges"),
+        "caller.http_exchanges",
+    )?;
+    assert!(
+        exchanges
+            .iter()
+            .all(|exchange| exchange.request.url == "https://api.example.com/%CF%80")
+    );
+    let effects = crate::execution::harness::effects_with_harness_http(
+        &RuntimeEffectRegistry::default(),
+        &BTreeMap::new(),
+        &exchanges,
+    );
+    let request = |id: &str, method: &str, body: Option<JsonValue>| {
+        let mut request = JsonObject::from([
+            ("id".to_owned(), JsonValue::String(id.to_owned())),
+            ("method".to_owned(), JsonValue::String(method.to_owned())),
+            (
+                "url".to_owned(),
+                JsonValue::String("https://api.example.com/%CF%80".to_owned()),
+            ),
+        ]);
+        if let Some(body) = body {
+            request.insert("body".to_owned(), body);
+        }
+        JsonValue::Object(request)
+    };
+    let inputs = HttpBatchInput {
+        requests: vec![
+            request("none", "POST", None),
+            request("null", "POST", Some(JsonValue::Null)),
+            request("delete-null", "DELETE", Some(JsonValue::Null)),
+            request(
+                "get-json",
+                "GET",
+                Some(JsonValue::Object(JsonObject::from([(
+                    "query".to_owned(),
+                    JsonValue::String("state".to_owned()),
+                )]))),
+            ),
+        ],
+        allowed_hosts: vec!["api.example.com".to_owned()],
+        auth: None,
+        stop_on_error: true,
+    };
+    let workspace = tempfile::tempdir()?;
+    let env = BTreeMap::from([(
+        RUNX_CWD_ENV.to_owned(),
+        workspace.path().to_string_lossy().into_owned(),
+    )]);
+    let delivery = delivery()?;
+    let invocation = NativeInvocation {
+        inputs: &inputs,
+        observed_at: "2026-01-01T00:00:00Z",
+        data_source_binding: None,
+        env: &env,
+        skill_directory: workspace.path(),
+        credential_delivery: &delivery,
+        local_artifacts: crate::tool_catalogs::native::fixture_local_artifacts(),
+        effects: &effects,
+    };
+
+    let output = execute_batch(&invocation, BatchMode::Execute)?;
+    let responses = output
+        .as_object()
+        .and_then(|output| output.get("http_execution"))
+        .and_then(JsonValue::as_object)
+        .and_then(|execution| execution.get("responses"))
+        .and_then(JsonValue::as_array)
+        .ok_or_else(|| std::io::Error::other("HTTP responses missing"))?;
+    let response_case = |index: usize| {
+        responses
+            .get(index)
+            .and_then(JsonValue::as_object)
+            .and_then(|response| response.get("json"))
+            .and_then(JsonValue::as_object)
+            .and_then(|json| json.get("case"))
+            .and_then(JsonValue::as_str)
+    };
+    assert_eq!(response_case(0), Some("none"));
+    assert_eq!(response_case(1), Some("null"));
+    assert_eq!(response_case(2), Some("delete-null"));
+    assert_eq!(response_case(3), Some("get-json"));
     Ok(())
 }

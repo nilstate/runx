@@ -37,12 +37,13 @@ pub(super) fn prepare_request(
             "request headers must not supply authorization; use the auth binding",
         ));
     }
+    let body = resolved_body(request, prior)?;
     Ok(PreparedRequest {
         method,
         url,
         query,
         headers,
-        body: resolved_body(request, request_id, method, prior)?,
+        body,
         pagination: pagination(request.get("pagination"))?,
         response_limit: response_limit(request, request_id)?,
     })
@@ -80,24 +81,12 @@ fn admitted_url(
 
 fn resolved_body(
     request: &JsonObject,
-    request_id: &str,
-    method: HttpMethod,
     prior: &BTreeMap<String, JsonObject>,
 ) -> Result<Option<String>, RuntimeError> {
-    let body = resolve_value(
-        request.get("body").cloned().unwrap_or(JsonValue::Null),
-        prior,
-        "body",
-    )?;
-    if body == JsonValue::Null {
+    let Some(raw_body) = request.get("body") else {
         return Ok(None);
-    }
-    if matches!(method, HttpMethod::Get | HttpMethod::Delete) {
-        return Err(invalid(format!(
-            "request {request_id:?} cannot attach a body to {}",
-            method.as_str()
-        )));
-    }
+    };
+    let body = resolve_value(raw_body.clone(), prior, "body")?;
     serde_json::to_string(&body)
         .map(Some)
         .map_err(|error| invalid(format!("serializing request body: {error}")))
@@ -117,4 +106,44 @@ fn has_authorization(headers: &[RuntimeHttpHeader]) -> bool {
     headers
         .iter()
         .any(|header| header.name.eq_ignore_ascii_case("authorization"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn prepared(
+        method: &str,
+        body: Option<JsonValue>,
+    ) -> Result<PreparedRequest, Box<dyn std::error::Error>> {
+        let mut request = JsonObject::from([
+            ("method".to_owned(), JsonValue::String(method.to_owned())),
+            (
+                "url".to_owned(),
+                JsonValue::String("https://api.example.com/mcp".to_owned()),
+            ),
+        ]);
+        if let Some(body) = body {
+            request.insert("body".to_owned(), body);
+        }
+        Ok(prepare_request(
+            &request,
+            "fixture",
+            &BTreeSet::from(["api.example.com".to_owned()]),
+            &BTreeMap::new(),
+        )?)
+    }
+
+    #[test]
+    fn harness_http_exchanges_preserve_absent_and_explicit_json_bodies()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let absent = prepared("POST", None)?;
+        assert_eq!(absent.body, None);
+
+        for method in ["POST", "GET", "DELETE"] {
+            let body = prepared(method, Some(JsonValue::Null))?;
+            assert_eq!(body.body.as_deref(), Some("null"));
+        }
+        Ok(())
+    }
 }

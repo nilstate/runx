@@ -86,7 +86,7 @@ pub struct HarnessHttpRequestFixture {
 /// Exact body identity for a request-sensitive harness exchange. `none` is an
 /// absent body; `{ json: ... }` is one structural JSON value, including null.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(deny_unknown_fields, untagged)]
 pub enum HarnessHttpRequestBodyFixture {
     None(String),
     Json { json: JsonValue },
@@ -503,12 +503,10 @@ pub fn parse_harness_http_exchanges(
         field: field.to_owned(),
         message: error.to_string(),
     })?;
-    let exchanges =
-        serde_json::from_value::<Vec<HarnessHttpExchangeFixture>>(encoded).map_err(|error| {
-            HarnessFixtureError::Invalid {
-                field: field.to_owned(),
-                message: error.to_string(),
-            }
+    let mut exchanges = serde_json::from_value::<Vec<HarnessHttpExchangeFixture>>(encoded)
+        .map_err(|error| HarnessFixtureError::Invalid {
+            field: field.to_owned(),
+            message: error.to_string(),
         })?;
     if exchanges.is_empty() {
         return Err(HarnessFixtureError::Invalid {
@@ -523,7 +521,7 @@ pub fn parse_harness_http_exchanges(
         });
     }
     let mut identities = BTreeSet::new();
-    for (index, exchange) in exchanges.iter().enumerate() {
+    for (index, exchange) in exchanges.iter_mut().enumerate() {
         let request_field = format!("{field}[{index}].request");
         if !matches!(
             exchange.request.method.as_str(),
@@ -534,7 +532,8 @@ pub fn parse_harness_http_exchanges(
                 message: "must be GET, POST, PUT, PATCH, or DELETE".to_owned(),
             });
         }
-        validate_harness_http_url(&exchange.request.url, &format!("{request_field}.url"))?;
+        exchange.request.url =
+            validate_harness_http_url(&exchange.request.url, &format!("{request_field}.url"))?;
         let body_identity = match &exchange.request.body {
             HarnessHttpRequestBodyFixture::None(value) if value == "none" => "none".to_owned(),
             HarnessHttpRequestBodyFixture::None(_) => {
@@ -586,26 +585,48 @@ fn validate_harness_http_responses(
             message: format!("must contain at most {MAX_RESPONSES} responses"),
         });
     }
-    for (url, response) in &responses {
+    let mut normalized = BTreeMap::new();
+    for (url, response) in responses {
         let response_field = format!("{field}.{url}");
-        validate_harness_http_url(url, &response_field)?;
-        validate_harness_http_response(response, &response_field)?;
+        let url = validate_harness_http_url(&url, &response_field)?;
+        validate_harness_http_response(&response, &response_field)?;
+        if normalized.insert(url, response).is_some() {
+            return Err(HarnessFixtureError::Invalid {
+                field: response_field,
+                message: "duplicates an earlier canonical final URL".to_owned(),
+            });
+        }
     }
-    Ok(responses)
+    Ok(normalized)
 }
 
-fn validate_harness_http_url(url: &str, field: &str) -> Result<(), HarnessFixtureError> {
-    if url.len() > 2048
-        || url.chars().any(char::is_whitespace)
-        || !(url.starts_with("https://") || url.starts_with("http://"))
+fn validate_harness_http_url(url: &str, field: &str) -> Result<String, HarnessFixtureError> {
+    if url.chars().count() > 2048
+        || url
+            .chars()
+            .any(|character| character.is_whitespace() || character.is_control())
     {
-        return Err(HarnessFixtureError::Invalid {
-            field: field.to_owned(),
-            message: "must be an exact absolute HTTP(S) URL no longer than 2048 characters"
-                .to_owned(),
-        });
+        return Err(invalid_harness_http_url(field));
     }
-    Ok(())
+    let Ok(parsed) = url::Url::parse(url) else {
+        return Err(invalid_harness_http_url(field));
+    };
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str().is_none()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+        || parsed.fragment().is_some()
+    {
+        return Err(invalid_harness_http_url(field));
+    }
+    Ok(parsed.to_string())
+}
+
+fn invalid_harness_http_url(field: &str) -> HarnessFixtureError {
+    HarnessFixtureError::Invalid {
+        field: field.to_owned(),
+        message: "must be an exact absolute HTTP(S) URL no longer than 2048 characters".to_owned(),
+    }
 }
 
 fn validate_harness_http_response(
