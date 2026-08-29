@@ -17,6 +17,7 @@ import {
   decodeX402PaymentRequiredHeader,
   decodeX402PaymentResponseHeader,
   decodeX402PaymentSignatureHeader,
+  declareExternalX402JsonPostDiscovery,
   encodeX402PaymentRequiredHeader,
   encodeX402PaymentResponseHeader,
   encodeX402PaymentSignatureHeader,
@@ -174,6 +175,28 @@ describe("x402 v2 TypeScript facade", () => {
       invocation,
       extensions: { [RUNX_X402_INVOCATION_EXTENSION_KEY]: { attacker: true } },
     })).toThrow("reserved");
+  });
+
+  it("projects one exact Bazaar JSON POST declaration without product semantics", () => {
+    expect(declareExternalX402JsonPostDiscovery({
+      example: { request_id: "example" },
+      inputSchema: { type: "object", required: ["request_id"] },
+      outputExample: { status: "accepted" },
+      outputSchema: { type: "object", required: ["status"] },
+    })).toMatchObject({
+      info: {
+        input: { type: "http", method: "POST", bodyType: "json" },
+        output: { type: "json" },
+      },
+      schema: {
+        properties: {
+          input: {
+            properties: { method: { enum: ["POST"] } },
+            required: ["type", "method", "bodyType", "body"],
+          },
+        },
+      },
+    });
   });
 
   it("binds and recovers a rail-neutral challenge while detecting tampering", () => {

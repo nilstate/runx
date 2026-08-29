@@ -100,6 +100,57 @@ export type X402ExternalDiscoveryDescriptor = Readonly<{
 }>;
 
 /**
+ * Project the x402 Foundation Bazaar v2 declaration for one JSON POST body.
+ * Keeping this in the external-protocol adapter prevents product repositories
+ * from copying Bazaar schemas or taking a broad runtime dependency on every
+ * x402 extension.
+ */
+export function declareExternalX402JsonPostDiscovery(input: Readonly<{
+  example: Readonly<Record<string, unknown>>;
+  inputSchema: Readonly<Record<string, unknown>>;
+  outputExample: unknown;
+  outputSchema: Readonly<Record<string, unknown>>;
+}>): Readonly<Record<string, unknown>> {
+  return {
+    info: {
+      input: {
+        type: "http",
+        method: "POST",
+        bodyType: "json",
+        body: input.example,
+      },
+      output: { type: "json", example: input.outputExample },
+    },
+    schema: {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      properties: {
+        input: {
+          type: "object",
+          properties: {
+            type: { type: "string", const: "http" },
+            method: { type: "string", enum: ["POST"] },
+            bodyType: { type: "string", enum: ["json", "form-data", "text"] },
+            body: input.inputSchema,
+          },
+          required: ["type", "method", "bodyType", "body"],
+          additionalProperties: false,
+        },
+        output: {
+          type: "object",
+          properties: {
+            type: { type: "string" },
+            example: { type: "object", ...input.outputSchema },
+          },
+          required: ["type"],
+        },
+      },
+      required: ["input"],
+    },
+  };
+}
+
+/**
  * Assemble a standard external x402 response without asserting any Runx
  * invocation semantics. Product owners supply only their public resource and
  * already-authorized payment requirements; Runx remains the protocol

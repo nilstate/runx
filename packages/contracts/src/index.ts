@@ -34,6 +34,7 @@ export {
   X402PresentationError,
   assembleExternalX402PaymentRequired,
   assembleX402PaymentRequired,
+  declareExternalX402JsonPostDiscovery,
   x402ExternalDiscoveryHttpProjection,
   x402DiscoveryHttpProjection,
   bindX402PaymentRequiredChallenge,
