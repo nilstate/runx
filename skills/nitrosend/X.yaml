@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.4.1"
+version: "0.4.2"
 catalog:
   kind: skill
   audience: public
@@ -8,10 +8,10 @@ catalog:
   canonical_skill: runx/send-as
   provider: nitrosend
   runtime_path: mcp
-  execution: read
+  execution: execute
   completion: provider_readback
   requires_adapter: true
-  approval: none
+  approval: conditional
 credentials:
   nitrosend:
     provider: nitrosend
@@ -54,6 +54,13 @@ runners:
             outputs:
               status_evidence: object
               plans_evidence: object
+          artifacts:
+            named_emits:
+              status_evidence: status_evidence
+              plans_evidence: plans_evidence
+            packets:
+              status_evidence: nitrosend.provider_evidence.v1
+              plans_evidence: nitrosend.provider_evidence.v1
   plan-checkout:
     type: graph
     credential: nitrosend
@@ -69,7 +76,7 @@ runners:
         type: string
         required: true
         description: Stable retry identity for this exact account and selected plan.
-        schema: { minLength: 1, maxLength: 255 }
+        schema: { minLength: 1, maxLength: 128 }
     examples:
       - plan_id: 202
         idempotency_key: account-1-plan-202-v1
@@ -126,6 +133,13 @@ runners:
             outputs:
               checkout_evidence: object
               status_evidence: object
+          artifacts:
+            named_emits:
+              checkout_evidence: checkout_evidence
+              status_evidence: status_evidence
+            packets:
+              checkout_evidence: nitrosend.provider_evidence.v1
+              status_evidence: nitrosend.provider_evidence.v1
     policy:
       guards:
         - step: approve
@@ -153,7 +167,7 @@ runners:
       - purchase_id: 701
     graph:
       name: nitrosend-plan-checkout-status
-      result_from: [status]
+      result_from: [present]
       steps:
         - id: status
           skill: graph/provider-operation
@@ -162,6 +176,20 @@ runners:
             operation: plan_checkout_status
             arguments:
               purchase_id: "$input.purchase_id"
+        - id: present
+          context:
+            purchase_evidence: status.provider_evidence.data
+          run:
+            type: javascript
+            module: graph/provider-operation/nitrosend-operation.mjs
+            export: presentEvidence
+            outputs:
+              purchase_evidence: object
+          artifacts:
+            named_emits:
+              purchase_evidence: purchase_evidence
+            packets:
+              purchase_evidence: nitrosend.provider_evidence.v1
   status:
     default: true
     type: graph

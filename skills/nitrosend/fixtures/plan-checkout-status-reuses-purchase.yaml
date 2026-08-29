@@ -24,7 +24,15 @@ caller:
         {"jsonrpc":"2.0","id":"nitrosend-plan-checkout-status","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout_status\",\"purchase_id\":701,\"plan_id\":202,\"plan_name\":\"Scale\",\"status\":\"active\",\"activated\":true,\"next_action\":\"Subscription active.\"}}"}]}}
 expect:
   status: sealed
-  steps: [status]
+  steps: [status, present]
+  step_outputs:
+    present:
+      subset:
+        purchase_evidence:
+          data:
+            decision: ok
+            operation: plan_checkout_status
+            provider_ref: nitrosend:plan_purchase:701
   receipt: { schema: runx.receipt.v1 }
 metadata:
   public_skill: nitrosend

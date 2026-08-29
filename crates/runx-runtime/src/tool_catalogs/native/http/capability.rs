@@ -28,7 +28,7 @@ impl CapabilityInput for HttpBatchInput {
 const FIELDS: &[CapabilityField] = &[
     CapabilityField {
         name: "requests",
-        description: "One to fifty typed request records.",
+        description: "One to fifty typed request records. A mutation POST may declare its stable idempotency_key for safe retry and deterministic harness replay.",
     },
     CapabilityField {
         name: "allowed_hosts",
