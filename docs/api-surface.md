@@ -18,7 +18,7 @@ Version: `0.8.2`
 
 Runx machine-facing JSON contracts: doctor, dev, list, receipt, fixture, tool manifest, packet index.
 
-Version: `0.3.4`
+Version: `0.3.5`
 
 | Import | Types | Runtime |
 | --- | --- | --- |

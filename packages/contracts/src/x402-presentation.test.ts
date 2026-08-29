@@ -199,6 +199,39 @@ describe("x402 v2 TypeScript facade", () => {
     });
   });
 
+  it("rebases root-local JSON Schema references after Bazaar embedding", () => {
+    const declaration = declareExternalX402JsonPostDiscovery({
+      example: { request_id: "example" },
+      inputSchema: {
+        type: "object",
+        properties: { request_id: { $ref: "#/$defs/RequestId" } },
+        required: ["request_id"],
+        $defs: { RequestId: { type: "string", minLength: 1 } },
+      },
+      outputExample: { status: "accepted" },
+      outputSchema: {
+        type: "object",
+        properties: { status: { $ref: "#/$defs/Status" } },
+        required: ["status"],
+        $defs: { Status: { type: "string", const: "accepted" } },
+      },
+    }) as {
+      schema: {
+        properties: {
+          input: { properties: { body: { properties: { request_id: { $ref: string } } } } };
+          output: { properties: { example: { properties: { status: { $ref: string } } } } };
+        };
+      };
+    };
+
+    expect(
+      declaration.schema.properties.input.properties.body.properties.request_id.$ref,
+    ).toBe("#/properties/input/properties/body/$defs/RequestId");
+    expect(
+      declaration.schema.properties.output.properties.example.properties.status.$ref,
+    ).toBe("#/properties/output/properties/example/$defs/Status");
+  });
+
   it("binds and recovers a rail-neutral challenge while detecting tampering", () => {
     const official = validateX402PaymentRequiredContract(
       fixture("official-payment-required.json").payload,

@@ -111,6 +111,14 @@ export function declareExternalX402JsonPostDiscovery(input: Readonly<{
   outputExample: unknown;
   outputSchema: Readonly<Record<string, unknown>>;
 }>): Readonly<Record<string, unknown>> {
+  const inputSchema = rebaseEmbeddedJsonSchema(
+    input.inputSchema,
+    "#/properties/input/properties/body",
+  );
+  const outputSchema = rebaseEmbeddedJsonSchema(
+    input.outputSchema,
+    "#/properties/output/properties/example",
+  );
   return {
     info: {
       input: {
@@ -131,7 +139,7 @@ export function declareExternalX402JsonPostDiscovery(input: Readonly<{
             type: { type: "string", const: "http" },
             method: { type: "string", enum: ["POST"] },
             bodyType: { type: "string", enum: ["json", "form-data", "text"] },
-            body: input.inputSchema,
+            body: inputSchema,
           },
           required: ["type", "method", "bodyType", "body"],
           additionalProperties: false,
@@ -140,7 +148,7 @@ export function declareExternalX402JsonPostDiscovery(input: Readonly<{
           type: "object",
           properties: {
             type: { type: "string" },
-            example: { type: "object", ...input.outputSchema },
+            example: { type: "object", ...outputSchema },
           },
           required: ["type"],
         },
@@ -148,6 +156,32 @@ export function declareExternalX402JsonPostDiscovery(input: Readonly<{
       required: ["input"],
     },
   };
+}
+
+/**
+ * Bazaar embeds each supplied JSON Schema below its own discovery schema. A
+ * root-local reference such as `#/$defs/Foo` would otherwise resolve against
+ * the Bazaar root and silently lose the supplied schema's definitions. Rebase
+ * only document-local references; external references remain untouched and
+ * the normal Bazaar validator decides whether to admit them.
+ */
+function rebaseEmbeddedJsonSchema(
+  schema: Readonly<Record<string, unknown>>,
+  basePointer: string,
+): Readonly<Record<string, unknown>> {
+  const visit = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(visit);
+    if (value === null || typeof value !== "object") return value;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        key === "$ref" && typeof entry === "string" && entry.startsWith("#/")
+          ? `${basePointer}${entry.slice(1)}`
+          : visit(entry),
+      ]),
+    );
+  };
+  return visit(schema) as Readonly<Record<string, unknown>>;
 }
 
 /**
