@@ -559,9 +559,7 @@ where
                 if is_fixture_replay_graph(fixture) {
                     return run_graph_replay_fixture(fixture, options);
                 }
-                return run_graph_skill_fixture(
-                    fixture, skill_name, runner, invocation, adapter, options,
-                );
+                return run_graph_skill_fixture(fixture, runner, invocation, adapter, options);
             }
             run_skill_invocation(fixture, &runner, invocation, adapter)?
         }
@@ -635,7 +633,6 @@ fn skill_fixture_admission_failure(error: RuntimeError) -> SkillFixtureInvocatio
 // signature policy as the production and inline fronts.
 fn run_graph_skill_fixture<A>(
     fixture: &HarnessFixture,
-    skill_name: String,
     runner: SkillRunnerDefinition,
     invocation: SkillInvocation,
     adapter: A,
@@ -710,12 +707,6 @@ where
                     )
                 }
             });
-    }
-    if output.steps.is_empty() {
-        return Err(RuntimeError::UnsupportedSource {
-            source_kind: format!("graph runner {skill_name} produced no steps"),
-        }
-        .into());
     }
     Ok(output)
 }
