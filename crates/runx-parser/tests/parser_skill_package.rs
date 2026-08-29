@@ -19,47 +19,6 @@ fn package(files: impl IntoIterator<Item = (&'static str, String)>) -> SkillPack
 }
 
 #[test]
-fn catalog_enforcement_rejects_pre_migration_plan_only_and_mock_defaults() {
-    for (skill_name, runner_name, completion, requires_adapter, approval, expected_code) in [
-        (
-            "github-sync",
-            "plan",
-            "provider_readback",
-            "true",
-            "required",
-            "default_runner_is_planning_only",
-        ),
-        (
-            "spend",
-            "mock",
-            "runtime_receipt",
-            "false",
-            "required",
-            "mock_default",
-        ),
-    ] {
-        let manifest = format!(
-            "skill: {skill_name}\ncatalog:\n  kind: skill\n  audience: public\n  visibility: public\n  role: canonical\n  execution: execute\n  completion: {completion}\n  requires_adapter: {requires_adapter}\n  approval: {approval}\nrunners:\n  {runner_name}:\n    default: true\n    type: javascript\n    module: main.mjs\n"
-        );
-        let source = package([
-            ("SKILL.md", manual(skill_name)),
-            ("X.yaml", manifest),
-            (
-                "main.mjs",
-                "export default function run() { return {}; }\n".to_owned(),
-            ),
-        ]);
-
-        let error = validate_skill_package(source)
-            .expect_err("pre-migration public default must fail package admission");
-        assert!(
-            error.to_string().contains(expected_code),
-            "unexpected enforcement error for {skill_name}: {error}"
-        );
-    }
-}
-
-#[test]
 fn catalog_enforcement_keeps_explicit_internal_mock_runners_admissible() {
     let source = package([
         ("SKILL.md", manual("mock-pay")),

@@ -145,7 +145,13 @@ fn skill_manual_context_is_exact_digest_bound_and_progressive()
     let mut summary_host = RecordingHost::default();
     let result =
         runtime.run_graph_file_with_host(&temp.path().join("context.yaml"), &mut summary_host);
-    assert!(matches!(result, Err(RuntimeError::GraphBlocked { .. })));
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::ResolutionPending { ref step_id, .. }) if step_id == "judge"
+        ),
+        "unexpected context graph result: {result:?}"
+    );
     let summary_request = summary_host
         .requests
         .first()
@@ -202,7 +208,13 @@ fn skill_manual_context_is_exact_digest_bound_and_progressive()
     let mut invoked_host = RecordingHost::default();
     let result =
         runtime.run_graph_file_with_host(&temp.path().join("invoke.yaml"), &mut invoked_host);
-    assert!(matches!(result, Err(RuntimeError::GraphBlocked { .. })));
+    assert!(
+        matches!(
+            result,
+            Err(RuntimeError::ResolutionPending { ref step_id, .. }) if step_id == "adjacent"
+        ),
+        "unexpected adjacent graph result: {result:?}"
+    );
     let invoked = invoked_host
         .requests
         .first()
