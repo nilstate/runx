@@ -1,5 +1,5 @@
 skill: nitrosend-provider-operation
-version: "0.2.2"
+version: "0.2.3"
 catalog:
   kind: graph
   audience: operator
@@ -40,6 +40,11 @@ runners:
         type: json
         required: false
         description: Arguments for the selected operation.
+      purchase_id:
+        type: integer
+        required: false
+        description: Exact plan-purchase identity for checkout readback.
+        schema: { minimum: 1 }
       brand_sid:
         type: string
         required: false
@@ -53,6 +58,7 @@ runners:
             mode: read
             operation: $input.operation
             arguments: $input.arguments
+            purchase_id: $input.purchase_id
             brand_sid: $input.brand_sid
           run:
             type: javascript

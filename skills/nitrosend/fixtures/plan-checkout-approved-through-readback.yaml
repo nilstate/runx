@@ -15,12 +15,76 @@ inputs:
 caller:
   approvals:
     nitrosend.plan_checkout.approval: true
-  http_responses:
-    "https://api.nitrosend.com/mcp":
-      status: 200
-      headers: { content-type: application/json }
-      body: >-
-        {"jsonrpc":"2.0","id":"nitrosend-plan-checkout","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout\",\"purchase_id\":701,\"plan_id\":202,\"state\":\"awaiting_provider_approval\",\"checkout_url\":\"https://checkout.stripe.test/session\",\"next_action\":\"Open the hosted checkout, then poll purchase 701.\"}}"}]}}
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://api.nitrosend.com/mcp
+        body:
+          json:
+            jsonrpc: "2.0"
+            id: nitrosend-billing_status
+            method: tools/call
+            params:
+              name: nitro_manage_billing
+              arguments: { operation: status }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: >-
+          {"jsonrpc":"2.0","id":"nitrosend-billing_status","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"status\",\"has_subscription\":true,\"subscription\":{\"plan_name\":\"Pro\",\"status\":\"active\"},\"next_action\":\"Subscription active.\"}}"}]}}
+    - request:
+        method: POST
+        url: https://api.nitrosend.com/mcp
+        body:
+          json:
+            jsonrpc: "2.0"
+            id: nitrosend-billing_plans
+            method: tools/call
+            params:
+              name: nitro_manage_billing
+              arguments: { operation: plans }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: >-
+          {"jsonrpc":"2.0","id":"nitrosend-billing_plans","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"plans\",\"plans\":[{\"id\":202,\"name\":\"Scale\",\"price_cents\":9900}],\"next_action\":\"Choose a plan.\"}}"}]}}
+    - request:
+        method: POST
+        url: https://api.nitrosend.com/mcp
+        body:
+          json:
+            jsonrpc: "2.0"
+            id: nitrosend-plan_checkout
+            method: tools/call
+            params:
+              name: nitro_manage_billing
+              arguments:
+                operation: checkout
+                params: { plan_id: 202, confirm: true }
+                idempotency_key: account-1-plan-202-v1
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: >-
+          {"jsonrpc":"2.0","id":"nitrosend-plan_checkout","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout\",\"purchase_id\":701,\"plan_id\":202,\"state\":\"awaiting_provider_approval\",\"checkout_url\":\"https://checkout.stripe.test/session\",\"next_action\":\"Open the hosted checkout, then poll purchase 701.\"}}"}]}}
+    - request:
+        method: POST
+        url: https://api.nitrosend.com/mcp
+        body:
+          json:
+            jsonrpc: "2.0"
+            id: nitrosend-plan_checkout_status
+            method: tools/call
+            params:
+              name: nitro_manage_billing
+              arguments:
+                operation: checkout_status
+                params: { purchase_id: 701 }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: >-
+          {"jsonrpc":"2.0","id":"nitrosend-plan_checkout_status","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout_status\",\"purchase_id\":701,\"plan_id\":202,\"plan_name\":\"Scale\",\"status\":\"awaiting_provider_approval\",\"activated\":false,\"next_action\":\"Open the hosted checkout, then poll purchase 701.\"}}"}]}}
 expect:
   status: sealed
   steps: [status, plans, approve, checkout, readback, present]
@@ -39,10 +103,11 @@ expect:
             decision: ok
             operation: plan_checkout
             provider_ref: nitrosend:plan_purchase:701
-        status_evidence:
+        purchase_evidence:
           data:
             decision: ok
-            operation: billing_status
+            operation: plan_checkout_status
+            provider_ref: nitrosend:plan_purchase:701
   receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
 metadata:
   public_skill: nitrosend
