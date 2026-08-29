@@ -21,7 +21,8 @@ work. Those are product-operator concerns owned by the Nitrosend repository.
 - `status` (default): live account, brand, sender, domain, provider, warmup, and
   deliverability readiness.
 - `billing-status`: read the current account subscription and eligible paid-plan
-  catalog together. It does not create a checkout or expose prepaid funding.
+  catalog together. It creates no checkout; prepaid balance and add-funds
+  readiness remain a distinct `funding` block in the status evidence.
 - `plan-checkout`: re-read current billing and plans, approve one exact plan,
   create the idempotent hosted checkout or confirmed in-place plan change, then
   read billing again. A checkout URL is pending operator work, not proof of
