@@ -156,7 +156,6 @@ runners:
         required: false
         default: nitrosend-provider-operation
         description: Caller-bound transport retry identity when the parent runner has one; otherwise the existing shared fallback.
-        schema: { minLength: 1, maxLength: 255 }
       brand_sid:
         type: string
         required: false

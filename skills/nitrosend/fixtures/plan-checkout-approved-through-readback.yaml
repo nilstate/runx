@@ -5,8 +5,8 @@ runner: plan-checkout
 operator_journeys:
   - mode: standalone
     confusors: [purchase-approval, spend, charge]
-    request: Approve this exact Nitrosend plan and create its idempotent hosted checkout.
-    expected_outcome: Re-read billing and plans, approve once, create the checkout with the caller key, and return provider readback without claiming payment.
+    request: Approve this exact Nitrosend plan and apply the idempotent provider action.
+    expected_outcome: Re-read billing and plans, approve once, accept a no-op current-plan result without requiring a purchase ID, and return billing readback without claiming a charge.
 env:
   NITROSEND_API_KEY: harness-nitrosend-token
 inputs:
@@ -66,25 +66,7 @@ caller:
         status: 200
         headers: { content-type: application/json }
         body: >-
-          {"jsonrpc":"2.0","id":"nitrosend-plan_checkout","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout\",\"purchase_id\":701,\"plan_id\":202,\"state\":\"awaiting_provider_approval\",\"checkout_url\":\"https://checkout.stripe.test/session\",\"next_action\":\"Open the hosted checkout, then poll purchase 701.\"}}"}]}}
-    - request:
-        method: POST
-        url: https://api.nitrosend.com/mcp
-        body:
-          json:
-            jsonrpc: "2.0"
-            id: nitrosend-plan_checkout_status
-            method: tools/call
-            params:
-              name: nitro_manage_billing
-              arguments:
-                operation: checkout_status
-                params: { purchase_id: 701 }
-      response:
-        status: 200
-        headers: { content-type: application/json }
-        body: >-
-          {"jsonrpc":"2.0","id":"nitrosend-plan_checkout_status","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout_status\",\"purchase_id\":701,\"plan_id\":202,\"plan_name\":\"Scale\",\"status\":\"awaiting_provider_approval\",\"activated\":false,\"next_action\":\"Open the hosted checkout, then poll purchase 701.\"}}"}]}}
+          {"jsonrpc":"2.0","id":"nitrosend-plan_checkout","result":{"content":[{"type":"text","text":"{\"meta\":{\"tool\":\"nitro_manage_billing\"},\"result\":{\"operation\":\"checkout\",\"action\":\"current\",\"reused\":true,\"plan_id\":202,\"status\":\"active\",\"activated\":true,\"next_action\":\"The requested plan is already current.\"}}"}]}}
 expect:
   status: sealed
   steps: [status, plans, approve, checkout, readback, present]
@@ -95,19 +77,16 @@ expect:
           data:
             decision: ok
             operation: plan_checkout
-            provider_ref: nitrosend:plan_purchase:701
     present:
       subset:
         checkout_evidence:
           data:
             decision: ok
             operation: plan_checkout
-            provider_ref: nitrosend:plan_purchase:701
-        purchase_evidence:
+        status_evidence:
           data:
             decision: ok
-            operation: plan_checkout_status
-            provider_ref: nitrosend:plan_purchase:701
+            operation: billing_status
   receipt: { schema: runx.receipt.v1, state: sealed, disposition: closed }
 metadata:
   public_skill: nitrosend

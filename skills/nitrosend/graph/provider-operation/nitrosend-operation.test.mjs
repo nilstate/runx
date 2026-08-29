@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+
+import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   blockedOperation,
@@ -7,6 +10,12 @@ import {
   presentEvidence,
   prepareOperation,
 } from "./nitrosend-operation.mjs";
+
+const billingSchema = JSON.parse(readFileSync(
+  new URL("./nitro-manage-billing.input-schema.json", import.meta.url),
+  "utf8",
+));
+const validateBillingArguments = new Ajv2020({ strict: true }).compile(billingSchema);
 
 function mcpPayload(result, meta = { tool: "fixture" }) {
   return {
@@ -553,6 +562,15 @@ test("pins plan billing MCP sub-actions and caller retry identity", () => {
     operation: "checkout_status",
     params: { purchase_id: 701 },
   });
+
+  for (const plan of [status, plans, checkout, readback]) {
+    const argumentsValue = plan.requests[0].body.params.arguments;
+    assert.equal(
+      validateBillingArguments(argumentsValue),
+      true,
+      `${plan.operation} diverged from deployed nitro_manage_billing schema: ${JSON.stringify(validateBillingArguments.errors)}`,
+    );
+  }
 });
 
 test("binds billing readback to the requested operation and purchase", () => {
