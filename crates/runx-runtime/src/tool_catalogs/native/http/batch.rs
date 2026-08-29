@@ -131,7 +131,7 @@ pub(super) fn execute_batch(
                     auth: &auth,
                     invocation,
                     prior: &batch.prior,
-                    retry_as_idempotent: mode.retries_as_idempotent(),
+                    retry_as_idempotent: mode.retries_as_idempotent(request)?,
                 },
             )?,
         };

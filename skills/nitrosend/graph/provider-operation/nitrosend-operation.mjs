@@ -33,7 +33,11 @@ const SENSITIVE_KEYS = /authorization|api[_-]?key|bearer|credential|secret|token
 const SECRET_VALUE = /\b(?:nskey|wpkey)_(?:live|test)_[A-Za-z0-9_-]+\b/gu;
 
 export function presentEvidence(evidence) {
-  return { ...evidence };
+  return Object.fromEntries(
+    ["status_evidence", "plans_evidence", "checkout_evidence", "purchase_evidence"]
+      .filter((key) => Object.hasOwn(evidence, key))
+      .map((key) => [key, evidence[key]]),
+  );
 }
 
 export function prepareOperation(inputs) {
@@ -71,6 +75,9 @@ export function prepareOperation(inputs) {
             id: requestId,
             method: "POST",
             url: API_URL,
+            ...(mode === "act" && text(args.idempotency_key)
+              ? { idempotency_key: args.idempotency_key }
+              : {}),
             headers: {
               accept: "application/json, text/event-stream",
               ...(brandSid ? { "x-brand-sid": brandSid } : {}),
@@ -111,9 +118,11 @@ export function normalizeOperation(inputs) {
     };
   }
   try {
-    const result = parseToolContent(providerPayload(response), text(plan.operation));
+    const payload = providerPayload(response);
+    const result = parseToolContent(payload, text(plan.operation));
     const safeResult = redact(result);
-    const providerError = safeResult?.error === true || safeResult?.isError === true;
+    const providerError = record(payload.result).isError === true ||
+      safeResult?.error === true || safeResult?.isError === true;
     return {
       provider_evidence: evidence(
         plan,
@@ -175,7 +184,8 @@ function validate(mode, operation, args, brandSid) {
     if (unexpected.length > 0) {
       return [`refused:plan_checkout received unsupported fields: ${unexpected.join(", ")}`];
     }
-    if (!positiveInteger(args.plan_id) || args.confirm !== true || !text(args.idempotency_key)) {
+    if (!positiveInteger(args.plan_id) || args.confirm !== true ||
+        !text(args.idempotency_key) || text(args.idempotency_key).length > 128) {
       return ["plan_checkout requires a positive plan_id, approved confirm=true, and stable idempotency_key"];
     }
   }
@@ -462,6 +472,9 @@ function evidence(plan, decision, response, result, blockers) {
 
 function providerReference(operation, result) {
   const data = result?.data ?? result;
+  if (data?.purchase_id !== undefined && data?.purchase_id !== null) {
+    return `nitrosend:plan_purchase:${data.purchase_id}`;
+  }
   const id = data?.id ?? data?.message_id ?? data?.import_id ?? data?.target_id ?? data?.campaign_id ?? data?.flow_id;
   return id === undefined || id === null ? null : `nitrosend:${operation}:${id}`;
 }

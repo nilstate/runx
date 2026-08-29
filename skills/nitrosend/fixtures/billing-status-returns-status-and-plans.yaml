@@ -23,8 +23,10 @@ expect:
   step_outputs:
     present:
       subset:
-        status_evidence: { decision: ok, operation: billing_status }
-        plans_evidence: { decision: ok, operation: billing_plans }
+        status_evidence:
+          data: { decision: ok, operation: billing_status }
+        plans_evidence:
+          data: { decision: ok, operation: billing_plans }
   receipt: { schema: runx.receipt.v1 }
 metadata:
   public_skill: nitrosend

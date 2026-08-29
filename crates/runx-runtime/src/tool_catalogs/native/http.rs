@@ -62,8 +62,29 @@ impl BatchMode {
         }
     }
 
-    fn retries_as_idempotent(self) -> bool {
-        self == Self::Query
+    fn retries_as_idempotent(
+        self,
+        request: &runx_contracts::JsonObject,
+    ) -> Result<bool, RuntimeError> {
+        if self == Self::Query {
+            return Ok(true);
+        }
+        if self != Self::Execute {
+            return Ok(false);
+        }
+        let Some(value) = request.get("idempotency_key") else {
+            return Ok(false);
+        };
+        let key = value
+            .as_str()
+            .map(str::trim)
+            .filter(|key| !key.is_empty() && key.len() <= 255 && !key.chars().any(char::is_control))
+            .ok_or_else(|| {
+                invalid(
+                    "request idempotency_key must be a non-empty string of at most 255 characters",
+                )
+            })?;
+        Ok(!key.is_empty())
     }
 }
 
@@ -186,12 +207,20 @@ mod tests {
     }
 
     #[test]
-    fn batch_modes_keep_queries_read_only_by_contract() {
+    fn batch_modes_keep_queries_read_only_by_contract() -> Result<(), Box<dyn std::error::Error>> {
         assert!(BatchMode::Read.admits(HttpMethod::Get));
         assert!(!BatchMode::Read.admits(HttpMethod::Post));
         assert!(BatchMode::Query.admits(HttpMethod::Post));
         assert!(!BatchMode::Query.admits(HttpMethod::Get));
         assert!(!BatchMode::Query.admits(HttpMethod::Delete));
         assert!(BatchMode::Execute.admits(HttpMethod::Delete));
+        let keyed = JsonObject::from([(
+            "idempotency_key".to_owned(),
+            JsonValue::String("account-1-plan-202-v1".to_owned()),
+        )]);
+        assert!(BatchMode::Query.retries_as_idempotent(&JsonObject::new())?);
+        assert!(BatchMode::Execute.retries_as_idempotent(&keyed)?);
+        assert!(!BatchMode::Execute.retries_as_idempotent(&JsonObject::new())?);
+        Ok(())
     }
 }

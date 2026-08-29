@@ -29,6 +29,10 @@ test("presents step-qualified evidence without another provider layer", () => {
     status_evidence,
     plans_evidence,
   });
+  assert.deepEqual(
+    presentEvidence({ purchase_id: 701, purchase_evidence: status_evidence }),
+    { purchase_evidence: status_evidence },
+  );
 });
 
 test("prepares a bounded read through native authenticated HTTP", () => {
@@ -407,6 +411,37 @@ test("preserves redacted MCP error detail as provider evidence", () => {
   assert.equal(JSON.stringify(failed).includes(returnedSecret), false);
 });
 
+test("projects an HTTP 200 MCP tool error as provider failure", () => {
+  const plan = prepareOperation({
+    mode: "act",
+    operation: "plan_checkout",
+    arguments: { plan_id: 202, confirm: true, idempotency_key: "account-1-plan-202-v1" },
+  }).operation_plan;
+  const failed = normalizeOperation({
+    operation_plan: plan,
+    http_execution: {
+      responses: [{
+        id: "nitrosend-plan_checkout",
+        status: 200,
+        ok: true,
+        body_digest: "sha256:tool-error",
+        json: {
+          jsonrpc: "2.0",
+          id: "nitrosend-plan_checkout",
+          result: {
+            isError: true,
+            content: [{ type: "text", text: "plan unavailable" }],
+          },
+        },
+      }],
+    },
+  }).provider_evidence;
+
+  assert.equal(failed.decision, "provider_error");
+  assert.deepEqual(failed.blockers, ["plan unavailable"]);
+  assert.equal(failed.result.message, "plan unavailable");
+});
+
 test("admits only non-persisting campaign composition reads", () => {
   const intent = prepareOperation({
     mode: "read",
@@ -487,6 +522,7 @@ test("pins plan billing MCP sub-actions and caller retry identity", () => {
   }).operation_plan;
   assert.equal(checkout.decision, "ready");
   assert.equal(checkout.tool, "nitro_manage_billing");
+  assert.equal(checkout.requests[0].idempotency_key, "account-1-plan-202-v1");
   assert.deepEqual(checkout.requests[0].body.params.arguments, {
     operation: "checkout",
     params: { plan_id: 202, confirm: true },
@@ -519,6 +555,11 @@ test("refuses widened or prepaid arguments on every plan billing lane", () => {
       plan_id: 202,
       confirm: false,
       idempotency_key: "account-1-plan-202-v1",
+    }],
+    ["act", "plan_checkout", {
+      plan_id: 202,
+      confirm: true,
+      idempotency_key: "x".repeat(129),
     }],
   ];
 
