@@ -375,10 +375,11 @@ mod tests {
                 "accepted_settlement_families": ["rail-a", "rail-b"]
             }}
         }))?;
-        let PaidSkillRunnerOffer::Fixed(offer) = &listing.offers.as_map()["transcribe"] else {
-            panic!("fixed offer decoded as prepared pricing");
+        let amount_minor = match &listing.offers.as_map()["transcribe"] {
+            PaidSkillRunnerOffer::Fixed(offer) => offer.amount_minor.get(),
+            PaidSkillRunnerOffer::Prepared(_) => 0,
         };
-        assert_eq!(offer.amount_minor.get(), 125);
+        assert_eq!(amount_minor, 125);
 
         let schema = PaidSkillListing::json_schema().to_string();
         assert!(!schema.contains("PAYMENT-REQUIRED"));

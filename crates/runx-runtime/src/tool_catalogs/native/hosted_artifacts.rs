@@ -515,7 +515,7 @@ mod tests {
         let credentials = CredentialDelivery::none();
         let effects = RuntimeEffectRegistry::default();
 
-        let error = allocate(&NativeInvocation {
+        let result = allocate(&NativeInvocation {
             inputs: &input,
             observed_at: "2026-08-24T00:00:00Z",
             data_source_binding: None,
@@ -524,19 +524,18 @@ mod tests {
             credential_delivery: &credentials,
             local_artifacts: super::super::fixture_local_artifacts(),
             effects: &effects,
-        })
-        .expect_err("missing capacity must refuse before hosted resolution");
+        });
 
         assert!(
             matches!(
-                &error,
-                RuntimeError::SkillFailed {
+                &result,
+                Err(RuntimeError::SkillFailed {
                     skill_name,
                     message,
-                } if skill_name == ALLOCATE_TOOL
+                }) if skill_name == ALLOCATE_TOOL
                     && message == "hosted artifact capacity is unavailable or invalid"
             ),
-            "unexpected missing-capacity error: {error}"
+            "unexpected missing-capacity result: {result:?}"
         );
     }
 
@@ -806,7 +805,7 @@ mod tests {
     }
 
     #[test]
-    fn allocation_ref_is_opaque_and_result_remains_exact() {
+    fn allocation_ref_is_opaque_and_result_remains_exact() -> Result<(), String> {
         let expected_digest =
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let artifact_ref =
@@ -857,7 +856,7 @@ mod tests {
             .expect("opaque artifact identity with exact content evidence");
 
         let JsonValue::Object(result) = &mut packet.result else {
-            panic!("artifact result must be an object");
+            return Err("artifact result must be an object".to_owned());
         };
         result.insert(
             "artifact_ref".to_owned(),
@@ -867,7 +866,7 @@ mod tests {
             validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
         );
         let JsonValue::Object(result) = &mut packet.result else {
-            panic!("artifact result must be an object");
+            return Err("artifact result must be an object".to_owned());
         };
         result.insert(
             "artifact_ref".to_owned(),
@@ -881,10 +880,11 @@ mod tests {
             validate_allocation_result(&packet, expected_digest, "application/json", 1).is_err()
         );
         let JsonValue::Object(result) = &mut packet.result else {
-            panic!("artifact result must be an object");
+            return Err("artifact result must be an object".to_owned());
         };
         result.remove("download_url");
         validate_allocation_result(&packet, expected_digest, "application/json", 1)
             .expect("exact artifact result");
+        Ok(())
     }
 }

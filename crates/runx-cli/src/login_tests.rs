@@ -63,14 +63,13 @@ fn parses_login_plan() -> Result<(), String> {
 
 #[test]
 fn rejects_unknown_login_purpose_before_network_access() {
-    let error = parse_login_plan(&[
+    let result = parse_login_plan(&[
         OsString::from("login"),
         OsString::from("--for"),
         OsString::from("billing"),
-    ])
-    .expect_err("unknown credential purposes must fail closed");
+    ]);
 
-    assert_eq!(error, "--for must be default or publish");
+    assert_eq!(result, Err("--for must be default or publish".to_owned()));
 }
 
 #[test]

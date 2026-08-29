@@ -222,8 +222,11 @@ fn marketplace_rejects_partial_endpoint_execution_binding() -> Result<(), String
         settlement_family: x402
         expected_receipt_class: executed"#,
     ));
-    let error = validate(&missing_executor).expect_err("partial endpoint binding passed");
-    assert!(error.contains("must declare executor and mediation together"));
+    let result = validate(&missing_executor);
+    assert!(matches!(
+        &result,
+        Err(error) if error.contains("must declare executor and mediation together")
+    ));
 
     let missing_mediation = manifest(&format!(
         r#"marketplace:
@@ -240,7 +243,10 @@ fn marketplace_rejects_partial_endpoint_execution_binding() -> Result<(), String
         package_digest: {DIGEST_A}
         execution_closure_digest: {DIGEST_B}"#,
     ));
-    let error = validate(&missing_mediation).expect_err("unmediated executor binding passed");
-    assert!(error.contains("must declare executor and mediation together"));
+    let result = validate(&missing_mediation);
+    assert!(matches!(
+        &result,
+        Err(error) if error.contains("must declare executor and mediation together")
+    ));
     Ok(())
 }

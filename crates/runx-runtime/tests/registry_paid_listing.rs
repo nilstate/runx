@@ -186,8 +186,10 @@ fn registry_derives_mediated_listing_identity_and_refuses_split_drift()
         "https://vendor.example/v1/invocations"
     );
 
-    let error = ingest_skill_markdown(&store, MARKDOWN, options(mediated_profile(100, 24)))
-        .expect_err("commercial split drift unexpectedly passed");
+    let error = match ingest_skill_markdown(&store, MARKDOWN, options(mediated_profile(100, 24))) {
+        Err(error) => error,
+        Ok(_) => return Err("commercial split drift unexpectedly passed".into()),
+    };
     assert!(
         error
             .to_string()
