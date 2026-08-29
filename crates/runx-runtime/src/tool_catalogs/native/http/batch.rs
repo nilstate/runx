@@ -107,8 +107,11 @@ pub(super) fn execute_batch(
     let allowed_hosts = admitted_hosts(invocation, &auth)?;
     let requests = admit_requests(&invocation.inputs.requests, mode)?;
     let stop_on_error = invocation.inputs.stop_on_error;
-    let transport = NativeHttpTransport::new(invocation.harness_http_responses())
-        .map_err(|error| invalid(format!("native HTTP transport unavailable: {error}")))?;
+    let transport = NativeHttpTransport::new(
+        invocation.harness_http_responses(),
+        invocation.harness_http_exchanges(),
+    )
+    .map_err(|error| invalid(format!("native HTTP transport unavailable: {error}")))?;
     let mut batch = BatchAccumulator::new();
 
     for (index, raw_request) in requests.iter().enumerate() {
@@ -131,7 +134,7 @@ pub(super) fn execute_batch(
                     auth: &auth,
                     invocation,
                     prior: &batch.prior,
-                    retry_as_idempotent: mode.retries_as_idempotent(request)?,
+                    retry_as_idempotent: mode.retries_as_idempotent(),
                 },
             )?,
         };

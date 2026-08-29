@@ -71,8 +71,11 @@ fn fetch(invocation: &NativeInvocation<'_, WebFetchInput>) -> Result<WebFetchOut
         Ok(request) => request,
         Err(result) => return decode_typed_output(TOOL, wrapped(result)),
     };
-    let transport = NativeHttpTransport::new(invocation.harness_http_responses())
-        .map_err(|error| invalid(format!("native HTTP transport unavailable: {error}")))?;
+    let transport = NativeHttpTransport::new(
+        invocation.harness_http_responses(),
+        invocation.harness_http_exchanges(),
+    )
+    .map_err(|error| invalid(format!("native HTTP transport unavailable: {error}")))?;
     let output = match fetch_redirects(
         &transport,
         request.initial_url,

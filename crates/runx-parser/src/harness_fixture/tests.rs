@@ -161,6 +161,74 @@ caller:
 }
 
 #[test]
+fn admits_request_sensitive_harness_http_exchanges() -> Result<(), HarnessFixtureError> {
+    let fixture = parse_harness_fixture(
+        r#"
+name: deterministic-mcp
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request:
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body:
+          json: { jsonrpc: "2.0", method: tools/call, params: { name: billing } }
+      response:
+        status: 200
+        headers: { content-type: application/json }
+        body: '{"jsonrpc":"2.0","result":{"ok":true}}'
+    - request:
+        method: DELETE
+        url: https://fixture.runx.invalid/mcp
+        body: none
+      response: { status: 204, body: "" }
+    - request:
+        method: DELETE
+        url: https://fixture.runx.invalid/mcp
+        body: { json: null }
+      response: { status: 200, body: '{"deleted":true}' }
+"#,
+    )?;
+
+    let exchanges = parse_harness_http_exchanges(
+        fixture.caller.get("http_exchanges"),
+        "caller.http_exchanges",
+    )?;
+    assert_eq!(exchanges.len(), 3);
+    assert_eq!(exchanges[0].request.method, "POST");
+    assert_eq!(exchanges[0].request.url, "https://fixture.runx.invalid/mcp");
+    assert_eq!(exchanges[0].response.status, 200);
+    Ok(())
+}
+
+#[test]
+fn rejects_duplicate_harness_http_exchanges() {
+    let error = parse_harness_fixture(
+        r#"
+name: duplicate-mcp
+kind: skill
+target: ..
+caller:
+  http_exchanges:
+    - request: &request
+        method: POST
+        url: https://fixture.runx.invalid/mcp
+        body:
+          json: { operation: status }
+      response: { status: 200, body: first }
+    - request: *request
+      response: { status: 200, body: second }
+"#,
+    )
+    .expect_err("duplicate exact exchanges must fail");
+
+    assert!(
+        matches!(error, HarnessFixtureError::Invalid { field, .. } if field == "caller.http_exchanges[1].request")
+    );
+}
+
+#[test]
 fn rejects_non_http_harness_response_keys() {
     let error = parse_harness_fixture(
         r#"

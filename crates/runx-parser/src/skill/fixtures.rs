@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::ValidationError;
 pub use crate::harness_fixture::{
-    HarnessExpectation, HarnessHttpResponseFixture, OperatorJourneyClaim, OperatorJourneyMode,
-    ReceiptExpectation,
+    HarnessExpectation, HarnessHttpExchangeFixture, HarnessHttpRequestBodyFixture,
+    HarnessHttpResponseFixture, OperatorJourneyClaim, OperatorJourneyMode, ReceiptExpectation,
 };
 
 use super::FIELDS;
@@ -22,7 +22,8 @@ const HARNESS_CASE_FIELDS: &[&str] = &[
     "expect",
     "operator_journeys",
 ];
-const HARNESS_CALLER_FIELDS: &[&str] = &["answers", "approvals", "http_responses"];
+const HARNESS_CALLER_FIELDS: &[&str] =
+    &["answers", "approvals", "http_exchanges", "http_responses"];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct HarnessCallerFixture {
@@ -32,6 +33,8 @@ pub struct HarnessCallerFixture {
     pub approvals: Option<BTreeMap<String, bool>>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub http_responses: BTreeMap<String, HarnessHttpResponseFixture>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub http_exchanges: Vec<HarnessHttpExchangeFixture>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -170,6 +173,11 @@ fn validate_harness_caller(
         http_responses: crate::harness_fixture::parse_harness_http_responses(
             value.get("http_responses"),
             &format!("{field}.http_responses"),
+        )
+        .map_err(|error| FIELDS.validation_error(error.to_string()))?,
+        http_exchanges: crate::harness_fixture::parse_harness_http_exchanges(
+            value.get("http_exchanges"),
+            &format!("{field}.http_exchanges"),
         )
         .map_err(|error| FIELDS.validation_error(error.to_string()))?,
     })
@@ -325,6 +333,55 @@ runners:
                 .to_string()
                 .contains("prior_evidence and must_not_repeat")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn inline_harness_accepts_request_sensitive_http_exchanges()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let raw = parse_runner_manifest_yaml(
+            r#"
+skill: fixture
+harness:
+  cases:
+    - name: exact-mcp
+      inputs: {}
+      caller:
+        http_exchanges:
+          - request:
+              method: POST
+              url: https://fixture.runx.invalid/mcp
+              body:
+                json: { operation: status }
+            response:
+              status: 200
+              body: '{"ok":true}'
+      expect:
+        status: sealed
+runners:
+  fixture:
+    default: true
+    type: graph
+    graph:
+      name: fixture
+      result_from: [digest]
+      steps:
+        - id: digest
+          tool: data.digest
+          inputs:
+            value: fixture
+"#,
+        )?;
+        let manifest = validate_runner_manifest(raw)?;
+        let exchanges = &manifest
+            .harness
+            .as_ref()
+            .and_then(|harness| harness.cases.first())
+            .ok_or("inline case missing")?
+            .caller
+            .http_exchanges;
+        assert_eq!(exchanges.len(), 1);
+        assert_eq!(exchanges[0].request.method, "POST");
         Ok(())
     }
 }

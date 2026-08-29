@@ -1,5 +1,7 @@
 use std::fmt;
 
+use runx_contracts::JsonValue;
+
 use super::RuntimeHttpError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -86,6 +88,22 @@ pub struct RuntimeHttpResponse {
     pub body_digest: String,
     pub body_bytes: usize,
     pub truncated: bool,
+}
+
+/// One request-sensitive response available only through the private harness
+/// registry. Live transports never construct or consume this type.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct RuntimeHarnessHttpExchange {
+    pub method: HttpMethod,
+    pub url: String,
+    pub body: RuntimeHarnessHttpRequestBody,
+    pub response: RuntimeHttpResponse,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum RuntimeHarnessHttpRequestBody {
+    None,
+    Json(JsonValue),
 }
 
 impl RuntimeHttpResponse {

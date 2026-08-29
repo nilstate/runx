@@ -20,7 +20,8 @@ pub use catalog::{
     analyze_package_catalog_semantics,
 };
 pub use fixtures::{
-    HarnessCallerFixture, HarnessExpectation, HarnessHttpResponseFixture, OperatorJourneyClaim,
+    HarnessCallerFixture, HarnessExpectation, HarnessHttpExchangeFixture,
+    HarnessHttpRequestBodyFixture, HarnessHttpResponseFixture, OperatorJourneyClaim,
     OperatorJourneyMode, ReceiptExpectation, RunnerHarnessCase, RunnerHarnessManifest,
 };
 pub use governance::validate_skill_artifact_contract;

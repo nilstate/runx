@@ -19,6 +19,7 @@ pub struct RuntimeEffectRegistry {
     /// Exact response bytes admitted by the harness front. This state has no
     /// environment or skill-input loader and is absent from every live registry.
     harness_http_responses: Option<Arc<BTreeMap<String, crate::http::RuntimeHttpResponse>>>,
+    harness_http_exchanges: Option<Arc<Vec<crate::http::RuntimeHarnessHttpExchange>>>,
 }
 
 impl RuntimeEffectRegistry {
@@ -27,6 +28,7 @@ impl RuntimeEffectRegistry {
         Self {
             families: BTreeMap::new(),
             harness_http_responses: None,
+            harness_http_exchanges: None,
         }
     }
 
@@ -38,11 +40,28 @@ impl RuntimeEffectRegistry {
         self
     }
 
+    pub(crate) fn with_harness_http_exchanges(
+        mut self,
+        exchanges: Vec<crate::http::RuntimeHarnessHttpExchange>,
+    ) -> Self {
+        if !exchanges.is_empty() {
+            self.harness_http_exchanges = Some(Arc::new(exchanges));
+        }
+        self
+    }
+
     #[cfg(feature = "catalog")]
     pub(crate) fn harness_http_responses(
         &self,
     ) -> Option<&BTreeMap<String, crate::http::RuntimeHttpResponse>> {
         self.harness_http_responses.as_deref()
+    }
+
+    #[cfg(feature = "catalog")]
+    pub(crate) fn harness_http_exchanges(
+        &self,
+    ) -> Option<&[crate::http::RuntimeHarnessHttpExchange]> {
+        self.harness_http_exchanges.as_deref().map(Vec::as_slice)
     }
 
     pub fn with_effect<T>(effect: T) -> Result<Self, RuntimeEffectError>
@@ -274,6 +293,13 @@ impl fmt::Debug for RuntimeEffectRegistry {
                     .harness_http_responses
                     .as_ref()
                     .map_or(0, |responses| responses.len()),
+            )
+            .field(
+                "harness_http_exchange_count",
+                &self
+                    .harness_http_exchanges
+                    .as_ref()
+                    .map_or(0, |exchanges| exchanges.len()),
             )
             .finish()
     }

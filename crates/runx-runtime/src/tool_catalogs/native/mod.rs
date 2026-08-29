@@ -152,6 +152,17 @@ impl<I: ?Sized> NativeInvocation<'_, I> {
             None
         }
     }
+
+    fn harness_http_exchanges(&self) -> Option<&[crate::http::RuntimeHarnessHttpExchange]> {
+        #[cfg(feature = "catalog")]
+        {
+            self.effects.harness_http_exchanges()
+        }
+        #[cfg(not(feature = "catalog"))]
+        {
+            None
+        }
+    }
 }
 
 #[cfg(feature = "catalog")]

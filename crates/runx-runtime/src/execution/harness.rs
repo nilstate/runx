@@ -50,7 +50,7 @@ pub use fixtures::{
     HarnessFixtureKind, HarnessFixtureStepOracle, HarnessSetup, ReceiptExpectation, list_cases,
     load_harness_fixture,
 };
-pub(crate) use http_responses::effects_with_harness_http_responses;
+pub(crate) use http_responses::effects_with_harness_http;
 #[cfg(feature = "cli-tool")]
 pub(crate) use json_assertions::assert_json_expectation;
 #[cfg(feature = "catalog")]
