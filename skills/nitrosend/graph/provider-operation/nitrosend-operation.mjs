@@ -32,6 +32,10 @@ const DELIVERY_OPERATIONS = new Set([
 const SENSITIVE_KEYS = /authorization|api[_-]?key|bearer|credential|secret|token/iu;
 const SECRET_VALUE = /\b(?:nskey|wpkey)_(?:live|test)_[A-Za-z0-9_-]+\b/gu;
 
+export function presentEvidence(evidence) {
+  return { ...evidence };
+}
+
 export function prepareOperation(inputs) {
   const mode = text(inputs.mode);
   const operation = text(inputs.operation);

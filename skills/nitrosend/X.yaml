@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.4.0"
+version: "0.4.1"
 catalog:
   kind: skill
   audience: public
@@ -29,7 +29,7 @@ runners:
       - {}
     graph:
       name: nitrosend-billing-status
-      result_from: [status, plans]
+      result_from: [present]
       steps:
         - id: status
           skill: graph/provider-operation
@@ -43,6 +43,17 @@ runners:
           inputs:
             operation: billing_plans
             arguments: {}
+        - id: present
+          context:
+            status_evidence: status.provider_evidence.data
+            plans_evidence: plans.provider_evidence.data
+          run:
+            type: javascript
+            module: graph/provider-operation/nitrosend-operation.mjs
+            export: presentEvidence
+            outputs:
+              status_evidence: object
+              plans_evidence: object
   plan-checkout:
     type: graph
     credential: nitrosend
@@ -64,7 +75,7 @@ runners:
         idempotency_key: account-1-plan-202-v1
     graph:
       name: nitrosend-plan-checkout
-      result_from: [checkout, readback]
+      result_from: [present]
       steps:
         - id: status
           skill: graph/provider-operation
@@ -104,6 +115,17 @@ runners:
           inputs:
             operation: billing_status
             arguments: {}
+        - id: present
+          context:
+            checkout_evidence: checkout.provider_evidence.data
+            status_evidence: readback.provider_evidence.data
+          run:
+            type: javascript
+            module: graph/provider-operation/nitrosend-operation.mjs
+            export: presentEvidence
+            outputs:
+              checkout_evidence: object
+              status_evidence: object
     policy:
       guards:
         - step: approve
