@@ -32,7 +32,9 @@ export {
   MAX_X402_HEADER_BYTES,
   MAX_X402_DECODED_BYTES,
   X402PresentationError,
+  assembleExternalX402PaymentRequired,
   assembleX402PaymentRequired,
+  x402ExternalDiscoveryHttpProjection,
   x402DiscoveryHttpProjection,
   bindX402PaymentRequiredChallenge,
   x402PaymentRequiredFromChallenge,
@@ -47,6 +49,7 @@ export {
   type X402PresentationErrorCode,
   type ValidatedX402Retry,
   type X402DiscoveryDescriptor,
+  type X402ExternalDiscoveryDescriptor,
   type X402DiscoveryHttpProjection,
 } from "./x402-presentation.js";
 

@@ -92,6 +92,35 @@ export type X402DiscoveryHttpProjection = Readonly<{
   headers: Readonly<Record<typeof X402_PAYMENT_REQUIRED_HEADER, string>>;
 }>;
 
+export type X402ExternalDiscoveryDescriptor = Readonly<{
+  resource: X402ResourceInfoContract;
+  accepts: readonly X402PaymentRequirementsContract[];
+  extensions: Readonly<Record<string, unknown>>;
+  error?: string | null;
+}>;
+
+/**
+ * Assemble a standard external x402 response without asserting any Runx
+ * invocation semantics. Product owners supply only their public resource and
+ * already-authorized payment requirements; Runx remains the protocol
+ * validator and header encoder.
+ */
+export function assembleExternalX402PaymentRequired(input: Readonly<{
+  resource: X402ResourceInfoContract;
+  accepts: readonly X402PaymentRequirementsContract[];
+  error?: string | null;
+  extensions?: Readonly<Record<string, unknown>>;
+}>): X402PaymentRequiredContract {
+  const value = {
+    x402Version: 2,
+    ...(input.error === undefined ? {} : { error: input.error }),
+    resource: input.resource,
+    accepts: input.accepts,
+    ...(input.extensions === undefined ? {} : { extensions: input.extensions }),
+  } as const;
+  return validateX402PaymentRequiredContract(value);
+}
+
 export function assembleX402PaymentRequired(input: Readonly<{
   resource: X402ResourceInfoContract;
   accepts: readonly X402PaymentRequirementsContract[];
@@ -108,17 +137,35 @@ export function assembleX402PaymentRequired(input: Readonly<{
     info: input.invocation,
     schema: runxX402InvocationExtensionInfoV1Schema,
   };
-  const value = {
-    x402Version: 2,
-    ...(input.error === undefined ? {} : { error: input.error }),
+  return assembleExternalX402PaymentRequired({
     resource: input.resource,
     accepts: input.accepts,
+    ...(input.error === undefined ? {} : { error: input.error }),
     extensions: {
       ...extensions,
       [RUNX_X402_INVOCATION_EXTENSION_KEY]: declaration,
     },
-  } as const;
-  return validateX402PaymentRequiredContract(value);
+  });
+}
+
+/** Effect-free discovery for a vendor resource that is not a Runx invocation. */
+export function x402ExternalDiscoveryHttpProjection(
+  descriptor: X402ExternalDiscoveryDescriptor,
+): X402DiscoveryHttpProjection {
+  assertBazaarDiscoveryExtension(descriptor.extensions);
+  const body = assembleExternalX402PaymentRequired({
+    resource: descriptor.resource,
+    accepts: descriptor.accepts,
+    extensions: descriptor.extensions,
+    ...(descriptor.error === undefined ? {} : { error: descriptor.error }),
+  });
+  return {
+    status: 402,
+    body,
+    headers: {
+      [X402_PAYMENT_REQUIRED_HEADER]: encodeX402PaymentRequiredHeader(body),
+    },
+  };
 }
 
 /**

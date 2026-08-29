@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 import {
   RUNX_X402_INVOCATION_EXTENSION_KEY,
   X402_BAZAAR_EXTENSION_KEY,
+  X402_PAYMENT_REQUIRED_HEADER,
   X402PresentationError,
   X402_SCHEMA_IDS,
   X402_UPSTREAM_COMMIT,
   X402_UPSTREAM_PACKAGE,
   X402_UPSTREAM_PACKAGE_VERSION,
+  assembleExternalX402PaymentRequired,
   assembleX402PaymentRequired,
   bindX402PaymentRequiredChallenge,
   decodeX402PaymentRequiredHeader,
@@ -26,6 +28,7 @@ import {
   validateX402PaymentRetry,
   validateX402SettleResponseContract,
   x402DiscoveryHttpProjection,
+  x402ExternalDiscoveryHttpProjection,
   x402PaymentPayloadV2Schema,
   x402PaymentRequiredFromChallenge,
   x402PaymentRequiredV2Schema,
@@ -240,6 +243,31 @@ describe("x402 v2 TypeScript facade", () => {
       info: discovery,
       schema: runxX402InvocationExtensionInfoV1Schema,
     });
+  });
+
+  it("projects an external vendor resource without inventing Runx invocation identity", () => {
+    const official = validateX402PaymentRequiredContract(
+      fixture("official-payment-required.json").payload,
+    );
+    const bazaar = {
+      info: { input: { method: "POST" }, output: { type: "object" } },
+      schema: { type: "object" },
+    } as const;
+    const projection = x402ExternalDiscoveryHttpProjection({
+      resource: official.resource,
+      accepts: official.accepts,
+      extensions: { [X402_BAZAAR_EXTENSION_KEY]: bazaar },
+    });
+
+    expect(projection.body).toEqual(assembleExternalX402PaymentRequired({
+      resource: official.resource,
+      accepts: official.accepts,
+      extensions: { [X402_BAZAAR_EXTENSION_KEY]: bazaar },
+    }));
+    expect(projection.body.extensions?.[RUNX_X402_INVOCATION_EXTENSION_KEY]).toBeUndefined();
+    expect(decodeX402PaymentRequiredHeader(
+      projection.headers[X402_PAYMENT_REQUIRED_HEADER],
+    )).toEqual(projection.body);
   });
 
   it("refuses absent or obsolete Bazaar discovery declarations", () => {
