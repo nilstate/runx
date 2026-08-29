@@ -9,8 +9,12 @@ const READ_OPERATIONS = new Map([
   ["import_status", "nitro_query"],
   ["compose_campaign_intent", "nitro_compose_campaign"],
   ["validate_campaign_composition", "nitro_compose_campaign"],
+  ["billing_status", "nitro_manage_billing"],
+  ["billing_plans", "nitro_manage_billing"],
+  ["plan_checkout_status", "nitro_manage_billing"],
 ]);
 const ACT_OPERATIONS = new Map([
+  ["plan_checkout", "nitro_manage_billing"],
   ["send_transactional", "nitro_send_message"],
   ["configure_sender", "nitro_configure_account"],
   ["control_delivery", "nitro_control_delivery"],
@@ -145,6 +149,31 @@ function validate(mode, operation, args, brandSid) {
   const operations = mode === "read" ? READ_OPERATIONS : ACT_OPERATIONS;
   if (!operations.has(operation)) {
     return [`operation must be one of: ${[...operations.keys()].join(", ")}`];
+  }
+  if (mode === "read" && ["billing_status", "billing_plans"].includes(operation)) {
+    if (Object.keys(args).length > 0) {
+      return [`refused:${operation} does not accept provider arguments`];
+    }
+  }
+  if (mode === "read" && operation === "plan_checkout_status") {
+    const allowed = new Set(["purchase_id"]);
+    const unexpected = Object.keys(args).filter((key) => !allowed.has(key));
+    if (unexpected.length > 0) {
+      return [`refused:plan_checkout_status received unsupported fields: ${unexpected.join(", ")}`];
+    }
+    if (!positiveInteger(args.purchase_id)) {
+      return ["plan_checkout_status requires arguments.purchase_id"];
+    }
+  }
+  if (mode === "act" && operation === "plan_checkout") {
+    const allowed = new Set(["plan_id", "confirm", "idempotency_key"]);
+    const unexpected = Object.keys(args).filter((key) => !allowed.has(key));
+    if (unexpected.length > 0) {
+      return [`refused:plan_checkout received unsupported fields: ${unexpected.join(", ")}`];
+    }
+    if (!positiveInteger(args.plan_id) || args.confirm !== true || !text(args.idempotency_key)) {
+      return ["plan_checkout requires a positive plan_id, approved confirm=true, and stable idempotency_key"];
+    }
   }
   if (["sender_settings", "configure_sender"].includes(operation) && !brandSid) {
     return ["refused:sender settings require an explicit brand_sid"];
@@ -296,6 +325,21 @@ function utf8Bytes(value) {
 }
 
 function providerArguments(operation, args) {
+  if (operation === "billing_status") return { operation: "status" };
+  if (operation === "billing_plans") return { operation: "plans" };
+  if (operation === "plan_checkout_status") {
+    return {
+      operation: "checkout_status",
+      params: { purchase_id: Number(args.purchase_id) },
+    };
+  }
+  if (operation === "plan_checkout") {
+    return {
+      operation: "checkout",
+      params: { plan_id: Number(args.plan_id), confirm: true },
+      idempotency_key: args.idempotency_key,
+    };
+  }
   if (operation === "sender_settings") return {};
   if (operation === "compose_campaign_intent") {
     return { ...args, composition_mode: "intent" };

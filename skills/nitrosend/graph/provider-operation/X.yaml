@@ -1,5 +1,5 @@
 skill: nitrosend-provider-operation
-version: "0.1.0"
+version: "0.2.0"
 catalog:
   kind: graph
   audience: operator
@@ -145,6 +145,12 @@ runners:
         type: json
         required: true
         description: Arguments for the selected operation.
+      idempotency_key:
+        type: string
+        required: false
+        default: nitrosend-provider-operation
+        description: Caller-bound transport retry identity when the parent runner has one; otherwise the existing shared fallback.
+        schema: { minLength: 1, maxLength: 255 }
       brand_sid:
         type: string
         required: false
@@ -171,7 +177,7 @@ runners:
             equals: ready
           tool: http.execute
           scopes: [nitrosend:write, net:http]
-          idempotency_key: nitrosend-provider-operation
+          idempotency_key: "$input.idempotency_key"
           inputs:
             stop_on_error: true
           context:

@@ -1,6 +1,6 @@
 ---
 name: nitrosend
-description: "Operate a Nitrosend account through one governed Runx skill: inspect readiness and analytics, plan and apply campaign/flow/template/segment drafts, import consented contacts through inline or bulk CSV paths, and approve or deliver campaign, flow, and transactional email operations with provider readback."
+description: "Operate a Nitrosend account through one governed Runx skill: inspect readiness, analytics, subscription plans, and purchase status; plan and apply campaign/flow/template/segment drafts; import consented contacts; and approve or deliver email operations with provider readback."
 runx:
   category: growth
 ---
@@ -20,6 +20,15 @@ work. Those are product-operator concerns owned by the Nitrosend repository.
 
 - `status` (default): live account, brand, sender, domain, provider, warmup, and
   deliverability readiness.
+- `billing-status`: read the current account subscription and eligible paid-plan
+  catalog together. It does not create a checkout or expose prepaid funding.
+- `plan-checkout`: re-read current billing and plans, approve one exact plan,
+  create the idempotent hosted checkout or confirmed in-place plan change, then
+  read billing again. A checkout URL is pending operator work, not proof of
+  payment or activation.
+- `plan-checkout-status`: reconcile one returned plan-purchase ID without
+  creating another checkout. Use it after hosted approval, timeout, or an
+  ambiguous client response.
 - `configure-sender`: read, approve, update, and independently read back one
   explicitly selected brand's exact sender defaults. It configures no content,
   audience, campaign, flow, or delivery.
@@ -90,6 +99,27 @@ into another repo-local skill.
    provider evidence. A plan receipt is not proof of send, schedule, activation,
    or import.
 
+## Plan billing
+
+Nitrosend is the merchant for its account subscription. Runx governs the exact
+account operation and receipt, but it does not settle the operator's Stripe or
+Shopify payment and must not route this hosted checkout through `spend`.
+
+Start with `billing-status`; select only a returned eligible `plan_id`. Call
+`plan-checkout` with one stable idempotency key and approve the exact selected
+plan once. The same approval derives Nitrosend's provider confirmation flag, so
+there is no second confirmation prompt. Reuse the key only for an unchanged
+request.
+
+A returned checkout URL means the provider is awaiting the operator. Preserve
+its `purchase_id` and `next_action`, complete or abandon checkout outside the
+runner, and call `plan-checkout-status` later. Do not mint another checkout to
+poll. Only provider readback that reports activation is completion.
+
+Prepaid balance is a separate Nitrosend product path. These plan runners refuse
+amount, currency, instrument, add-funds, and funding-purchase arguments rather
+than forwarding them through the shared billing MCP tool.
+
 ## Contact import rules
 
 Every import requires a stable `source_id` and a plain-language
@@ -110,6 +140,9 @@ rather than keeping a resident polling loop.
 - Missing consent source, recipient, schedule time, or idempotency key.
 - Failed provider review or preflight.
 - Missing or denied approval.
+- Missing plan or purchase identity, changed idempotent checkout input, prepaid
+  funding arguments on a plan runner, or a request to treat checkout creation as
+  payment completion.
 - Any request to expose credentials, signed upload URLs, raw contact files, or
   unbounded provider responses.
 - Any claim of completion without provider readback evidence.

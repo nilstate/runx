@@ -1,5 +1,5 @@
 skill: nitrosend
-version: "0.3.3"
+version: "0.4.0"
 catalog:
   kind: skill
   audience: public
@@ -21,6 +21,125 @@ credentials:
         delivery:
           env: NITROSEND_API_KEY
 runners:
+  billing-status:
+    type: graph
+    credential: nitrosend
+    inputs: {}
+    examples:
+      - {}
+    graph:
+      name: nitrosend-billing-status
+      result_from: [status, plans]
+      steps:
+        - id: status
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: billing_status
+            arguments: {}
+        - id: plans
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: billing_plans
+            arguments: {}
+  plan-checkout:
+    type: graph
+    credential: nitrosend
+    act:
+      purpose: Create one operator-approved Nitrosend hosted plan checkout or confirmed in-place plan change.
+    inputs:
+      plan_id:
+        type: integer
+        required: true
+        description: Positive plan ID returned by the current billing-status catalog.
+        schema: { minimum: 1 }
+      idempotency_key:
+        type: string
+        required: true
+        description: Stable retry identity for this exact account and selected plan.
+        schema: { minLength: 1, maxLength: 255 }
+    examples:
+      - plan_id: 202
+        idempotency_key: account-1-plan-202-v1
+    graph:
+      name: nitrosend-plan-checkout
+      result_from: [checkout, readback]
+      steps:
+        - id: status
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: billing_status
+            arguments: {}
+        - id: plans
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: billing_plans
+            arguments: {}
+        - id: approve
+          run:
+            type: approval
+          inputs:
+            gate_id: nitrosend.plan_checkout.approval
+            reason: Create the Nitrosend hosted checkout or confirmed plan change for this exact selected plan.
+          context:
+            billing_status: status.provider_evidence.data
+            eligible_plans: plans.provider_evidence.data
+        - id: checkout
+          skill: graph/provider-operation
+          runner: act
+          idempotency_key: "$input.idempotency_key"
+          inputs:
+            operation: plan_checkout
+            arguments:
+              plan_id: "$input.plan_id"
+              confirm: true
+              idempotency_key: "$input.idempotency_key"
+            idempotency_key: "$input.idempotency_key"
+        - id: readback
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: billing_status
+            arguments: {}
+    policy:
+      guards:
+        - step: approve
+          field: status.provider_evidence.data.decision
+          equals: ok
+        - step: approve
+          field: plans.provider_evidence.data.decision
+          equals: ok
+        - step: checkout
+          field: approve.approval_decision.data.approved
+          equals: true
+        - step: readback
+          field: checkout.provider_evidence.data.decision
+          equals: ok
+  plan-checkout-status:
+    type: graph
+    credential: nitrosend
+    inputs:
+      purchase_id:
+        type: integer
+        required: true
+        description: Positive local plan-purchase ID returned by plan-checkout.
+        schema: { minimum: 1 }
+    examples:
+      - purchase_id: 701
+    graph:
+      name: nitrosend-plan-checkout-status
+      result_from: [status]
+      steps:
+        - id: status
+          skill: graph/provider-operation
+          runner: read
+          inputs:
+            operation: plan_checkout_status
+            arguments:
+              purchase_id: "$input.purchase_id"
   status:
     default: true
     type: graph

@@ -447,3 +447,73 @@ test("refuses persistence and delivery fields on campaign composition reads", ()
     assert.deepEqual(plan.requests, []);
   }
 });
+
+test("pins plan billing MCP sub-actions and caller retry identity", () => {
+  const status = prepareOperation({
+    mode: "read",
+    operation: "billing_status",
+    arguments: {},
+  }).operation_plan;
+  assert.equal(status.decision, "ready");
+  assert.equal(status.tool, "nitro_manage_billing");
+  assert.deepEqual(status.requests[0].body.params.arguments, { operation: "status" });
+
+  const plans = prepareOperation({
+    mode: "read",
+    operation: "billing_plans",
+    arguments: {},
+  }).operation_plan;
+  assert.deepEqual(plans.requests[0].body.params.arguments, { operation: "plans" });
+
+  const checkout = prepareOperation({
+    mode: "act",
+    operation: "plan_checkout",
+    arguments: {
+      plan_id: 202,
+      confirm: true,
+      idempotency_key: "account-1-plan-202-v1",
+    },
+  }).operation_plan;
+  assert.equal(checkout.decision, "ready");
+  assert.equal(checkout.tool, "nitro_manage_billing");
+  assert.deepEqual(checkout.requests[0].body.params.arguments, {
+    operation: "checkout",
+    params: { plan_id: 202, confirm: true },
+    idempotency_key: "account-1-plan-202-v1",
+  });
+
+  const readback = prepareOperation({
+    mode: "read",
+    operation: "plan_checkout_status",
+    arguments: { purchase_id: 701 },
+  }).operation_plan;
+  assert.deepEqual(readback.requests[0].body.params.arguments, {
+    operation: "checkout_status",
+    params: { purchase_id: 701 },
+  });
+});
+
+test("refuses widened or prepaid arguments on every plan billing lane", () => {
+  const cases = [
+    ["read", "billing_status", { operation: "checkout" }],
+    ["read", "billing_plans", { amount_cents: 5000 }],
+    ["read", "plan_checkout_status", { purchase_id: 701, instrument: "card" }],
+    ["act", "plan_checkout", {
+      plan_id: 202,
+      confirm: true,
+      idempotency_key: "account-1-plan-202-v1",
+      currency: "USD",
+    }],
+    ["act", "plan_checkout", {
+      plan_id: 202,
+      confirm: false,
+      idempotency_key: "account-1-plan-202-v1",
+    }],
+  ];
+
+  for (const [mode, operation, args] of cases) {
+    const plan = prepareOperation({ mode, operation, arguments: args }).operation_plan;
+    assert.notEqual(plan.decision, "ready", `${operation} admitted ${JSON.stringify(args)}`);
+    assert.deepEqual(plan.requests, []);
+  }
+});
