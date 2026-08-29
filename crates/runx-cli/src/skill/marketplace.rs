@@ -122,60 +122,63 @@ mod tests {
     use super::*;
 
     #[test]
-    fn paid_registry_skill_renders_the_exact_hosted_x402_challenge() {
+    fn paid_registry_skill_renders_the_exact_hosted_x402_challenge() -> Result<(), String> {
         let body = challenge_body("300000");
-        let challenge = hosted_challenge(&body, &body);
-        let listing = listing();
+        let challenge = hosted_challenge(&body, &body)?;
+        let listing = listing()?;
         let output = render_paid_skill_challenge(
             &listing,
             "invoke".to_owned(),
             &JsonObject::from([("document".to_owned(), JsonValue::String("ref".to_owned()))]),
             challenge,
-        )
-        .expect("paid discovery");
+        )?;
 
         let output: serde_json::Value =
-            serde_json::to_value(output).expect("serializable challenge output");
+            serde_json::to_value(output).map_err(|error| error.to_string())?;
         assert_eq!(output["status"], "payment_required");
         assert_eq!(output["runner"], "invoke");
         assert_eq!(output["result"]["payment_required"], body);
         assert_eq!(output["result"]["resource"]["url"], body["resource"]["url"]);
+        Ok(())
     }
 
     #[test]
-    fn paid_registry_skill_rejects_different_header_and_body_challenges() {
+    fn paid_registry_skill_rejects_different_header_and_body_challenges() -> Result<(), String> {
         let body = challenge_body("300000");
         let header = challenge_body("400000");
 
-        let error = render_paid_skill_challenge(
-            &listing(),
+        let result = render_paid_skill_challenge(
+            &listing()?,
             "invoke".to_owned(),
             &JsonObject::new(),
-            hosted_challenge(&body, &header),
-        )
-        .expect_err("different challenge declarations must fail");
+            hosted_challenge(&body, &header)?,
+        );
 
-        assert!(error.contains("header and body challenges differ"));
+        assert!(matches!(
+            &result,
+            Err(error) if error.contains("header and body challenges differ")
+        ));
+        Ok(())
     }
 
     fn hosted_challenge(
         body: &serde_json::Value,
         header: &serde_json::Value,
-    ) -> HostedSkillChallenge {
+    ) -> Result<HostedSkillChallenge, String> {
         let header: X402PaymentRequired =
-            serde_json::from_value(header.clone()).expect("typed challenge header");
-        let encoded =
-            runx_x402::encode_payment_required_header(&header).expect("encoded challenge header");
+            serde_json::from_value(header.clone()).map_err(|error| error.to_string())?;
+        let encoded = runx_x402::encode_payment_required_header(&header)
+            .map_err(|error| error.to_string())?;
         let mut response = RuntimeHttpResponse::new(402, body.to_string());
         response.headers = vec![RuntimeHttpHeader::new(
             X402_PAYMENT_REQUIRED_HEADER,
             encoded,
         )];
-        HostedSkillChallenge {
+        Ok(HostedSkillChallenge {
             resource_url: "https://registry.internal.test/v1/skills/ausca/document-ocr/run"
                 .to_owned(),
             response,
-        }
+        })
     }
 
     fn challenge_body(amount: &str) -> serde_json::Value {
@@ -197,7 +200,7 @@ mod tests {
         })
     }
 
-    fn listing() -> PaidSkillListing {
+    fn listing() -> Result<PaidSkillListing, String> {
         serde_json::from_value(serde_json::json!({
             "skill_id": "ausca/document-ocr",
             "version": "0.1.0",
@@ -220,6 +223,6 @@ mod tests {
                 }
             }
         }))
-        .expect("paid listing")
+        .map_err(|error| error.to_string())
     }
 }

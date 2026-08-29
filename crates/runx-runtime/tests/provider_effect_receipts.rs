@@ -45,8 +45,9 @@ fn provider_effect_receipts_bind_approval_ack_readback_and_grant() {
     let admission = effect
         .prepare_execution(&step, admission, &mut host)
         .expect("exact provider approval");
+    assert!(matches!(admission, EffectPreparationOutcome::Ready(_)));
     let EffectPreparationOutcome::Ready(admission) = admission else {
-        panic!("approving host must resolve the effect");
+        return;
     };
     assert_eq!(host.requests.len(), 1);
 
@@ -137,8 +138,9 @@ fn provider_effect_receipts_reads_do_not_request_approval() {
     let admission = effect
         .prepare_execution(&step, admission, &mut host)
         .expect("provider read preparation");
+    assert!(matches!(admission, EffectPreparationOutcome::Ready(_)));
     let EffectPreparationOutcome::Ready(admission) = admission else {
-        panic!("provider read must not suspend");
+        return;
     };
     assert!(host.requests.is_empty());
 
@@ -260,8 +262,12 @@ fn provider_effect_approval_exposes_the_exact_plan_bound_amount() {
         .expect("provider approval");
 
     assert!(matches!(outcome, EffectPreparationOutcome::Ready(_)));
+    assert!(matches!(
+        host.requests[0],
+        ResolutionRequest::Approval { .. }
+    ));
     let ResolutionRequest::Approval { gate, .. } = &host.requests[0] else {
-        panic!("provider effect must request approval");
+        return;
     };
     assert_eq!(
         gate.summary
@@ -294,8 +300,9 @@ fn paid_external_job_authority_executes_only_the_pinned_provider_mutation() {
     let admission = effect
         .prepare_execution(&step, admission, &mut host)
         .expect("paid external-job authority");
+    assert!(matches!(admission, EffectPreparationOutcome::Ready(_)));
     let EffectPreparationOutcome::Ready(admission) = admission else {
-        panic!("paid authority must resolve the effect");
+        return;
     };
     assert!(host.requests.is_empty());
 
@@ -374,8 +381,9 @@ fn provider_effect_redaction_keeps_secret_payload_out_of_approval_and_receipt() 
     let admission = effect
         .prepare_execution(&step, admission, &mut host)
         .expect("provider approval");
+    assert!(matches!(admission, EffectPreparationOutcome::Ready(_)));
     let EffectPreparationOutcome::Ready(admission) = admission else {
-        panic!("approving host must resolve the effect");
+        return;
     };
     let approval_json = serde_json::to_string(&host.requests).expect("approval request JSON");
     assert!(!approval_json.contains(SECRET));

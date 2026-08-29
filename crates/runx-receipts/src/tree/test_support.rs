@@ -70,10 +70,17 @@ pub(super) fn proof_composition_pair() -> Result<(Receipt, Receipt), serde_json:
     let mut outer = proof_root()?;
     child_refs_mut(&mut outer).clear();
     outer.class = ReceiptClass::Mediated;
+    let parent_binding = ParentInvocationBinding {
+        invocation_id: "paid_outer".into(),
+        execution_digest: digest('7')?,
+    };
+    let expected = paid_binding("paid_inner", '8', Some(parent_binding))?;
     let mut outer_binding = paid_binding("paid_outer", '7', None)?;
     outer_binding.mediation = Some(serde_json::from_value(serde_json::json!({
         "listing_ref": "runx:listing:ausca/document-ocr@1.0.0#invoke",
         "endpoint_url": "https://vendor.example/v1/invocations",
+        "vendor_offer_revision": expected.offer_revision.clone(),
+        "vendor_package_digest": expected.package_digest.clone(),
         "vendor_amount_minor": 100,
         "platform_fee_minor": 25,
         "currency": "USD",
@@ -82,11 +89,6 @@ pub(super) fn proof_composition_pair() -> Result<(Receipt, Receipt), serde_json:
     }))?);
     outer.subject.paid_invocation = Some(outer_binding);
 
-    let parent_binding = ParentInvocationBinding {
-        invocation_id: "paid_outer".into(),
-        execution_digest: digest('7')?,
-    };
-    let expected = paid_binding("paid_inner", '8', Some(parent_binding))?;
     let mut inner = proof_child("paid_inner_receipt")?;
     inner.class = ReceiptClass::Executed;
     inner.subject.paid_invocation = Some(expected.clone());

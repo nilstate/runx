@@ -6,7 +6,7 @@
   "properties": {
     "decision": {
       "type": "string",
-      "enum": ["ready", "ready_for_approval", "blocked", "refused", "needs_agent"]
+      "enum": ["ready", "ready_for_execution", "blocked", "refused", "needs_agent"]
     },
     "repo": { "type": "string", "minLength": 1 },
     "direction": {
@@ -33,7 +33,6 @@
     },
     "provider_operation": { "type": "string" },
     "scope_used": { "type": "string", "minLength": 1 },
-    "gates": { "type": "object", "additionalProperties": true },
     "provider_status": { "type": "string", "const": "not_called" },
     "blockers": { "type": "array", "items": { "type": "string" } }
   },
@@ -48,7 +47,6 @@
     "diff_summary",
     "provider_operation",
     "scope_used",
-    "gates",
     "provider_status",
     "blockers"
   ],
@@ -67,7 +65,7 @@
     },
     {
       "if": {
-        "properties": { "decision": { "enum": ["ready", "ready_for_approval"] } },
+        "properties": { "decision": { "enum": ["ready", "ready_for_execution"] } },
         "required": ["decision"]
       },
       "then": {

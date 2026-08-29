@@ -128,7 +128,9 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Setup pinned Rust toolchain
-        run: rustup show
+        run: |
+          rustup show
+          rustup toolchain install nightly --profile minimal
 
       - name: Install Rust test and advisory tools
         if: needs.classify.outputs.full == 'true'

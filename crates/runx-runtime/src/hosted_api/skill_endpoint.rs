@@ -141,14 +141,16 @@ mod tests {
             requests: RefCell::new(Vec::new()),
         };
 
-        let error = request_hosted_skill_challenge_with_transport(
+        let result = request_hosted_skill_challenge_with_transport(
             &transport,
             "https://api.runx.test",
             "../escape",
-        )
-        .expect_err("invalid identity must fail");
+        );
 
-        assert!(matches!(error, HostedSkillEndpointError::InvalidSkillId(_)));
+        assert!(matches!(
+            result,
+            Err(HostedSkillEndpointError::InvalidSkillId(_))
+        ));
         assert!(transport.requests.borrow().is_empty());
     }
 
@@ -162,18 +164,19 @@ mod tests {
             requests: RefCell::new(Vec::new()),
         };
 
-        let error = request_hosted_skill_challenge_with_transport(
+        let result = request_hosted_skill_challenge_with_transport(
             &transport,
             "https://api.runx.test",
             "ausca/document-ocr",
-        )
-        .expect_err("oversized response must fail");
+        );
 
         assert!(matches!(
-            error,
-            HostedSkillEndpointError::Http(RuntimeHttpError::ResponseBodyTooLarge {
-                limit: MAX_HOSTED_SKILL_CHALLENGE_BYTES
-            })
+            result,
+            Err(HostedSkillEndpointError::Http(
+                RuntimeHttpError::ResponseBodyTooLarge {
+                    limit: MAX_HOSTED_SKILL_CHALLENGE_BYTES
+                }
+            ))
         ));
     }
 }

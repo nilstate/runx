@@ -62,13 +62,14 @@ fn scoped_write_does_not_invent_approval_and_an_explicit_denied_guard_still_bloc
 
     let guarded_workspace = tempfile::tempdir()?;
     let guarded_graph = policy_write_graph(guarded_workspace.path(), true)?;
-    let error = runtime()
-        .run_graph_with_host(
-            guarded_workspace.path(),
-            guarded_graph,
-            &mut ApprovalHost::new(false),
-        )
-        .expect_err("an explicit denied approval guard must fail closed");
+    let error = match runtime().run_graph_with_host(
+        guarded_workspace.path(),
+        guarded_graph,
+        &mut ApprovalHost::new(false),
+    ) {
+        Err(error) => error,
+        Ok(_) => return Err("an explicit denied approval guard did not fail closed".into()),
+    };
     assert!(matches!(error, RuntimeError::AuthorityDenied { .. }));
     assert!(error.to_string().contains("approval guard"));
     assert!(!guarded_workspace.path().join("approved.txt").exists());
@@ -104,12 +105,12 @@ runners:
 "#,
         ),
     )?;
-    let parent = validate_graph(parse_graph_yaml(&format!(
+    let parent = validate_graph(parse_graph_yaml(
         r#"name: parent-policy-write
 result_from: [child]
 steps:
   - id: approve
-    run: {{ type: approval }}
+    run: { type: approval }
     inputs:
       gate_id: parent.child.approval
       reason: Approve the nested write.
@@ -124,8 +125,8 @@ policy:
     - step: child
       field: approve.approval_decision.data.approved
       equals: true
-"#
-    ))?)?;
+"#,
+    )?)?;
 
     let mut host = ApprovalHost::new(true);
     let run = runtime().run_graph_with_host(workspace.path(), parent, &mut host)?;
