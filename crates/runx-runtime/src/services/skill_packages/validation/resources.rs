@@ -108,7 +108,7 @@ fn classify_native_tool(tool: &str, usage: &mut CandidateResourceUsage) {
     }
     if tool.starts_with("http.")
         || tool.starts_with("provider.")
-        || matches!(tool, "web.fetch" | "artifact.allocate")
+        || matches!(tool, "web.fetch" | "artifact.allocate" | "artifact.handoff")
     {
         usage.network = true;
     }
@@ -168,6 +168,7 @@ mod tests {
             "provider.read",
             "web.fetch",
             "artifact.allocate",
+            "artifact.handoff",
         ] {
             let mut usage = CandidateResourceUsage::default();
             classify_native_tool(tool, &mut usage);

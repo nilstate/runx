@@ -21,6 +21,7 @@ use super::capability::{NativeCapability, TypedNativeCapability};
 use super::{NativeInvocation, invalid_input};
 
 const ALLOCATE_TOOL: &str = "artifact.allocate";
+const HANDOFF_TOOL: &str = "artifact.handoff";
 const HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV: &str = "RUNX_HOSTED_ARTIFACT_MAXIMUM_BYTES";
 const MAX_IDEMPOTENCY_SCOPE_BYTES: usize = 256;
 
@@ -36,6 +37,16 @@ struct ArtifactAllocateInput {
 }
 
 impl CapabilityInput for ArtifactAllocateInput {}
+
+#[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
+#[serde(deny_unknown_fields)]
+struct ArtifactHandoffInput {
+    source_artifact_ref: String,
+    target_principal_id: String,
+    idempotency_scope: String,
+}
+
+impl CapabilityInput for ArtifactHandoffInput {}
 
 #[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
 #[serde(deny_unknown_fields)]
@@ -83,7 +94,42 @@ static ALLOCATE: TypedNativeCapability<ArtifactAllocateInput, HostedArtifactOutp
         runx_contracts::ExecutionBoundaryKind::RemoteProvider,
     );
 
-pub(in crate::tool_catalogs::native) const CAPABILITIES: &[&dyn NativeCapability] = &[&ALLOCATE];
+const HANDOFF_FIELDS: &[CapabilityField] = &[
+    CapabilityField {
+        name: "source_artifact_ref",
+        description: "Opaque artifact reference owned by the authenticated source principal.",
+    },
+    CapabilityField {
+        name: "target_principal_id",
+        description: "Registered principal that receives one isolated copy after approval.",
+    },
+    CapabilityField {
+        name: "idempotency_scope",
+        description: "Stable package-owned purpose bound to the current run and exact handoff.",
+    },
+];
+
+static HANDOFF: TypedNativeCapability<ArtifactHandoffInput, HostedArtifactOutput> =
+    TypedNativeCapability::new_with_execution_boundary(
+        CapabilityDefinition {
+            id: HANDOFF_TOOL,
+            owner: "runx-runtime/hosted-artifacts",
+            summary: "Copy one source-owned artifact into a registered target principal.",
+            scopes: &["runx:artifact:read", "runx:artifact:write"],
+            effect: CapabilityEffect::Mutate,
+            approval: CapabilityApproval::Effect,
+            artifacts: CapabilityArtifacts::Named {
+                output: "artifact_operation",
+                packet: "runx.provider.operation.v1",
+            },
+            fields: HANDOFF_FIELDS,
+        },
+        handoff,
+        runx_contracts::ExecutionBoundaryKind::RemoteProvider,
+    );
+
+pub(in crate::tool_catalogs::native) const CAPABILITIES: &[&dyn NativeCapability] =
+    &[&ALLOCATE, &HANDOFF];
 
 fn allocate(
     invocation: &NativeInvocation<'_, ArtifactAllocateInput>,
@@ -92,7 +138,7 @@ fn allocate(
     let (data_base64, bytes) = allocation_bytes(invocation.inputs, maximum_bytes)?;
     let media_type = media_type(&invocation.inputs.media_type)?;
     let content_digest = runx_contracts::sha256_prefixed(&bytes);
-    let run_id = runtime_run_id(invocation.env)?;
+    let run_id = runtime_run_id(invocation.env, ALLOCATE_TOOL)?;
     let idempotency_key = run_bound_idempotency_key(
         run_id,
         &invocation.inputs.idempotency_scope,
@@ -124,9 +170,70 @@ fn allocate(
             ])),
         ),
     ]);
-    let (packet, principal_ref) = invoke(invocation, body)?;
-    validate_packet(&packet, &idempotency_key, &principal_ref)?;
+    let (packet, principal_ref) = invoke(invocation, ALLOCATE_TOOL, body)?;
+    validate_packet(
+        &packet,
+        ALLOCATE_TOOL,
+        &idempotency_key,
+        &principal_ref,
+        &["hosted_loopback", "hosted_control_plane"],
+    )?;
     validate_allocation_result(&packet, &content_digest, media_type, bytes.len())?;
+    Ok(HostedArtifactOutput {
+        artifact_operation: packet,
+    })
+}
+
+fn handoff(
+    invocation: &NativeInvocation<'_, ArtifactHandoffInput>,
+) -> Result<HostedArtifactOutput, RuntimeError> {
+    artifact_ref_for(&invocation.inputs.source_artifact_ref, HANDOFF_TOOL)?;
+    let source_artifact_ref = invocation.inputs.source_artifact_ref.as_str();
+    let target_principal_id = principal_id(&invocation.inputs.target_principal_id)?;
+    let run_id = runtime_run_id(invocation.env, HANDOFF_TOOL)?;
+    let idempotency_key = handoff_idempotency_key(
+        run_id,
+        &invocation.inputs.idempotency_scope,
+        source_artifact_ref,
+        target_principal_id,
+    )?;
+    let body = JsonObject::from([
+        (
+            "operation".to_owned(),
+            JsonValue::String(HANDOFF_TOOL.to_owned()),
+        ),
+        ("run_id".to_owned(), JsonValue::String(run_id.to_owned())),
+        (
+            "input".to_owned(),
+            JsonValue::Object(JsonObject::from([
+                (
+                    "source_artifact_ref".to_owned(),
+                    JsonValue::String(invocation.inputs.source_artifact_ref.clone()),
+                ),
+                (
+                    "target_principal_id".to_owned(),
+                    JsonValue::String(target_principal_id.to_owned()),
+                ),
+                (
+                    "idempotency_key".to_owned(),
+                    JsonValue::String(idempotency_key.clone()),
+                ),
+            ])),
+        ),
+    ]);
+    let (packet, principal_ref) = invoke(invocation, HANDOFF_TOOL, body)?;
+    validate_packet(
+        &packet,
+        HANDOFF_TOOL,
+        &idempotency_key,
+        &principal_ref,
+        &["hosted_control_plane"],
+    )?;
+    validate_handoff_result(
+        &packet,
+        &invocation.inputs.source_artifact_ref,
+        target_principal_id,
+    )?;
     Ok(HostedArtifactOutput {
         artifact_operation: packet,
     })
@@ -134,31 +241,32 @@ fn allocate(
 
 fn invoke<I>(
     invocation: &NativeInvocation<'_, I>,
+    operation: &'static str,
     body: JsonObject,
 ) -> Result<(ProviderOperationPacket, String), RuntimeError> {
     let transport = NativeHttpTransport::for_hosted_api(
         invocation.harness_http_responses(),
         hosted_private_network_allowed(false, invocation.env),
     )
-    .map_err(|error| runtime_failure(ALLOCATE_TOOL, error.to_string()))?;
+    .map_err(|error| runtime_failure(operation, error.to_string()))?;
     let resolved =
         HostedApiEnvironment::resolve(None, None, invocation.env, invocation.skill_directory)
-            .map_err(|error| runtime_failure(ALLOCATE_TOOL, error.to_string()))?;
+            .map_err(|error| runtime_failure(operation, error.to_string()))?;
     let authenticated = resolved
         .authenticate(&transport)
-        .map_err(|error| runtime_failure(ALLOCATE_TOOL, error.to_string()))?;
+        .map_err(|error| runtime_failure(operation, error.to_string()))?;
     let encoded = serde_json::to_string(&body)
         .map_err(|source| RuntimeError::json("serializing hosted artifact request", source))?;
     let packet = send_json_idempotent(
         &transport,
         authenticated.base_url(),
-        ALLOCATE_TOOL,
+        operation,
         crate::http::HttpMethod::Post,
         "/v1/artifact-operations",
         Some(authenticated.token()),
         Some(encoded),
     )
-    .map_err(|error| runtime_failure(ALLOCATE_TOOL, error.to_string()))?;
+    .map_err(|error| runtime_failure(operation, error.to_string()))?;
     Ok((
         packet,
         format!("runx:principal:{}", authenticated.principal_id()),
@@ -244,8 +352,10 @@ fn validate_allocation_size(size: usize, maximum_bytes: usize) -> Result<(), Run
 
 fn validate_packet(
     packet: &ProviderOperationPacket,
+    operation: &str,
     idempotency_key: &str,
     principal_ref: &str,
+    transports: &[&str],
 ) -> Result<(), RuntimeError> {
     let hosted_result_digest = digest_json(&packet.result)?;
     let expected_readback_ref = format!(
@@ -255,12 +365,9 @@ fn validate_packet(
     if packet.schema != "runx.provider.operation.v1"
         || packet.status != "success"
         || packet.provider != "runx-artifact"
-        || packet.operation != ALLOCATE_TOOL
+        || packet.operation != operation
         || packet.access.as_deref() != Some("mutate")
-        || !matches!(
-            packet.transport.as_str(),
-            "hosted_loopback" | "hosted_control_plane"
-        )
+        || !transports.contains(&packet.transport.as_str())
         || packet.principal_ref.as_deref() != Some(principal_ref)
         || packet.finality.as_deref() != Some("verified")
         || packet.readback_ref != expected_readback_ref
@@ -276,8 +383,66 @@ fn validate_packet(
         || packet.account_ref.is_some()
     {
         return Err(runtime_failure(
-            ALLOCATE_TOOL,
+            operation,
             "hosted artifact readback does not match the admitted operation",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_handoff_result(
+    packet: &ProviderOperationPacket,
+    expected_source_ref: &str,
+    expected_target_principal: &str,
+) -> Result<(), RuntimeError> {
+    let result = packet.result.as_object().ok_or_else(|| {
+        runtime_failure(HANDOFF_TOOL, "artifact handoff result must be an object")
+    })?;
+    let source_ref = result
+        .get("source_artifact_ref")
+        .and_then(JsonValue::as_str);
+    let target_ref = result
+        .get("target_principal_ref")
+        .and_then(JsonValue::as_str);
+    let artifact = result.get("artifact").and_then(JsonValue::as_object);
+    let expected_target_ref = format!("runx:principal:{expected_target_principal}");
+    let Some(artifact) = artifact else {
+        return Err(runtime_failure(
+            HANDOFF_TOOL,
+            "artifact handoff result does not contain exact target evidence",
+        ));
+    };
+    let artifact_ref = artifact.get("artifact_ref").and_then(JsonValue::as_str);
+    let content_digest = artifact.get("content_digest").and_then(JsonValue::as_str);
+    let media_type = artifact.get("media_type").and_then(JsonValue::as_str);
+    let created_at = artifact.get("created_at").and_then(JsonValue::as_str);
+    let size = artifact.get("size_bytes").and_then(|value| match value {
+        JsonValue::Number(runx_contracts::JsonNumber::U64(value)) => Some(*value),
+        JsonValue::Number(runx_contracts::JsonNumber::I64(value)) => u64::try_from(*value).ok(),
+        _ => None,
+    });
+    let (Some(artifact_ref), Some(content_digest), Some(media_type), Some(created_at), Some(size)) =
+        (artifact_ref, content_digest, media_type, created_at, size)
+    else {
+        return Err(runtime_failure(
+            HANDOFF_TOOL,
+            "artifact handoff result does not contain exact target evidence",
+        ));
+    };
+    if result.len() != 3
+        || source_ref != Some(expected_source_ref)
+        || target_ref != Some(expected_target_ref.as_str())
+        || artifact.len() != 5
+        || artifact_ref != packet.target
+        || self::artifact_ref(artifact_ref).is_err()
+        || !valid_sha256_digest(content_digest)
+        || self::media_type(media_type).is_err()
+        || size == 0
+        || !valid_text(created_at, 64)
+    {
+        return Err(runtime_failure(
+            HANDOFF_TOOL,
+            "artifact handoff result does not contain exact target evidence",
         ));
     }
     Ok(())
@@ -359,14 +524,41 @@ fn run_bound_idempotency_key(
     ))
 }
 
-fn runtime_run_id(
-    environment: &std::collections::BTreeMap<String, String>,
-) -> Result<&str, RuntimeError> {
+fn handoff_idempotency_key(
+    run_id: &str,
+    scope: &str,
+    source_artifact_ref: &str,
+    target_principal_id: &str,
+) -> Result<String, RuntimeError> {
+    if !valid_text(run_id, 256) {
+        return Err(invalid_input(
+            HANDOFF_TOOL,
+            "runtime run identity is unavailable",
+        ));
+    }
+    if !valid_text(scope, MAX_IDEMPOTENCY_SCOPE_BYTES) {
+        return Err(invalid_input(HANDOFF_TOOL, "idempotency_scope is invalid"));
+    }
+    artifact_ref_for(source_artifact_ref, HANDOFF_TOOL)?;
+    let target_principal_id = principal_id(target_principal_id)?;
+    let digest = runx_contracts::sha256_prefixed(
+        format!("{run_id}\n{scope}\n{source_artifact_ref}\n{target_principal_id}").as_bytes(),
+    );
+    Ok(format!(
+        "runx.artifact.handoff:{}",
+        digest.trim_start_matches("sha256:")
+    ))
+}
+
+fn runtime_run_id<'a>(
+    environment: &'a std::collections::BTreeMap<String, String>,
+    operation: &str,
+) -> Result<&'a str, RuntimeError> {
     environment
         .get(crate::execution::runner::RUNX_RUN_ID_ENV)
         .map(String::as_str)
         .filter(|value| valid_text(value, 256))
-        .ok_or_else(|| invalid_input(ALLOCATE_TOOL, "runtime run identity is unavailable"))
+        .ok_or_else(|| invalid_input(operation, "runtime run identity is unavailable"))
 }
 
 fn digest_json(value: &JsonValue) -> Result<String, RuntimeError> {
@@ -376,17 +568,40 @@ fn digest_json(value: &JsonValue) -> Result<String, RuntimeError> {
 }
 
 fn artifact_ref(value: &str) -> Result<&str, RuntimeError> {
+    artifact_ref_for(value, ALLOCATE_TOOL)
+}
+
+fn artifact_ref_for<'a>(value: &'a str, operation: &str) -> Result<&'a str, RuntimeError> {
     let Some(suffix) = value.strip_prefix("runx:artifact:sha256:") else {
-        return Err(invalid_input(ALLOCATE_TOOL, "artifact_ref is invalid"));
+        return Err(invalid_input(operation, "artifact_ref is invalid"));
     };
     if suffix.len() != 64
         || !suffix
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
-        return Err(invalid_input(ALLOCATE_TOOL, "artifact_ref is invalid"));
+        return Err(invalid_input(operation, "artifact_ref is invalid"));
     }
     Ok(suffix)
+}
+
+fn principal_id(value: &str) -> Result<&str, RuntimeError> {
+    if !valid_text(value, 200) {
+        return Err(invalid_input(
+            HANDOFF_TOOL,
+            "target_principal_id is invalid",
+        ));
+    }
+    Ok(value)
+}
+
+fn valid_sha256_digest(value: &str) -> bool {
+    value.strip_prefix("sha256:").is_some_and(|suffix| {
+        suffix.len() == 64
+            && suffix
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    })
 }
 
 fn media_type(value: &str) -> Result<&str, RuntimeError> {
@@ -611,8 +826,10 @@ mod tests {
         };
         validate_packet(
             &packet,
+            ALLOCATE_TOOL,
             "runx.artifact.allocate:test",
             "runx:principal:test",
+            &["hosted_loopback", "hosted_control_plane"],
         )
         .expect("matching packet");
 
@@ -620,8 +837,10 @@ mod tests {
         assert!(
             validate_packet(
                 &packet,
+                ALLOCATE_TOOL,
                 "runx.artifact.allocate:test",
-                "runx:principal:test"
+                "runx:principal:test",
+                &["hosted_loopback", "hosted_control_plane"],
             )
             .is_err()
         );
@@ -631,8 +850,10 @@ mod tests {
         assert!(
             validate_packet(
                 &packet,
+                ALLOCATE_TOOL,
                 "runx.artifact.allocate:test",
-                "runx:principal:test"
+                "runx:principal:test",
+                &["hosted_loopback", "hosted_control_plane"],
             )
             .is_err()
         );
@@ -886,5 +1107,139 @@ mod tests {
         validate_allocation_result(&packet, expected_digest, "application/json", 1)
             .expect("exact artifact result");
         Ok(())
+    }
+
+    #[test]
+    fn handoff_replays_through_the_native_harness_with_exact_target_evidence() {
+        let base_url = "https://artifact-fixture.runx.invalid";
+        let source_artifact_ref =
+            "runx:artifact:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let target_artifact_ref =
+            "runx:artifact:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let input = ArtifactHandoffInput {
+            source_artifact_ref: source_artifact_ref.to_owned(),
+            target_principal_id: "ausca".to_owned(),
+            idempotency_scope: "ausca.media-input.v1".to_owned(),
+        };
+        let idempotency_key = handoff_idempotency_key(
+            "run-fixture",
+            &input.idempotency_scope,
+            source_artifact_ref,
+            &input.target_principal_id,
+        )
+        .expect("handoff idempotency key");
+        let result = JsonValue::Object(JsonObject::from([
+            (
+                "source_artifact_ref".to_owned(),
+                JsonValue::String(source_artifact_ref.to_owned()),
+            ),
+            (
+                "target_principal_ref".to_owned(),
+                JsonValue::String("runx:principal:ausca".to_owned()),
+            ),
+            (
+                "artifact".to_owned(),
+                JsonValue::Object(JsonObject::from([
+                    (
+                        "artifact_ref".to_owned(),
+                        JsonValue::String(target_artifact_ref.to_owned()),
+                    ),
+                    (
+                        "content_digest".to_owned(),
+                        JsonValue::String(
+                            "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                                .to_owned(),
+                        ),
+                    ),
+                    (
+                        "media_type".to_owned(),
+                        JsonValue::String("audio/mpeg".to_owned()),
+                    ),
+                    (
+                        "size_bytes".to_owned(),
+                        JsonValue::Number(runx_contracts::JsonNumber::U64(23_805)),
+                    ),
+                    (
+                        "created_at".to_owned(),
+                        JsonValue::String("2026-08-31T01:54:11.467Z".to_owned()),
+                    ),
+                ])),
+            ),
+        ]));
+        let result_digest = digest_json(&result).expect("handoff result digest");
+        let packet = ProviderOperationPacket {
+            schema: "runx.provider.operation.v1".to_owned(),
+            status: "success".to_owned(),
+            provider: "runx-artifact".to_owned(),
+            operation: HANDOFF_TOOL.to_owned(),
+            target: target_artifact_ref.to_owned(),
+            result,
+            transport: "hosted_control_plane".to_owned(),
+            readback_ref: format!(
+                "runx:artifact-readback:{}",
+                result_digest.trim_start_matches("sha256:")
+            ),
+            access: Some("mutate".to_owned()),
+            principal_ref: Some("runx:principal:operator:test".to_owned()),
+            grant_ref: None,
+            finality: Some("verified".to_owned()),
+            plan_digest: None,
+            result_digest: Some(result_digest),
+            operation_id: Some("runx:artifact-operation:fixture".to_owned()),
+            idempotency_key: Some(idempotency_key),
+            host: None,
+            account_ref: None,
+        };
+        let env = BTreeMap::from([
+            (
+                crate::HOSTED_API_BASE_URL_ENV.to_owned(),
+                base_url.to_owned(),
+            ),
+            (
+                crate::HOSTED_API_TOKEN_ENV.to_owned(),
+                "rxk_fixture".to_owned(),
+            ),
+            (
+                crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
+                "run-fixture".to_owned(),
+            ),
+        ]);
+        let responses = BTreeMap::from([
+            (
+                format!("{base_url}/v1/me"),
+                RuntimeHttpResponse::new(
+                    200,
+                    r#"{"status":"success","principal":{"principal_id":"operator:test"}}"#,
+                ),
+            ),
+            (
+                format!("{base_url}/v1/artifact-operations"),
+                RuntimeHttpResponse::new(200, serde_json::to_string(&packet).expect("packet JSON")),
+            ),
+        ]);
+        let effects = RuntimeEffectRegistry::default().with_harness_http_responses(responses);
+        let credentials = CredentialDelivery::none();
+        let output = handoff(&NativeInvocation {
+            inputs: &input,
+            observed_at: "2026-08-31T00:00:00Z",
+            data_source_binding: None,
+            env: &env,
+            skill_directory: std::path::Path::new("."),
+            credential_delivery: &credentials,
+            local_artifacts: super::super::fixture_local_artifacts(),
+            effects: &effects,
+        })
+        .expect("harness handoff");
+
+        assert_eq!(output.artifact_operation.operation, HANDOFF_TOOL);
+        assert_eq!(output.artifact_operation.target, target_artifact_ref);
+        assert_eq!(
+            output.artifact_operation.result_digest,
+            packet.result_digest
+        );
+        assert_eq!(
+            crate::tool_catalogs::native::required_scopes(HANDOFF_TOOL),
+            Some(&["runx:artifact:read", "runx:artifact:write"][..])
+        );
     }
 }
