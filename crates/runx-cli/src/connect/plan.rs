@@ -32,6 +32,7 @@ pub struct ConnectStartPlan {
     pub target_repo: Option<String>,
     pub target_locator: Option<String>,
     pub binding_id: Option<String>,
+    pub credential_grant_id: Option<String>,
 }
 
 #[derive(Default)]
@@ -47,6 +48,7 @@ struct ParsedConnectArgs {
     target_repo: Option<String>,
     target_locator: Option<String>,
     binding_id: Option<String>,
+    credential_grant_id: Option<String>,
     positional: Vec<String>,
 }
 
@@ -123,6 +125,7 @@ fn takes_value(flag: &str) -> bool {
             | "--target-repo"
             | "--target-locator"
             | "--binding"
+            | "--credential-grant"
     )
 }
 
@@ -139,6 +142,7 @@ fn apply_value(parsed: &mut ParsedConnectArgs, flag: &str, value: String) -> Res
         "--target-repo" => parsed.target_repo = Some(value),
         "--target-locator" => parsed.target_locator = Some(value),
         "--binding" => parsed.binding_id = Some(value),
+        "--credential-grant" => parsed.credential_grant_id = Some(provider_grant_id(value)?),
         _ => return Err(format!("unknown connect flag {flag}")),
     }
     Ok(())
@@ -175,6 +179,14 @@ fn start_action(parsed: &mut ParsedConnectArgs) -> Result<ConnectAction, String>
     if parsed.scopes.is_empty() {
         return Err("runx connect start requires at least one --scope capability".to_owned());
     }
+    if parsed.credentials_from_stdin && parsed.credential_grant_id.is_some() {
+        return Err(
+            "--credentials-from-stdin and --credential-grant are mutually exclusive".to_owned(),
+        );
+    }
+    if parsed.binding_id.is_some() && parsed.credential_grant_id.is_some() {
+        return Err("--binding and --credential-grant are mutually exclusive".to_owned());
+    }
     Ok(ConnectAction::Start(ConnectStartPlan {
         provider: parsed.positional.remove(0),
         scopes: std::mem::take(&mut parsed.scopes),
@@ -184,6 +196,7 @@ fn start_action(parsed: &mut ParsedConnectArgs) -> Result<ConnectAction, String>
         target_repo: parsed.target_repo.take(),
         target_locator: parsed.target_locator.take(),
         binding_id: parsed.binding_id.take(),
+        credential_grant_id: parsed.credential_grant_id.take(),
     }))
 }
 

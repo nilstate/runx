@@ -162,6 +162,7 @@ fn hosted_connect_action(action: &ConnectAction) -> Option<HostedConnectAction<'
             target_repo: start.target_repo.as_deref(),
             target_locator: start.target_locator.as_deref(),
             binding_id: start.binding_id.as_deref(),
+            credential_grant_id: start.credential_grant_id.as_deref(),
         })),
     }
 }
@@ -454,6 +455,8 @@ mod tests {
             "https://runx.test/".into(),
             "--token".into(),
             "rxk_test".into(),
+            "--credential-grant".into(),
+            "grant_x402_existing".into(),
             "--json".into(),
         ])?;
         let transport = StubTransport::new(vec![
@@ -493,6 +496,7 @@ mod tests {
         let request: serde_json::Value = serde_json::from_str(body)?;
         assert_eq!(request["provider"], "future-provider");
         assert_eq!(request["scopes"], serde_json::json!(scopes));
+        assert_eq!(request["credential_grant_id"], "grant_x402_existing");
         Ok(())
     }
 

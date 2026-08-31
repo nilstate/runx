@@ -29,6 +29,7 @@ pub struct HostedConnectStart<'a> {
     pub target_repo: Option<&'a str>,
     pub target_locator: Option<&'a str>,
     pub binding_id: Option<&'a str>,
+    pub credential_grant_id: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -45,6 +46,8 @@ struct ConnectStartRequest<'a> {
     target_locator: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     binding_id: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    credential_grant_id: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -84,6 +87,7 @@ pub fn execute_hosted_connect(
                 target_repo: non_empty(start.target_repo),
                 target_locator: non_empty(start.target_locator),
                 binding_id: non_empty(start.binding_id),
+                credential_grant_id: non_empty(start.credential_grant_id),
             })
             .map_err(|error| HostedApiOperationError::InvalidRequest {
                 operation: "connect start request",
