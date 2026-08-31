@@ -8,7 +8,7 @@
       "cli-tool"
     ]
   },
-  "capability_count": 37,
+  "capability_count": 38,
   "capabilities": [
     {
       "id": "artifact.admit",
@@ -33,6 +33,22 @@
       ],
       "effect": "mutate",
       "approval": "none",
+      "artifacts": {
+        "kind": "named",
+        "output": "artifact_operation",
+        "packet": "runx.provider.operation.v1"
+      },
+      "execution_boundary": "remote_provider"
+    },
+    {
+      "id": "artifact.handoff",
+      "owner": "runx-runtime/hosted-artifacts",
+      "scopes": [
+        "runx:artifact:read",
+        "runx:artifact:write"
+      ],
+      "effect": "mutate",
+      "approval": "effect",
       "artifacts": {
         "kind": "named",
         "output": "artifact_operation",
