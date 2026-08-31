@@ -23,6 +23,9 @@ use super::{NativeInvocation, invalid_input};
 const ALLOCATE_TOOL: &str = "artifact.allocate";
 const HANDOFF_TOOL: &str = "artifact.handoff";
 const HOSTED_ARTIFACT_MAXIMUM_BYTES_ENV: &str = "RUNX_HOSTED_ARTIFACT_MAXIMUM_BYTES";
+// Hosted orchestration binds artifact replay to its durable run, not to the
+// native process attempt generated while executing that run.
+const HOSTED_ARTIFACT_TRUSTED_RUN_ID_ENV: &str = "RUNX_HOSTED_ARTIFACT_TRUSTED_RUN_ID";
 const MAX_IDEMPOTENCY_SCOPE_BYTES: usize = 256;
 
 #[derive(Clone, Debug, Serialize, Deserialize, runx_contracts::schema::RunxSchema)]
@@ -555,7 +558,8 @@ fn runtime_run_id<'a>(
     operation: &str,
 ) -> Result<&'a str, RuntimeError> {
     environment
-        .get(crate::execution::runner::RUNX_RUN_ID_ENV)
+        .get(HOSTED_ARTIFACT_TRUSTED_RUN_ID_ENV)
+        .or_else(|| environment.get(crate::execution::runner::RUNX_RUN_ID_ENV))
         .map(String::as_str)
         .filter(|value| valid_text(value, 256))
         .ok_or_else(|| invalid_input(operation, "runtime run identity is unavailable"))
@@ -795,6 +799,25 @@ mod tests {
         assert_ne!(first, other);
         assert_ne!(first, other_content);
         assert_ne!(first, other_media_type);
+    }
+
+    #[test]
+    fn hosted_allocation_prefers_the_control_plane_run_identity() {
+        let environment = BTreeMap::from([
+            (
+                crate::execution::runner::RUNX_RUN_ID_ENV.to_owned(),
+                "run-native-attempt".to_owned(),
+            ),
+            (
+                HOSTED_ARTIFACT_TRUSTED_RUN_ID_ENV.to_owned(),
+                "external-job-stable".to_owned(),
+            ),
+        ]);
+
+        assert_eq!(
+            runtime_run_id(&environment, ALLOCATE_TOOL).expect("trusted run identity"),
+            "external-job-stable"
+        );
     }
 
     #[test]
