@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 
 use super::graph::load_graph;
 use crate::RuntimeError;
-use crate::adapter::{InvocationDiagnostics, InvocationOutput, InvocationStatus, SkillAdapter};
+use crate::adapter::{
+    EphemeralValue, InvocationDiagnostics, InvocationOutput, InvocationStatus, SkillAdapter,
+};
 use crate::effects::RuntimeEffectRegistry;
 use crate::host::{Host, NoopHost};
 use crate::journal::ExecutionJournal;
@@ -161,6 +163,11 @@ pub struct StepRun {
     pub fanout_group: Option<String>,
     /// The one semantic, addressable output surface retained by graph state.
     pub contract: JsonObject,
+    /// Immediate caller-only overlay. It exists only in the live process and is
+    /// deliberately absent from checkpoints, receipts, and graph context.
+    #[doc(hidden)]
+    #[serde(skip, default)]
+    pub ephemeral_contract: EphemeralValue,
     /// Bounded execution diagnostics and verification metadata. The adapter's
     /// raw value is consumed during projection and receipt sealing.
     pub outcome: StepOutcome,
@@ -706,6 +713,34 @@ pub(crate) fn graph_run_result(run: &GraphRun) -> Result<JsonValue, RuntimeError
     Ok(JsonValue::Object(result))
 }
 
+pub(crate) fn graph_run_ephemeral_result(run: &GraphRun) -> JsonValue {
+    let runs = run
+        .steps
+        .iter()
+        .map(|step| (step.step_id.as_str(), step))
+        .collect::<BTreeMap<_, _>>();
+    let mut result = JsonObject::new();
+    for step_id in &run.graph.result_from {
+        let Some(step) = runs
+            .get(step_id.as_str())
+            .filter(|step| step.outcome.succeeded())
+        else {
+            continue;
+        };
+        let Some(outputs) = step
+            .ephemeral_contract
+            .as_value()
+            .and_then(JsonValue::as_object)
+        else {
+            continue;
+        };
+        for (name, value) in outputs {
+            result.insert(name.clone(), value.clone());
+        }
+    }
+    JsonValue::Object(result)
+}
+
 /// Preserve every declared semantic step output for the caller without
 /// repeating transport stdout, parsed claims, stderr, or status diagnostics.
 /// Typed invocation diagnostics remain on each step outcome and signed receipt.
@@ -775,7 +810,7 @@ pub(crate) fn graph_run_skill_output(
     result: &JsonValue,
     run: &GraphRun,
 ) -> Result<InvocationOutput, RuntimeError> {
-    Ok(if run.state.status == GraphStatus::Succeeded {
+    let mut output = if run.state.status == GraphStatus::Succeeded {
         InvocationOutput::runtime_success(result.clone(), 0, JsonObject::new())
     } else {
         InvocationOutput::runtime_failure(
@@ -784,15 +819,18 @@ pub(crate) fn graph_run_skill_output(
             0,
             JsonObject::new(),
         )
-    })
+    };
+    output.set_ephemeral(graph_run_ephemeral_result(run));
+    Ok(output)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        GraphCheckpoint, GraphRun, RuntimeOptions, StepRun, graph_run_context, graph_run_result,
+        GraphCheckpoint, GraphRun, RuntimeOptions, StepRun, graph_run_context,
+        graph_run_ephemeral_result, graph_run_result,
     };
-    use crate::adapter::InvocationOutput;
+    use crate::adapter::{EphemeralValue, InvocationOutput};
     use crate::journal::ExecutionJournal;
     use crate::receipts::{
         RUNX_RECEIPT_SIGN_ED25519_SEED_BASE64_ENV, RUNX_RECEIPT_SIGN_ISSUER_TYPE_ENV,
@@ -1045,7 +1083,7 @@ mod tests {
 
     #[test]
     fn checkpoint_serializes_each_step_contract_once() -> Result<(), Box<dyn std::error::Error>> {
-        let run = test_graph_run(
+        let mut run = test_graph_run(
             vec!["result"],
             vec![test_step(
                 "checkpoint-shape",
@@ -1057,6 +1095,12 @@ mod tests {
             )?],
             GraphStatus::Succeeded,
         )?;
+        const SENTINEL: &str = "auc_secret_capability";
+        run.steps[0].ephemeral_contract = EphemeralValue::from_value(JsonValue::Object(
+            JsonObject::from([("result".to_owned(), JsonValue::String(SENTINEL.to_owned()))]),
+        ));
+        assert!(!serde_json::to_string(&graph_run_context(&run))?.contains(SENTINEL));
+        assert!(serde_json::to_string(&graph_run_ephemeral_result(&run))?.contains(SENTINEL));
         let checkpoint = GraphCheckpoint {
             graph_name: run.graph.name,
             state: run.state,
@@ -1073,6 +1117,8 @@ mod tests {
             .ok_or("missing serialized step")?;
 
         assert!(step.contains_key("contract"));
+        assert!(!serialized.to_string().contains(SENTINEL));
+        assert!(!step.contains_key("ephemeral_contract"));
         assert!(!step.contains_key("output"));
         assert!(!step.contains_key("outputs"));
         Ok(())
@@ -1092,6 +1138,7 @@ mod tests {
             runner: None,
             fanout_group: None,
             contract,
+            ephemeral_contract: EphemeralValue::default(),
             outcome: output.into(),
             nested_receipts: Vec::new(),
             admission_witness: StepAdmissionWitness::local_runtime(step_id, receipt.id.as_str()),

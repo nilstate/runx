@@ -350,6 +350,15 @@ impl RuntimeEffect for ProviderPermissionEffect {
         let access = native_provider_access(Some(request.tool_ref))?;
         Some(execution::invoke_provider_tool(self, request, access))
     }
+
+    #[cfg(feature = "catalog")]
+    fn partition_tool_output(
+        &self,
+        request: EffectToolRequest<'_>,
+        output: JsonValue,
+    ) -> Result<super::EffectToolOutput, RuntimeError> {
+        readback::partition_provider_tool_output(request, output)
+    }
 }
 
 fn build_provider_admission(

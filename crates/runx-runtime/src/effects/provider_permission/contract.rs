@@ -30,6 +30,8 @@ struct ProviderReadInput {
     #[serde(skip_serializing_if = "Option::is_none")]
     optional_result_fields: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    ephemeral_result_paths: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     expected_result: Option<JsonObject>,
     expected_provider: String,
 }
@@ -64,6 +66,8 @@ struct ProviderMutateInput {
     result_fields: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     optional_result_fields: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ephemeral_result_paths: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_result: Option<JsonObject>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -103,6 +107,10 @@ const READ_FIELDS: &[CapabilityField] = &[
         "Optional non-empty projection of top-level provider result fields retained only when present.",
     ),
     field(
+        "ephemeral_result_paths",
+        "Optional nested provider-result paths delivered only to the immediate caller. Their full result digest remains sealed while their values stay out of graph state and receipts.",
+    ),
+    field(
         "expected_result",
         "Optional top-level result fields that must match before readback is trusted.",
     ),
@@ -119,6 +127,7 @@ const MUTATE_FIELDS: &[CapabilityField] = &[
     READ_FIELDS[4],
     READ_FIELDS[5],
     READ_FIELDS[6],
+    READ_FIELDS[7],
     field(
         "approval",
         "Optional exact human approval request. Omit when the admitted grant is sufficient; the effect owner returns a resumable host request when present.",
@@ -131,8 +140,8 @@ const MUTATE_FIELDS: &[CapabilityField] = &[
         "idempotency_key",
         "Stable request identity hashed into the provider idempotency key by Runx.",
     ),
-    READ_FIELDS[7],
     READ_FIELDS[8],
+    READ_FIELDS[9],
 ];
 
 pub(super) fn approval_request(

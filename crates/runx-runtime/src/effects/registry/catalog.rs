@@ -40,7 +40,7 @@ impl RuntimeEffectRegistry {
     pub(crate) fn invoke_tool(
         &self,
         request: EffectToolRequest<'_>,
-    ) -> Option<Result<runx_contracts::JsonValue, crate::RuntimeError>> {
+    ) -> Option<Result<super::super::EffectToolOutput, crate::RuntimeError>> {
         let effect = self.families.values().find(|effect| {
             effect
                 .capabilities()
@@ -84,7 +84,7 @@ fn invoke_effect_tool(
     effect: &dyn super::super::RuntimeEffect,
     capability: &dyn CapabilityContract,
     request: EffectToolRequest<'_>,
-) -> Result<runx_contracts::JsonValue, crate::RuntimeError> {
+) -> Result<super::super::EffectToolOutput, crate::RuntimeError> {
     let tool_ref = request.tool_ref;
     let output = effect.invoke_tool(request).unwrap_or_else(|| {
         Err(crate::RuntimeError::SkillFailed {
@@ -96,7 +96,7 @@ fn invoke_effect_tool(
         })
     })?;
     capability.validate_output(&output)?;
-    Ok(output)
+    effect.partition_tool_output(request, output)
 }
 
 pub(super) fn validate_capabilities(

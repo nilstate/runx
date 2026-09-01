@@ -28,7 +28,7 @@ use super::fixtures::{
     fixture_kind_name, load_harness_fixture,
 };
 use crate::RuntimeError;
-use crate::adapter::{InvocationOutput, SkillAdapter, SkillInvocation};
+use crate::adapter::{EphemeralValue, InvocationOutput, SkillAdapter, SkillInvocation};
 use crate::agent_contract::{
     agent_output_contract_payload, verified_agent_metadata_with_artifacts,
 };
@@ -427,6 +427,7 @@ fn run_graph_replay_fixture(
             runner: Some(replay_step.task),
             fanout_group: None,
             contract: outputs,
+            ephemeral_contract: EphemeralValue::default(),
             outcome: output.into(),
             receipt,
             nested_receipts: Vec::new(),

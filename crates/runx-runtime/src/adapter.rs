@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt;
 use std::path::PathBuf;
 
 use runx_contracts::CredentialDeliveryObservation;
@@ -49,7 +50,67 @@ pub struct SkillInvocation {
     pub credential_delivery: CredentialDelivery,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[doc(hidden)]
+#[derive(Clone, Default, PartialEq)]
+pub struct EphemeralValue(Option<JsonValue>);
+
+impl EphemeralValue {
+    #[must_use]
+    pub(crate) fn from_value(value: JsonValue) -> Self {
+        if matches!(&value, JsonValue::Object(object) if object.is_empty()) {
+            Self::default()
+        } else {
+            Self(Some(value))
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn as_value(&self) -> Option<&JsonValue> {
+        self.0.as_ref()
+    }
+
+    #[cfg(feature = "catalog")]
+    pub(crate) fn as_value_mut(&mut self) -> Option<&mut JsonValue> {
+        self.0.as_mut()
+    }
+
+    #[must_use]
+    pub(crate) fn merged_with(&self, durable: &JsonValue) -> JsonValue {
+        let mut merged = durable.clone();
+        if let Some(ephemeral) = &self.0 {
+            merge_json_overlay(&mut merged, ephemeral);
+        }
+        merged
+    }
+}
+
+impl fmt::Debug for EphemeralValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(if self.0.is_some() {
+            "EphemeralValue([redacted])"
+        } else {
+            "EphemeralValue(None)"
+        })
+    }
+}
+
+fn merge_json_overlay(target: &mut JsonValue, overlay: &JsonValue) {
+    match (target, overlay) {
+        (JsonValue::Object(target), JsonValue::Object(overlay)) => {
+            for (key, value) in overlay {
+                match target.get_mut(key) {
+                    Some(existing) => merge_json_overlay(existing, value),
+                    None => {
+                        target.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+        }
+        (target, overlay) => *target = overlay.clone(),
+    }
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct InvocationOutput {
     pub status: InvocationStatus,
     /// The typed value produced by the invocation. Structured runtimes keep
@@ -58,6 +119,23 @@ pub struct InvocationOutput {
     pub value: JsonValue,
     pub diagnostics: InvocationDiagnostics,
     pub metadata: JsonObject,
+    /// Caller-only output that may cross the immediate process boundary but is
+    /// never serialized, checkpointed, sealed, or admitted into graph context.
+    #[serde(skip, default)]
+    pub(crate) ephemeral: EphemeralValue,
+}
+
+impl fmt::Debug for InvocationOutput {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("InvocationOutput")
+            .field("status", &self.status)
+            .field("value", &self.value)
+            .field("diagnostics", &self.diagnostics)
+            .field("metadata", &self.metadata)
+            .field("ephemeral", &self.ephemeral)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,6 +164,7 @@ impl InvocationOutput {
                 failure: None,
             },
             metadata,
+            ephemeral: EphemeralValue::default(),
         }
     }
 
@@ -104,6 +183,7 @@ impl InvocationOutput {
                 failure: Some(message.into()),
             },
             metadata,
+            ephemeral: EphemeralValue::default(),
         }
     }
 
@@ -138,6 +218,7 @@ impl InvocationOutput {
                 stderr,
             },
             metadata,
+            ephemeral: EphemeralValue::default(),
         }
     }
 
@@ -212,10 +293,15 @@ impl InvocationOutput {
     pub fn reject(&mut self, message: impl Into<String>) {
         self.status = InvocationStatus::Failure;
         self.value = JsonValue::Null;
+        self.ephemeral = EphemeralValue::default();
         self.diagnostics = InvocationDiagnostics::Runtime {
             duration_ms: self.duration_ms(),
             failure: Some(message.into()),
         };
+    }
+
+    pub(crate) fn set_ephemeral(&mut self, value: JsonValue) {
+        self.ephemeral = EphemeralValue::from_value(value);
     }
 
     /// Append one non-secret credential observation for receipt sealing. This
@@ -355,6 +441,38 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ephemeral_output_is_caller_only_and_redacted_from_durable_shapes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        const SENTINEL: &str = "auc_secret_capability";
+        let mut output = InvocationOutput::runtime_success(
+            JsonValue::Object(JsonObject::from([(
+                "resource".to_owned(),
+                JsonValue::Object(JsonObject::from([(
+                    "status".to_owned(),
+                    JsonValue::String("ready".to_owned()),
+                )])),
+            )])),
+            0,
+            JsonObject::new(),
+        );
+        output.set_ephemeral(JsonValue::Object(JsonObject::from([(
+            "resource".to_owned(),
+            JsonValue::Object(JsonObject::from([(
+                "access".to_owned(),
+                JsonValue::String(SENTINEL.to_owned()),
+            )])),
+        )])));
+
+        let serialized = serde_json::to_string(&output)?;
+        assert!(!serialized.contains(SENTINEL));
+        assert!(!format!("{output:?}").contains(SENTINEL));
+        assert!(
+            serde_json::to_string(&output.ephemeral.merged_with(&output.value))?.contains(SENTINEL)
+        );
+        Ok(())
+    }
 
     #[test]
     fn credential_observation_is_idempotent_and_rejects_conflicting_evidence()

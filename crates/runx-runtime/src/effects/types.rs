@@ -11,6 +11,21 @@ use crate::credentials::CredentialDelivery;
 
 use super::{EffectAdmission, EffectReplay, RuntimeEffectError};
 
+pub struct EffectToolOutput {
+    pub value: runx_contracts::JsonValue,
+    pub ephemeral: Option<runx_contracts::JsonValue>,
+}
+
+impl EffectToolOutput {
+    #[must_use]
+    pub fn durable(value: runx_contracts::JsonValue) -> Self {
+        Self {
+            value,
+            ephemeral: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum EffectPreparationOutcome {
     Ready(Box<EffectAdmission>),
@@ -144,6 +159,17 @@ pub trait RuntimeEffect: Send + Sync {
     ) -> Option<Result<runx_contracts::JsonValue, RuntimeError>> {
         let _ = request;
         None
+    }
+
+    /// Split a verified tool result into its durable claim and an immediate
+    /// caller-only overlay. The default keeps the complete result durable.
+    fn partition_tool_output(
+        &self,
+        request: EffectToolRequest<'_>,
+        output: runx_contracts::JsonValue,
+    ) -> Result<EffectToolOutput, RuntimeError> {
+        let _ = request;
+        Ok(EffectToolOutput::durable(output))
     }
 }
 

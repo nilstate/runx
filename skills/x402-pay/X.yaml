@@ -188,7 +188,7 @@ runners:
           tool: provider.read
           scopes: [payment.x402.read]
           policy: { provider_permission: { verb: read } }
-          inputs: { operation: payment.x402.read, target: $input.resource_url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, readback_status], optional_result_fields: [resource_state, finality, block_number, inner_receipt_ref, runx_composite] }
+          inputs: { operation: payment.x402.read, target: $input.resource_url, expected_provider: x402, result_fields: [payment_ref, challenge_id, amount_minor, currency, status, transaction, network, payer, pay_to, invocation_id, payment_required_digest, payment_response_digest, resource_status, resource_result, readback_status], optional_result_fields: [resource_state, finality, block_number, inner_receipt_ref, runx_composite], ephemeral_result_paths: [/resource_result/resource_access] }
           context:
             input: prepare.readback_request
             expected_result: prepare.readback_request

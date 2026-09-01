@@ -71,7 +71,8 @@ pub use tool_catalogs::native::{NativeCapabilitySnapshot, native_capability_snap
 pub mod adapters;
 
 pub use adapter::{
-    InvocationDiagnostics, InvocationOutput, InvocationStatus, SkillAdapter, SkillInvocation,
+    EphemeralValue, InvocationDiagnostics, InvocationOutput, InvocationStatus, SkillAdapter,
+    SkillInvocation,
 };
 pub use approval::{ApprovalError, LocalApprovalGateResolver, request_approval};
 pub use capability::{

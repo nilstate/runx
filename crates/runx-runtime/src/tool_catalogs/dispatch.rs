@@ -217,6 +217,9 @@ fn finalize_output(
     };
     if output.succeeded() {
         artifacts::apply(&mut output, artifacts.as_ref());
+        if let Some(ephemeral) = output.ephemeral.as_value_mut() {
+            artifacts::apply_value(ephemeral, artifacts.as_ref());
+        }
     }
     Ok(output)
 }
@@ -255,6 +258,9 @@ fn invoke_native_tool(
         | Err(error @ RuntimeError::EffectState { .. }) => return Err(error),
         Err(error) => failure(error.to_string(), started),
     };
+    if let Some(ephemeral) = invocation.ephemeral {
+        output.set_ephemeral(ephemeral);
+    }
     if let Some(observation) = request.credential_delivery.public_observation() {
         output.record_credential_observation(observation)?;
     }

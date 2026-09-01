@@ -38,8 +38,8 @@ pub use registry::RuntimeEffectRegistry;
 pub use state::{EffectAdmission, EffectReplay};
 pub use types::{
     EffectOutputRequest, EffectPreparationOutcome, EffectReceiptRequest, EffectReplayOutputRequest,
-    EffectReplayReceiptRequest, EffectStepRequest, EffectToolRequest, ResolvedEffectTarget,
-    RuntimeEffect,
+    EffectReplayReceiptRequest, EffectStepRequest, EffectToolOutput, EffectToolRequest,
+    ResolvedEffectTarget, RuntimeEffect,
 };
 
 #[cfg(test)]

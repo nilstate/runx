@@ -13,7 +13,7 @@ use runx_core::state_machine::{
     start_sequential_graph_step_indexed, succeed_sequential_graph_step_indexed,
 };
 use runx_runtime::{
-    InvocationOutput, RuntimeOptions, StepRun,
+    EphemeralValue, InvocationOutput, RuntimeOptions, StepRun,
     receipts::{graph_receipt_with_signature_policy, step_receipt_with_signature_policy},
 };
 use tempfile::TempDir;
@@ -370,6 +370,7 @@ fn synthetic_step_runs(options: &RuntimeOptions, count: usize) -> Vec<StepRun> {
                 runner: None,
                 fanout_group: None,
                 contract,
+                ephemeral_contract: EphemeralValue::default(),
                 outcome: output.into(),
                 admission_witness: StepAdmissionWitness::local_runtime(
                     &step_id,

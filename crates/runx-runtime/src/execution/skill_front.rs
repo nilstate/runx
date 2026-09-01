@@ -1014,7 +1014,10 @@ fn sealed_output(
         "closure".to_owned(),
         JsonValue::Object(closure_output(&receipt.seal)),
     );
-    output.insert("result".to_owned(), result.clone());
+    output.insert(
+        "result".to_owned(),
+        skill_output.ephemeral.merged_with(result),
+    );
     if let Some(context) = diagnostics.context {
         output.insert("context".to_owned(), context);
     }

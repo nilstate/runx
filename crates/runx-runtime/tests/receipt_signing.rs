@@ -15,7 +15,7 @@ use runx_runtime::receipts::{
     RuntimeReceiptSigner, RuntimeReceiptSigningError, graph_receipt_with_signature_policy,
     step_receipt_with_signature_policy,
 };
-use runx_runtime::{InvocationOutput, InvocationStatus, StepRun};
+use runx_runtime::{EphemeralValue, InvocationOutput, InvocationStatus, StepRun};
 
 const CREATED_AT: &str = "2026-05-22T00:00:00Z";
 const FIXTURE_KID: &str = "runx-runtime-prod-fixture-key";
@@ -301,6 +301,7 @@ fn production_step_run(
         runner: None,
         fanout_group: None,
         contract: JsonObject::new(),
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),

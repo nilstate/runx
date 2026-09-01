@@ -11,7 +11,7 @@ use std::path::Path;
 #[cfg(feature = "catalog")]
 use std::time::Instant;
 
-use output::{build_step_output_projection, contract_output_claim};
+use output::{build_ephemeral_step_output, build_step_output_projection, contract_output_claim};
 
 use runx_contracts::{
     ApprovalGate, ClosureDisposition, ExecutionEvent, JsonObject, JsonValue, ProvenanceEntry,
@@ -32,9 +32,14 @@ use super::admission::{
     prepare_effect_execution, prepare_effect_output_before_gate, prepare_replay_output,
     recover_pending_effects, validate_replayed_effect,
 };
-use super::{GraphRun, Runtime, StepRun, graph_run_result, graph_run_skill_output};
+use super::{
+    GraphRun, Runtime, StepRun, graph_run_ephemeral_result, graph_run_result,
+    graph_run_skill_output,
+};
 use crate::RuntimeError;
-use crate::adapter::{BorrowedSkillAdapter, InvocationOutput, SkillAdapter, SkillInvocation};
+use crate::adapter::{
+    BorrowedSkillAdapter, EphemeralValue, InvocationOutput, SkillAdapter, SkillInvocation,
+};
 use crate::agent_contract::verified_agent_metadata_with_artifacts;
 use crate::agent_invocation::{
     AgentActInvocationSourceType, agent_act_invocation_id, agent_act_resolution_request,
@@ -64,6 +69,7 @@ struct AgentSkillStepInvocation {
 struct RegularSkillStepOutput {
     output: InvocationOutput,
     projection: StepOutputProjection,
+    ephemeral_contract: JsonObject,
     receipt_lineage: StepReceiptLineage,
 }
 
@@ -339,9 +345,12 @@ where
     let policy_approval_refs = request.policy_approval_refs.clone();
     let run = execute_nested_graph(request.runtime, request.host, &invocation)?;
     let result = graph_run_result(&run)?;
+    let ephemeral_result = graph_run_ephemeral_result(&run);
     let mut output = graph_run_skill_output(&result, &run)?;
     let mut projection = build_step_output_projection(request.step, &output, None, None)?;
     adopt_nested_graph_result(&result, &mut projection.outputs);
+    let mut ephemeral_contract = JsonObject::new();
+    adopt_nested_graph_result(&ephemeral_result, &mut ephemeral_contract);
     let effect_claim = contract_output_claim(&projection);
     prepare_effect_output_before_gate(
         request.step,
@@ -376,6 +385,7 @@ where
         RegularSkillStepOutput {
             output,
             projection,
+            ephemeral_contract,
             receipt_lineage,
         },
     )
@@ -516,6 +526,8 @@ where
     // all observe the same public output.
     let projection =
         build_step_output_projection(step, &output, raw_output.as_ref(), extra_artifacts)?;
+    let ephemeral_contract =
+        build_ephemeral_step_output(step, &output, raw_output.as_ref(), extra_artifacts);
     if output.succeeded() {
         let metadata = verified_runner_metadata_with_artifacts(
             &skill_name,
@@ -530,6 +542,7 @@ where
     Ok(RegularSkillStepOutput {
         output,
         projection,
+        ephemeral_contract,
         receipt_lineage: StepReceiptLineage::default(),
     })
 }
@@ -546,6 +559,7 @@ where
     let RegularSkillStepOutput {
         mut output,
         mut projection,
+        ephemeral_contract,
         receipt_lineage,
     } = regular;
     let projection_refs = std::mem::take(&mut projection.refs);
@@ -618,6 +632,7 @@ where
         runner: context.step.runner.clone(),
         fanout_group: context.step.fanout_group.clone(),
         contract: projection.outputs,
+        ephemeral_contract: EphemeralValue::from_value(JsonValue::Object(ephemeral_contract)),
         outcome: output.into(),
         receipt,
         nested_receipts: receipt_lineage.into_nested_receipts(),
@@ -762,6 +777,7 @@ fn run_replayed_effect_step(
         runner: step.runner.clone(),
         fanout_group: step.fanout_group.clone(),
         contract: projection.outputs,
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),
@@ -1025,6 +1041,7 @@ fn seal_agent_act_step<A>(
         runner: step.runner.clone(),
         fanout_group: step.fanout_group.clone(),
         contract: projection.outputs,
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),
@@ -1311,6 +1328,8 @@ where
         )?;
         let mut projection =
             build_step_output_projection(step, &output, None, tool_artifacts.as_ref())?;
+        let ephemeral_contract =
+            build_ephemeral_step_output(step, &output, None, tool_artifacts.as_ref());
         let projection_refs = std::mem::take(&mut projection.refs);
         let effect_claim = contract_output_claim(&projection);
         let authority_grant_refs = authority
@@ -1374,6 +1393,7 @@ where
             runner: step.runner.clone(),
             fanout_group: step.fanout_group.clone(),
             contract: projection.outputs,
+            ephemeral_contract: EphemeralValue::from_value(JsonValue::Object(ephemeral_contract)),
             outcome: output.into(),
             receipt,
             nested_receipts: Vec::new(),
@@ -1488,6 +1508,7 @@ where
         runner: step.runner.clone(),
         fanout_group: step.fanout_group.clone(),
         contract: projection.outputs,
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),
@@ -1668,6 +1689,7 @@ where
         runner: step.runner.clone(),
         fanout_group: step.fanout_group.clone(),
         contract: projection.outputs,
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),

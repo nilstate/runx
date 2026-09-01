@@ -16,7 +16,7 @@ use runx_runtime::receipts::tree::{
 };
 use runx_runtime::receipts::{RuntimeReceiptSignaturePolicy, graph_receipt, step_receipt};
 use runx_runtime::{
-    InvocationOutput, InvocationStatus, RuntimeReceiptResolver, StepRun,
+    EphemeralValue, InvocationOutput, InvocationStatus, RuntimeReceiptResolver, StepRun,
     validate_runtime_receipt_tree, verify_runtime_receipt_tree,
 };
 
@@ -349,6 +349,7 @@ fn step_run(
         runner: None,
         fanout_group: fanout_group.map(str::to_owned),
         contract: JsonObject::new(),
+        ephemeral_contract: EphemeralValue::default(),
         outcome: output.into(),
         receipt,
         nested_receipts: Vec::new(),

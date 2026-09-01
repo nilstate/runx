@@ -183,6 +183,7 @@ pub(crate) struct NativeToolInvocation<'a> {
 #[cfg(feature = "catalog")]
 pub(crate) struct NativeToolInvocationResult {
     pub(crate) result: Result<JsonValue, RuntimeError>,
+    pub(crate) ephemeral: Option<JsonValue>,
     pub(crate) execution_boundary: runx_contracts::ExecutionBoundaryKind,
 }
 
@@ -202,6 +203,7 @@ pub(crate) fn invoke(request: NativeToolInvocation<'_>) -> Option<NativeToolInvo
         };
         return Some(NativeToolInvocationResult {
             result: tool.invoke(invocation),
+            ephemeral: None,
             execution_boundary: tool.execution_boundary(),
         });
     }
@@ -214,6 +216,7 @@ pub(crate) fn invoke(request: NativeToolInvocation<'_>) -> Option<NativeToolInvo
     ) {
         return Some(NativeToolInvocationResult {
             result: Err(error),
+            ephemeral: None,
             execution_boundary: runx_contracts::ExecutionBoundaryKind::NativeCapability,
         });
     }
@@ -232,9 +235,17 @@ pub(crate) fn invoke(request: NativeToolInvocation<'_>) -> Option<NativeToolInvo
             credential_delivery: request.credential_delivery,
             admission: request.effect_admission,
         })
-        .map(|result| NativeToolInvocationResult {
-            result,
-            execution_boundary,
+        .map(|result| match result {
+            Ok(output) => NativeToolInvocationResult {
+                result: Ok(output.value),
+                ephemeral: output.ephemeral,
+                execution_boundary,
+            },
+            Err(error) => NativeToolInvocationResult {
+                result: Err(error),
+                ephemeral: None,
+                execution_boundary,
+            },
         })
 }
 

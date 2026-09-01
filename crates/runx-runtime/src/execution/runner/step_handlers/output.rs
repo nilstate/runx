@@ -8,7 +8,7 @@ use runx_parser::{GraphStep, SkillArtifactContract};
 use crate::RuntimeError;
 use crate::adapter::InvocationOutput;
 use crate::execution::output_projection::{StepOutputProjection, project_step_claim};
-use crate::output_contract::project_declared_output_claim;
+use crate::output_contract::{project_artifact_outputs, project_declared_output_claim};
 
 /// Project a step's output from its producing runner contract.
 ///
@@ -48,6 +48,39 @@ pub(super) fn build_step_output_projection(
 /// graph steps consume, never the adapter's transport-level stdout shape.
 pub(super) fn contract_output_claim(projection: &StepOutputProjection) -> &JsonObject {
     &projection.outputs
+}
+
+/// Project only caller-only values that are actually present. Ephemeral output
+/// is an overlay, so it never owes the complete durable output contract.
+pub(super) fn build_ephemeral_step_output(
+    step: &GraphStep,
+    output: &InvocationOutput,
+    extra_outputs: Option<&JsonObject>,
+    extra_artifacts: Option<&SkillArtifactContract>,
+) -> JsonObject {
+    let Some(value) = output.ephemeral.as_value() else {
+        return JsonObject::new();
+    };
+    let fields = value.as_object();
+    let declared_outputs = step
+        .run
+        .as_ref()
+        .and_then(|run| run.source())
+        .and_then(|source| source.outputs.as_ref())
+        .or(extra_outputs);
+    let mut projected = JsonObject::new();
+    if let (Some(fields), Some(declared)) = (fields, declared_outputs) {
+        for name in declared.keys() {
+            if let Some(value) = fields.get(name) {
+                projected.insert(name.clone(), value.clone());
+            }
+        }
+    }
+    projected.extend(project_artifact_outputs(
+        value,
+        step.artifacts.as_ref().or(extra_artifacts),
+    ));
+    projected
 }
 
 #[cfg(test)]
