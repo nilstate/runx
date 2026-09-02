@@ -33,6 +33,36 @@ test("runtime changes run every affected proof", () => {
   });
 });
 
+test("non-platform runtime changes skip the Windows process lane", () => {
+  assert.deepEqual(classifyFiles(["crates/runx-runtime/src/effects/provider_permission/readback.rs"]), {
+    files: ["crates/runx-runtime/src/effects/provider_permission/readback.rs"],
+    full: true,
+    skills: true,
+    windows: false,
+    light: false,
+  });
+});
+
+test("known package changes skip unrelated skill and Windows sweeps", () => {
+  assert.deepEqual(classifyFiles(["packages/contracts/src/internal.ts"]), {
+    files: ["packages/contracts/src/internal.ts"],
+    full: true,
+    skills: false,
+    windows: false,
+    light: false,
+  });
+});
+
+test("the workspace lock keeps its Windows proof", () => {
+  assert.deepEqual(classifyFiles(["crates/Cargo.lock"]), {
+    files: ["crates/Cargo.lock"],
+    full: true,
+    skills: true,
+    windows: true,
+    light: false,
+  });
+});
+
 test("unknown paths fail closed into the full and skill lanes", () => {
   assert.deepEqual(classifyFiles(["new-surface/config.toml"]), {
     files: ["new-surface/config.toml"],
