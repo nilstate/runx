@@ -28,6 +28,7 @@ pub(super) fn discover_paid_skill(
     let challenge = request_hosted_skill_challenge(
         base_url,
         listing.skill_id.as_str(),
+        runner.as_str(),
         runx_runtime::hosted_private_network_allowed(false, env),
     )
     .map_err(|error| format!("marketplace discovery failed: {error}"))?;

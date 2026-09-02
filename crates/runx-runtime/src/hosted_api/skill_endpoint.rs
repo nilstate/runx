@@ -1,8 +1,8 @@
 use url::Url;
 
 use crate::http::{
-    HttpMethod, ReqwestHttpTransport, RuntimeHttpError, RuntimeHttpRequest, RuntimeHttpResponse,
-    RuntimeHttpTransport,
+    HttpMethod, ReqwestHttpTransport, RuntimeHttpError, RuntimeHttpHeader, RuntimeHttpRequest,
+    RuntimeHttpResponse, RuntimeHttpTransport,
 };
 
 const MAX_HOSTED_SKILL_CHALLENGE_BYTES: usize = 256 * 1024;
@@ -29,6 +29,7 @@ pub enum HostedSkillEndpointError {
 pub fn request_hosted_skill_challenge(
     base_url: &str,
     skill_id: &str,
+    runner: &str,
     allow_private_network: bool,
 ) -> Result<HostedSkillChallenge, HostedSkillEndpointError> {
     let transport = if allow_private_network {
@@ -36,21 +37,25 @@ pub fn request_hosted_skill_challenge(
     } else {
         ReqwestHttpTransport::new()?
     };
-    request_hosted_skill_challenge_with_transport(&transport, base_url, skill_id)
+    request_hosted_skill_challenge_with_transport(&transport, base_url, skill_id, runner)
 }
 
 fn request_hosted_skill_challenge_with_transport<T: RuntimeHttpTransport + ?Sized>(
     transport: &T,
     base_url: &str,
     skill_id: &str,
+    runner: &str,
 ) -> Result<HostedSkillChallenge, HostedSkillEndpointError> {
     let resource_url = hosted_skill_resource_url(base_url, skill_id)?;
     let response = transport.send_limited(
         RuntimeHttpRequest {
             method: HttpMethod::Post,
             url: resource_url.clone(),
-            headers: Vec::new(),
-            body: None,
+            headers: vec![
+                RuntimeHttpHeader::new("content-type", "application/json"),
+                RuntimeHttpHeader::new("x-runx-skill-runner", runner),
+            ],
+            body: Some(serde_json::json!({ "runner": runner }).to_string()),
         },
         MAX_HOSTED_SKILL_CHALLENGE_BYTES,
     )?;
@@ -119,6 +124,7 @@ mod tests {
             &transport,
             "https://api.runx.test/registry?ignored=yes#fragment",
             "ausca/document-ocr",
+            "invoke",
         )?;
 
         assert_eq!(
@@ -129,8 +135,14 @@ mod tests {
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].method, HttpMethod::Post);
         assert_eq!(requests[0].url, challenge.resource_url);
-        assert!(requests[0].headers.is_empty());
-        assert!(requests[0].body.is_none());
+        assert_eq!(
+            requests[0].headers,
+            vec![
+                RuntimeHttpHeader::new("content-type", "application/json"),
+                RuntimeHttpHeader::new("x-runx-skill-runner", "invoke"),
+            ]
+        );
+        assert_eq!(requests[0].body.as_deref(), Some(r#"{"runner":"invoke"}"#));
         Ok(())
     }
 
@@ -145,6 +157,7 @@ mod tests {
             &transport,
             "https://api.runx.test",
             "../escape",
+            "invoke",
         );
 
         assert!(matches!(
@@ -168,6 +181,7 @@ mod tests {
             &transport,
             "https://api.runx.test",
             "ausca/document-ocr",
+            "invoke",
         );
 
         assert!(matches!(
