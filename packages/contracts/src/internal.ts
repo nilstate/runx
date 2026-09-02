@@ -349,20 +349,8 @@ export function validateContractSchema<TSchemaValue extends JsonSchema>(
   label: string,
   references: readonly JsonSchema[] = [],
 ): Static<TSchemaValue> {
-  const ajv = new Ajv2020({
-    allErrors: false,
-    strict: false,
-    validateSchema: false,
-  });
   const canonicalSchema = schemaWithGeneratedArtifact(schema);
-  for (const reference of references.map(schemaWithGeneratedArtifact)) {
-    const id = reference.$id;
-    if (typeof id === "string" && id.length > 0 && !ajv.getSchema(id)) {
-      ajv.addSchema(normalizeSchemaForAjv(reference), id);
-    }
-  }
-
-  const validate = ajv.compile(normalizeSchemaForAjv(canonicalSchema));
+  const validate = contractValidator(canonicalSchema, references);
   if (validate(value)) {
     return value as Static<TSchemaValue>;
   }
@@ -398,8 +386,7 @@ export function contractSchemaMatches(
   value: unknown,
   references: readonly JsonSchema[] = [],
 ): boolean {
-  const ajv = createContractAjv(references);
-  return ajv.compile(normalizeSchemaForAjv(schemaWithGeneratedArtifact(schema)))(value) === true;
+  return contractValidator(schemaWithGeneratedArtifact(schema), references)(value) === true;
 }
 
 export function validateContractSchemaForDiagnostics(
@@ -407,12 +394,49 @@ export function validateContractSchemaForDiagnostics(
   value: unknown,
   references: readonly JsonSchema[] = [],
 ): readonly string[] {
-  const ajv = createContractAjv(references);
-  const validate = ajv.compile(normalizeSchemaForAjv(schemaWithGeneratedArtifact(schema)));
+  const validate = contractValidator(schemaWithGeneratedArtifact(schema), references);
   if (validate(value)) {
     return [];
   }
   return (validate.errors ?? []).map((error) => error.instancePath || error.message || error.keyword);
+}
+
+const contractValidators = new WeakMap<
+  JsonSchema,
+  Map<string, PrecompiledContractValidator>
+>();
+const contractSchemaIdentities = new WeakMap<JsonSchema, number>();
+let nextContractSchemaIdentity = 1;
+
+function contractValidator(
+  canonicalSchema: JsonSchema,
+  references: readonly JsonSchema[],
+): PrecompiledContractValidator {
+  const canonicalReferences = references.map(schemaWithGeneratedArtifact);
+  const referenceKey = canonicalReferences
+    .map((reference) => contractSchemaIdentity(reference))
+    .join(":");
+  let byReferenceSet = contractValidators.get(canonicalSchema);
+  if (!byReferenceSet) {
+    byReferenceSet = new Map();
+    contractValidators.set(canonicalSchema, byReferenceSet);
+  }
+  const cached = byReferenceSet.get(referenceKey);
+  if (cached) return cached;
+
+  const ajv = createContractAjv(canonicalReferences);
+  const compiled = ajv.compile(normalizeSchemaForAjv(canonicalSchema));
+  byReferenceSet.set(referenceKey, compiled);
+  return compiled;
+}
+
+function contractSchemaIdentity(schema: JsonSchema): number {
+  const existing = contractSchemaIdentities.get(schema);
+  if (existing !== undefined) return existing;
+  const identity = nextContractSchemaIdentity;
+  nextContractSchemaIdentity += 1;
+  contractSchemaIdentities.set(schema, identity);
+  return identity;
 }
 
 function createContractAjv(references: readonly JsonSchema[] = []) {
