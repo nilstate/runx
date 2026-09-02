@@ -132,13 +132,33 @@ jobs:
           rustup show
           rustup toolchain install nightly --profile minimal
 
-      - name: Install Rust test and advisory tools
+      - name: Restore Rust CI tools
         if: needs.classify.outputs.full == 'true'
+        id: rust-ci-tools
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/bin/cargo-nextest
+            ~/.cargo/bin/cargo-deny
+            ~/.cargo/bin/cargo-public-api
+          key: rust-ci-tools-${{ runner.os }}-${{ runner.arch }}-nextest-0.9.140-deny-0.20.2-public-api-0.51.0-v1
+
+      - name: Install Rust test and advisory tools
+        if: >-
+          needs.classify.outputs.full == 'true' &&
+          steps.rust-ci-tools.outputs.cache-hit != 'true'
         uses: taiki-e/install-action@v2.85.5
         with:
           # Prebuilt binaries avoid compiling CI-only tools on cache misses.
           # Keep cargo-public-api aligned with check-rust-kernel-parity.mjs.
-          tool: cargo-nextest,cargo-deny,cargo-public-api@0.51.0
+          tool: cargo-nextest@0.9.140,cargo-deny@0.20.2,cargo-public-api@0.51.0
+
+      - name: Verify Rust CI tools
+        if: needs.classify.outputs.full == 'true'
+        run: |
+          cargo nextest --version
+          cargo deny --version
+          cargo public-api --version
 
       - name: Restore check caches
         uses: actions/cache@v6
