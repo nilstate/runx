@@ -609,7 +609,7 @@ mod tests {
         let inputs = JsonObject::from([
             (
                 "result_fields".to_owned(),
-                JsonValue::Array(vec![JsonValue::String("payment_ref".to_owned())]),
+                JsonValue::Array(vec![JsonValue::String("provider_ref".to_owned())]),
             ),
             (
                 "ephemeral_result_paths".to_owned(),
