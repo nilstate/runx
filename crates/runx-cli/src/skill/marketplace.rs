@@ -83,8 +83,8 @@ fn render_paid_skill_challenge(
                     "runner": runner,
                     "inputs": inputs,
                 },
-                "requires_idempotency_key": true,
             },
+            "requires_idempotency_key": true,
             "summary": "Hosted marketplace settlement is required before this skill can run."
         }
     }))
@@ -140,6 +140,13 @@ mod tests {
         assert_eq!(output["runner"], "invoke");
         assert_eq!(output["result"]["payment_required"], body);
         assert_eq!(output["result"]["resource"]["url"], body["resource"]["url"]);
+        assert!(output["result"]["resource"].get("headers").is_none());
+        assert_eq!(output["result"]["requires_idempotency_key"], true);
+        assert!(
+            output["result"]["resource"]
+                .get("requires_idempotency_key")
+                .is_none()
+        );
         Ok(())
     }
 
