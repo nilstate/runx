@@ -53,6 +53,7 @@ export type ExternalJobContinuationContract = DeepReadonly<{
   terminal_evidence_ref?: ReferenceContract;
   terminal_evidence_digest?: Sha256DigestContract;
   failure?: ExternalJobFailureContract;
+  last_failure?: ExternalJobFailureContract;
   created_at: string;
   updated_at: string;
 }>;

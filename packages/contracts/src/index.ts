@@ -406,6 +406,7 @@ export {
   type PreparedInvocationPriceBindingContract,
   type PaidSkillExecutorBindingContract,
   type PaidSkillFixedOfferTermsContract,
+  type PaidInvocationPresentationContract,
   type PaidSkillFixedRunnerOfferContract,
   type PaidSkillMediationTermsContract,
   type PaidSkillOfferTermsContract,

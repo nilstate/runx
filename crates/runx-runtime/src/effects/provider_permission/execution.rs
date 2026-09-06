@@ -5,13 +5,16 @@ use super::readback::{
     provider_expected_result, provider_operation_access, provider_result_projection,
 };
 use super::recovery::{
-    persist_provider_attempt, persist_provider_readback, persist_provider_unknown,
+    discard_provider_attempt, persist_provider_attempt, persist_provider_readback,
+    persist_provider_unknown,
 };
 use super::{
     PROVIDER_PERMISSION_EFFECT_FAMILY, ProviderNativeAccess, ProviderPermissionAdmission,
     ProviderPermissionEffect,
     identity::{ProviderTransportSelection, hosted_principal_reference},
 };
+use crate::hosted_api::HostedApiOperationError;
+use crate::provider_operations::ProviderOperationError;
 use crate::{
     EffectToolRequest, HostedApiEnvironment, ProviderEffectAttempt, ProviderOperationRequest,
     RuntimeError, hosted_private_network_allowed, invoke_provider_operation,
@@ -96,6 +99,15 @@ pub(super) fn invoke_provider_tool(
                 };
             }
             return error;
+        }
+        if matches!(error, RuntimeError::ProviderEffectRejected { .. }) {
+            return match discard_provider_attempt(&input.admission) {
+                Ok(()) => error,
+                Err(state_error) => RuntimeError::effect_state(
+                    "discarding rejected provider attempt",
+                    format!("{state_error}; original provider error: {error}"),
+                ),
+            };
         }
         let unknown = attempt
             .clone()
@@ -196,7 +208,65 @@ fn invoke_hosted_provider(
         },
     )
     .map(|readback| (readback, principal_ref, "runx_connect"))
-    .map_err(|error| provider_tool_error(request.tool_ref, error.to_string()))
+    .map_err(|error| match hosted_rejection(&error) {
+        Some((http_status, provider_code, reason)) => RuntimeError::ProviderEffectRejected {
+            plan_digest: input.attempt.resolved().plan_digest().to_owned(),
+            idempotency_key: input.attempt.idempotency_key().to_owned(),
+            provider_code,
+            http_status,
+            reason,
+        },
+        None => provider_tool_error(request.tool_ref, error.to_string()),
+    })
+}
+
+/// The Connect API encodes a provider's disposition in its status: 400, 404,
+/// 409 and 502 mean the provider answered and applied nothing. Everything else
+/// (503, transport failures, malformed evidence) leaves a write's outcome
+/// unknown and keeps the conservative path.
+fn hosted_rejection(error: &ProviderOperationError) -> Option<(u16, String, String)> {
+    match error {
+        ProviderOperationError::HostedApi(HostedApiOperationError::Api {
+            status,
+            code,
+            detail,
+            ..
+        }) if matches!(*status, 400 | 404 | 409 | 502) => {
+            Some((*status, code.clone(), detail.clone()))
+        }
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn api_error(status: u16) -> ProviderOperationError {
+        ProviderOperationError::HostedApi(HostedApiOperationError::Api {
+            operation: "provider operation",
+            status,
+            code: "invalid_input".to_owned(),
+            detail: "AWS rejected the request (BadRequestException): languageCode".to_owned(),
+            hint: None,
+            retry_after_seconds: None,
+        })
+    }
+
+    #[test]
+    fn definite_refusals_are_rejections_and_unknown_outcomes_are_not() {
+        for status in [400, 404, 409, 502] {
+            let (http_status, code, reason) =
+                hosted_rejection(&api_error(status)).expect("status is a rejection");
+            assert_eq!(http_status, status);
+            assert_eq!(code, "invalid_input");
+            assert!(reason.contains("languageCode"));
+        }
+        for status in [429, 500, 503] {
+            assert!(hosted_rejection(&api_error(status)).is_none());
+        }
+        assert!(hosted_rejection(&ProviderOperationError::InvalidOperation).is_none());
+    }
 }
 
 #[cfg(feature = "catalog")]

@@ -132,6 +132,7 @@ export type PaidSkillFixedOfferTermsContract = DeepReadonly<{
   output_schema_digest: Sha256DigestContract;
   mediation?: PaidSkillMediationTermsContract;
   executor?: PaidSkillExecutorBindingContract;
+  presentation?: PaidInvocationPresentationContract;
 }>;
 
 export type PaidSkillPreparedOfferTermsContract = DeepReadonly<{
@@ -141,11 +142,28 @@ export type PaidSkillPreparedOfferTermsContract = DeepReadonly<{
   output_schema_digest: Sha256DigestContract;
   mediation: PaidSkillPreparedMediationTermsContract;
   executor: PaidSkillExecutorBindingContract;
+  presentation?: PaidInvocationPresentationContract;
 }>;
 
 export type PaidSkillOfferTermsContract =
   | PaidSkillFixedOfferTermsContract
   | PaidSkillPreparedOfferTermsContract;
+
+/**
+ * Vendor-authored presentation of a payable resource; never part of quote
+ * identity. Examples and schemas are canonical JSON text.
+ */
+export type PaidInvocationPresentationContract = DeepReadonly<{
+  service_name: string;
+  description: string;
+  media_type: string;
+  tags?: readonly string[];
+  icon_url?: string;
+  input_example: string;
+  output_example: string;
+  input_schema: string;
+  output_schema: string;
+}>;
 
 export type PaidSkillFixedRunnerOfferContract = DeepReadonly<{
   offer_revision: OfferRevisionRefContract;
@@ -154,6 +172,7 @@ export type PaidSkillFixedRunnerOfferContract = DeepReadonly<{
   accepted_settlement_families: readonly SettlementFamilyContract[];
   mediation?: PaidInvocationMediationContract;
   executor?: PaidSkillExecutorBindingContract;
+  presentation?: PaidInvocationPresentationContract;
 }>;
 
 export type PaidSkillPreparedRunnerOfferContract = DeepReadonly<{
@@ -162,6 +181,7 @@ export type PaidSkillPreparedRunnerOfferContract = DeepReadonly<{
   accepted_settlement_families: readonly SettlementFamilyContract[];
   mediation: PaidSkillPreparedMediationContract;
   executor: PaidSkillExecutorBindingContract;
+  presentation?: PaidInvocationPresentationContract;
 }>;
 
 export type PaidSkillRunnerOfferContract =
@@ -234,6 +254,7 @@ export type QuotePaidInvocationRequestContract = DeepReadonly<{
   mediation?: PaidInvocationMediationContract;
   idempotency: PaymentIdempotencyBindingContract;
   parent?: ParentInvocationBindingContract;
+  presentation?: PaidInvocationPresentationContract;
 }>;
 
 export type PaidInvocationRefusalContract = DeepReadonly<{
@@ -268,6 +289,7 @@ export type PaidInvocationAdmissionResultContract =
 
 export type ExecutePaidInvocationResultContract = PaidInvocationAdmissionResultContract;
 export type GetPaidInvocationRequestContract = DeepReadonly<{ invocation_id: string }>;
+export type PaidInvocationFailureContract = DeepReadonly<{ code: string; message: string }>;
 export type GetPaidInvocationResultContract =
   | DeepReadonly<{
       status: "admitted";
@@ -275,6 +297,8 @@ export type GetPaidInvocationResultContract =
         invocation: PaidInvocationContract;
         run_ref?: PaidInvocationRunReferenceContract;
         receipt_ref?: ReferenceContract;
+        result_ref?: ReferenceContract;
+        failure?: PaidInvocationFailureContract;
       };
     }>
   | PaidInvocationRefusalContract;

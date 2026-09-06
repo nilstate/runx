@@ -225,6 +225,26 @@ pub(super) fn persist_provider_finality(
         .map_err(receipt_state_error)
 }
 
+/// A rejected mutation was never applied, so its pending entry is evidence of
+/// nothing; leaving it would make the next attempt look like an unresolved
+/// write.
+#[cfg(feature = "catalog")]
+pub(super) fn discard_provider_attempt(
+    admission: &ProviderPermissionAdmission,
+) -> Result<(), RuntimeEffectError> {
+    let recovery = admission
+        .recovery
+        .as_ref()
+        .ok_or_else(|| state_error("provider mutation recovery context is missing"))?;
+    LocalReceiptStore::new(&recovery.store_root)
+        .update_provider_effect_state::<ProviderEffectStateDocument, _>(|state| {
+            validate_document_store(state)?;
+            state.entries.remove(&recovery.state_key);
+            Ok(())
+        })
+        .map_err(receipt_state_error)
+}
+
 #[cfg(any(feature = "catalog", test))]
 fn persist_attempt_phase(
     admission: &ProviderPermissionAdmission,

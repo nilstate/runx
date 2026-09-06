@@ -133,6 +133,18 @@ pub enum RuntimeError {
         idempotency_key: String,
         reason: String,
     },
+    /// The provider answered and applied nothing: a definite, non-retryable
+    /// refusal of the request, unlike an unknown outcome.
+    #[error(
+        "provider rejected the effect for plan {plan_digest} with idempotency key {idempotency_key} ({provider_code}, HTTP {http_status}): {reason}"
+    )]
+    ProviderEffectRejected {
+        plan_digest: String,
+        idempotency_key: String,
+        provider_code: String,
+        http_status: u16,
+        reason: String,
+    },
     #[error("skill '{skill_name}' failed: {message}")]
     SkillFailed { skill_name: String, message: String },
     #[error("{owner} input contract failed at '{path}': {message}")]
@@ -226,6 +238,7 @@ impl RuntimeError {
             | Self::MissingEnvironment { .. }
             | Self::JavaScriptWorker { .. }
             | Self::CredentialDelivery(_)
+            | Self::ProviderEffectRejected { .. }
             | Self::SkillFailed { .. } => false,
             Self::InputContract { .. } => false,
             #[cfg(feature = "agent")]
@@ -289,6 +302,27 @@ impl RuntimeError {
             #[cfg(feature = "agent")]
             Self::ManagedAgentResolution { source, .. } => {
                 projection = source.public_failure_projection();
+            }
+            Self::ProviderEffectRejected {
+                provider_code,
+                http_status,
+                reason,
+                ..
+            } => {
+                projection.insert(
+                    "code".to_owned(),
+                    JsonValue::String("provider_rejected".to_owned()),
+                );
+                projection.insert(
+                    "provider_code".to_owned(),
+                    JsonValue::String(provider_code.clone()),
+                );
+                projection.insert(
+                    "http_status".to_owned(),
+                    JsonValue::Number(runx_contracts::JsonNumber::U64(u64::from(*http_status))),
+                );
+                projection.insert("retryable".to_owned(), JsonValue::Bool(false));
+                projection.insert("reason".to_owned(), JsonValue::String(reason.clone()));
             }
             Self::ProviderReadbackPending { step_id, reason } => {
                 projection.insert(

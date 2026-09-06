@@ -13,8 +13,8 @@ use serde_json::{Value, json};
 
 use crate::paid_invocation::{
     CurrencyCode, EmbeddedOfferRevisionRef, MediatedReceiptClass, MediationEndpointUrl,
-    MediationListingRef, OfferRevisionRef, PaidInvocationMediation, PortableAmountMinor,
-    PrincipalReference, SettlementFamilies, SettlementFamily, Sha256Digest,
+    MediationListingRef, OfferRevisionRef, PaidInvocationMediation, PaidInvocationPresentation,
+    PortableAmountMinor, PrincipalReference, SettlementFamilies, SettlementFamily, Sha256Digest,
 };
 use crate::schema::{NonEmptyString, RunxSchema};
 
@@ -45,6 +45,8 @@ pub struct PaidSkillFixedOfferTerms {
     pub mediation: Option<PaidSkillMediationTerms>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub executor: Option<PaidSkillExecutorBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PaidInvocationPresentation>,
 }
 
 /// Seller-authored endpoint terms. Registry identity supplies `listing_ref`.
@@ -126,6 +128,8 @@ pub struct PaidSkillPreparedOfferTerms {
     pub output_schema_digest: Sha256Digest,
     pub mediation: PaidSkillPreparedMediationTerms,
     pub executor: PaidSkillExecutorBinding,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PaidInvocationPresentation>,
 }
 
 impl PaidSkillOfferTerms {
@@ -184,6 +188,8 @@ pub struct PaidSkillFixedRunnerOffer {
     pub mediation: Option<PaidInvocationMediation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub executor: Option<PaidSkillExecutorBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PaidInvocationPresentation>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
@@ -208,6 +214,8 @@ pub struct PaidSkillPreparedRunnerOffer {
     pub accepted_settlement_families: SettlementFamilies,
     pub mediation: PaidSkillPreparedMediation,
     pub executor: PaidSkillExecutorBinding,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PaidInvocationPresentation>,
 }
 
 impl PaidSkillRunnerOffer {
@@ -258,6 +266,7 @@ impl PaidSkillRunnerOffer {
                     accepted_settlement_families: terms.accepted_settlement_families.clone(),
                     mediation,
                     executor: terms.executor.clone(),
+                    presentation: terms.presentation.clone(),
                 }))
             }
             PaidSkillOfferTerms::Prepared(terms) => {
@@ -286,6 +295,7 @@ impl PaidSkillRunnerOffer {
                         expected_receipt_class: mediation.expected_receipt_class,
                     },
                     executor: terms.executor.clone(),
+                    presentation: terms.presentation.clone(),
                 }))
             }
         }

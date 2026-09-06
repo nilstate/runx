@@ -632,6 +632,27 @@ pub struct PaidInvocation {
     pub updated_at: IsoDateTime,
 }
 
+/// Vendor-authored presentation of one payable resource: what discovery and
+/// payment challenges show a buyer. It cannot select settlement targets or
+/// move money, and it never enters quote identity. Examples and schemas are
+/// carried as canonical JSON text so a listing that embeds them stays exactly
+/// comparable.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidInvocationPresentation {
+    pub service_name: BoundedString<120>,
+    pub description: BoundedString<500>,
+    pub media_type: BoundedString<200>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<BoundedString<64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_url: Option<BoundedString<2048>>,
+    pub input_example: BoundedString<65_536>,
+    pub output_example: BoundedString<65_536>,
+    pub input_schema: BoundedString<65_536>,
+    pub output_schema: BoundedString<65_536>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PaidInvocationPaymentChallenge {
@@ -679,6 +700,8 @@ pub struct QuotePaidInvocationRequest {
     pub idempotency: PaymentIdempotencyBinding,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<ParentInvocationBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PaidInvocationPresentation>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -792,6 +815,14 @@ pub struct GetPaidInvocationRequest {
     pub invocation_id: NonEmptyString,
 }
 
+/// Bounded, customer-safe reason a refund won the outcome gate.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, RunxSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PaidInvocationFailure {
+    pub code: BoundedString<96>,
+    pub message: BoundedString<500>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]
 #[serde(deny_unknown_fields)]
 pub struct GetPaidInvocationAdmission {
@@ -800,6 +831,13 @@ pub struct GetPaidInvocationAdmission {
     pub run_ref: Option<PaidInvocationRunReference>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub receipt_ref: Option<Reference>,
+    /// What fulfilled the invocation: the source run (act) or the durable
+    /// continuation's result (artifact). Present only after fulfilment won.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_ref: Option<Reference>,
+    /// Why a refund won. Present only after refund won.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure: Option<PaidInvocationFailure>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, RunxSchema)]

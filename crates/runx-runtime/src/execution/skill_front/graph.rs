@@ -823,10 +823,10 @@ fn graph_run_id(
     execution_closure_digest: Option<&str>,
 ) -> Result<String, SkillRunError> {
     match (&request.run_id, &request.answers_path) {
-        (Some(run_id), Some(_)) => Ok(run_id.clone()),
-        (Some(_), None) => Err(invalid(
-            "skill continuation requires both run_id and answers",
-        )),
+        // A caller-supplied identity is durable across retries; hosted
+        // execution keys receipts and provider-effect state on it so a repeated
+        // attempt recovers the same mutation instead of minting a new one.
+        (Some(run_id), _) => Ok(run_id.clone()),
         (None, Some(_)) => Err(invalid(
             "skill continuation requires both run_id and answers",
         )),

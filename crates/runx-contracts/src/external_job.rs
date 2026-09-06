@@ -198,6 +198,10 @@ pub struct ExternalJobContinuation {
     pub terminal_evidence_digest: Option<Sha256Digest>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failure: Option<ExternalJobFailure>,
+    /// The most recent retryable failure while the job is still active, so a
+    /// stalled continuation is diagnosable before it dead-letters.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_failure: Option<ExternalJobFailure>,
     pub created_at: IsoDateTime,
     pub updated_at: IsoDateTime,
 }

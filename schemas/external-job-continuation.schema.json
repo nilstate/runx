@@ -295,6 +295,30 @@
       "type": "object",
       "x-runx-schema": "runx.reference.v1"
     },
+    "last_failure": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 96,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "type": "object"
+    },
     "max_attempts": {
       "maximum": 128,
       "minimum": 1,
