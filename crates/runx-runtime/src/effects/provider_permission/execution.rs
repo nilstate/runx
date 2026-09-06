@@ -238,37 +238,6 @@ fn hosted_rejection(error: &ProviderOperationError) -> Option<(u16, String, Stri
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn api_error(status: u16) -> ProviderOperationError {
-        ProviderOperationError::HostedApi(HostedApiOperationError::Api {
-            operation: "provider operation",
-            status,
-            code: "invalid_input".to_owned(),
-            detail: "AWS rejected the request (BadRequestException): languageCode".to_owned(),
-            hint: None,
-            retry_after_seconds: None,
-        })
-    }
-
-    #[test]
-    fn definite_refusals_are_rejections_and_unknown_outcomes_are_not() {
-        for status in [400, 404, 409, 502] {
-            let (http_status, code, reason) =
-                hosted_rejection(&api_error(status)).expect("status is a rejection");
-            assert_eq!(http_status, status);
-            assert_eq!(code, "invalid_input");
-            assert!(reason.contains("languageCode"));
-        }
-        for status in [429, 500, 503] {
-            assert!(hosted_rejection(&api_error(status)).is_none());
-        }
-        assert!(hosted_rejection(&ProviderOperationError::InvalidOperation).is_none());
-    }
-}
-
 #[cfg(feature = "catalog")]
 pub(super) struct ProviderToolInvocation {
     expected_provider: String,
@@ -402,5 +371,40 @@ pub(super) fn provider_tool_error(tool_ref: &str, message: impl Into<String>) ->
     RuntimeError::SkillFailed {
         skill_name: tool_ref.to_owned(),
         message: message.into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn api_error(status: u16) -> ProviderOperationError {
+        ProviderOperationError::HostedApi(HostedApiOperationError::Api {
+            operation: "provider operation",
+            status,
+            code: "invalid_input".to_owned(),
+            detail: "AWS rejected the request (BadRequestException): languageCode".to_owned(),
+            hint: None,
+            retry_after_seconds: None,
+        })
+    }
+
+    #[test]
+    fn definite_refusals_are_rejections_and_unknown_outcomes_are_not() {
+        for status in [400, 404, 409, 502] {
+            let rejection = hosted_rejection(&api_error(status));
+            assert!(
+                rejection.is_some(),
+                "status {status} must be a definite rejection"
+            );
+            let (http_status, code, reason) = rejection.unwrap_or_default();
+            assert_eq!(http_status, status);
+            assert_eq!(code, "invalid_input");
+            assert!(reason.contains("languageCode"));
+        }
+        for status in [429, 500, 503] {
+            assert!(hosted_rejection(&api_error(status)).is_none());
+        }
+        assert!(hosted_rejection(&ProviderOperationError::InvalidOperation).is_none());
     }
 }
