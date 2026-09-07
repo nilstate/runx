@@ -4,7 +4,10 @@
 // skill and never enters this router.
 use std::collections::BTreeMap;
 
-use runx_contracts::{JsonObject, JsonValue, X402_PAYMENT_REQUIRED_HEADER, X402PaymentRequired};
+use runx_contracts::{
+    JsonObject, JsonValue, PaidSkillRunnerOffer, X402_PAYMENT_REQUIRED_HEADER,
+    X402PaymentRequired,
+};
 use runx_runtime::{HostedSkillChallenge, request_hosted_skill_challenge};
 use runx_x402::decode_payment_required_header;
 
@@ -69,6 +72,20 @@ fn render_paid_skill_challenge(
     // canonical paid resource is the one declared by the matching x402 header
     // and body, not the address used to fetch that challenge.
     let resource_url = body.resource.url.as_str().to_owned();
+    let offer = listing
+        .offers
+        .as_map()
+        .get(runner.as_str())
+        .ok_or_else(|| format!("paid listing has no offer for runner '{runner}'"))?;
+    let mediated = match offer {
+        PaidSkillRunnerOffer::Fixed(offer) => offer.mediation.is_some(),
+        PaidSkillRunnerOffer::Prepared(_) => true,
+    };
+    let mut hosted_inputs = inputs.clone();
+    if mediated {
+        hosted_inputs.remove("marketplace_offer");
+        hosted_inputs.remove("idempotency_seed");
+    }
 
     serde_json::from_value(serde_json::json!({
         "status": "payment_required",
@@ -81,7 +98,7 @@ fn render_paid_skill_challenge(
                 "method": "POST",
                 "body": {
                     "runner": runner,
-                    "inputs": inputs,
+                    "inputs": hosted_inputs,
                 },
             },
             "requires_idempotency_key": true,
@@ -140,12 +157,48 @@ mod tests {
         assert_eq!(output["runner"], "invoke");
         assert_eq!(output["result"]["payment_required"], body);
         assert_eq!(output["result"]["resource"]["url"], body["resource"]["url"]);
+        assert_eq!(
+            output["result"]["resource"]["body"]["inputs"],
+            serde_json::json!({"document": "ref"})
+        );
         assert!(output["result"]["resource"].get("headers").is_none());
         assert_eq!(output["result"]["requires_idempotency_key"], true);
         assert!(
             output["result"]["resource"]
                 .get("requires_idempotency_key")
                 .is_none()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn mediated_paid_registry_skill_removes_admission_owned_inputs() -> Result<(), String> {
+        let body = challenge_body("300000");
+        let output = render_paid_skill_challenge(
+            &mediated_listing()?,
+            "invoke".to_owned(),
+            &JsonObject::from([
+                ("document".to_owned(), JsonValue::String("ref".to_owned())),
+                (
+                    "marketplace_offer".to_owned(),
+                    JsonValue::Object(JsonObject::from([(
+                        "listing_ref".to_owned(),
+                        JsonValue::String("managed".to_owned()),
+                    )])),
+                ),
+                (
+                    "idempotency_seed".to_owned(),
+                    JsonValue::String("managed".to_owned()),
+                ),
+            ]),
+            hosted_challenge(&body, &body)?,
+        )?;
+
+        let output: serde_json::Value =
+            serde_json::to_value(output).map_err(|error| error.to_string())?;
+        assert_eq!(
+            output["result"]["resource"]["body"]["inputs"],
+            serde_json::json!({"document": "ref"})
         );
         Ok(())
     }
@@ -227,6 +280,55 @@ mod tests {
                         "revision_digest": format!("sha256:{}", "d".repeat(64)),
                         "input_schema_digest": format!("sha256:{}", "e".repeat(64)),
                         "output_schema_digest": format!("sha256:{}", "f".repeat(64))
+                    }
+                }
+            }
+        }))
+        .map_err(|error| error.to_string())
+    }
+
+    fn mediated_listing() -> Result<PaidSkillListing, String> {
+        serde_json::from_value(serde_json::json!({
+            "skill_id": "ausca/document-ocr",
+            "version": "0.1.0",
+            "skill_digest": format!("sha256:{}", "a".repeat(64)),
+            "profile_digest": format!("sha256:{}", "b".repeat(64)),
+            "package_digest": format!("sha256:{}", "c".repeat(64)),
+            "vendor_ref": { "type": "principal", "uri": "runx:principal:ausca" },
+            "offers": {
+                "invoke": {
+                    "amount_minor": 30,
+                    "currency": "USD",
+                    "accepted_settlement_families": ["x402"],
+                    "offer_revision": {
+                        "offer_id": "ausca/document-ocr#invoke",
+                        "revision": "0.1.0",
+                        "revision_digest": format!("sha256:{}", "d".repeat(64)),
+                        "input_schema_digest": format!("sha256:{}", "e".repeat(64)),
+                        "output_schema_digest": format!("sha256:{}", "f".repeat(64))
+                    },
+                    "mediation": {
+                        "listing_ref": "runx:listing:ausca/document-ocr@0.1.0#invoke",
+                        "endpoint_url": "https://ausca.test/v1/extract-text",
+                        "vendor_offer_revision": {
+                            "offer_id": "document.ocr",
+                            "revision": "ocr-r1",
+                            "revision_digest": format!("sha256:{}", "1".repeat(64)),
+                            "input_schema_digest": format!("sha256:{}", "2".repeat(64)),
+                            "output_schema_digest": format!("sha256:{}", "3".repeat(64))
+                        },
+                        "vendor_package_digest": format!("sha256:{}", "4".repeat(64)),
+                        "vendor_amount_minor": 25,
+                        "platform_fee_minor": 5,
+                        "currency": "USD",
+                        "settlement_family": "x402",
+                        "expected_receipt_class": "executed"
+                    },
+                    "executor": {
+                        "skill": "marketplace-invoke",
+                        "runner": "invoke",
+                        "package_digest": format!("sha256:{}", "5".repeat(64)),
+                        "execution_closure_digest": format!("sha256:{}", "6".repeat(64))
                     }
                 }
             }
