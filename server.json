@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.runx/runx",
+  "title": "runx",
+  "description": "The governed runtime for agent skills. Search the catalog and inspect a skill before running it.",
+  "repository": {
+    "url": "https://github.com/runxhq/runx",
+    "source": "github",
+    "id": "1207981219"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://runx.ai",
+  "icons": [
+    {
+      "src": "https://runx.ai/assets/logo/runx-symbol-192.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "192x192"
+      ]
+    },
+    {
+      "src": "https://runx.ai/assets/logo/runx-symbol-512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.runx.ai/mcp"
+    }
+  ]
+}
