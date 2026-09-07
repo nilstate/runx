@@ -79,6 +79,9 @@ fn render_paid_skill_challenge(
             "resource": {
                 "url": resource_url,
                 "method": "POST",
+                "headers": {
+                    "x-runx-skill-runner": runner,
+                },
                 "body": {
                     "runner": runner,
                     "inputs": inputs,
@@ -140,7 +143,10 @@ mod tests {
         assert_eq!(output["runner"], "invoke");
         assert_eq!(output["result"]["payment_required"], body);
         assert_eq!(output["result"]["resource"]["url"], body["resource"]["url"]);
-        assert!(output["result"]["resource"].get("headers").is_none());
+        assert_eq!(
+            output["result"]["resource"]["headers"]["x-runx-skill-runner"],
+            "invoke"
+        );
         assert_eq!(output["result"]["requires_idempotency_key"], true);
         assert!(
             output["result"]["resource"]
