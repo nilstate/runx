@@ -1116,6 +1116,169 @@ fn stdin_resume_reuses_run_and_rejects_digest_drift() -> TestResult {
 }
 
 #[test]
+fn nested_graph_resume_preserves_completed_effects_and_request_digests() -> TestResult {
+    for topology in ["nested", "deep", "fanout"] {
+        let root = crate::support::temp_root(&format!("runx-{topology}-resume-effects"));
+        let skill_dir = root.join("skills/nested-resume");
+        let receipt_dir = root.join(".runx/receipts");
+        fs::create_dir_all(&skill_dir)?;
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: nested-resume\ndescription: Preserve completed child steps across host turns.\n---\n# Nested resume\nReturn a bounded decision for each review.\n",
+        )?;
+        let mut manifest = r#"skill: nested-resume
+runners:
+  run:
+    default: true
+    type: graph
+    graph:
+      name: parent
+      result_from: [child]
+      steps:
+        - id: child
+          skill: .
+          runner: child
+  child:
+    type: graph
+    graph:
+      name: child
+      result_from: [second-review]
+      steps:
+        - id: first-write
+          tool: fs.write
+          scopes: [fs.write]
+          inputs:
+            path: first.txt
+            contents: executed once
+        - id: first-review
+          run:
+            type: agent-task
+            agent: reviewer
+            task: first-review
+            outputs: { decision: object }
+          context: { written: first-write.file_write.data }
+        - id: second-write
+          tool: fs.write
+          scopes: [fs.write]
+          inputs:
+            path: second.txt
+            contents: executed once
+        - id: second-review
+          run:
+            type: agent-task
+            agent: reviewer
+            task: second-review
+            outputs: { decision: object }
+          context:
+            written: second-write.file_write.data
+            prior: first-review.decision
+"#
+        .to_owned();
+        if topology == "deep" {
+            manifest = manifest.replacen("          runner: child", "          runner: middle", 1);
+            manifest.push_str(
+                r#"  middle:
+    type: graph
+    graph:
+      name: middle
+      result_from: [inner]
+      steps:
+        - id: inner
+          skill: .
+          runner: child
+"#,
+            );
+        } else if topology == "fanout" {
+            manifest = manifest.replacen(
+                "      name: parent",
+                r#"      name: parent
+      fanout:
+        groups:
+          work:
+            strategy: all
+            on_branch_failure: halt"#,
+                1,
+            );
+            manifest = manifest.replacen(
+                "        - id: child",
+                r#"        - id: sibling
+          mode: fanout
+          fanout_group: work
+          tool: fs.write
+          scopes: [fs.write]
+          inputs: { path: sibling.txt, contents: executed once }
+        - id: child
+          mode: fanout
+          fanout_group: work"#,
+                1,
+            );
+        }
+        fs::write(skill_dir.join("X.yaml"), manifest)?;
+        let initial = command(&root)
+            .arg("skill")
+            .arg(&skill_dir)
+            .arg("--receipt-dir")
+            .arg(&receipt_dir)
+            .arg("--json")
+            .output()?;
+        let mut paused = assert_json(&initial, 2)?;
+        let run_id = json_string(&paused, "run_id")?.to_owned();
+
+        if topology == "fanout" {
+            assert_eq!(
+                fs::read_to_string(root.join("sibling.txt"))?,
+                "executed once"
+            );
+            fs::write(root.join("sibling.txt"), "observed after pause")?;
+        }
+
+        for (index, marker) in ["first.txt", "second.txt"].into_iter().enumerate() {
+            assert_eq!(paused["status"], "needs_agent");
+            assert_eq!(fs::read_to_string(root.join(marker))?, "executed once");
+            // A replay would overwrite this external observation of the first effect.
+            fs::write(root.join(marker), "observed after pause")?;
+            let request = &paused["requests"][0];
+            let request_id = json_string(request, "id")?;
+            let digest = json_string(request, "request_digest")?;
+            let answers = serde_json::json!({
+                "request_digests": { (request_id): digest },
+                "answers": { (request_id): { "decision": { "accepted": true } } }
+            });
+            let mut resume = command(&root);
+            resume
+                .arg("resume")
+                .arg(&run_id)
+                .arg("-")
+                .arg("--receipt-dir")
+                .arg(&receipt_dir)
+                .arg("--json");
+            let resumed = output_with_stdin(&mut resume, &answers.to_string())?;
+            paused = assert_json(&resumed, if index == 0 { 2 } else { 0 })?;
+            assert_eq!(paused["run_id"], run_id);
+            assert_eq!(
+                fs::read_to_string(root.join(marker))?,
+                "observed after pause"
+            );
+            assert_eq!(
+                fs::read_to_string(root.join("first.txt"))?,
+                "observed after pause"
+            );
+        }
+        if topology == "fanout" {
+            assert_eq!(
+                fs::read_to_string(root.join("sibling.txt"))?,
+                "observed after pause"
+            );
+        }
+        assert_eq!(paused["status"], "sealed");
+        assert_eq!(paused["outcome"], "completed");
+        assert_eq!(paused["result"]["decision"]["accepted"], true);
+        assert_receipt_verifies(&root, &receipt_dir, json_string(&paused, "receipt_id")?)?;
+    }
+    Ok(())
+}
+
+#[test]
 fn compact_skill_output_externalizes_oversized_intermediate_context() -> TestResult {
     let root = crate::support::temp_root("runx-operator-compact-output-journey");
     let skill_dir = root.join("skills/compact-output");

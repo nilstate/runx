@@ -27,7 +27,7 @@ use super::scheduler::{
 };
 use super::step_handlers::{output_error, runtime_error_step_run};
 use super::sync::fanout_sync_point;
-use super::{GraphCheckpoint, GraphRun, Runtime, StepRun};
+use super::{GraphCheckpoint, GraphRun, Runtime, StepRun, SuspendedGraphStep};
 use crate::RuntimeError;
 use crate::adapter::{BorrowedSkillAdapter, SkillAdapter};
 use crate::host::{Host, RejectingParallelHost};
@@ -78,6 +78,7 @@ pub(super) struct GraphExecution {
     run_positions: BTreeMap<String, usize>,
     pub(super) sync_points: Vec<FanoutReceiptSyncPoint>,
     journal: ExecutionJournal,
+    suspended_step: Option<Box<SuspendedGraphStep>>,
 }
 
 struct ParallelFanoutJob<'a> {
@@ -129,6 +130,7 @@ impl GraphExecution {
             run_positions: BTreeMap::new(),
             sync_points: Vec::new(),
             journal: ExecutionJournal::default(),
+            suspended_step: None,
         }
     }
 
@@ -148,8 +150,15 @@ impl GraphExecution {
         }
         let definitions = super::super::graph::step_definitions(graph);
         let graph_index = ExecutionGraphIndex::new(graph, definitions);
-        let planning_cursor =
-            checkpoint_planning_cursor(graph, &checkpoint.state, &checkpoint.sync_points)?;
+        let planning_cursor = checkpoint_planning_cursor(
+            graph,
+            &checkpoint.state,
+            &checkpoint.sync_points,
+            checkpoint
+                .suspended_step
+                .as_ref()
+                .map(|pending| pending.step_id.as_str()),
+        )?;
         let run_positions = run_positions(&checkpoint.steps);
         Ok(Self {
             graph_index,
@@ -160,6 +169,7 @@ impl GraphExecution {
             run_positions,
             sync_points: checkpoint.sync_points,
             journal: checkpoint.journal,
+            suspended_step: checkpoint.suspended_step,
         })
     }
 
@@ -176,6 +186,39 @@ impl GraphExecution {
     {
         let fanout_policies = fanout_policies(graph);
         let initial_step_count = self.runs.len();
+        if max_new_steps != Some(0)
+            && let Some(pending) = &self.suspended_step
+        {
+            let step_id = pending.step_id.clone();
+            let attempt = self
+                .state
+                .steps
+                .iter()
+                .find(|step| step.step_id == step_id)
+                .ok_or_else(|| RuntimeError::StepMissing {
+                    step_id: step_id.clone(),
+                })?
+                .attempts;
+            let group_id = self.find_step(graph, &step_id)?.fanout_group.clone();
+            self.run_one_step_with_mode(
+                runtime,
+                graph_dir,
+                graph,
+                host,
+                StepExecutionPlan {
+                    step_id: &step_id,
+                    attempt,
+                    failure_mode: if group_id.is_some() {
+                        StepFailureMode::RecordAndContinue
+                    } else {
+                        StepFailureMode::Propagate
+                    },
+                },
+            )?;
+            if let Some(group_id) = group_id {
+                self.record_proceeding_fanout_sync_point(graph, &fanout_policies, &group_id)?;
+            }
+        }
         loop {
             if reached_step_limit(initial_step_count, self.runs.len(), max_new_steps) {
                 return Ok(());
@@ -752,12 +795,45 @@ impl GraphExecution {
         let policy_approval_refs =
             verified_approval_references(context.runtime, context.graph, context.step, &self.runs)?;
         let retry_remaining = retry_budget_remaining(context.step, context.plan.attempt);
-        self.record_lifecycle(
-            context.host,
-            LifecycleEvent::step_started(context.plan.step_id),
-        )?;
-        self.start_step(context.runtime, context.plan.step_id);
-        let run = self.execute_step_plan(&mut context, loaded_skill, policy_approval_refs)?;
+        let child_checkpoint = if let Some(pending) = self.suspended_step.take() {
+            if pending.step_id != context.plan.step_id {
+                return Err(RuntimeError::EngineInvariant {
+                    context: "resuming a graph step",
+                    message: "pending checkpoint does not belong to the selected step".to_owned(),
+                });
+            }
+            pending.child
+        } else {
+            self.record_lifecycle(
+                context.host,
+                LifecycleEvent::step_started(context.plan.step_id),
+            )?;
+            self.start_step(context.runtime, context.plan.step_id);
+            None
+        };
+        let run = match self.execute_step_plan(
+            &mut context,
+            loaded_skill,
+            policy_approval_refs,
+            child_checkpoint,
+        ) {
+            Err(RuntimeError::ResolutionPending {
+                step_id,
+                reason,
+                checkpoint,
+            }) => {
+                self.suspended_step = Some(Box::new(SuspendedGraphStep {
+                    step_id: context.plan.step_id.to_owned(),
+                    child: checkpoint,
+                }));
+                return Err(RuntimeError::ResolutionPending {
+                    step_id,
+                    reason,
+                    checkpoint: None,
+                });
+            }
+            result => result?,
+        };
         self.commit_step_run(
             context.runtime,
             context.host,
@@ -772,6 +848,7 @@ impl GraphExecution {
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Result<Option<LoadedStepSkill>, RuntimeError>,
         policy_approval_refs: Vec<Reference>,
+        child_checkpoint: Option<Box<GraphCheckpoint>>,
     ) -> Result<StepRun, RuntimeError>
     where
         A: SkillAdapter,
@@ -785,14 +862,27 @@ impl GraphExecution {
                     .env
                     .contains_key(DISABLE_RUNTIME_INDEXES_ENV)
                 {
-                    self.execute_step_without_index(context, loaded_skill, policy_approval_refs)
+                    self.execute_step_without_index(
+                        context,
+                        loaded_skill,
+                        policy_approval_refs,
+                        child_checkpoint,
+                    )
                 } else {
-                    self.execute_step_with_index(context, loaded_skill, policy_approval_refs)
+                    self.execute_step_with_index(
+                        context,
+                        loaded_skill,
+                        policy_approval_refs,
+                        child_checkpoint,
+                    )
                 }
             });
         let run_result = run_result.map_err(|fault| fault.at_graph_step(&context.step.id));
         Ok(match run_result {
             Ok(run) => run,
+            Err(StepFault::Sealable(error @ RuntimeError::ResolutionPending { .. })) => {
+                return Err(error);
+            }
             Err(StepFault::Sealable(error))
                 if context.plan.failure_mode == StepFailureMode::RecordAndContinue =>
             {
@@ -813,6 +903,7 @@ impl GraphExecution {
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Option<LoadedStepSkill>,
         policy_approval_refs: Vec<Reference>,
+        child_checkpoint: Option<Box<GraphCheckpoint>>,
     ) -> Result<StepRun, StepFault>
     where
         A: SkillAdapter,
@@ -826,6 +917,7 @@ impl GraphExecution {
                 attempt: context.plan.attempt,
                 loaded_skill,
                 policy_approval_refs,
+                child_checkpoint,
                 host: context.host,
             },
             &self.runs,
@@ -837,6 +929,7 @@ impl GraphExecution {
         context: &mut StepExecutionContext<'_, A>,
         loaded_skill: Option<LoadedStepSkill>,
         policy_approval_refs: Vec<Reference>,
+        child_checkpoint: Option<Box<GraphCheckpoint>>,
     ) -> Result<StepRun, StepFault>
     where
         A: SkillAdapter,
@@ -851,6 +944,7 @@ impl GraphExecution {
                 attempt: context.plan.attempt,
                 loaded_skill,
                 policy_approval_refs,
+                child_checkpoint,
                 host: context.host,
             },
             &prior_run_index,
@@ -946,8 +1040,16 @@ impl GraphExecution {
     where
         A: SkillAdapter,
     {
-        self.record_lifecycle(host, LifecycleEvent::step_started(step_id))?;
-        self.start_step(runtime, step_id);
+        if self
+            .suspended_step
+            .as_ref()
+            .is_some_and(|suspended| suspended.step_id == step_id)
+        {
+            self.suspended_step = None;
+        } else {
+            self.record_lifecycle(host, LifecycleEvent::step_started(step_id))?;
+            self.start_step(runtime, step_id);
+        }
         self.fail_step(runtime, step_id, &run);
         self.push_run(run);
         self.apply_state_event(SequentialGraphEvent::FailGraph {
@@ -995,6 +1097,20 @@ impl GraphExecution {
             steps: self.runs,
             sync_points: self.sync_points,
             journal: self.journal,
+            suspended_step: self.suspended_step,
+        }
+    }
+
+    pub(super) fn checkpoint_error(self, graph_name: &str, error: RuntimeError) -> RuntimeError {
+        match error {
+            RuntimeError::ResolutionPending {
+                step_id, reason, ..
+            } => RuntimeError::ResolutionPending {
+                step_id,
+                reason,
+                checkpoint: Some(Box::new(self.checkpoint(graph_name.to_owned()))),
+            },
+            error => error,
         }
     }
 
@@ -1109,6 +1225,7 @@ fn execute_parallel_fanout_job(
             attempt: job.attempt,
             loaded_skill: job.loaded_skill,
             policy_approval_refs: job.policy_approval_refs,
+            child_checkpoint: None,
             host: &mut host,
         },
         context.prior_run_index,
@@ -1151,15 +1268,29 @@ fn checkpoint_planning_cursor(
     graph: &ExecutionGraph,
     state: &SequentialGraphState,
     sync_points: &[FanoutReceiptSyncPoint],
+    suspended_step_id: Option<&str>,
 ) -> Result<usize, RuntimeError> {
-    if let Some(step) = state
+    let mut found_pending = false;
+    for step in state
         .steps
         .iter()
-        .find(|step| step.status == GraphStepStatus::Running)
+        .filter(|step| step.status == GraphStepStatus::Running)
+    {
+        if found_pending || suspended_step_id != Some(step.step_id.as_str()) || step.attempts == 0 {
+            return Err(RuntimeError::GraphPlanningFailed {
+                step_id: step.step_id.clone(),
+                reason: "checkpoint contains a running step without one matching host suspension"
+                    .to_owned(),
+            });
+        }
+        found_pending = true;
+    }
+    if let Some(step_id) = suspended_step_id
+        && !found_pending
     {
         return Err(RuntimeError::GraphPlanningFailed {
-            step_id: step.step_id.clone(),
-            reason: "checkpoint contains a running step".to_owned(),
+            step_id: step_id.to_owned(),
+            reason: "pending checkpoint does not identify a running step".to_owned(),
         });
     }
     Ok(terminal_prefix_cursor(graph, state, sync_points, 0))
@@ -1468,7 +1599,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            checkpoint_planning_cursor(&graph, &state, &[]).expect("valid checkpoint"),
+            checkpoint_planning_cursor(&graph, &state, &[], None).expect("valid checkpoint"),
             2
         );
     }
@@ -1481,7 +1612,7 @@ mod tests {
             GraphStepStatus::Running,
         ]);
 
-        let error = checkpoint_planning_cursor(&graph, &state, &[])
+        let error = checkpoint_planning_cursor(&graph, &state, &[], None)
             .expect_err("running checkpoint must fail");
         assert!(
             error
