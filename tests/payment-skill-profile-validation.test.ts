@@ -49,25 +49,46 @@ describe("payment ownership boundary", () => {
     expect(runtime).not.toMatch(/PaymentEffect|PaymentFinality|EffectState|runx_pay/);
   });
 
-  it("makes every real payment skill a thin hosted provider contract", async () => {
+  it("keeps real payment effects behind hosted provider contracts", async () => {
     for (const skill of hostedPaymentSkills) {
       const source = await readFile(path.resolve("skills", skill, "X.yaml"), "utf8");
       const manifest = validateRunnerManifestYaml(source).raw.document as {
         readonly catalog?: Record<string, unknown>;
-        readonly runners?: Record<string, unknown>;
+        readonly runners: Record<string, {
+          readonly type: string;
+          readonly graph: { readonly steps: readonly {
+            readonly tool?: string;
+            readonly idempotency_key?: unknown;
+            readonly inputs?: { readonly approval?: unknown };
+            readonly run?: { readonly type?: string };
+          }[] };
+        }>;
       };
 
       expect(manifest.catalog?.runtime_path, `${skill} runtime`).toBe("hosted");
       expect(manifest.catalog?.requires_adapter, `${skill} adapter`).toBe(true);
       expect(manifest.catalog?.approval, `${skill} approval`).toBe("required");
-      expect(Object.keys(manifest.runners ?? {}), `${skill} runner count`).toHaveLength(1);
+      expect(Object.keys(manifest.runners).length, `${skill} runners`).toBeGreaterThan(0);
+      for (const [name, runner] of Object.entries(manifest.runners)) {
+        expect(runner.type, `${skill}/${name} composition`).toBe("graph");
+        for (const step of runner.graph.steps) {
+          // Pure preparation/readback computation can accompany provider calls.
+          // It must use the isolated module lane, never a host CLI process.
+          if (step.run) expect(step.run.type, `${skill}/${name} local computation`).toBe("javascript");
+          if (step.tool === "provider.mutate") {
+            expect(step.idempotency_key, `${skill}/${name} retry identity`).toBeTypeOf("string");
+            expect(step.inputs?.approval, `${skill}/${name} exact-act approval`).toMatchObject({
+              type: expect.any(String), reason: expect.any(String),
+            });
+          }
+        }
+      }
       if (skill === "stripe-pay") {
         expect(source, `${skill} canonical hosted delegate`).toContain("skill: ../spend");
       } else {
         expect(source, `${skill} hosted mutation`).toContain("provider.mutate");
         expect(source, `${skill} hosted readback`).toContain("provider.read");
       }
-      expect(source, `${skill} local implementation`).not.toContain("type: javascript");
       expect(source, `${skill} retired native planner`).not.toMatch(/tool: payment\.(?:quote|reserve|fulfill|recover|charge_|refund_plan|invoice_plan)/);
     }
   });

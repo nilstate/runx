@@ -45,7 +45,7 @@ pub fn scope_grant_allows(
 
     granted_scope
         .strip_suffix('*')
-        .filter(|prefix| prefix.ends_with(':'))
+        .filter(|prefix| prefix.len() > 1 && prefix.ends_with(':'))
         .and_then(|prefix| requested_scope.strip_prefix(prefix))
         .is_some_and(|suffix| !suffix.is_empty() && !suffix.contains(':'))
 }
@@ -141,6 +141,18 @@ mod tests {
             "admin:write",
             ScopeGrantPolicy::ExactOnly
         ));
+    }
+
+    #[test]
+    fn empty_namespace_cannot_expand_a_wildcard() {
+        for policy in [
+            ScopeGrantPolicy::ExactOnly,
+            ScopeGrantPolicy::Delegated,
+            ScopeGrantPolicy::Trusted,
+        ] {
+            assert!(!scope_grant_allows(":*", ":read", policy));
+            assert!(scope_grant_allows(":*", ":*", policy));
+        }
     }
 
     #[test]

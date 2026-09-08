@@ -124,18 +124,19 @@ fn usable_example_status(status: Option<&HarnessExpectedStatus>) -> bool {
 }
 
 pub(crate) fn verify_loaded_execution_binding(
-    loaded: LoadedSkillPackage,
+    loaded: impl Into<std::sync::Arc<LoadedSkillPackage>>,
     runner: &str,
     env: &std::collections::BTreeMap<String, String>,
     expected_package_digest: Option<&str>,
     expected_execution_closure_digest: Option<&str>,
 ) -> Result<Option<String>, SkillInspectionError> {
+    let loaded = loaded.into();
     if let Some(expected) = expected_package_digest
         && expected != loaded.package.package_digest
     {
         return Err(SkillInspectionError::PackageDigestMismatch {
             expected: expected.to_owned(),
-            received: loaded.package.package_digest,
+            received: loaded.package.package_digest.clone(),
         });
     }
     let closure = inspect_loaded_execution_closure_binding(loaded, runner, env)?;

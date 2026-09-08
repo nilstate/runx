@@ -6,9 +6,7 @@ use super::KernelEvalError;
 use super::input::{KernelDocument, KernelInput};
 use crate::policy::{
     admit_graph_step_scopes, admit_local_skill, build_authority_proof_metadata,
-    build_local_scope_admission, evaluate_public_comment_opportunity,
-    evaluate_public_pull_request_candidate, normalize_public_work_policy, scope_grant_allows,
-    validate_credential_binding,
+    build_local_scope_admission, scope_grant_allows, validate_credential_binding,
 };
 use crate::state_machine::{
     create_sequential_graph_state, create_single_step_state, evaluate_fanout_sync,
@@ -24,9 +22,6 @@ pub(super) fn evaluate_kernel_input(input: KernelDocument) -> Result<JsonValue, 
         | KernelInput::BuildLocalScopeAdmission { .. }
         | KernelInput::BuildAuthorityProofMetadata { .. }
         | KernelInput::ValidateCredentialBinding { .. }
-        | KernelInput::EvaluatePublicPullRequestCandidate { .. }
-        | KernelInput::EvaluatePublicCommentOpportunity { .. }
-        | KernelInput::NormalizePublicWorkPolicy { .. }
         | KernelInput::ScopeGrantAllows { .. } => evaluate_policy_input(input),
         KernelInput::CreateSingleStepState { .. }
         | KernelInput::TransitionSingleStep { .. }
@@ -60,15 +55,6 @@ fn evaluate_policy_input(input: KernelInput) -> Result<JsonValue, KernelEvalErro
         }
         KernelInput::ValidateCredentialBinding { request } => {
             to_value(validate_credential_binding(&request))
-        }
-        KernelInput::EvaluatePublicPullRequestCandidate { request, policy } => {
-            to_value(evaluate_public_pull_request_candidate(&request, &policy))
-        }
-        KernelInput::EvaluatePublicCommentOpportunity { request, policy } => {
-            to_value(evaluate_public_comment_opportunity(&request, &policy))
-        }
-        KernelInput::NormalizePublicWorkPolicy { policy } => {
-            to_value(normalize_public_work_policy(&policy))
         }
         KernelInput::ScopeGrantAllows {
             granted_scope,

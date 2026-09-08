@@ -168,6 +168,7 @@ pub enum RunRequest {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RunResult {
     pub status: RunStatus,
+    pub disposition: Option<ClosureDisposition>,
     pub output: JsonValue,
     pub receipt_refs: Vec<String>,
     pub child_receipt_refs: Vec<String>,
@@ -175,11 +176,37 @@ pub struct RunResult {
     pub diagnostics: Vec<String>,
 }
 
+impl RunResult {
+    /// Transport projections must not infer success from the presence or shape
+    /// of JSON. The receipt disposition is assigned where execution seals.
+    #[must_use]
+    pub fn succeeded(&self) -> bool {
+        self.disposition == Some(ClosureDisposition::Closed)
+    }
+
+    #[must_use]
+    pub fn needs_resolution(&self) -> bool {
+        self.status == RunStatus::NeedsAgent
+            || self.disposition == Some(ClosureDisposition::Deferred)
+    }
+
+    pub(crate) fn sealed(output: JsonValue, receipt: &Receipt) -> Self {
+        Self {
+            status: RunStatus::Sealed,
+            disposition: Some(receipt.seal.disposition.clone()),
+            output,
+            receipt_refs: vec![receipt.id.to_string()],
+            child_receipt_refs: child_receipt_refs(receipt),
+            pending_requests: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RunStatus {
     NeedsAgent,
     Sealed,
-    Succeeded,
     Failed,
 }
 
@@ -243,7 +270,7 @@ impl LocalOrchestrator {
 
     pub fn run_skill(&self, request: &SkillRunRequest) -> Result<RunResult, OrchestratorError> {
         let output = super::skill_front::execute_skill_run_with_effects(request, &self.effects)?;
-        Ok(skill_result(output))
+        Ok(output)
     }
 
     pub fn run_skill_with_runner(
@@ -254,13 +281,38 @@ impl LocalOrchestrator {
         let overrides = super::skill_front::SkillRunOverrides {
             runner: Some(runner.to_owned()),
             seeded_answers: None,
+            ..Default::default()
         };
         let output = super::skill_front::execute_skill_run_with_overrides(
             request,
             &overrides,
             &self.effects,
         )?;
-        Ok(skill_result(output))
+        Ok(output)
+    }
+
+    #[cfg(feature = "mcp")]
+    pub(crate) fn run_skill_with_services(
+        &self,
+        request: &SkillRunRequest,
+        runner: &str,
+        javascript: crate::adapters::javascript::JavaScriptAdapter,
+        credential_delivery: crate::credentials::CredentialDelivery,
+        package_digest: &str,
+        execution_closure_digest: &str,
+    ) -> Result<RunResult, OrchestratorError> {
+        Ok(super::skill_front::execute_bound_skill_run_with_overrides(
+            request,
+            &super::skill_front::SkillRunOverrides {
+                runner: Some(runner.to_owned()),
+                javascript: Some(javascript),
+                credential_delivery: Some(credential_delivery),
+                ..Default::default()
+            },
+            &self.effects,
+            Some(package_digest),
+            Some(execution_closure_digest),
+        )?)
     }
 
     pub fn run_skill_with_binding(
@@ -273,6 +325,7 @@ impl LocalOrchestrator {
         let overrides = super::skill_front::SkillRunOverrides {
             runner: runner.map(str::to_owned),
             seeded_answers: None,
+            ..Default::default()
         };
         let output = super::skill_front::execute_bound_skill_run_with_overrides(
             request,
@@ -281,7 +334,7 @@ impl LocalOrchestrator {
             expected_package_digest,
             expected_execution_closure_digest,
         )?;
-        Ok(skill_result(output))
+        Ok(output)
     }
 
     pub fn prepare_skill(
@@ -318,13 +371,15 @@ impl LocalOrchestrator {
             )
             .into());
         }
-        prepared.verify_artifacts()?;
+        let loaded = prepared.verify_artifacts()?;
         let overrides = super::skill_front::SkillRunOverrides {
             runner: Some(prepared.selected_runner().to_owned()),
             seeded_answers: None,
+            ..Default::default()
         };
         let output = super::skill_front::execute_prepared_skill_run_with_resolved(
             super::skill_front::ResolvedSkillRun {
+                loaded: &loaded,
                 request: prepared.request(),
                 overrides: &overrides,
                 effects: &self.effects,
@@ -335,7 +390,7 @@ impl LocalOrchestrator {
                 execution_closure_digest: prepared.execution_closure_digest(),
             },
         )?;
-        Ok(skill_result(output))
+        Ok(output)
     }
 
     pub fn run_graph(&self, request: &GraphRunRequest) -> Result<RunResult, OrchestratorError> {
@@ -448,34 +503,13 @@ fn persist_harness_receipts(
     Ok(())
 }
 
-fn skill_result(output: JsonValue) -> RunResult {
-    let status = match object_string(&output, "status") {
-        Some("needs_agent") => RunStatus::NeedsAgent,
-        Some("sealed") => RunStatus::Sealed,
-        _ => RunStatus::Succeeded,
-    };
-    let receipt_refs = object_string(&output, "receipt_id")
-        .map(|receipt_id| vec![receipt_id.to_owned()])
-        .unwrap_or_default();
-    let pending_requests = object_array(&output, "requests")
-        .map(|requests| requests.to_vec())
-        .unwrap_or_default();
-    RunResult {
-        status,
-        output,
-        receipt_refs,
-        child_receipt_refs: Vec::new(),
-        pending_requests,
-        diagnostics: Vec::new(),
-    }
-}
-
 #[cfg(feature = "cli-tool")]
 fn graph_result(run: GraphRun) -> Result<RunResult, OrchestratorError> {
     let status = status_from_receipt(&run.receipt);
     let output = receipt_json(&run.receipt)?;
     Ok(RunResult {
         status,
+        disposition: Some(run.receipt.seal.disposition.clone()),
         output,
         receipt_refs: vec![run.receipt.id.to_string()],
         child_receipt_refs: child_receipt_refs(&run.receipt),
@@ -489,6 +523,7 @@ fn harness_result(output: HarnessReplayOutput) -> Result<RunResult, Orchestrator
     let value = receipt_json(&output.receipt)?;
     Ok(RunResult {
         status,
+        disposition: Some(output.receipt.seal.disposition.clone()),
         output: value,
         receipt_refs: vec![output.receipt.id.to_string()],
         child_receipt_refs: child_receipt_refs(&output.receipt),
@@ -524,24 +559,4 @@ fn child_receipt_refs(receipt: &Receipt) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
-}
-
-fn object_string<'a>(value: &'a JsonValue, key: &str) -> Option<&'a str> {
-    let JsonValue::Object(object) = value else {
-        return None;
-    };
-    let JsonValue::String(value) = object.get(key)? else {
-        return None;
-    };
-    Some(value)
-}
-
-fn object_array<'a>(value: &'a JsonValue, key: &str) -> Option<&'a Vec<JsonValue>> {
-    let JsonValue::Object(object) = value else {
-        return None;
-    };
-    let JsonValue::Array(value) = object.get(key)? else {
-        return None;
-    };
-    Some(value)
 }

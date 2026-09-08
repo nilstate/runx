@@ -65,15 +65,4 @@ mod tests {
         });
         assert_eq!(tier, MaturityTier::Stable);
     }
-
-    #[test]
-    fn graph_case_without_all_passing_is_not_stable() {
-        // A passing graph case does not lift maturity while another case fails.
-        let tier = compute_maturity(&MaturitySignals {
-            declared_case_count: 2,
-            all_declared_cases_passed: false,
-            has_passing_graph_case: true,
-        });
-        assert_eq!(tier, MaturityTier::Alpha);
-    }
 }

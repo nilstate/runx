@@ -101,6 +101,19 @@ impl JavaScriptAdapter {
         validated_module(request)
     }
 
+    pub(crate) fn invoke_from_package(
+        &self,
+        request: SkillInvocation,
+        loaded: &crate::LoadedSkillPackage,
+    ) -> Result<InvocationOutput, RuntimeError> {
+        if request.source.pages.is_some() || request.skill_directory != loaded.directory {
+            return self.invoke(request);
+        }
+        validate_pure_javascript_boundary(&request)?;
+        let prepared = bundle::validated_module_from_package(&request, loaded)?;
+        self.invoke_prepared(&prepared, &request.inputs)
+    }
+
     pub(crate) fn invoke_prepared(
         &self,
         prepared: &PreparedJavaScriptInvocation,

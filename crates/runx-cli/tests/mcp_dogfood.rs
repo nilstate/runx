@@ -1,10 +1,12 @@
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
+use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, ExitStatus, Stdio};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use crate::support::isolated_runx_command_with_inherited_cwd;
 
 use runx_runtime::LocalReceiptStore;
 use serde_json::{Value, json};
@@ -64,7 +66,7 @@ fn mcp_native_binary_dogfoods_streaming_skill_calls_and_receipts()
                 &response,
                 &["result", "structuredContent", "runx", "status"]
             )?,
-            "completed",
+            "sealed",
             "unexpected MCP dogfood response: {response}"
         );
         assert_eq!(
@@ -74,11 +76,53 @@ fn mcp_native_binary_dogfoods_streaming_skill_calls_and_receipts()
         receipt_ids.push(
             path_text(
                 &response,
-                &["result", "structuredContent", "runx", "receiptId"],
+                &["result", "structuredContent", "runx", "receipt_id"],
             )?
             .to_owned(),
         );
     }
+
+    let mut cli = isolated_runx_command_with_inherited_cwd("mcp-dogfood-test-key");
+    let cli = cli
+        .current_dir(repo_root()?)
+        .arg("skill")
+        .arg(&skill_path)
+        .args(["--input", "message=dogfood message 0", "--receipt-dir"])
+        .arg(receipt_dir.path())
+        .arg("--json")
+        .output()?;
+    assert!(
+        cli.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cli.stdout)
+    );
+    let cli: Value = serde_json::from_slice(&cli.stdout)?;
+    assert_eq!(cli["result"], "dogfood message 0");
+    assert_eq!(cli["closure"]["disposition"], "closed");
+
+    // Admission is a package binding, not permission to execute whatever bytes
+    // happen to replace the served package later in this session.
+    fs::write(
+        skill_path.join("SKILL.md"),
+        "---\nname: mcp-echo\n---\nChanged after admission.\n",
+    )?;
+    write_frame(
+        server.stdin_mut()?,
+        &request(
+            30,
+            "tools/call",
+            json!({
+                "name": "mcp-echo", "arguments": {"message": "must not execute"},
+            }),
+        ),
+    )?;
+    let drift = server.read_response("package drift", MCP_REQUEST_TIMEOUT)?;
+    assert_eq!(drift["result"]["isError"], true, "{drift}");
+    assert!(
+        drift["result"]["content"][0]["text"]
+            .as_str()
+            .is_some_and(|text| text.contains("digest"))
+    );
 
     server.close_stdin();
     let status = server.wait_timeout(Duration::from_secs(10))?;
@@ -297,6 +341,183 @@ fn mcp_selected_runner_matches_its_credential_snapshot() -> Result<(), Box<dyn s
     Ok(())
 }
 
+#[test]
+fn mcp_continuations_survive_server_exit_and_resume_through_the_cli()
+-> Result<(), Box<dyn std::error::Error>> {
+    for agent in [false, true] {
+        let workspace = TestTempDir::new("runx-mcp-continuation")?;
+        let root = workspace.path();
+        let receipts = root.join("receipts with spaces");
+        let skill = if agent {
+            let path = crate::support::write_agent_task_skill(root)?;
+            let manifest = fs::read_to_string(path.join("X.yaml"))?
+                .replace("required: false", "required: true");
+            fs::write(path.join("X.yaml"), manifest)?;
+            path
+        } else {
+            let path = root.join("approval");
+            fs::create_dir_all(&path)?;
+            fs::write(
+                path.join("SKILL.md"),
+                "---\nname: approval\n---\n# Approval\n",
+            )?;
+            fs::write(
+                path.join("X.yaml"),
+                r#"skill: approval
+runners:
+  main:
+    default: true
+    type: graph
+    inputs:
+      thread_title: {type: string, required: true}
+    graph:
+      name: approval
+      result_from: [approve]
+      steps:
+        - id: approve
+          run: {type: approval}
+          inputs:
+            gate_id: approval
+            reason: $input.thread_title
+          artifacts: {wrap_as: approval}
+"#,
+            )?;
+            path
+        };
+        let mut run_ids = std::collections::BTreeSet::new();
+        for _ in 0..2 {
+            let mut server = spawn_mcp_server_at(
+                &[
+                    skill.display().to_string(),
+                    "--receipt-dir".to_owned(),
+                    receipts.display().to_string(),
+                ],
+                root,
+                None,
+            )?;
+            write_frame(server.stdin_mut()?, &initialize_request(1))?;
+            server.read_response("initialize", MCP_INITIALIZE_TIMEOUT)?;
+            write_frame(server.stdin_mut()?, &initialized_notification())?;
+            write_frame(
+                server.stdin_mut()?,
+                &request(
+                    2,
+                    "tools/call",
+                    json!({
+                        "name": if agent { "issue-intake" } else { "approval" },
+                        "arguments": { "thread_title": "Preserve this original input" },
+                    }),
+                ),
+            )?;
+            let response = server.read_response("continuation", MCP_REQUEST_TIMEOUT)?;
+            let pending = &response["result"]["structuredContent"]["runx"];
+            assert_eq!(pending["status"], "needs_agent", "{response}");
+            assert!(
+                pending["requests"]
+                    .to_string()
+                    .contains("Preserve this original input"),
+                "{response}"
+            );
+            let run_id = pending["run_id"].as_str().ok_or("missing durable run id")?;
+            assert!(
+                run_ids.insert(run_id.to_owned()),
+                "server restart reused a run identity"
+            );
+            assert!(
+                response["result"]["content"][0]["text"]
+                    .as_str()
+                    .is_some_and(|text| text.contains("--receipt-dir '"))
+            );
+            let request_id = pending["requests"][0]["id"]
+                .as_str()
+                .ok_or("missing request id")?;
+            let answers = if agent {
+                json!({"answers": {request_id: {"intake_report": {"summary": "Original input reviewed"}}},
+                    "request_digests": pending["request_digests"]})
+            } else {
+                json!({"approvals": {request_id: true}, "request_digests": pending["request_digests"]})
+            };
+            let answers_path = root.join("answers.json");
+            fs::write(&answers_path, serde_json::to_vec(&answers)?)?;
+            server.close_stdin();
+            assert!(server.wait_timeout(Duration::from_secs(10))?.success());
+
+            let command = || {
+                let mut command = isolated_runx_command_with_inherited_cwd("mcp-dogfood-test-key");
+                command.current_dir(root).env("RUNX_CWD", root);
+                command
+            };
+            let history = command()
+                .args(["history", run_id, "--receipt-dir"])
+                .arg(&receipts)
+                .arg("--json")
+                .output()?;
+            assert!(history.status.success());
+            let history: Value = serde_json::from_slice(&history.stdout)?;
+            assert!(
+                history["pendingRuns"]
+                    .as_array()
+                    .is_some_and(|runs| runs.iter().any(|run| run["id"] == run_id))
+            );
+
+            let mut wrong = answers.clone();
+            wrong["request_digests"][request_id] = json!("sha256:wrong");
+            fs::write(&answers_path, serde_json::to_vec(&wrong)?)?;
+            let refused = command()
+                .args(["resume", run_id])
+                .arg(&answers_path)
+                .arg("--receipt-dir")
+                .arg(&receipts)
+                .arg("--json")
+                .output()?;
+            assert_eq!(refused.status.code(), Some(1));
+            fs::write(&answers_path, serde_json::to_vec(&answers)?)?;
+            let resumed = command()
+                .args(["resume", run_id])
+                .arg(&answers_path)
+                .arg("--receipt-dir")
+                .arg(&receipts)
+                .arg("--json")
+                .output()?;
+            assert!(
+                resumed.status.success(),
+                "stdout={} stderr={}",
+                String::from_utf8_lossy(&resumed.stdout),
+                String::from_utf8_lossy(&resumed.stderr)
+            );
+            let resumed: Value = serde_json::from_slice(&resumed.stdout)?;
+            assert_eq!(resumed["closure"]["disposition"], "closed");
+            assert_eq!(resumed["run_id"], run_id);
+            let receipt_id = resumed["receipt_id"].as_str().ok_or("missing receipt id")?;
+            let verified = command()
+                .args(["verify", receipt_id, "--receipt-dir"])
+                .arg(&receipts)
+                .arg("--json")
+                .output()?;
+            assert!(
+                verified.status.success(),
+                "{}",
+                String::from_utf8_lossy(&verified.stdout)
+            );
+            let verified: Value = serde_json::from_slice(&verified.stdout)?;
+            assert_eq!(verified["valid"], true);
+            let history = command()
+                .args(["history", run_id, "--receipt-dir"])
+                .arg(&receipts)
+                .arg("--json")
+                .output()?;
+            assert!(history.status.success());
+            let history: Value = serde_json::from_slice(&history.stdout)?;
+            assert!(
+                !history["pendingRuns"]
+                    .as_array()
+                    .is_some_and(|runs| runs.iter().any(|run| run["id"] == run_id))
+            );
+        }
+    }
+    Ok(())
+}
+
 fn spawn_mcp_server(args: &[String]) -> Result<McpProcess, Box<dyn std::error::Error>> {
     let repo_root = repo_root()?;
     spawn_mcp_server_at(args, &repo_root, Some(&repo_root))
@@ -307,13 +528,10 @@ fn spawn_mcp_server_at(
     cwd: &Path,
     runx_cwd: Option<&Path>,
 ) -> Result<McpProcess, Box<dyn std::error::Error>> {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_runx"));
-    crate::support::apply_fixture_signing(&mut command, "mcp-dogfood-test-key");
-    command.current_dir(cwd).env_remove("MCP_DOGFOOD_MARKER");
+    let mut command = isolated_runx_command_with_inherited_cwd("mcp-dogfood-test-key");
+    command.current_dir(cwd);
     if let Some(runx_cwd) = runx_cwd {
         command.env("RUNX_CWD", runx_cwd);
-    } else {
-        command.env_remove("RUNX_CWD");
     }
     let mut child = command
         .arg("mcp")

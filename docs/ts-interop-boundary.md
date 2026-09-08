@@ -1,8 +1,8 @@
 # TypeScript interop boundary
 
 This document records the surviving TypeScript and Python package boundary for
-the Rust takeover. It is the package-disposition source of truth for OSS
-packages during the final runtime cutover.
+the native runtime. It specializes the normative
+[Runx system architecture](./architecture/runx-system.md) for language packages.
 
 ## Current boundary after takeover
 
@@ -98,18 +98,13 @@ truth, so it is recorded here rather than implied.
   half) likewise belongs on the `thread-outbox-provider` lane, not a new
   in-kernel client. The deterministic halves these feed are pure and correctly
   stay in the kernel; only the network legs move.
-- **Coded once, on the binary (in progress).** The agent loop now lives on the
-  binary: the Rust managed-agent loop ships behind the enabled `agent` feature as the
-  opt-in governance path (default stays host-drives). What remains is the MCP server,
-  still implemented twice (Rust `serve_mcp_json_rpc` plus the TypeScript
-  `cloud/packages/mcp-hosted`), and `cloud/packages/agent-runner`, still single-shot.
-  The target boundary is one of each, on the binary: `cloud/packages/mcp-hosted` and
-  `cloud/packages/agent-runner` shrink to a thin transport/auth bridge and a
-  provider resolver respectively, neither owning a second MCP server or a second
-  agent loop. The identity this boundary serves (runx as the governed execution
-  layer: one governed core, protocol fronts, TypeScript as transport plus ecosystem
-  and extension adapters) is recorded in the superproject plan
-  `plans/governed-execution-layer.md`.
+- **One local execution path.** Native CLI and MCP skill calls use the same
+  `LocalOrchestrator` and skill front for preparation, invocation, pause/resume,
+  and typed results. MCP retains its supervised session worker. The Rust
+  managed-agent loop is opt-in; host-driven judgment remains the default.
+  Cloud's `@runx/mcp` exposes hosted registry/auth/control-plane operations;
+  submitted hosted execution invokes the native worker boundary. It is not a
+  duplicate local MCP skill executor. The unused Cloud agent runner is deleted.
 
 ## OSS package dispositions
 
@@ -118,7 +113,7 @@ truth, so it is recorded here rather than implied.
 | `@runxhq/contracts` | Publishes portable packet definitions and the generated TypeScript view of Rust-owned wire schemas, maintained with fixture cross-validation. |
 | `@runxhq/extension-sdk` | Owns only the process/protocol helpers needed by genuine external extensions. It does not author skills or own trusted local execution. |
 | `@runxhq/cli` | Stays as a platform-aware npm launcher that resolves and execs the Rust binary. It must remain useful from an installed package without TypeScript sources and must fail closed instead of falling back to TypeScript local execution. It also carries the drift-free cold-start: `npx @runxhq/cli new <name> --objective <outcome>` downloads the launcher and enters the same canonical Skill Lab authoring lane without a prior Runx install. The launcher owns no templates or authoring logic. |
-| `@runxhq/core` | Deleted. Its registry/config/parser remnants were not a shipped execution boundary; live OSS code uses Rust crates, generated contracts, tool-local modules, or explicit protocol packages instead. Cloud imports the promoted `@runx/protocol` package. |
+| `@runxhq/core` | Deleted. Its registry/config/parser remnants were not a shipped execution boundary; live OSS code uses Rust crates, generated contracts, tool-local modules, or explicit protocol packages instead. Cloud uses its owning feature packages and the small `@runx/protocol` contract/utility subpaths. |
 | `@runxhq/host-adapters` | Stays as thin host response adapters over the runx host protocol, retargeted to `@runxhq/contracts` types. It can shape host/client responses, not execute trusted local runtime behavior. |
 | `@runxhq/langchain` | Stays as an optional LangChain bridge that shells the `runx` CLI or uses documented external protocols for governed skill and tool invocation. |
 | `runx-py` | Stays as a thin Python client over `runx` CLI JSON output. |
@@ -152,5 +147,7 @@ TypeScript runtime-local internals. Other extension-lane tests must use their
 own wire contract and must not borrow the execution-adapter protocol as a
 stand-in.
 
-The TypeScript oracle is temporary. Once a TypeScript domain sunsets, no new
-fixtures should be derived from that domain's TypeScript implementation.
+Kernel fixture generation calls the native Rust evaluator. TypeScript fixture
+tools are serialization and conformance harnesses, not alternate local policy
+implementations. Surviving cross-language wire helpers, such as scope matching,
+require differential coverage against the native owner.

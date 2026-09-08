@@ -42,6 +42,18 @@ fn evaluates_raw_input_document() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn rejects_retired_operator_policy_kinds() {
+    for kind in [
+        "policy.evaluatePublicPullRequestCandidate",
+        "policy.evaluatePublicCommentOpportunity",
+        "policy.normalizePublicWorkPolicy",
+    ] {
+        let source = format!(r#"{{"kind":"{kind}","request":{{}},"policy":{{}}}}"#);
+        assert_invalid_input_contains(&source, "unsupported kernel input kind");
+    }
+}
+
+#[test]
 fn rejects_oversized_documents_fail_closed() {
     let source = format!(
         r#"{{"kind":"state-machine.createSingleStepState","stepId":"{}"}}"#,

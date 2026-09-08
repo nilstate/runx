@@ -5,8 +5,7 @@
 use std::collections::BTreeMap;
 
 use runx_contracts::{
-    JsonObject, JsonValue, PaidSkillRunnerOffer, X402_PAYMENT_REQUIRED_HEADER,
-    X402PaymentRequired,
+    JsonObject, JsonValue, PaidSkillRunnerOffer, X402_PAYMENT_REQUIRED_HEADER, X402PaymentRequired,
 };
 use runx_runtime::{HostedSkillChallenge, request_hosted_skill_challenge};
 use runx_x402::decode_payment_required_header;

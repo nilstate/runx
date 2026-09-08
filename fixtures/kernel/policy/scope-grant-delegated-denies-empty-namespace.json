@@ -1,0 +1,14 @@
+{
+  "$schema": "../schema/policy.schema.json",
+  "expected": {
+    "kind": "output",
+    "value": false
+  },
+  "input": {
+    "grantedScope": ":*",
+    "kind": "policy.scopeGrantAllows",
+    "policy": "delegated",
+    "requestedScope": ":read"
+  },
+  "name": "scope-grant-delegated-denies-empty-namespace"
+}

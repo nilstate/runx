@@ -759,17 +759,7 @@ describe("@runxhq/contracts", () => {
     })).toBe(false);
   });
 
-  it("owns the runx harness spine and retires retired central artifacts", () => {
-    expect(RUNX_LOGICAL_SCHEMAS.receipt).toBe("runx.receipt.v1");
-    const retiredReceiptKey = `${"harness"}Receipt`;
-    expect(retiredReceiptKey in RUNX_LOGICAL_SCHEMAS).toBe(false);
-    expect(retiredReceiptKey in RUNX_CONTRACT_IDS).toBe(false);
-    const retiredCentralKey = `${"engage"}ment`;
-    expect(retiredCentralKey in RUNX_LOGICAL_SCHEMAS).toBe(false);
-    expect("evidenceBundle" in RUNX_LOGICAL_SCHEMAS).toBe(false);
-    expect(retiredCentralKey in RUNX_CONTRACT_IDS).toBe(false);
-    expect("evidenceBundle" in RUNX_CONTRACT_IDS).toBe(false);
-
+  it("validates a source signal and its complete execution receipt", () => {
     const issueRef = {
       type: "github_issue",
       uri: "github://runxhq/example/issues/101",

@@ -35,9 +35,9 @@ before they may be added to `deny.toml`.
   [TypeScript interop boundary](../docs/ts-interop-boundary.md).
 - `runx-contracts`: pure public contracts for JSON, host protocol, receipts,
   registry/tool records, act assignment, harness spine, generic authority and
-  effect finality, target-repo runner planning, and the post-merge observer.
+  effect finality.
 - `runx-core`: pure decisions. State-machine parity and policy parity
-  (admission, authority proof, public-work, retry, graph-step scope, generic
+  (admission, authority proof, retry, graph-step scope, generic
   authority subset).
 - `runx-parser`: pure YAML → AST → IR parity for graphs, skills, runners, tool
   manifests, and skill installs. Raw object subtrees use

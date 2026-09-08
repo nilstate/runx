@@ -18,7 +18,7 @@ use crate::agent_invocation::agent_act_invocation_id;
 #[cfg(feature = "agent")]
 use crate::config::ManagedAgentConfig;
 use crate::effects::RuntimeEffectRegistry;
-use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::orchestrator::{RunResult, SkillRunRequest};
 use crate::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
 use crate::receipts::StepSealClosure;
 use crate::receipts::{DomainActReceiptRequest, domain_act_receipt};
@@ -32,7 +32,7 @@ use super::runner_manifest::write_skill_receipt;
 pub(super) fn execute_agent_skill_run(
     context: &SkillExecutionContext<'_>,
     mut invocation: SkillInvocation,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let SkillExecutionContext {
         request,
         overrides,
@@ -43,6 +43,7 @@ pub(super) fn execute_agent_skill_run(
         runner,
         package_digest,
         execution_closure_digest,
+        ..
     } = *context;
     let source_type = agent_invocation_source_type(runner.source.source_type.as_str())?;
     let request_id = agent_act_invocation_id(&invocation, source_type);
@@ -83,14 +84,15 @@ pub(super) fn execute_agent_skill_run(
                         return seal_agent_failure(context, &run_id, AgentFailure::managed(&error));
                     }
                     InlineAgentOutcome::HostDrives => {
+                        super::state_store::write_agent_state(context, &run_id)?;
                         write_paused_agent_checkpoint(context, &run_id, &request_id)?;
-                        return Ok(JsonValue::Object(needs_agent_output(
+                        return Ok(needs_agent_output(
                             context.manifest,
                             &context.runner.name,
                             &run_id,
                             &request_id,
                             resolution_request_value.clone(),
-                        )));
+                        ));
                     }
                 }
             }
@@ -153,7 +155,7 @@ pub(super) fn execute_agent_skill_run(
     };
     write_skill_receipt(request, workspace, receipts, &receipt)?;
 
-    Ok(JsonValue::Object(sealed_output(
+    Ok(sealed_output(
         manifest,
         &runner.name,
         &run_id,
@@ -161,7 +163,7 @@ pub(super) fn execute_agent_skill_run(
         &answer,
         SkillOutputDiagnostics::default(),
         &receipt,
-    )))
+    ))
 }
 
 fn write_paused_agent_checkpoint(
@@ -340,7 +342,7 @@ fn seal_agent_failure(
     context: &SkillExecutionContext<'_>,
     run_id: &str,
     failure: AgentFailure,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let output = InvocationOutput::runtime_failure(
         failure.payload.clone(),
         &failure.message,
@@ -369,7 +371,7 @@ fn seal_agent_failure(
         context.receipts,
         &receipt,
     )?;
-    Ok(JsonValue::Object(sealed_output(
+    Ok(sealed_output(
         context.manifest,
         &context.runner.name,
         run_id,
@@ -377,7 +379,7 @@ fn seal_agent_failure(
         &failure.payload,
         SkillOutputDiagnostics::default(),
         &receipt,
-    )))
+    ))
 }
 
 #[cfg(not(feature = "agent"))]
@@ -398,10 +400,7 @@ fn agent_run_id(
     execution_closure_digest: Option<&str>,
 ) -> Result<String, SkillRunError> {
     match (&request.run_id, &request.answers_path) {
-        (Some(run_id), Some(_)) => Ok(run_id.clone()),
-        (Some(_), None) => Err(invalid(
-            "skill continuation requires both run_id and answers",
-        )),
+        (Some(run_id), _) => Ok(run_id.clone()),
         (None, Some(_)) => Err(invalid(
             "skill continuation requires both run_id and answers",
         )),
@@ -501,6 +500,7 @@ runners:
             let overrides = crate::execution::skill_front::SkillRunOverrides::default();
             let effects = RuntimeEffectRegistry::default();
             let context = SkillExecutionContext {
+                loaded: None,
                 request: &request,
                 overrides: &overrides,
                 effects: &effects,
@@ -517,7 +517,7 @@ runners:
                 AgentFailure::managed(&error),
             )?;
 
-            let output_json = serde_json::to_string(&output)?;
+            let output_json = serde_json::to_string(&output.output)?;
             assert!(output_json.contains("\"status\":\"sealed\""));
             assert!(output_json.contains("\"reason_code\":\"round_budget_exhausted\""));
             assert!(output_json.contains("\"rounds\":3"));

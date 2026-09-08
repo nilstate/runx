@@ -158,59 +158,6 @@
         {
           "additionalProperties": false,
           "properties": {
-            "kind": {
-              "const": "policy.evaluatePublicPullRequestCandidate"
-            },
-            "policy": {
-              "type": "object"
-            },
-            "request": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind",
-            "request"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "const": "policy.evaluatePublicCommentOpportunity"
-            },
-            "policy": {
-              "type": "object"
-            },
-            "request": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind",
-            "request"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "kind": {
-              "const": "policy.normalizePublicWorkPolicy"
-            },
-            "policy": {
-              "type": "object"
-            }
-          },
-          "required": [
-            "kind"
-          ],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
             "grantedScope": {
               "type": "string"
             },

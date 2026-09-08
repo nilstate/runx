@@ -186,7 +186,7 @@ fn export_skill(
                 continue;
             };
             let binding = crate::skill_package::inspect_loaded_execution_closure_binding(
-                loaded.clone(),
+                loaded.clone().into(),
                 name,
                 execution_env,
             )

@@ -28,28 +28,15 @@ pub(super) struct ResumeHint<'a> {
     pub(super) answers_path: Option<&'a Path>,
 }
 
-pub(super) fn skill_result_exit_code(value: &JsonValue) -> ExitCode {
-    match value {
-        JsonValue::Object(object)
-            if matches!(
-                object.get("status").and_then(JsonValue::as_str),
-                Some("needs_agent" | "needs_approval" | "payment_required")
-            ) =>
-        {
-            ExitCode::from(2)
-        }
-        JsonValue::Object(object) => match object
-            .get("closure")
-            .and_then(JsonValue::as_object)
-            .and_then(|closure| closure.get("disposition"))
-            .cloned()
-            .map(JsonValue::deserialize_into::<ClosureDisposition>)
-        {
-            Some(Ok(disposition)) => closure_disposition_exit_code(disposition),
-            None => ExitCode::SUCCESS,
-            Some(Err(_)) => ExitCode::from(1),
-        },
-        _ => ExitCode::SUCCESS,
+pub(super) fn run_result_exit_code(
+    result: &runx_runtime::execution::orchestrator::RunResult,
+) -> ExitCode {
+    if let Some(disposition) = &result.disposition {
+        closure_disposition_exit_code(disposition.clone())
+    } else if result.needs_resolution() {
+        ExitCode::from(2)
+    } else {
+        ExitCode::from(1)
     }
 }
 
@@ -731,7 +718,7 @@ mod tests {
     use runx_contracts::{JsonObject, JsonValue};
 
     use super::{
-        ResumeHint, closure_disposition_exit_code, serialize_json_output, skill_result_exit_code,
+        ResumeHint, closure_disposition_exit_code, run_result_exit_code, serialize_json_output,
         write_skill_text,
     };
 
@@ -844,36 +831,22 @@ mod tests {
                 expected,
                 "{label} typed exit code"
             );
-            let value = JsonValue::Object(JsonObject::from([
-                ("status".to_owned(), JsonValue::String("sealed".to_owned())),
-                (
-                    "closure".to_owned(),
-                    JsonValue::Object(JsonObject::from([(
-                        "disposition".to_owned(),
-                        JsonValue::String(label.to_owned()),
-                    )])),
-                ),
-            ]));
-
-            assert_eq!(
-                skill_result_exit_code(&value),
-                expected,
-                "{label} envelope exit code"
-            );
             assert!(
                 docs.contains(&format!("| `{label}` | {numeric} |")),
                 "CLI exit-code documentation omitted {label}"
             );
         }
 
-        let malformed = JsonValue::Object(JsonObject::from([(
-            "closure".to_owned(),
-            JsonValue::Object(JsonObject::from([(
-                "disposition".to_owned(),
-                JsonValue::String("not-a-disposition".to_owned()),
-            )])),
-        )]));
-        assert_eq!(skill_result_exit_code(&malformed), ExitCode::from(1));
+        let malformed = runx_runtime::execution::orchestrator::RunResult {
+            status: runx_runtime::execution::orchestrator::RunStatus::Sealed,
+            disposition: None,
+            output: JsonValue::Object(JsonObject::new()),
+            receipt_refs: Vec::new(),
+            child_receipt_refs: Vec::new(),
+            pending_requests: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        assert_eq!(run_result_exit_code(&malformed), ExitCode::from(1));
     }
 
     #[test]

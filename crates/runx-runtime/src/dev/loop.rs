@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -369,14 +369,20 @@ fn initialize_fixture_git(
 }
 
 fn run_required_process(command: &str, args: &[&str], cwd: &Path) -> Result<(), DevError> {
-    let output = Command::new(command)
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .map_err(|source| DevError::Spawn {
-            command: command.to_owned(),
-            source,
-        })?;
+    let output = crate::process::with_spawn_lock(|| {
+        Command::new(command)
+            .args(args)
+            .current_dir(cwd)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+    })
+    .and_then(|child| child.wait_with_output())
+    .map_err(|source| DevError::Spawn {
+        command: command.to_owned(),
+        source,
+    })?;
     if output.status.success() {
         return Ok(());
     }

@@ -73,7 +73,7 @@ impl ReceiptServices {
             .write_receipt_with_policy(receipt, self.signature_config.signature_policy())
     }
 
-    #[cfg(any(feature = "cli-tool", feature = "mcp"))]
+    #[cfg(feature = "cli-tool")]
     pub(crate) fn write_local_receipts<'a>(
         &self,
         receipts: impl IntoIterator<Item = &'a Receipt>,
@@ -100,15 +100,6 @@ impl ReceiptServices {
     ) -> Result<Receipt, ReceiptStoreError> {
         LocalReceiptStore::new(receipt_dir)
             .read_exact_with_policy(receipt_id, self.signature_config.signature_policy())
-    }
-
-    #[cfg(feature = "mcp")]
-    pub(crate) fn write_local_receipt_dir(
-        &self,
-        receipt: &Receipt,
-        receipt_dir: &Path,
-    ) -> Result<(), ReceiptStoreError> {
-        self.write_local_receipts(std::iter::once(receipt), receipt_dir)
     }
 }
 

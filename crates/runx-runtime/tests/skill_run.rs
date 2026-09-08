@@ -385,7 +385,7 @@ fn native_skill_run_resumes_and_seals_receipt() -> Result<(), Box<dyn std::error
         .to_string(),
     )?;
 
-    let result = run_skill(SkillRunRequest {
+    let result = complete_agent_fixture(with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: Some(receipt_dir.clone()),
         run_id: Some("issue-intake-run".to_owned()),
@@ -395,7 +395,7 @@ fn native_skill_run_resumes_and_seals_receipt() -> Result<(), Box<dyn std::error
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
+    }))?;
 
     let output = object(&result.output, "skill run result")?;
     assert_eq!(string_field(output, "status"), Some("sealed"));
@@ -471,7 +471,7 @@ fn native_skill_run_treats_structured_stdout_as_claim_not_receipt_proof()
         .to_string(),
     )?;
 
-    let result = run_skill(SkillRunRequest {
+    let result = complete_agent_fixture(with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: Some(receipt_dir.clone()),
         run_id: Some("malicious-stdout-run".to_owned()),
@@ -481,7 +481,7 @@ fn native_skill_run_treats_structured_stdout_as_claim_not_receipt_proof()
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
+    }))?;
 
     let output = object(&result.output, "skill run result")?;
     assert!(object_field(output, "result").is_some());
@@ -535,7 +535,7 @@ fn native_skill_run_preserves_deferred_closure_disposition()
         .to_string(),
     )?;
 
-    let result = run_skill(SkillRunRequest {
+    let result = complete_agent_fixture(with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: Some(receipt_dir.clone()),
         run_id: Some("issue-intake-deferred".to_owned()),
@@ -545,7 +545,7 @@ fn native_skill_run_preserves_deferred_closure_disposition()
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
+    }))?;
 
     let output = object(&result.output, "skill run result")?;
     assert_eq!(string_field(output, "status"), Some("sealed"));
@@ -583,7 +583,7 @@ fn native_skill_run_uses_runtime_receipt_path_resolution() -> Result<(), Box<dyn
         .to_string(),
     )?;
 
-    let result = run_skill(SkillRunRequest {
+    let result = complete_agent_fixture(with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: None,
         run_id: Some("env-receipt-run".to_owned()),
@@ -598,7 +598,7 @@ fn native_skill_run_uses_runtime_receipt_path_resolution() -> Result<(), Box<dyn
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
+    }))?;
 
     let output = object(&result.output, "skill run result")?;
     let receipt_id = string_field(output, "receipt_id").ok_or("missing receipt_id")?;
@@ -874,7 +874,7 @@ fn native_skill_run_uses_production_receipt_signing_env() -> Result<(), Box<dyn 
     )?;
     let env = crate::support::test_signing_env();
 
-    let result = run_skill(SkillRunRequest {
+    let result = complete_agent_fixture(with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: Some(receipt_dir.clone()),
         run_id: Some("production-signed-run".to_owned()),
@@ -884,7 +884,7 @@ fn native_skill_run_uses_production_receipt_signing_env() -> Result<(), Box<dyn 
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
+    }))?;
 
     let output = object(&result.output, "skill run result")?;
     let receipt_id = string_field(output, "receipt_id").ok_or("missing receipt_id")?;
@@ -920,7 +920,7 @@ fn native_skill_run_uses_local_development_without_production_receipt_signing_en
         })
         .to_string(),
     )?;
-    let result = LocalOrchestrator::default().run_skill(&SkillRunRequest {
+    let result = complete_agent_fixture(SkillRunRequest {
         skill_path: skill_dir,
         receipt_dir: None,
         run_id: Some("local-development-signed-run".to_owned()),
@@ -2035,9 +2035,9 @@ fn native_graph_skill_run_requires_declared_graph_inputs() -> Result<(), Box<dyn
     let skill_dir = write_graph_required_input_skill(temp.path())?;
     let receipt_dir = temp.path().join("receipts");
 
-    let result = run_skill(SkillRunRequest {
+    let request = with_test_signing_env(SkillRunRequest {
         skill_path: skill_dir,
-        receipt_dir: Some(receipt_dir),
+        receipt_dir: Some(receipt_dir.clone()),
         run_id: None,
         answers_path: None,
         inputs: BTreeMap::new(),
@@ -2045,19 +2045,31 @@ fn native_graph_skill_run_requires_declared_graph_inputs() -> Result<(), Box<dyn
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    })?;
-
-    let output = object(&result.output, "graph required input result")?;
-    assert_eq!(string_field(output, "status"), Some("needs_agent"));
-    let requests = array_field(output, "requests").ok_or("missing requests")?;
-    let request = object(&requests[0], "missing input request")?;
-    assert_eq!(string_field(request, "id"), Some("graph.required-inputs"));
-    assert_eq!(string_field(request, "kind"), Some("graph.required_inputs"));
-    let missing = array_field(request, "missing_inputs").ok_or("missing input list")?;
-    let lead = object(&missing[0], "lead missing input")?;
-    assert_eq!(string_field(lead, "name"), Some("lead"));
-    assert_eq!(string_field(lead, "type"), Some("json"));
-
+    });
+    let error = LocalOrchestrator::default()
+        .run_skill(&request)
+        .err()
+        .ok_or("missing required input must refuse before execution")?;
+    let runx_runtime::OrchestratorError::SkillRun(
+        runx_runtime::execution::skill_front::SkillRunError::PreflightRefused {
+            source,
+            receipt_id,
+        },
+    ) = error
+    else {
+        return Err(format!("expected a signed input refusal, got {error}").into());
+    };
+    assert!(
+        source
+            .to_string()
+            .contains("runner input 'lead' is required")
+    );
+    let receipt = crate::support::read_test_signed_receipt(&receipt_dir, &receipt_id)?;
+    assert_eq!(serde_json::to_value(&receipt.seal.disposition)?, "blocked");
+    assert!(
+        !receipt_dir.join("runs").exists(),
+        "refusal must not leave an unusable continuation"
+    );
     Ok(())
 }
 
@@ -2756,11 +2768,12 @@ fn native_graph_skill_run_executes_nested_x_yaml_runner_skill()
 }
 
 #[test]
-fn native_skill_run_rejects_partial_continuation_shape() -> Result<(), Box<dyn std::error::Error>> {
+fn native_skill_run_accepts_named_start_and_requires_identity_for_answers()
+-> Result<(), Box<dyn std::error::Error>> {
     let temp = tempdir()?;
     let skill_dir = write_agent_task_skill(temp.path())?;
 
-    let run_id_only = match run_skill(SkillRunRequest {
+    let named_start = run_skill(SkillRunRequest {
         skill_path: skill_dir.clone(),
         receipt_dir: None,
         run_id: Some("issue-intake-run".to_owned()),
@@ -2770,18 +2783,13 @@ fn native_skill_run_rejects_partial_continuation_shape() -> Result<(), Box<dyn s
         cwd: temp.path().to_path_buf(),
         managed_agent: Default::default(),
         local_credential: None,
-    }) {
-        Ok(_) => return Err("run-id without answers should fail".into()),
-        Err(error) => error,
-    };
-    assert!(
-        run_id_only
-            .to_string()
-            .contains("skill continuation requires both run_id and answers")
-    );
+    })?;
+    let output = object(&named_start.output, "named start")?;
+    assert_eq!(string_field(output, "status"), Some("needs_agent"));
+    assert_eq!(string_field(output, "run_id"), Some("issue-intake-run"));
 
     let answers_only = match run_skill(SkillRunRequest {
-        skill_path: skill_dir,
+        skill_path: skill_dir.clone(),
         receipt_dir: None,
         run_id: None,
         answers_path: Some(temp.path().join("answers.json")),
@@ -2797,10 +2805,63 @@ fn native_skill_run_rejects_partial_continuation_shape() -> Result<(), Box<dyn s
     assert!(
         answers_only
             .to_string()
-            .contains("skill continuation requires both run_id and answers")
+            .contains("agent continuation requires run_id")
     );
 
+    let missing_checkpoint = run_skill(SkillRunRequest {
+        skill_path: skill_dir,
+        receipt_dir: None,
+        run_id: Some("missing".to_owned()),
+        answers_path: Some(temp.path().join("answers.json")),
+        inputs: BTreeMap::new(),
+        env: BTreeMap::new(),
+        cwd: temp.path().to_path_buf(),
+        managed_agent: Default::default(),
+        local_credential: None,
+    })
+    .err()
+    .ok_or("an unadmitted run must not accept answers")?;
+    assert!(
+        missing_checkpoint
+            .to_string()
+            .contains("missing.agent-state.json")
+    );
     Ok(())
+}
+
+// Exercise durable admission before applying fixture answers; a named answer
+// without an admitted checkpoint is never a continuation.
+fn complete_agent_fixture(
+    request: SkillRunRequest,
+) -> Result<RunResult, Box<dyn std::error::Error>> {
+    let mut start = request.clone();
+    start.answers_path = None;
+    let pending = LocalOrchestrator::default().run_skill(&start)?;
+    let mut digests = serde_json::Map::new();
+    for pending_request in &pending.pending_requests {
+        let pending_object = object(pending_request, "pending request")?;
+        let id = string_field(pending_object, "id").ok_or("missing pending request id")?;
+        digests.insert(
+            id.to_owned(),
+            serde_json::Value::String(runx_contracts::sha256_prefixed(&serde_json::to_vec(
+                pending_request,
+            )?)),
+        );
+    }
+    assert!(!digests.is_empty());
+    let pending = serde_json::to_value(&pending.output)?;
+    assert_eq!(pending["status"], "needs_agent");
+    assert_eq!(pending["run_id"].as_str(), request.run_id.as_deref());
+    let answers_path = request
+        .answers_path
+        .as_ref()
+        .ok_or("fixture answers are required")?;
+    let mut answers: serde_json::Value = serde_json::from_slice(&fs::read(answers_path)?)?;
+    answers["request_digests"] = serde_json::Value::Object(digests);
+    fs::write(answers_path, serde_json::to_vec(&answers)?)?;
+    LocalOrchestrator::default()
+        .run_skill(&request)
+        .map_err(Into::into)
 }
 
 fn run_skill(request: SkillRunRequest) -> Result<RunResult, Box<dyn std::error::Error>> {

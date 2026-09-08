@@ -20,7 +20,7 @@ use crate::adapter::{InvocationOutput, SkillInvocation};
 use crate::agent_invocation::{AgentActInvocationSourceType, agent_act_resolution_request};
 use crate::effects::RuntimeEffectRegistry;
 use crate::execution::disposition::agent_answer_disposition_or_closed;
-use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::orchestrator::{RunResult, RunStatus, SkillRunRequest};
 use crate::execution::output_projection::project_step_claim;
 use crate::output_contract::project_declared_output_claim;
 use crate::receipts::paths::RUNX_RECEIPT_DIR_ENV;
@@ -35,12 +35,12 @@ mod agent;
 #[cfg(test)]
 mod credential_tests;
 mod graph;
-mod graph_state;
 #[cfg(feature = "cli-tool")]
 mod inline_harness;
 mod resolution_answers;
 pub(crate) mod runner_manifest;
 mod source_adapter;
+mod state_store;
 
 pub(crate) use self::graph::graph_domain_act_receipt;
 #[cfg(feature = "cli-tool")]
@@ -84,14 +84,9 @@ pub enum SkillRunError {
     ReceiptStore(#[from] ReceiptStoreError),
 }
 
-/// Optional, non-default knobs for a single skill run.
-///
-/// `execute_skill_run` keeps today's behavior (default runner, file-based
-/// answers). The inline harness needs two extra capabilities without touching
-/// the 35+ `SkillRunRequest` construction sites: select a named runner, and
-/// seed answers inline for a single fresh pass (distinct from the `answers_path`
-/// resume channel). Both default to "off", so `execute_skill_run` and every CLI
-/// path are unchanged.
+/// Per-run choices and explicitly shared native host services. Every entry
+/// point retains the same admission, continuation, and receipt semantics.
+/// Omitted services use the normal local runtime defaults.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SkillRunOverrides {
     /// Select a runner by name instead of the manifest default.
@@ -100,9 +95,13 @@ pub(crate) struct SkillRunOverrides {
     /// kept distinct from agent answers. `None` keeps the `answers_path`
     /// (resume-from-checkpoint) behavior.
     pub(crate) seeded_answers: Option<resolution_answers::ResolutionAnswers>,
+    /// Native host services shared for the lifetime of a local server session.
+    pub(crate) javascript: Option<crate::adapters::javascript::JavaScriptAdapter>,
+    pub(crate) credential_delivery: Option<crate::credentials::CredentialDelivery>,
 }
 
 pub(crate) struct ResolvedSkillRun<'a> {
+    pub(crate) loaded: &'a std::sync::Arc<crate::LoadedSkillPackage>,
     pub(crate) request: &'a SkillRunRequest,
     pub(crate) overrides: &'a SkillRunOverrides,
     pub(crate) effects: &'a RuntimeEffectRegistry,
@@ -115,6 +114,7 @@ pub(crate) struct ResolvedSkillRun<'a> {
 
 #[derive(Clone, Copy)]
 struct SkillExecutionContext<'a> {
+    loaded: Option<&'a std::sync::Arc<crate::LoadedSkillPackage>>,
     request: &'a SkillRunRequest,
     overrides: &'a SkillRunOverrides,
     effects: &'a RuntimeEffectRegistry,
@@ -129,7 +129,7 @@ struct SkillExecutionContext<'a> {
 pub(crate) fn execute_skill_run_with_effects(
     request: &SkillRunRequest,
     effects: &RuntimeEffectRegistry,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     execute_skill_run_with_overrides(request, &SkillRunOverrides::default(), effects)
 }
 
@@ -137,38 +137,8 @@ pub(crate) fn execute_skill_run_with_overrides(
     request: &SkillRunRequest,
     overrides: &SkillRunOverrides,
     effects: &RuntimeEffectRegistry,
-) -> Result<JsonValue, SkillRunError> {
-    let loaded = crate::load_validated_skill_package(&request.skill_path)?;
-    let skill_dir = loaded.directory.clone();
-    let manifest = loaded.manifest().cloned().ok_or_else(|| {
-        invalid(format!(
-            "skill package {} does not declare X.yaml runners",
-            skill_dir.display()
-        ))
-    })?;
-    let runner = selected_runner(&manifest, overrides.runner.as_deref())?.clone();
-    let package_digest = loaded.package.package_digest.clone();
-    // Every run binds its execution closure natively, so a paused run can
-    // always prove and resume the exact closure it prepared; the caller-bound
-    // path only adds expected-digest verification on top of the same binding.
-    let execution_closure_digest = crate::skill_package::verify_loaded_execution_binding(
-        loaded,
-        &runner.name,
-        &request.env,
-        None,
-        None,
-    )
-    .map_err(|error| invalid(error.to_string()))?;
-    execute_skill_run_with_resolved(ResolvedSkillRun {
-        request,
-        overrides,
-        effects,
-        skill_dir: &skill_dir,
-        manifest: &manifest,
-        runner: &runner,
-        package_digest: &package_digest,
-        execution_closure_digest: execution_closure_digest.as_deref(),
-    })
+) -> Result<RunResult, SkillRunError> {
+    execute_bound_skill_run_with_overrides(request, overrides, effects, None, None)
 }
 
 pub(crate) fn execute_bound_skill_run_with_overrides(
@@ -177,8 +147,8 @@ pub(crate) fn execute_bound_skill_run_with_overrides(
     effects: &RuntimeEffectRegistry,
     expected_package_digest: Option<&str>,
     expected_execution_closure_digest: Option<&str>,
-) -> Result<JsonValue, SkillRunError> {
-    let loaded = crate::load_validated_skill_package(&request.skill_path)?;
+) -> Result<RunResult, SkillRunError> {
+    let loaded = std::sync::Arc::new(crate::load_validated_skill_package(&request.skill_path)?);
     let skill_dir = loaded.directory.clone();
     let manifest = loaded.manifest().cloned().ok_or_else(|| {
         invalid(format!(
@@ -189,7 +159,7 @@ pub(crate) fn execute_bound_skill_run_with_overrides(
     let runner = selected_runner(&manifest, overrides.runner.as_deref())?.clone();
     let package_digest = loaded.package.package_digest.clone();
     let execution_closure_digest = crate::skill_package::verify_loaded_execution_binding(
-        loaded,
+        loaded.clone(),
         &runner.name,
         &request.env,
         expected_package_digest,
@@ -198,6 +168,7 @@ pub(crate) fn execute_bound_skill_run_with_overrides(
     .map_err(|error| invalid(error.to_string()))?;
     execute_skill_run_with_resolved_trust(
         ResolvedSkillRun {
+            loaded: &loaded,
             request,
             overrides,
             effects,
@@ -211,23 +182,18 @@ pub(crate) fn execute_bound_skill_run_with_overrides(
     )
 }
 
-pub(crate) fn execute_skill_run_with_resolved(
-    resolved: ResolvedSkillRun<'_>,
-) -> Result<JsonValue, SkillRunError> {
-    execute_skill_run_with_resolved_trust(resolved, false)
-}
-
 pub(crate) fn execute_prepared_skill_run_with_resolved(
     resolved: ResolvedSkillRun<'_>,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     execute_skill_run_with_resolved_trust(resolved, true)
 }
 
 fn execute_skill_run_with_resolved_trust(
     resolved: ResolvedSkillRun<'_>,
     trusted_prepared: bool,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let ResolvedSkillRun {
+        loaded,
         request,
         overrides,
         effects,
@@ -248,8 +214,8 @@ fn execute_skill_run_with_resolved_trust(
     let request = &request;
     let skill_env = workspace.skill_env_for_skill(skill_dir);
     if !trusted_prepared {
-        load_skill_operator_context_chain(
-            skill_dir,
+        super::operator_context::load_skill_operator_context_chain_from_package(
+            loaded,
             Some(&runner.name),
             SkillOperatorContextOptions::new(
                 workspace.env().clone(),
@@ -258,13 +224,17 @@ fn execute_skill_run_with_resolved_trust(
             .with_effects(effects.clone()),
         )?;
     }
-    validate_declared_credential(
-        manifest,
-        runner,
-        request.local_credential.as_ref(),
-        &skill_env,
-    )?;
-    let invocation = runner_invocation(
+    if let Some(delivery) = &overrides.credential_delivery {
+        validate_resolved_credential(manifest, runner, delivery)?;
+    } else {
+        validate_declared_credential(
+            manifest,
+            runner,
+            request.local_credential.as_ref(),
+            &skill_env,
+        )?;
+    }
+    let mut invocation = runner_invocation(
         skill_dir,
         manifest,
         runner,
@@ -272,11 +242,15 @@ fn execute_skill_run_with_resolved_trust(
         &skill_env,
         request.local_credential.as_ref(),
     )?;
+    if let Some(delivery) = &overrides.credential_delivery {
+        invocation.credential_delivery = delivery.clone();
+    }
     crate::execution_environment::resolve_declared_environment(
         &invocation.requirements,
         &invocation.env,
     )?;
     let context = SkillExecutionContext {
+        loaded: Some(loaded),
         request,
         overrides,
         effects,
@@ -298,6 +272,36 @@ fn execute_skill_run_with_resolved_trust(
     }
 
     execute_agent_skill_run(&context, invocation)
+}
+
+fn validate_resolved_credential(
+    manifest: &SkillRunnerManifest,
+    runner: &SkillRunnerDefinition,
+    delivery: &crate::credentials::CredentialDelivery,
+) -> Result<(), SkillRunError> {
+    let observation = delivery.public_observation();
+    let requirement = runner
+        .credential
+        .as_ref()
+        .and_then(|name| manifest.credentials.get(name));
+    match (requirement, observation) {
+        (None, None) if delivery.secret_env().is_empty() => Ok(()),
+        (Some(requirement), Some(observation))
+            if observation.provider.as_str() == requirement.provider
+                && delivery.secret_env().iter().all(|(name, _)| {
+                    requirement
+                        .deliveries
+                        .values()
+                        .any(|allowed| allowed == name)
+                }) =>
+        {
+            Ok(())
+        }
+        _ => Err(invalid(format!(
+            "resolved credential does not satisfy runner '{}' requirement",
+            runner.name
+        ))),
+    }
 }
 
 #[derive(Serialize)]
@@ -405,11 +409,32 @@ fn prepare_skill_execution(
     trusted_prepared: bool,
 ) -> Result<(SkillRunRequest, WorkspaceEnv, ReceiptServices), SkillRunError> {
     let mut request = request.clone();
+    let raw_workspace =
+        WorkspaceEnv::new(request.env.clone(), request.cwd.clone()).map_err(RuntimeError::from)?;
+    let receipts = ReceiptServices::from_env_or_local_development(raw_workspace.env())
+        .map_err(|error| SkillRunError::Invalid(error.to_string()))?;
+    if request.answers_path.is_some()
+        && matches!(
+            runner.source.source_type,
+            runx_parser::SourceKind::Agent | runx_parser::SourceKind::AgentStep
+        )
+    {
+        state_store::restore_agent_inputs(
+            &mut request,
+            &raw_workspace,
+            &receipts,
+            &runner.name,
+            package_digest,
+            execution_closure_digest,
+        )?;
+    }
     crate::input_contract::apply_defaults(&runner.inputs, &mut request.inputs);
-    request.inputs = match crate::input_contract::materialize_present_runner_inputs(
-        &runner.inputs,
-        &request.inputs,
-    ) {
+    let materialize = if request.answers_path.is_some() {
+        crate::input_contract::materialize_present_runner_inputs
+    } else {
+        crate::input_contract::materialize_complete_runner_inputs
+    };
+    request.inputs = match materialize(&runner.inputs, &request.inputs) {
         Ok(inputs) => inputs,
         Err(error) => {
             let source = error.into_runtime_error();
@@ -432,10 +457,6 @@ fn prepare_skill_execution(
             });
         }
     };
-    let raw_workspace =
-        WorkspaceEnv::new(request.env.clone(), request.cwd.clone()).map_err(RuntimeError::from)?;
-    let receipts = ReceiptServices::from_env_or_local_development(raw_workspace.env())
-        .map_err(|error| SkillRunError::Invalid(error.to_string()))?;
     let mut runtime_env = request.env.clone();
     let resolved_receipt_path =
         receipts.resolve_path(&raw_workspace, request.receipt_dir.as_deref(), None);
@@ -575,7 +596,7 @@ fn needs_agent_output(
     run_id: &str,
     request_id: &str,
     request: JsonValue,
-) -> JsonObject {
+) -> RunResult {
     let mut output = JsonObject::new();
     output.insert(
         "schema".to_owned(),
@@ -591,11 +612,20 @@ fn needs_agent_output(
     );
     output.insert("runner".to_owned(), JsonValue::String(runner.to_owned()));
     output.insert("run_id".to_owned(), JsonValue::String(run_id.to_owned()));
+    let pending_requests = vec![request_for_public_loop(request_id, request)];
     output.insert(
         "requests".to_owned(),
-        JsonValue::Array(vec![request_for_public_loop(request_id, request)]),
+        JsonValue::Array(pending_requests.clone()),
     );
-    output
+    RunResult {
+        status: RunStatus::NeedsAgent,
+        disposition: None,
+        output: JsonValue::Object(output),
+        receipt_refs: Vec::new(),
+        child_receipt_refs: Vec::new(),
+        pending_requests,
+        diagnostics: Vec::new(),
+    }
 }
 
 fn request_for_public_loop(request_id: &str, request: JsonValue) -> JsonValue {
@@ -993,7 +1023,7 @@ fn sealed_output(
     result: &JsonValue,
     diagnostics: SkillOutputDiagnostics,
     receipt: &runx_contracts::Receipt,
-) -> JsonObject {
+) -> RunResult {
     let mut output = JsonObject::new();
     output.insert(
         "schema".to_owned(),
@@ -1052,7 +1082,7 @@ fn sealed_output(
         }
         output.insert("error".to_owned(), JsonValue::Object(error));
     }
-    output
+    RunResult::sealed(JsonValue::Object(output), receipt)
 }
 
 #[derive(Default)]

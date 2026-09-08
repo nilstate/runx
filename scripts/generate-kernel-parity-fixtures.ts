@@ -414,6 +414,16 @@ function fixtureCases(): readonly KernelFixtureCase[] {
       },
     },
     {
+      name: "scope-grant-delegated-denies-empty-namespace",
+      input: {
+        kind: "policy.scopeGrantAllows",
+        grantedScope: ":*",
+        requestedScope: ":read",
+        policy: "delegated",
+      },
+      expected: { kind: "output", value: false },
+    },
+    {
       name: "scope-grant-delegated-denies-nested-segment",
       input: {
         kind: "policy.scopeGrantAllows",
@@ -546,92 +556,6 @@ function fixtureCases(): readonly KernelFixtureCase[] {
         grants: [githubReadGrant],
         options: {
           connectedAuthCheckedAt,
-        },
-      },
-    },
-    {
-      name: "public-work-blocks-dependency-bot-pr",
-      input: {
-        kind: "policy.evaluatePublicPullRequestCandidate",
-        request: {
-          authorLogin: "dependabot[bot]",
-          title: "Bump react from 19.0.0 to 19.0.1",
-          labels: ["dependencies"],
-          headRefName: "dependabot/npm_and_yarn/react-19.0.1",
-        },
-      },
-    },
-    {
-      name: "public-work-blocks-hyphen-version-title",
-      input: {
-        kind: "policy.evaluatePublicPullRequestCandidate",
-        request: {
-          authorLogin: "maintainer",
-          title: "upgrade abc-1.2",
-          labels: [],
-          headRefName: "feature/upgrade-abc",
-        },
-      },
-    },
-    {
-      name: "public-work-denies-cold-comment",
-      input: {
-        kind: "policy.evaluatePublicCommentOpportunity",
-        request: {
-          source: "github_pull_request",
-          lane: "issue-triage",
-          authorLogin: "stranger",
-          authorAssociation: "NONE",
-          title: "Clarify docs wording",
-          labels: [],
-          headRefName: "docs/fix-wording",
-          commentsCount: 0,
-          reviewCommentsCount: 0,
-        },
-      },
-    },
-    {
-      name: "public-work-denies-trust-recovery",
-      input: {
-        kind: "policy.evaluatePublicCommentOpportunity",
-        request: {
-          source: "github_pull_request",
-          lane: "issue-triage",
-          authorLogin: "maintainer",
-          authorAssociation: "CONTRIBUTOR",
-          title: "Improve onboarding docs",
-          labels: [],
-          headRefName: "docs/onboarding",
-          commentsCount: 1,
-          reviewCommentsCount: 0,
-          recentOutcomes: [{ status: "cooldown" }],
-        },
-        policy: {
-          trust_recovery_statuses: ["cooldown"],
-        },
-      },
-    },
-    {
-      name: "public-work-normalizes-policy",
-      input: {
-        kind: "policy.normalizePublicWorkPolicy",
-        policy: {
-          blocked_author_patterns: ["  Team-Bot  "],
-          blocked_exact_labels: [" Needs Review "],
-          require_welcome_signal_for_pull_request_comments: false,
-        },
-      },
-    },
-    {
-      name: "public-work-normalizes-empty-arrays",
-      input: {
-        kind: "policy.normalizePublicWorkPolicy",
-        policy: {
-          blocked_author_patterns: [],
-          blocked_head_ref_prefixes: [],
-          blocked_exact_labels: [],
-          blocked_label_prefixes: [],
-          trust_recovery_statuses: [],
         },
       },
     },

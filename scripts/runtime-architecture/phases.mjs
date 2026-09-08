@@ -32,23 +32,42 @@ export function checkServiceBoundary(findings) {
   }
 }
 
-export function checkExecutionSplit(findings) {
-  const stepsPath = path.join(workspaceRoot, "crates/runx-runtime/src/execution/runner/steps.rs");
-  if (!existsSync(stepsPath)) {
-    return;
+export function checkExecutionSplit(findings, root = workspaceRoot) {
+  const runner = "crates/runx-runtime/src/execution/runner";
+  for (const owner of ["step_handlers.rs", "step_handlers/inputs.rs", "step_handlers/output.rs", "step_handlers/host_resolution.rs"]) {
+    const relativePath = `${runner}/${owner}`;
+    const filePath = path.join(root, relativePath);
+    if (!existsSync(filePath)) {
+      findings.push(`Missing current execution owner ${relativePath}.`);
+      continue;
+    }
+    findings.push(...checkExecutionSource(owner, productionRustSource(readFileSync(filePath, "utf8"))));
   }
-  const source = readFileSync(stepsPath, "utf8");
-  const forbidden = [
-    /\bstep_receipt_with\b/u,
-    /\brequest_approval\b/u,
-    /\bSkillAdapter::invoke\b/u,
-    /\bresolve_inputs\b/u,
-  ];
-  for (const pattern of forbidden) {
-    if (pattern.test(source)) {
-      findings.push(`${relative(stepsPath)} still contains mixed runner responsibility token ${pattern}`);
+  if (existsSync(path.join(root, runner, "steps.rs"))) {
+    findings.push(`${runner}/steps.rs is retired; step_handlers owns concrete step execution.`);
+  }
+}
+
+export function checkExecutionSource(owner, source) {
+  const findings = [];
+  // Check responsibility crossings, not file size. The concrete handler retains
+  // the ordered admit/invoke/seal sequence; its data helpers must not perform it.
+  const forbidden = owner === "step_handlers.rs"
+    ? /\brequest_approval\b/u
+    : owner === "step_handlers/host_resolution.rs"
+      ? /\b(?:SkillAdapter|BorrowedSkillAdapter|seal_step|prepare_effect_execution|resolve_inputs)\b/u
+      : /\b(?:SkillAdapter|BorrowedSkillAdapter|Host|request_approval|seal_step|prepare_effect_execution|LocalReceiptStore)\b|\bcrate::(?:host|receipts|effects)::|\bstd::(?:fs|net|process)::/u;
+  if (forbidden.test(source)) {
+    findings.push(`${owner} crosses its execution responsibility boundary (${forbidden}).`);
+  }
+  if (owner === "step_handlers.rs") {
+    for (const child of ["inputs", "output", "host_resolution"]) {
+      if (!new RegExp(`\\bmod\\s+${child}\\s*;`, "u").test(source)) {
+        findings.push(`step_handlers.rs must declare its ${child} owner.`);
+      }
     }
   }
+  return findings;
 }
 
 export function checkProjectionHotPaths(findings) {

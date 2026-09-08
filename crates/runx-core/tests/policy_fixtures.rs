@@ -2,11 +2,8 @@ use runx_contracts::JsonValue;
 use runx_core::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
-    PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
     ScopeGrantPolicy, admit_graph_step_scopes, admit_local_skill, build_authority_proof_metadata,
-    build_local_scope_admission, evaluate_public_comment_opportunity,
-    evaluate_public_pull_request_candidate, normalize_public_work_policy, scope_grant_allows,
-    validate_credential_binding,
+    build_local_scope_admission, scope_grant_allows, validate_credential_binding,
 };
 use serde::Deserialize;
 
@@ -138,35 +135,15 @@ const FIXTURES: &[(&str, &str)] = &[
         ),
     ),
     (
-        "public-work-blocks-dependency-bot-pr",
-        include_str!("../../../fixtures/kernel/policy/public-work-blocks-dependency-bot-pr.json"),
-    ),
-    (
-        "public-work-blocks-hyphen-version-title",
-        include_str!(
-            "../../../fixtures/kernel/policy/public-work-blocks-hyphen-version-title.json"
-        ),
-    ),
-    (
-        "public-work-denies-cold-comment",
-        include_str!("../../../fixtures/kernel/policy/public-work-denies-cold-comment.json"),
-    ),
-    (
-        "public-work-denies-trust-recovery",
-        include_str!("../../../fixtures/kernel/policy/public-work-denies-trust-recovery.json"),
-    ),
-    (
-        "public-work-normalizes-policy",
-        include_str!("../../../fixtures/kernel/policy/public-work-normalizes-policy.json"),
-    ),
-    (
-        "public-work-normalizes-empty-arrays",
-        include_str!("../../../fixtures/kernel/policy/public-work-normalizes-empty-arrays.json"),
-    ),
-    (
         "scope-grant-delegated-allows-one-segment",
         include_str!(
             "../../../fixtures/kernel/policy/scope-grant-delegated-allows-one-segment.json"
+        ),
+    ),
+    (
+        "scope-grant-delegated-denies-empty-namespace",
+        include_str!(
+            "../../../fixtures/kernel/policy/scope-grant-delegated-denies-empty-namespace.json"
         ),
     ),
     (
@@ -233,23 +210,6 @@ enum PolicyInput {
     ValidateCredentialBinding {
         request: Box<CredentialBindingRequest>,
     },
-    #[serde(rename = "policy.evaluatePublicPullRequestCandidate")]
-    EvaluatePublicPullRequestCandidate {
-        request: PublicPullRequestCandidateRequest,
-        #[serde(default)]
-        policy: PublicWorkPolicy,
-    },
-    #[serde(rename = "policy.evaluatePublicCommentOpportunity")]
-    EvaluatePublicCommentOpportunity {
-        request: PublicCommentOpportunityRequest,
-        #[serde(default)]
-        policy: PublicWorkPolicy,
-    },
-    #[serde(rename = "policy.normalizePublicWorkPolicy")]
-    NormalizePublicWorkPolicy {
-        #[serde(default)]
-        policy: PublicWorkPolicy,
-    },
     #[serde(rename = "policy.scopeGrantAllows")]
     ScopeGrantAllows {
         #[serde(rename = "grantedScope")]
@@ -292,15 +252,6 @@ fn evaluate_policy_input(input: PolicyInput) -> Result<serde_json::Value, serde_
         }
         PolicyInput::ValidateCredentialBinding { request } => {
             serde_json::to_value(validate_credential_binding(&request))
-        }
-        PolicyInput::EvaluatePublicPullRequestCandidate { request, policy } => {
-            serde_json::to_value(evaluate_public_pull_request_candidate(&request, &policy))
-        }
-        PolicyInput::EvaluatePublicCommentOpportunity { request, policy } => {
-            serde_json::to_value(evaluate_public_comment_opportunity(&request, &policy))
-        }
-        PolicyInput::NormalizePublicWorkPolicy { policy } => {
-            serde_json::to_value(normalize_public_work_policy(&policy))
         }
         PolicyInput::ScopeGrantAllows {
             granted_scope,

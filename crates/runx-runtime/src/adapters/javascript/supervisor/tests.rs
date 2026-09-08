@@ -53,6 +53,53 @@ fn supervisors_own_independent_session_state() {
 }
 
 #[test]
+fn concurrently_started_workers_close_while_their_siblings_stay_alive()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use super::session::{WorkerLaunchPlan, WorkerSession};
+
+    let plan = WorkerLaunchPlan::prepare(None)?;
+    for _ in 0..32 {
+        let barrier = Barrier::new(4);
+        let mut sessions = thread::scope(|scope| {
+            let starts = (0..4)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        WorkerSession::start(&plan)
+                    })
+                })
+                .collect::<Vec<_>>();
+            starts
+                .into_iter()
+                .map(|start| start.join().expect("worker startup thread"))
+                .collect::<Result<Vec<_>, _>>()
+        })?;
+        while let Some(session) = sessions.pop() {
+            let (closed_tx, closed_rx) = mpsc::channel();
+            let closing = thread::spawn(move || {
+                drop(session);
+                let _ = closed_tx.send(());
+            });
+            let closed = closed_rx.recv_timeout(Duration::from_secs(5));
+            if closed.is_err() {
+                // Release any inherited handles before joining the failed
+                // close, so this regression reports a failure instead of
+                // stranding the test runner in the same destructor deadlock.
+                for sibling in &mut sessions {
+                    sibling.terminate();
+                }
+            }
+            closing.join().expect("worker shutdown thread");
+            assert!(closed.is_ok(), "worker shutdown depended on a live sibling");
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn pooled_worker_never_reuses_a_session_for_a_different_runtime_path()
 -> Result<(), Box<dyn std::error::Error>> {
     let supervisor = JavaScriptWorkerSupervisor::new(1);

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use runx_contracts::{JsonObject, JsonValue};
-use runx_parser::{SkillMcpServer, SkillRunnerDefinition};
+use runx_parser::SkillMcpServer;
 
 use crate::credentials::SecretEnv;
 use crate::process_invocation::PreparedProcessInvocation;
@@ -68,8 +68,9 @@ pub enum McpServerToolBehavior {
 pub struct McpServerSkillExecution {
     pub skill_path: PathBuf,
     pub skill_name: String,
-    pub runner: SkillRunnerDefinition,
-    pub requirements: runx_contracts::ExecutionRequirements,
+    pub runner: String,
+    pub package_digest: String,
+    pub execution_closure_digest: String,
     pub receipt_dir: Option<PathBuf>,
     pub env: BTreeMap<String, String>,
     pub credential_delivery: crate::credentials::CredentialDelivery,
@@ -85,39 +86,6 @@ pub struct McpToolResult {
 #[derive(Clone, Debug, PartialEq)]
 pub struct McpContent {
     pub text: String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum McpHostRunResult {
-    Completed {
-        skill_name: String,
-        output: JsonValue,
-        receipt_id: String,
-        runx: JsonObject,
-    },
-    NeedsAgent {
-        skill_name: String,
-        run_id: String,
-        request_count: usize,
-        runx: JsonObject,
-    },
-    Denied {
-        skill_name: String,
-        receipt_id: Option<String>,
-        runx: JsonObject,
-    },
-    Escalated {
-        skill_name: String,
-        receipt_id: String,
-        error: String,
-        runx: JsonObject,
-    },
-    Failed {
-        skill_name: String,
-        receipt_id: Option<String>,
-        error: String,
-        runx: JsonObject,
-    },
 }
 
 #[derive(Debug)]

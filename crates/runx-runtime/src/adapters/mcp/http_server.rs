@@ -110,7 +110,7 @@ pub(crate) async fn serve_mcp_http_listener(
         }
     }
     let service = StreamableHttpService::new(
-        move || Ok::<_, std::io::Error>(RmcpProofServer::from_options(options.clone())),
+        move || RmcpProofServer::from_options(options.clone()).map_err(std::io::Error::other),
         Arc::new(LocalSessionManager::default()),
         StreamableHttpServerConfig::default(),
     );
