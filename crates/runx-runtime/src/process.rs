@@ -80,6 +80,22 @@ pub(crate) fn cleanup_paths_quietly(paths: &[std::path::PathBuf]) {
     }
 }
 
+/// Keep concurrent launches from inheriting another child's transient pipes.
+/// Apple's std pipe implementation sets CLOEXEC after pipe creation; the lock
+/// covers pipe setup and spawn only, never a handshake, wait, or invocation.
+/// All runtime process owners must share this lock rather than lock per pool.
+#[inline]
+pub(crate) fn with_spawn_lock<T>(spawn: impl FnOnce() -> std::io::Result<T>) -> std::io::Result<T> {
+    #[cfg(target_vendor = "apple")]
+    let _guard = {
+        static SPAWN_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        SPAWN_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    };
+    spawn()
+}
+
 #[cfg(not(windows))]
 pub(crate) fn ensure_windows_host_job() -> std::io::Result<()> {
     Ok(())

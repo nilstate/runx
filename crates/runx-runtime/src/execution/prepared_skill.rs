@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use super::operator_context::{
     SkillOperatorContextChain, SkillOperatorContextNode, SkillOperatorContextOptions,
-    load_skill_operator_context_chain,
+    load_skill_operator_context_chain_from_package,
 };
 use super::orchestrator::ManagedAgentPolicy;
 use super::orchestrator::{LocalCredentialDescriptor, SkillRunRequest};
@@ -246,7 +246,9 @@ impl PreparedSkillRun {
         &self.runner
     }
 
-    pub(crate) fn verify_artifacts(&self) -> Result<(), SkillRunError> {
+    pub(crate) fn verify_artifacts(
+        &self,
+    ) -> Result<std::sync::Arc<crate::LoadedSkillPackage>, SkillRunError> {
         for guard in &self.guards {
             let content = fs::read(&guard.path).map_err(|source| {
                 RuntimeError::io(
@@ -264,15 +266,17 @@ impl PreparedSkillRun {
                 )));
             }
         }
-        let loaded = crate::load_validated_skill_package(&self.report.request.skill_path)?;
+        let loaded = std::sync::Arc::new(crate::load_validated_skill_package(
+            &self.report.request.skill_path,
+        )?);
         crate::skill_package::verify_loaded_execution_binding(
-            loaded,
+            loaded.clone(),
             &self.selected_runner,
             &self.request.env,
             Some(&self.package_digest),
             self.execution_closure_digest(),
         )
-        .map(|_| ())
+        .map(|_| loaded)
         .map_err(|message| {
             SkillRunError::Invalid(format!(
                 "skill execution binding drift at execution boundary: {message}"
@@ -316,7 +320,7 @@ pub(crate) fn prepare_skill_run_with_effects(
     effects: &crate::RuntimeEffectRegistry,
 ) -> Result<PreparedSkillRun, SkillRunError> {
     strip_untrusted_prepared_env(&mut request.env);
-    let loaded = crate::load_validated_skill_package(&request.skill_path)?;
+    let loaded = std::sync::Arc::new(crate::load_validated_skill_package(&request.skill_path)?);
     let manifest = loaded.manifest().cloned().ok_or_else(|| {
         SkillRunError::Invalid(format!(
             "skill package {} does not declare X.yaml runners",
@@ -327,7 +331,7 @@ pub(crate) fn prepare_skill_run_with_effects(
     let skill_dir = loaded.directory.clone();
     let runner = selected_runner(&manifest, selected_runner_name)?.clone();
     let execution_closure_digest = crate::skill_package::verify_loaded_execution_binding(
-        loaded,
+        loaded.clone(),
         &runner.name,
         &request.env,
         entry.package_digest.as_deref(),
@@ -350,7 +354,7 @@ pub(crate) fn prepare_skill_run_with_effects(
     };
     let request_summary = request_summary(&request, &skill_dir, &runner.name, entry);
     let context = input_failure.as_ref().map_or_else(
-        || resolve_prepared_context(&request, &skill_dir, &runner, effects),
+        || resolve_prepared_context(&request, &loaded, &runner, effects),
         |error| {
             blocked_prepared_context(
                 vec![PreparedTraceEntry {
@@ -481,7 +485,7 @@ fn prepared_context_digest(
 
 fn resolve_prepared_context(
     request: &SkillRunRequest,
-    skill_dir: &Path,
+    loaded: &crate::LoadedSkillPackage,
     runner: &SkillRunnerDefinition,
     effects: &crate::RuntimeEffectRegistry,
 ) -> PreparedContextResolution {
@@ -497,8 +501,8 @@ fn resolve_prepared_context(
         return blocked_prepared_context(trace, "entry", "validate_inputs", reason);
     }
 
-    match load_skill_operator_context_chain(
-        skill_dir,
+    match load_skill_operator_context_chain_from_package(
+        loaded,
         Some(&runner.name),
         SkillOperatorContextOptions::new(request.env.clone(), request.cwd.clone())
             .with_effects(effects.clone()),
@@ -959,7 +963,7 @@ mod tests {
             "skill: twitter\nrunners:\n  inspect:\n    default: true\n    type: graph\n    graph:\n      name: twitter\n      result_from: [store]\n      steps:\n        - id: store\n          skill: ../data-store\n          runner: read\n",
         )?;
         let closure = crate::skill_package::inspect_loaded_execution_closure_binding(
-            crate::load_validated_skill_package(&entry)?,
+            crate::load_validated_skill_package(&entry)?.into(),
             "inspect",
             &BTreeMap::new(),
         )?;
@@ -1027,7 +1031,7 @@ mod tests {
         let loaded = crate::load_validated_skill_package(temp.path())?;
         let package_digest = loaded.package.package_digest.clone();
         let closure = crate::skill_package::inspect_loaded_execution_closure_binding(
-            loaded,
+            loaded.into(),
             "main",
             &BTreeMap::new(),
         )?;

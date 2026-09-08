@@ -1,70 +1,76 @@
 # scafld Agent Contract
 
-## Contract
+## Default Agent Flow
 
-- `spec` is the living contract.
-- `session` is the durable evidence ledger.
-- `handoff` is transport, not source of truth.
-- `review` is the adversarial completion gate.
+Work with the host agent's normal planning, editing, and testing tools. When the work appears done, call `review`, then call `finalize`.
 
-You execute autonomously inside the contract. You do not close the task unchallenged.
+`review` is the independent provider gate. It records accepted review evidence and returns blockers or a passing review. `finalize` consumes that accepted review, records deterministic acceptance evidence, signs the receipt, and archives the spec. It never invokes a provider or model. The agent does not grade its own completion.
 
-## Commands
+The receipt reports its independence level honestly. `cross_vendor` means multi-model review that can reduce correlated blind spots; it is still single-party local tooling unless a separate operator or CI trust domain verifies the receipt. `isolation_only` means the reviewer was isolated but cross-vendor separation was not proven.
+
+## Merge Wall
+
+CI runs `scafld verify <receipt> --target <commit-ish>` against the signed receipt. This is the hard wall for merging. The Claude Stop hook is only a local affordance; it can be bypassed in subagents, piped runs, Codex, Gemini, or other hosts.
+
+## Human And CI Lifecycle
+
+The full CLI lifecycle remains available for operators, automation, and debugging:
 
 ```bash
 scafld init
 scafld plan <task-id> --title "Title" --size small --risk low
 scafld harden <task-id>
-scafld harden <task-id> --mark-passed
 scafld validate <task-id>
 scafld approve <task-id>
 scafld build <task-id>
 scafld review <task-id>
-scafld complete <task-id>
+scafld finalize <task-id>
+scafld verify <receipt> --target <commit-ish>
 scafld status <task-id>
-scafld list
-scafld report
 scafld handoff <task-id>
-scafld update
 ```
 
-For real review: `scafld review <task-id> --provider {codex|claude|command}`.
-`--provider local` is smoke-test only and cannot satisfy `complete`.
-Only an operator may use `scafld review <task-id> --human-reviewed --reason ...`.
+Use `scafld harden` to strengthen drafts before approval. Use `scafld build` to record phase evidence. Use `scafld review` for the provider gate, then `scafld finalize` after a passing review. `scafld complete` is a legacy ledger transition and is not required after finalize. Use `scafld status --json` for automation.
 
-## Source Checkout
+For manual acceptance, use `scafld build <task-id> --criterion <id> --disposition pass --evidence-digest <sha256> --actor <actor> --reason <what-was-verified>`. Never edit criterion state or substitute a fake shell check.
 
-Inside the scafld repo, use `./bin/scafld` or `go run ./cmd/scafld`. Do not use
-a copied compiled binary; stale binaries can report old lifecycle state.
+If harden evidence is incomplete, stale, failed, or `needs_revision`, approval
+requires `scafld approve <task-id> --reason <reason>`. Fix real shape blockers
+in the draft and rerun harden; use a reason only for an explicit operator
+decision to reject bookkeeping, advisory, or overengineering findings.
 
-## Lifecycle
+## Agent Context Hierarchy
 
-```text
-plan -> harden -> approve -> build -> review -> complete
-```
-
-Hardening attacks the draft. Review attacks the result.
-Build opens one phase at a time. After implementing the opened phase, run
-`scafld build <task-id>` again to record evidence and advance.
+Use structured JSON for lifecycle state and gate state. Use the embedded
+`Source Spec Markdown` section as the canonical task contract when it is present
+in a scafld packet. Derived sections are projections and indexes over those
+sources, not independent contracts.
 
 ## Do Not
 
-- Edit outside declared scope, objectives, or invariants.
+- Close governed work without `finalize` or an explicit human decision.
+- Modify another active spec unless the user explicitly assigns it.
 - Reconstruct lifecycle state by scraping Markdown. Use `status --json`.
+- Act from an older scafld packet when a newer status, handoff, harden, or
+  review packet is available.
 - Mutate `.scafld/core/` by hand. Use `scafld update`.
-- Run `--provider local` for real review.
-- Cite files, commands, or review findings you have not verified.
+- Treat the Stop hook as the merge wall. CI verify is the wall.
+- Cite files, commands, receipts, or review findings you have not verified.
 
 ## Prompts
 
-`.scafld/prompts/*` overrides `.scafld/core/prompts/*` overrides built-ins.
+Embedded scafld prompts are the runtime default. `.scafld/core/prompts/*` is the
+managed visible copy refreshed by `scafld update`. `.scafld/prompts/*` overrides
+runtime only when the file contains `scafld:prompt-owner=project`; unmarked
+workspace prompt copies are refreshable scaffolding and ignored by runtime.
 
 # runx OSS Agent Guide
 
 Canonical reference for AI coding agents working in the runx OSS workspace.
 This repo uses scafld for non-trivial work, but the architecture rules are the
-runx rules in `CONVENTIONS.md`, `docs/rust-kernel-architecture.md`, and
-`docs/trusted-kernel-package-truth.md`.
+runx rules in `CONVENTIONS.md` and the normative
+`docs/architecture/runx-system.md`. `docs/ts-interop-boundary.md` records
+surviving language-package boundaries; historical migration notes are context.
 
 **Key files:**
 
@@ -73,37 +79,6 @@ runx rules in `CONVENTIONS.md`, `docs/rust-kernel-architecture.md`, and
 - `.scafld/prompts/exec.md` - Execution mode prompt
 - `.scafld/core/schemas/spec.json` - Spec validation schema
 - `CONVENTIONS.md` - Coding standards and patterns
-
----
-
-## How scafld Works
-
-Spec-driven development: every non-trivial task becomes a machine-readable markdown specification before any code changes happen.
-
-1. **Plan** - Analyze task, explore codebase, generate spec in `.scafld/specs/drafts/`
-2. **Review** - Human reviews and approves the spec
-3. **Build** - Agent executes approved spec with validation
-4. **Complete** - Completed specs are marked through the scafld lifecycle
-
-The spec is the contract. Operate autonomously within its bounds; pause for approval on deviations.
-
-For detailed planning instructions, read `.scafld/prompts/plan.md`. For execution, read `.scafld/prompts/exec.md`.
-
----
-
-## Spec Status Lifecycle
-
-```text
-draft → approved → review → completed
-  ↓         ↓          ↓
-(edit)   failed    cancelled
-```
-
-Valid transitions:
-
-- `draft` → `approved` → `review` → `completed`
-- active work can move to `failed` or `cancelled`
-- blocked work must be recorded in the spec state and handoff
 
 ---
 
@@ -157,12 +132,13 @@ shims for governed wire shapes.
 
 ### Generic Stateful Effects
 
-Official skills that drive stateful hosted apps emit generic effect transition
-packets. Put product identity in `effect_family` and the runner/action in
-`operation`; do not add product-specific `AuthorityResourceFamily` variants or
-`runx.<product>.*` packet namespaces. Stateful app memory belongs in the hosted
-stateful-effect substrate and its declared reducers/views, not in OSS core
-enums or bespoke runtime branches.
+Official skills that drive stateful apps emit generic effect transition packets.
+Put product identity in `effect_family` and the runner/action in `operation`;
+do not add product-specific `AuthorityResourceFamily` variants or
+`runx.<product>.*` packet namespaces. The owning product declares state,
+transitions and views. Operator state stays local by default; hosted persistence
+requires an explicit binding. OSS core must not acquire product state or bespoke
+runtime branches.
 
 ### No Legacy Fallbacks
 
@@ -201,42 +177,13 @@ No test fixtures, mocks, or conditional test-only logic in production code. Test
 
 ---
 
-## Spec Management
-
-**Always use the `scafld` CLI for spec lifecycle management.** Never manually move, copy, or rename spec files between directories. Never manually change the `status` field. The CLI enforces validation, state transitions, and the review gate — bypassing it breaks the audit trail.
-
----
-
-## Operating Modes
-
-### Planning Mode
-
-- **When:** Starting a new task, exploring requirements
-- **Actions:** Search, read, analyze (NO code changes outside `.scafld/specs/`)
-- **Output:** Markdown spec in `.scafld/specs/drafts/` with status `draft`
-- **Prompt:** Read `.scafld/prompts/plan.md` before entering this mode
-
-### Execution Mode
-
-- **When:** Spec has status `approved`
-- **Actions:** Apply changes, run acceptance criteria, record scafld build evidence
-- **Output:** Code changes, validation results, updated spec
-- **Prompt:** Read `.scafld/prompts/exec.md` before entering this mode
-- **Autonomy:** Execute all phases without pausing unless blocked, deviating from spec, or hitting a destructive action not covered by spec
-
-For trivial changes (typos, single-line fixes), skip the spec workflow and work directly.
-
-### Review Mode
-
-- **When:** Build has passed and status is `review`
-- **Actions:** Run `scafld review`, then `scafld complete` only after the native review gate passes
-- **Output:** Review verdict recorded in the spec and available through `scafld status` / `scafld handoff`
-- **Prompt:** Read `.scafld/prompts/review.md` before entering this mode
-- **Mandate:** Find problems, not confirm success. A review that finds zero issues still needs grounded evidence from the changed files, validation commands, and spec scope.
-
----
-
 ## Validation
+
+Use the narrowest useful check while iterating: `pnpm typecheck`,
+`pnpm rust:crate-graph`, or `pnpm verify:fast`. For Rust changes, use formatting,
+workspace checks or the affected crate tests before the required full gate.
+Run heavy Rust gates sequentially; concurrent gates can starve the eval binary
+and cause false timeouts.
 
 Validation profiles (`light`, `standard`, `strict`) and their check pipelines are defined in `config.yaml`. Agents select a profile based on `task.acceptance.validation_profile` or derive from `task.risk_level` (low→light, medium→standard, high→strict).
 
@@ -244,7 +191,7 @@ Validation profiles (`light`, `standard`, `strict`) and their check pipelines ar
 
 **Pre-commit:** Run full validation pipeline before marking task complete.
 
-**Self-evaluation:** Score work on rubric (defined in `config.yaml`). Threshold is 7/10; perform second pass if below.
+**Completion:** Independent review must pass before deterministic finalize. Report verified evidence and material limits; do not assign a self-evaluation score.
 
 ---
 
@@ -261,11 +208,10 @@ Defined in `config.yaml` under `safety`. Key rules:
 ## Release Discipline
 
 `cli-vX.Y.Z` is the CLI distribution tag, not a workspace-wide crate release. A
-CLI release may stamp and publish only:
-
-- `packages/cli/package.json` and its native optional dependencies
-- native npm packages used by the CLI selector
-- `crates/runx-cli/Cargo.toml` and the `runx-cli` lockfile entry
+CLI release may stamp versions in `packages/cli/package.json`, its native
+optional dependencies, `crates/runx-cli/Cargo.toml`, and the `runx-cli` lockfile
+entry. Publication is limited to the CLI npm packages and native distribution
+artifacts; stamping a Rust crate version does not authorize Cargo publication.
 
 Do not publish `runx-cli` or internal Rust crates (`runx-core`, `runx-runtime`,
 `runx-parser`, `runx-contracts`, `runx-receipts`, `runx-sdk`, or
@@ -319,7 +265,7 @@ Only commit when explicitly asked by the user.
 
 **When blocked:** State what's blocked, brief error, one recommendation, resolution options.
 
-**Final summary:** Phases completed, acceptance results, self-evaluation score, deviations, files changed.
+**Final summary:** Resulting behavior, validation evidence, independent review and receipt, and material limits.
 
 ---
 
@@ -338,21 +284,4 @@ Only commit when explicitly asked by the user.
 | `.scafld/runs/` | Session ledger, diagnostics, and handoffs |
 | `CONVENTIONS.md` | Coding standards |
 
-### Spec Lifecycle
-
-```bash
-# CLI (manages status, validation, file moves)
-scafld plan <task-id>            # scaffold a markdown spec in drafts/
-scafld list                      # show all specs
-scafld status <task-id>          # show details + phase progress
-scafld validate <task-id>        # check against schema
-scafld approve <task-id>         # approve the draft spec
-scafld build <task-id>           # run validation and move to review when checks pass
-scafld exec <task-id>            # execute configured task actions when used
-scafld review <task-id>          # run native review provider
-scafld complete <task-id>        # record review verdict and complete the task
-scafld handoff <task-id>         # render markdown handoff
-scafld fail <task-id>            # mark failed
-scafld cancel <task-id>          # mark cancelled
-scafld report                    # aggregate stats across all specs
-```
+Use the lifecycle commands in the scafld contract above.

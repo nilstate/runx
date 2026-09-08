@@ -2,7 +2,9 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
 
-use crate::support::isolated_runx_command_with_inherited_cwd;
+use crate::support::{
+    isolated_runx_command_with_inherited_cwd, temp_root, unsigned_runx_command_at,
+};
 
 #[test]
 fn packaged_native_connect_authenticates_and_lists_grants() -> Result<(), Box<dyn std::error::Error>>
@@ -69,4 +71,49 @@ fn packaged_native_connect_authenticates_and_lists_grants() -> Result<(), Box<dy
     assert_eq!(body["environment"]["principal_id"], "fixture-user");
     assert_eq!(body["connect"]["grants"], serde_json::json!([]));
     Ok(())
+}
+
+#[test]
+fn packaged_native_connect_binding_persists_only_in_its_workspace()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("runx-connect-binding");
+    std::fs::create_dir_all(&root)?;
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        for transport in ["local", "auto"] {
+            let output = unsigned_runx_command_at(&root)
+                .args(["connect", "bind", "github", transport, "--json"])
+                .output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let body: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+            assert_eq!(body["status"], "success");
+            let binding_path = root.join(".runx/credentials.json");
+            let returned_path = body["binding"]["path"]
+                .as_str()
+                .ok_or("missing binding path")?;
+            assert_eq!(
+                std::fs::canonicalize(returned_path)?,
+                std::fs::canonicalize(&binding_path)?
+            );
+            let bindings = runx_runtime::load_project_bindings(&root)?;
+            let expected = if transport == "local" {
+                Some("local:github")
+            } else {
+                None
+            };
+            assert_eq!(
+                bindings
+                    .bindings
+                    .get("provider-transport:github")
+                    .map(String::as_str),
+                expected
+            );
+        }
+        Ok(())
+    })();
+    std::fs::remove_dir_all(root)?;
+    result
 }

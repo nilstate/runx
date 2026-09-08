@@ -164,11 +164,11 @@ pub(crate) struct InspectedExecutionClosureBinding {
 }
 
 pub(crate) fn inspect_loaded_execution_closure_binding(
-    loaded: LoadedSkillPackage,
+    loaded: Arc<LoadedSkillPackage>,
     selected_runner: &str,
     env: &std::collections::BTreeMap<String, String>,
 ) -> Result<InspectedExecutionClosureBinding, SkillInspectionError> {
-    let mut closures = inspect_execution_closures(Arc::new(loaded), Some(env))?;
+    let mut closures = inspect_execution_closures(loaded, Some(env))?;
     let closure =
         closures
             .remove(selected_runner)

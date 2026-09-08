@@ -9,6 +9,13 @@ pub(super) fn validated_module(
     request: &SkillInvocation,
 ) -> Result<PreparedJavaScriptInvocation, RuntimeError> {
     let loaded = crate::load_validated_skill_package(&request.skill_directory)?;
+    validated_module_from_package(request, &loaded)
+}
+
+pub(super) fn validated_module_from_package(
+    request: &SkillInvocation,
+    loaded: &crate::LoadedSkillPackage,
+) -> Result<PreparedJavaScriptInvocation, RuntimeError> {
     let module =
         request
             .source

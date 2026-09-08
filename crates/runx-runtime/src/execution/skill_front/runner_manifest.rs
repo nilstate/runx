@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::adapter::{InvocationOutput, SkillAdapter, SkillInvocation};
-use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::orchestrator::{RunResult, SkillRunRequest};
 use crate::output_contract::{attach_verified_metadata, verified_runner_metadata_with_artifacts};
 use crate::receipts::StepSealClosure;
 use crate::services::{ReceiptServices, WorkspaceEnv};
@@ -106,7 +106,7 @@ pub(super) fn credential_delivery_from_invocation(
 pub(super) fn execute_adapter_skill_run(
     context: &SkillExecutionContext<'_>,
     invocation: SkillInvocation,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let SkillExecutionContext {
         request,
         workspace,
@@ -138,7 +138,14 @@ pub(super) fn execute_adapter_skill_run(
         output,
         payload,
         source_type,
-    } = invoke_source_adapter(runner, invocation)?;
+    } = invoke_source_adapter(
+        runner,
+        invocation,
+        SkillSourceAdapter::with_javascript(
+            context.overrides.javascript.clone().unwrap_or_default(),
+        )
+        .with_package(context.loaded.cloned()),
+    )?;
     let disposition = if output.succeeded() {
         ClosureDisposition::Closed
     } else {
@@ -160,7 +167,7 @@ pub(super) fn execute_adapter_skill_run(
             None,
         )?;
     write_skill_receipt(request, workspace, receipts, &receipt)?;
-    Ok(JsonValue::Object(sealed_output(
+    Ok(sealed_output(
         manifest,
         &runner.name,
         &run_id,
@@ -168,7 +175,7 @@ pub(super) fn execute_adapter_skill_run(
         &payload,
         SkillOutputDiagnostics::default(),
         &receipt,
-    )))
+    ))
 }
 
 struct AdapterOutput {
@@ -180,11 +187,12 @@ struct AdapterOutput {
 fn invoke_source_adapter(
     runner: &SkillRunnerDefinition,
     invocation: SkillInvocation,
+    adapter: SkillSourceAdapter,
 ) -> Result<AdapterOutput, SkillRunError> {
     let skill_directory = invocation.skill_directory.clone();
     let invocation_env = invocation.env.clone();
     let source_type = invocation.source.source_type;
-    let mut output = SkillSourceAdapter::default().invoke(invocation)?;
+    let mut output = adapter.invoke(invocation)?;
     let payload = output.value.clone();
     if output.succeeded() {
         let metadata = verified_runner_metadata_with_artifacts(

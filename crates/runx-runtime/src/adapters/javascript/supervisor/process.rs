@@ -40,8 +40,7 @@ impl Drop for StartingChild {
 }
 
 pub(super) fn spawn_child(mut command: Command) -> Result<StartingChild, RuntimeError> {
-    let child = command
-        .spawn()
+    let child = crate::process::with_spawn_lock(|| command.spawn())
         .map_err(|source| RuntimeError::io("spawning deterministic JavaScript worker", source))?;
     Ok(StartingChild::new(child))
 }

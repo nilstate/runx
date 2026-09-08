@@ -28,11 +28,11 @@ pub use http_server::{
     DEFAULT_MCP_HTTP_LISTEN_ADDR, McpHttpServerSecurity, generate_mcp_http_bearer_token,
     serve_mcp_http_server, serve_mcp_http_server_blocking,
 };
-pub use server::{mcp_tool_result_from_host_result, serve_mcp_json_rpc};
+pub use server::{mcp_tool_result_from_run_result, serve_mcp_json_rpc};
 pub use tool_result::stringify_mcp_tool_result;
 pub use transport::{FixtureMcpTransport, ProcessMcpTransport};
 pub use types::{
-    McpContent, McpHostRunResult, McpListToolsRequest, McpServerError, McpServerExecutionOptions,
-    McpServerOptions, McpServerSkillExecution, McpServerTool, McpServerToolBehavior,
-    McpToolCallRequest, McpToolDescriptor, McpToolResult, McpTransport, McpTransportError,
+    McpContent, McpListToolsRequest, McpServerError, McpServerExecutionOptions, McpServerOptions,
+    McpServerSkillExecution, McpServerTool, McpServerToolBehavior, McpToolCallRequest,
+    McpToolDescriptor, McpToolResult, McpTransport, McpTransportError,
 };

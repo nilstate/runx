@@ -7,7 +7,6 @@ mod interpreter;
 mod local;
 mod maturity;
 pub(crate) mod posix_basename;
-pub mod public_work;
 mod rfc3339;
 pub mod scope;
 mod tool_ref;
@@ -29,10 +28,6 @@ pub use graph_scope::admit_graph_step_scopes;
 pub use interpreter::strict_cli_tool_inline_code_denial;
 pub use local::admit_local_skill;
 pub use maturity::compute_maturity;
-pub use public_work::{
-    default_public_work_policy, evaluate_public_comment_opportunity,
-    evaluate_public_pull_request_candidate, normalize_public_work_policy,
-};
 pub use rfc3339::parse_rfc3339_moment;
 pub use scope::{ScopeGrantPolicy, missing_granted_scopes, scope_grant_allows};
 pub use tool_ref::{ToolRefAdmission, admit_agent_tool_ref};
@@ -47,8 +42,5 @@ pub use types::{
     CredentialEnvelope, CredentialEnvelopeKind, CredentialGrantReference,
     GraphScopeAdmissionDecision, GraphScopeAdmissionRequest, GraphScopeGrant, LocalAdmissionGrant,
     LocalAdmissionGrantStatus, LocalAdmissionOptions, LocalAdmissionSkill, LocalAdmissionSource,
-    LocalExecutionPolicy, LocalScopeAdmissionOptions, PublicCommentOpportunityRequest,
-    PublicCommentPolicyDecision, PublicPolicyDecision, PublicPullRequestCandidateRequest,
-    PublicRecentOutcome, PublicWorkPolicy, RequiredPublicWorkPolicy, ScopeAdmission,
-    ScopeAdmissionStatus,
+    LocalExecutionPolicy, LocalScopeAdmissionOptions, ScopeAdmission, ScopeAdmissionStatus,
 };

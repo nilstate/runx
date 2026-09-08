@@ -6,7 +6,6 @@ use serde::Deserialize;
 use crate::policy::{
     BuildAuthorityProofOptions, CredentialBindingRequest, GraphScopeAdmissionRequest,
     LocalAdmissionGrant, LocalAdmissionOptions, LocalAdmissionSkill, LocalScopeAdmissionOptions,
-    PublicCommentOpportunityRequest, PublicPullRequestCandidateRequest, PublicWorkPolicy,
     ScopeGrantPolicy,
 };
 use crate::state_machine::{
@@ -55,23 +54,6 @@ pub(super) enum KernelInput {
     #[serde(rename = "policy.validateCredentialBinding")]
     ValidateCredentialBinding {
         request: Box<CredentialBindingRequest>,
-    },
-    #[serde(rename = "policy.evaluatePublicPullRequestCandidate")]
-    EvaluatePublicPullRequestCandidate {
-        request: PublicPullRequestCandidateRequest,
-        #[serde(default)]
-        policy: PublicWorkPolicy,
-    },
-    #[serde(rename = "policy.evaluatePublicCommentOpportunity")]
-    EvaluatePublicCommentOpportunity {
-        request: PublicCommentOpportunityRequest,
-        #[serde(default)]
-        policy: PublicWorkPolicy,
-    },
-    #[serde(rename = "policy.normalizePublicWorkPolicy")]
-    NormalizePublicWorkPolicy {
-        #[serde(default)]
-        policy: PublicWorkPolicy,
     },
     #[serde(rename = "policy.scopeGrantAllows")]
     ScopeGrantAllows {
@@ -139,9 +121,6 @@ pub(super) fn is_supported_kernel_kind(kind: &str) -> bool {
             | "policy.buildLocalScopeAdmission"
             | "policy.buildAuthorityProofMetadata"
             | "policy.validateCredentialBinding"
-            | "policy.evaluatePublicPullRequestCandidate"
-            | "policy.evaluatePublicCommentOpportunity"
-            | "policy.normalizePublicWorkPolicy"
             | "policy.scopeGrantAllows"
             | "state-machine.createSingleStepState"
             | "state-machine.transitionSingleStep"

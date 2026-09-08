@@ -29,7 +29,7 @@ use environment_readiness::{
 };
 use inputs::read_input_document;
 use operator_context::write_operator_context;
-use output::{ResumeHint, skill_result_exit_code, write_skill_output};
+use output::{ResumeHint, run_result_exit_code, write_skill_output};
 pub use parser::{parse_skill_plan, parse_skill_plan_with_workspace};
 use provider_readiness::{
     append_text as append_provider_readiness_text, inspect as inspect_provider_readiness,
@@ -159,7 +159,7 @@ pub fn run_native_skill_with_workspace(plan: SkillPlan, workspace: &WorkspaceEnv
             }
         };
         attach_registry_provenance(&mut output, &resolved);
-        let exit_code = skill_result_exit_code(&output);
+        let exit_code = ExitCode::from(2);
         return write_skill_output(
             &output,
             plan.json,
@@ -284,7 +284,7 @@ pub fn run_native_skill_with_workspace(plan: SkillPlan, workspace: &WorkspaceEnv
     match result {
         Ok(mut result) => {
             attach_registry_provenance(&mut result.output, &resolved);
-            let exit_code = skill_result_exit_code(&result.output);
+            let exit_code = run_result_exit_code(&result);
             write_skill_output(
                 &result.output,
                 plan.json,

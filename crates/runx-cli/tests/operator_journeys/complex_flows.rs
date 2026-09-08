@@ -215,6 +215,11 @@ fn spawn_mutation_provider(
 }
 
 fn read_http_request(stream: &mut std::net::TcpStream) -> Result<String, String> {
+    // Accepted sockets inherit the listener's nonblocking flag on macOS.
+    // Restore blocking reads so the configured timeout waits for request bytes.
+    stream
+        .set_nonblocking(false)
+        .map_err(|error| error.to_string())?;
     let mut bytes = Vec::new();
     let mut buffer = [0_u8; 4096];
     let mut expected = None;

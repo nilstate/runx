@@ -357,36 +357,6 @@ mod tests {
     }
 
     #[test]
-    fn connect_bind_persists_non_secret_project_transport_without_hosted_io()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let root = std::env::temp_dir().join(format!(
-            "runx-connect-bind-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)?
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&root)?;
-        let workspace = WorkspaceEnv::load_process(root.clone())?;
-        let plan = parse_connect_plan(&[
-            "connect".into(),
-            "bind".into(),
-            "github".into(),
-            "local".into(),
-            "--json".into(),
-        ])?;
-        let output = run_connect_binding(&plan, &workspace, "github", "local")?;
-        assert!(output.contains("local:github"));
-        let bindings = runx_runtime::load_project_bindings(&root)?;
-        assert_eq!(
-            bindings.bindings.get("provider-transport:github"),
-            Some(&"local:github".to_owned())
-        );
-        std::fs::remove_dir_all(root)?;
-        Ok(())
-    }
-
-    #[test]
     fn connect_list_uses_authenticated_runtime_service() -> Result<(), Box<dyn std::error::Error>> {
         let transport = StubTransport::new(vec![
             RuntimeHttpResponse::new(

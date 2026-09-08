@@ -26,7 +26,7 @@ use crate::adapter::SkillInvocation;
 use crate::credentials::CredentialDelivery;
 use crate::effects::RuntimeEffectRegistry;
 use crate::execution::graph::materialize_graph_parameter_inputs;
-use crate::execution::orchestrator::SkillRunRequest;
+use crate::execution::orchestrator::{RunResult, SkillRunRequest};
 use crate::execution::runner::{
     GraphCheckpoint, GraphRun, RUNX_RUN_ID_ENV, Runtime, RuntimeOptions, graph_run_context,
     graph_run_result, graph_run_skill_output, graph_run_trace,
@@ -36,15 +36,15 @@ use crate::journal::{PausedRunCheckpoint, append_paused_run_checkpoint};
 use crate::receipts::{DomainActReceiptRequest, RuntimeReceiptSignatureConfig, domain_act_receipt};
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
-use super::graph_state::{read_graph_state, write_graph_state};
 use super::resolution_answers::{ResolutionAnswers, read_answers};
 use super::runner_manifest::{credential_delivery_from_invocation, write_skill_receipt};
+use super::state_store::{read_graph_state, write_graph_state};
 
 // Function rationale: graph-backed skill execution keeps
 // checkpoint hydration, host resolution, and final receipt sealing in one path.
 pub(super) fn execute_graph_skill_run(
     context: &SkillExecutionContext<'_>,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let SkillExecutionContext {
         request,
         overrides,
@@ -55,6 +55,7 @@ pub(super) fn execute_graph_skill_run(
         runner,
         package_digest,
         execution_closure_digest,
+        ..
     } = *context;
     let graph = runner
         .source
@@ -83,8 +84,12 @@ pub(super) fn execute_graph_skill_run(
         crate::receipts::paths::RUNX_RECEIPT_DIR_ENV.to_owned(),
         receipt_path.path.to_string_lossy().into_owned(),
     );
-    let credential_delivery =
-        credential_delivery_from_invocation(workspace.env(), request.local_credential.as_ref())?;
+    let credential_delivery = match &overrides.credential_delivery {
+        Some(delivery) => delivery.clone(),
+        None => {
+            credential_delivery_from_invocation(workspace.env(), request.local_credential.as_ref())?
+        }
+    };
     let created_at = crate::time::now_iso8601();
     let inline_resolver = InlineResolver {
         skill_directory: skill_dir.clone(),
@@ -94,16 +99,22 @@ pub(super) fn execute_graph_skill_run(
         observed_at: created_at.clone(),
         policy: request.managed_agent.clone(),
     };
-    let runtime = Runtime::new(
-        SkillSourceAdapter::default(),
-        RuntimeOptions {
-            created_at: created_at.clone(),
-            env,
-            receipt_signature: receipts.signature_config().clone(),
-            effects: effects.clone(),
-            credential_delivery,
-        },
-    );
+    let options = RuntimeOptions {
+        created_at: created_at.clone(),
+        env,
+        receipt_signature: receipts.signature_config().clone(),
+        effects: effects.clone(),
+        credential_delivery,
+    };
+    let runtime = match &overrides.javascript {
+        Some(javascript) => Runtime::with_native_services(
+            SkillSourceAdapter::with_javascript(javascript.clone()),
+            options,
+            javascript.clone(),
+            crate::services::LocalArtifactService::default(),
+        ),
+        None => Runtime::new(SkillSourceAdapter::default(), options),
+    };
     // Seeded answers run a single fresh pass with the answers pre-loaded into the
     // host (they drive the graph to completion, or block -> needs_agent when a
     // step has no seeded answer). The file-based `answers_path` remains the
@@ -145,14 +156,9 @@ pub(super) fn execute_graph_skill_run(
             }
         })
         .unwrap_or_else(|| request_graph_inputs.clone());
-    if let Some(missing_request) = missing_required_graph_input_request(runner, &graph_inputs) {
-        return Ok(JsonValue::Object(needs_agent_output(
-            manifest,
-            &runner.name,
-            &run_id,
-            "graph.required-inputs",
-            missing_request,
-        )));
+    if resume {
+        crate::input_contract::materialize_complete_runner_inputs(&runner.inputs, &graph_inputs)
+            .map_err(|error| error.into_runtime_error())?;
     }
     let graph = materialize_graph_parameter_inputs(graph, &graph_inputs);
     let mut host = SkillRunGraphHost::with_inline(answers.clone(), inline_resolver);
@@ -212,7 +218,7 @@ pub(super) fn execute_graph_skill_run(
                     )?;
                     let receipt = domain.as_ref().unwrap_or(&run.receipt);
                     let output = graph_run_skill_output(&result, &run)?;
-                    return Ok(JsonValue::Object(sealed_output(
+                    return Ok(sealed_output(
                         manifest,
                         &runner.name,
                         &run_id,
@@ -223,7 +229,7 @@ pub(super) fn execute_graph_skill_run(
                             trace: Some(trace),
                         },
                         receipt,
-                    )));
+                    ));
                 }
                 write_graph_state(
                     request,
@@ -275,13 +281,13 @@ pub(super) fn execute_graph_skill_run(
                     run_id: &run_id,
                     request_id,
                 })?;
-                return Ok(JsonValue::Object(needs_agent_output(
+                return Ok(needs_agent_output(
                     manifest,
                     &runner.name,
                     &run_id,
                     request_id,
                     request_value.clone(),
-                )));
+                ));
             }
             Err(RuntimeError::ResolutionPending { step_id, reason }) => {
                 return Err(invalid(format!(
@@ -481,49 +487,6 @@ fn write_paused_graph_checkpoint(input: PausedGraphCheckpoint<'_>) -> Result<(),
     Ok(())
 }
 
-fn missing_required_graph_input_request(
-    runner: &SkillRunnerDefinition,
-    graph_inputs: &JsonObject,
-) -> Option<JsonValue> {
-    let missing = runner
-        .inputs
-        .iter()
-        .filter(|(_, input)| input.required)
-        .filter(|(name, _)| match graph_inputs.get(name.as_str()) {
-            Some(JsonValue::Null) => true,
-            Some(_) => false,
-            None => true,
-        })
-        .map(|(name, input)| {
-            let mut entry = JsonObject::new();
-            entry.insert("name".to_owned(), JsonValue::String(name.clone()));
-            entry.insert(
-                "type".to_owned(),
-                JsonValue::String(input.input_type.clone()),
-            );
-            if let Some(description) = &input.description {
-                entry.insert(
-                    "description".to_owned(),
-                    JsonValue::String(description.clone()),
-                );
-            }
-            JsonValue::Object(entry)
-        })
-        .collect::<Vec<_>>();
-    if missing.is_empty() {
-        return None;
-    }
-
-    let mut request = JsonObject::new();
-    request.insert(
-        "kind".to_owned(),
-        JsonValue::String("graph.required_inputs".to_owned()),
-    );
-    request.insert("runner".to_owned(), JsonValue::String(runner.name.clone()));
-    request.insert("missing_inputs".to_owned(), JsonValue::Array(missing));
-    Some(JsonValue::Object(request))
-}
-
 enum GraphTerminalCause {
     Blocked,
     Deferred(RuntimeError),
@@ -548,7 +511,7 @@ struct TerminalGraphSkillRun<'a> {
 
 fn seal_terminal_graph_skill_run(
     context: TerminalGraphSkillRun<'_>,
-) -> Result<JsonValue, SkillRunError> {
+) -> Result<RunResult, SkillRunError> {
     let mut final_host = SkillRunGraphHost::new(ResolutionAnswers::default());
     let failure_result = match &context.cause {
         GraphTerminalCause::Deferred(error) | GraphTerminalCause::Failed(error) => {
@@ -595,7 +558,7 @@ fn seal_terminal_graph_skill_run(
     let public_context = graph_run_context(&run);
     let trace = graph_run_trace(&run);
     let output = graph_run_skill_output(&result, &run)?;
-    Ok(JsonValue::Object(sealed_output(
+    Ok(sealed_output(
         context.manifest,
         context.runner_name,
         context.run_id,
@@ -606,7 +569,7 @@ fn seal_terminal_graph_skill_run(
             trace: Some(trace),
         },
         &run.receipt,
-    )))
+    ))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

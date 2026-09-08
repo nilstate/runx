@@ -313,7 +313,7 @@ Stability rules during the parity phase:
   Internal helpers stay private.
 - Re-exports at crate root follow the owned contract shape: one module per
   policy family (`state_machine`, `policy`, `policy::authority_proof`,
-  `policy::public_work`, `policy::scope`).
+  `policy::scope`).
 - Naming preserves runx vocabulary. `admit_local_skill` matches
   `admitLocalSkill`. No invented aliases.
 

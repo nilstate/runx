@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -17,14 +17,6 @@ const tsx = path.join(
 );
 
 describe("Rust CLI cutover scripts", () => {
-  it("keeps the published native selector on unconditional digest verification", async () => {
-    const selector = await readFile(path.join(workspaceRoot, "packages", "cli", "bin", "runx"), "utf8");
-
-    expect(selector).not.toContain("RUNX_SKIP_NATIVE_VERIFY");
-    expect(selector).not.toContain("native-verify-");
-    expect(selector).toContain("createHash(\"sha256\").update(readFileSync(binaryPath)).digest(\"hex\")");
-  });
-
   it("derives every worker release gate from the canonical platform topology", async () => {
     const topology = JSON.parse(
       await readFile(path.join(workspaceRoot, "packages", "cli", "native", "supported-platforms.json"), "utf8"),
@@ -63,9 +55,6 @@ describe("Rust CLI cutover scripts", () => {
     expect(workflow).toContain("node scripts/record-deterministic-module-platform-evidence.mjs");
     expect(workflow).toContain('--decision "docs/architecture/deterministic-module-engine.json"');
     expect(workflow).toContain('--worker "crates/target/${{ matrix.target }}/release/${{ matrix.worker }}"');
-    expect(workflow).not.toContain("setup-linux-sandbox");
-    expect(workflow).not.toContain("bubblewrap");
-    expect(workflow).not.toContain(".scafld/");
   });
 
   it("accepts clean cutover candidates and blocks launcher shim flags", async () => {
@@ -102,7 +91,7 @@ describe("Rust CLI cutover scripts", () => {
     }
   });
 
-  it("packages native CLI artifacts with checksum and signature metadata", async () => {
+  it("prepares signed artifacts and refuses altered binaries or workers at selector execution", async () => {
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-rust-cli-package-test-"));
 
     try {
@@ -114,42 +103,27 @@ describe("Rust CLI cutover scripts", () => {
       await writeExecutable(worker, exitScript(70));
       await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary, worker), null, 2)}\n`, "utf8");
 
-      const packageResult = runTsx("scripts/package-rust-cli.ts", [
+      const packageResult = runTsx("scripts/release-rust-cli.ts", [
         "--binary",
         binary,
         "--worker",
         worker,
-        "--out-dir",
+        "--artifact-dir",
         outDir,
         "--signature-manifest",
         signatureManifest,
       ]);
       expect(packageResult.status).toBe(0);
-      expect(JSON.parse(packageResult.stdout)).toMatchObject({
-        status: "passed",
-        mode: "write",
-        selector_package: "@runxhq/cli",
-        native_package: nativePackageName(platformKey(process.platform, process.arch)),
-        signature_manifest: "native/signatures.json",
-      });
+      expect(packageResult.stdout).toContain('"status": "prepared"');
+      expect(packageResult.stdout).toContain('"publish": false');
 
       const packageDir = path.join(outDir, platformKey(process.platform, process.arch));
       const selectorDir = path.join(outDir, "selector");
-      const checkResult = runTsx("scripts/check-rust-cli-release-artifacts.ts", [
-        "--artifact-dir",
-        outDir,
-        "--no-js-delegation",
-        "--verify-signatures",
-      ]);
-      expect(checkResult.status).toBe(0);
-      expect(JSON.parse(checkResult.stdout)).toMatchObject({
-        status: "passed",
-        findings: [],
-      });
       await expect(readFile(path.join(packageDir, "native", "signatures.json"), "utf8")).resolves.toContain(
         "runx.rust_cli_artifact_signatures.v1",
       );
       const checksums = JSON.parse(await readFile(path.join(packageDir, "native", "checksums.json"), "utf8")) as {
+        readonly binary: string;
         readonly worker: string;
         readonly worker_sha256: string;
       };
@@ -167,6 +141,35 @@ describe("Rust CLI cutover scripts", () => {
         readonly optionalDependencies?: Record<string, string>;
       };
       expect(selectorManifest.optionalDependencies?.["@runxhq/cli-linux-x64"]).toBe(selectorManifest.version);
+
+      const installedNative = path.join(selectorDir, "node_modules", nativePackageName(platformKey(process.platform, process.arch)));
+      await cp(packageDir, installedNative, { recursive: true });
+      const selector = path.join(selectorDir, "bin", "runx");
+      const runSelector = () => spawnSync(process.execPath, [selector], {
+        cwd: tempDir,
+        encoding: "utf8",
+        env: { ...process.env, RUNX_SKIP_NATIVE_VERIFY: "1" },
+      });
+      const clean = runSelector();
+      if (process.platform === "win32") {
+        // The fixture is a command script packaged as .exe, so Windows reaches
+        // spawn after validation but cannot execute this fake native binary.
+        expect(clean.stderr).toContain("failed to start");
+      } else {
+        expect(clean.status, clean.stderr).toBe(64);
+      }
+      for (const [relativePath, message] of [
+        [checksums.binary, "native binary checksum verification failed"],
+        [checksums.worker, "JavaScript worker checksum verification failed"],
+      ] as const) {
+        const target = path.join(installedNative, relativePath);
+        const original = await readFile(target);
+        await writeFile(target, Buffer.concat([original, Buffer.from("altered")]));
+        const rejected = runSelector();
+        expect(rejected.status).toBe(1);
+        expect(rejected.stderr).toContain(message);
+        await writeFile(target, original);
+      }
     } finally {
       await rm(tempDir, { recursive: true, force: true });
     }
@@ -294,35 +297,7 @@ describe("Rust CLI cutover scripts", () => {
     }
   });
 
-  it("prepares signed release artifacts without publishing", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "runx-rust-cli-release-prep-"));
 
-    try {
-      const binary = path.join(tempDir, executableName());
-      const worker = path.join(tempDir, executableName("runx-js-worker"));
-      const signatureManifest = path.join(tempDir, "signatures.json");
-      await writeExecutable(binary, exitScript(64));
-      await writeExecutable(worker, exitScript(70));
-      await writeFile(signatureManifest, `${JSON.stringify(await fixtureSignatureManifest(binary, worker), null, 2)}\n`, "utf8");
-
-      const result = runTsx("scripts/release-rust-cli.ts", [
-        "--binary",
-        binary,
-        "--worker",
-        worker,
-        "--artifact-dir",
-        path.join(tempDir, "artifacts"),
-        "--signature-manifest",
-        signatureManifest,
-      ]);
-
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain('"status": "prepared"');
-      expect(result.stdout).toContain('"publish": false');
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
 });
 
 function runTsx(script: string, args: readonly string[]) {

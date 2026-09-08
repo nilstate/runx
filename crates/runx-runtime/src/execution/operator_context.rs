@@ -189,16 +189,24 @@ pub fn load_skill_operator_context_chain(
     options: SkillOperatorContextOptions,
 ) -> Result<SkillOperatorContextChain, SkillRunError> {
     let loaded = crate::load_validated_skill_package(skill_path)?;
+    load_skill_operator_context_chain_from_package(&loaded, selected_runner_name, options)
+}
+
+pub(crate) fn load_skill_operator_context_chain_from_package(
+    loaded: &crate::LoadedSkillPackage,
+    selected_runner_name: Option<&str>,
+    options: SkillOperatorContextOptions,
+) -> Result<SkillOperatorContextChain, SkillRunError> {
     let manifest = loaded.manifest().cloned().ok_or_else(|| {
         SkillRunError::Invalid(format!(
             "skill package {} does not declare X.yaml runners",
             loaded.directory.display()
         ))
     })?;
-    let skill_dir = loaded.directory;
+    let skill_dir = loaded.directory.clone();
     let manual_path = loaded.package_root.join("SKILL.md");
-    let manual_markdown = loaded.package.manual_markdown;
-    let manual_digest = loaded.package.manual_digest;
+    let manual_markdown = loaded.package.manual_markdown.clone();
+    let manual_digest = loaded.package.manual_digest.clone();
     let runner = selected_runner(&manifest, selected_runner_name)?.clone();
     let workspace =
         WorkspaceEnv::new(options.env.clone(), options.cwd.clone()).map_err(RuntimeError::from)?;

@@ -12,15 +12,25 @@ use crate::adapters::cli_tool::CliToolAdapter;
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SkillSourceAdapter {
     javascript: crate::adapters::javascript::JavaScriptAdapter,
+    package: Option<std::sync::Arc<crate::LoadedSkillPackage>>,
 }
 
 impl SkillSourceAdapter {
-    #[cfg(feature = "mcp")]
     #[must_use]
     pub(crate) const fn with_javascript(
         javascript: crate::adapters::javascript::JavaScriptAdapter,
     ) -> Self {
-        Self { javascript }
+        Self {
+            javascript,
+            package: None,
+        }
+    }
+    pub(crate) fn with_package(
+        mut self,
+        package: Option<std::sync::Arc<crate::LoadedSkillPackage>>,
+    ) -> Self {
+        self.package = package;
+        self
     }
 }
 
@@ -35,7 +45,10 @@ impl SkillAdapter for SkillSourceAdapter {
         let mut output = match source_type {
             #[cfg(feature = "cli-tool")]
             SourceKind::CliTool => CliToolAdapter.invoke(request),
-            SourceKind::JavaScript => self.javascript.invoke(request),
+            SourceKind::JavaScript => match &self.package {
+                Some(package) => self.javascript.invoke_from_package(request, package),
+                None => self.javascript.invoke(request),
+            },
             #[cfg(feature = "external-adapter")]
             SourceKind::ExternalAdapter => {
                 crate::adapters::external_adapter::ExternalAdapterSkillAdapter::default()

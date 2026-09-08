@@ -12,6 +12,8 @@ export default defineConfig({
       "tests/kernel-parity-fixtures.test.ts",
       "tests/cli-feature-parity.test.ts",
       "tests/least-privilege-scope.test.ts",
+      "tests/scope-policy-differential.test.ts",
+      "tests/runtime-architecture.test.ts",
       "tests/policy-author-validation.test.ts",
       "tests/runx-cli-release-evidence.test.ts",
       "tests/stripe-spt-rail-adapter.test.ts",

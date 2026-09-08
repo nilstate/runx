@@ -20,8 +20,8 @@ use crate::effects::{PROVIDER_PERMISSION_GRANT_ID_ENV, PROVIDER_PERMISSION_GRANT
 use super::rmcp_content_length::{RmcpContentLengthTransport, RmcpTransportErrorState};
 use super::server_skill::{execute_mcp_server_skill, identifier_segment};
 use super::types::{
-    McpContent, McpHostRunResult, McpServerError, McpServerOptions, McpServerSkillExecution,
-    McpServerTool, McpServerToolBehavior, McpToolResult,
+    McpContent, McpServerError, McpServerOptions, McpServerSkillExecution, McpServerTool,
+    McpServerToolBehavior, McpToolResult,
 };
 
 const MAX_SERVER_REQUEST_BYTES: usize = 4 * 1024 * 1024;
@@ -35,117 +35,76 @@ pub fn serve_mcp_json_rpc(
     serve_mcp_json_rpc_with_rmcp(input, output, options)
 }
 
-pub fn mcp_tool_result_from_host_result(result: McpHostRunResult) -> McpToolResult {
-    match result {
-        McpHostRunResult::Completed {
-            skill_name,
-            output,
-            receipt_id,
-            runx,
-        } => completed_mcp_tool_result(skill_name, output, receipt_id, runx),
-        McpHostRunResult::NeedsAgent {
-            skill_name,
-            run_id,
-            request_count,
-            runx,
-        } => needs_agent_mcp_tool_result(skill_name, run_id, request_count, runx),
-        McpHostRunResult::Denied {
-            skill_name,
-            receipt_id,
-            runx,
-        } => denied_mcp_tool_result(skill_name, receipt_id, runx),
-        McpHostRunResult::Escalated {
-            skill_name,
-            receipt_id,
-            error,
-            runx,
-        } => escalated_mcp_tool_result(skill_name, receipt_id, error, runx),
-        McpHostRunResult::Failed {
-            skill_name,
-            receipt_id,
-            error,
-            runx,
-        } => failed_mcp_tool_result(skill_name, receipt_id, error, runx),
-    }
-}
-
-fn completed_mcp_tool_result(
-    skill_name: String,
-    output: JsonValue,
-    receipt_id: String,
-    runx: JsonObject,
+/// Project the canonical execution result onto MCP's content envelope.
+/// No execution decision or receipt construction belongs in this transport.
+pub fn mcp_tool_result_from_run_result(
+    result: crate::execution::orchestrator::RunResult,
+    receipt_dir: Option<&std::path::Path>,
 ) -> McpToolResult {
-    let fallback = || format!("{skill_name} completed. Inspect receipt {receipt_id}.");
-    let text = match &output {
-        JsonValue::Null => fallback(),
-        JsonValue::String(value) if value.trim().is_empty() => fallback(),
-        JsonValue::String(value) => value.clone(),
-        value => serde_json::to_string(&value).unwrap_or_else(|_| fallback()),
+    let succeeded = result.succeeded();
+    let pending = result.needs_resolution();
+    let JsonValue::Object(mut runx) = result.output else {
+        return McpToolResult {
+            content: vec![McpContent {
+                text: "Invalid native run result.".to_owned(),
+            }],
+            structured_content: None,
+            is_error: true,
+        };
     };
-    mcp_host_tool_result(text, runx, Some(output), false)
-}
-
-fn needs_agent_mcp_tool_result(
-    skill_name: String,
-    run_id: String,
-    request_count: usize,
-    runx: JsonObject,
-) -> McpToolResult {
-    mcp_host_tool_result(
+    let skill_name = runx
+        .get("skill_name")
+        .and_then(JsonValue::as_str)
+        .unwrap_or("skill");
+    let run_id = runx.get("run_id").and_then(JsonValue::as_str).unwrap_or("");
+    let output = succeeded.then(|| runx.get("result").cloned().unwrap_or(JsonValue::Null));
+    let text = if pending && !result.pending_requests.is_empty() {
+        let receipt_option = receipt_dir
+            .map(|path| {
+                // Shell quoting keeps paths containing whitespace or apostrophes usable.
+                format!(
+                    " --receipt-dir '{}'",
+                    path.to_string_lossy().replace('\'', "'\"'\"'")
+                )
+            })
+            .unwrap_or_default();
         format!(
-            "{skill_name} needs agent input at {run_id}. Resolve {request_count} request(s), write answers.json, then run: runx resume {run_id} answers.json."
-        ),
-        runx,
-        None,
-        false,
-    )
-}
-
-fn denied_mcp_tool_result(
-    skill_name: String,
-    receipt_id: Option<String>,
-    runx: JsonObject,
-) -> McpToolResult {
-    let text = match receipt_id {
-        Some(receipt_id) => format!("{skill_name} was denied by policy (receipt {receipt_id})."),
-        None => format!("{skill_name} was denied by policy."),
-    };
-    mcp_host_tool_result(text, runx, None, true)
-}
-
-fn escalated_mcp_tool_result(
-    skill_name: String,
-    receipt_id: String,
-    error: String,
-    runx: JsonObject,
-) -> McpToolResult {
-    mcp_host_tool_result(
-        format!("{skill_name} escalated. Inspect receipt {receipt_id}. {error}")
-            .trim()
-            .to_owned(),
-        runx,
-        None,
-        true,
-    )
-}
-
-fn failed_mcp_tool_result(
-    skill_name: String,
-    receipt_id: Option<String>,
-    error: String,
-    runx: JsonObject,
-) -> McpToolResult {
-    mcp_host_tool_result(
-        format!(
-            "{skill_name} failed. Inspect receipt {}. {error}",
-            receipt_id.unwrap_or_else(|| "n/a".to_owned())
+            "{skill_name} needs agent input at {run_id}. Resolve {} request(s), write answers.json, then run: runx resume {run_id} answers.json{receipt_option}.",
+            result.pending_requests.len()
         )
-        .trim()
-        .to_owned(),
-        runx,
-        None,
-        true,
-    )
+    } else if pending {
+        format!(
+            "{skill_name} is deferred at {run_id}. Inspect receipt {} and reconcile provider state before retrying.",
+            result.receipt_refs.first().map_or("n/a", String::as_str)
+        )
+    } else if let Some(output) = &output {
+        match output {
+            JsonValue::String(value) if !value.trim().is_empty() => value.clone(),
+            value => serde_json::to_string(value).unwrap_or_default(),
+        }
+    } else {
+        format!(
+            "{skill_name} ended with {}. Inspect receipt {}.",
+            result.disposition.map_or("invalid", |value| value.label()),
+            result.receipt_refs.first().map_or("n/a", String::as_str)
+        )
+    };
+    if pending && !result.pending_requests.is_empty() {
+        let digests = result
+            .pending_requests
+            .iter()
+            .filter_map(|request| {
+                let id = request.as_object()?.get("id")?.as_str()?;
+                let bytes = serde_json::to_vec(request).ok()?;
+                Some((
+                    id.to_owned(),
+                    JsonValue::String(runx_contracts::sha256_prefixed(&bytes)),
+                ))
+            })
+            .collect();
+        runx.insert("request_digests".to_owned(), JsonValue::Object(digests));
+    }
+    mcp_host_tool_result(text, runx, output, !succeeded && !pending)
 }
 
 fn mcp_host_tool_result(
@@ -213,7 +172,7 @@ where
         MAX_SERVER_REQUEST_BYTES,
         error_state.clone(),
     );
-    let service = RmcpProofServer::from_options(options);
+    let service = RmcpProofServer::from_options(options)?;
     let running = rmcp::serve_server(service, transport)
         .await
         .map_err(|error| {
@@ -240,10 +199,10 @@ pub(super) struct RmcpProofServer {
 impl RmcpProofServer {
     /// Build a fresh governed server from options. Used by both the stdio path
     /// and the streamable-HTTP service factory.
-    pub(super) fn from_options(options: McpServerOptions) -> Self {
-        Self {
-            state: McpServerState::new(options),
-        }
+    pub(super) fn from_options(options: McpServerOptions) -> Result<Self, McpServerError> {
+        Ok(Self {
+            state: McpServerState::new(options)?,
+        })
     }
 }
 
@@ -583,19 +542,26 @@ where
 #[derive(Debug)]
 pub(super) struct McpServerState {
     options: McpServerOptions,
+    session_id: String,
     next_run_sequence: AtomicU64,
     javascript: crate::adapters::javascript::JavaScriptAdapter,
 }
 
 impl McpServerState {
-    fn new(options: McpServerOptions) -> Self {
-        Self {
+    fn new(options: McpServerOptions) -> Result<Self, McpServerError> {
+        use ring::rand::{SecureRandom, SystemRandom};
+        let mut namespace = [0_u8; 16];
+        SystemRandom::new()
+            .fill(&mut namespace)
+            .map_err(|_| McpServerError::new("MCP session identity generation failed"))?;
+        Ok(Self {
             options,
+            session_id: runx_contracts::hex_lower(&namespace),
             next_run_sequence: AtomicU64::new(0),
             javascript: crate::adapters::javascript::JavaScriptAdapter::with_max_concurrency(
                 runx_contracts::javascript_worker::MAX_WORKER_POOL_SIZE,
             ),
-        }
+        })
     }
 
     pub(super) fn next_run_id(&self, skill_name: &str) -> String {
@@ -605,7 +571,12 @@ impl McpServerState {
                 Some(value.saturating_add(1))
             })
             .map_or(u64::MAX, |previous| previous.saturating_add(1));
-        format!("rx_mcp_{}_{}", identifier_segment(skill_name), sequence)
+        format!(
+            "rx_mcp_{}_{}_{}",
+            self.session_id,
+            identifier_segment(skill_name),
+            sequence
+        )
     }
 }
 
@@ -629,12 +600,85 @@ mod tests {
     use super::*;
 
     #[test]
+    fn canonical_skill_calls_share_the_server_worker_without_sharing_javascript_state()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = tempfile::tempdir()?;
+        let skill = root.path().join("echo");
+        std::fs::create_dir_all(&skill)?;
+        std::fs::write(skill.join("SKILL.md"), "---\nname: echo\n---\n# Echo\n")?;
+        std::fs::write(
+            skill.join("X.yaml"),
+            "skill: echo\nrunners:\n  main:\n    default: true\n    type: javascript\n    module: echo.mjs\n    inputs:\n      value: {type: integer, required: true}\n    outputs: {value: integer, prior: integer}\n",
+        )?;
+        std::fs::write(
+            skill.join("echo.mjs"),
+            "export default ({value}) => { const prior = globalThis.prior ?? 0; globalThis.prior = value; return {value, prior}; };\n",
+        )?;
+        let options = McpServerOptions::from_skill_paths_with_execution(
+            &[skill],
+            "runx-test",
+            "0.0.0",
+            super::super::types::McpServerExecutionOptions {
+                receipt_dir: Some(root.path().join("receipts")),
+                env: [
+                    ("RUNX_CWD".to_owned(), root.path().display().to_string()),
+                    (
+                        "RUNX_HOME".to_owned(),
+                        root.path().join("home").display().to_string(),
+                    ),
+                ]
+                .into(),
+                ..Default::default()
+            },
+        )?;
+        let state = McpServerState::new(options)?;
+        let McpServerToolBehavior::Skill(execution) = &state.options.tools[0].result else {
+            return Err("expected executable skill".into());
+        };
+        for value in 1..=5 {
+            let result = execute_mcp_server_skill(
+                &state.next_run_id("echo"),
+                *execution.clone(),
+                [(
+                    "value".to_owned(),
+                    JsonValue::Number(runx_contracts::JsonNumber::I64(value)),
+                )]
+                .into(),
+                state.javascript.clone(),
+            )?;
+            assert!(!result.is_error, "{result:?}");
+            let content = result.structured_content.ok_or("missing native result")?;
+            assert_eq!(
+                content.get("output"),
+                Some(&JsonValue::Object(
+                    [
+                        (
+                            "value".to_owned(),
+                            JsonValue::Number(runx_contracts::JsonNumber::I64(value))
+                        ),
+                        (
+                            "prior".to_owned(),
+                            JsonValue::Number(runx_contracts::JsonNumber::I64(0))
+                        ),
+                    ]
+                    .into()
+                ))
+            );
+        }
+        assert_eq!(state.javascript.session_stats().spawned_process_count, 1);
+        Ok(())
+    }
+
+    #[test]
     fn next_run_id_is_unique_under_concurrent_allocation() -> Result<(), String> {
-        let state = Arc::new(McpServerState::new(McpServerOptions {
-            package_name: "runx-test".to_owned(),
-            package_version: "0.0.0".to_owned(),
-            tools: Vec::new(),
-        }));
+        let state = Arc::new(
+            McpServerState::new(McpServerOptions {
+                package_name: "runx-test".to_owned(),
+                package_version: "0.0.0".to_owned(),
+                tools: Vec::new(),
+            })
+            .map_err(|error| error.to_string())?,
+        );
         let worker_count = 8;
         let ids_per_worker = 64;
         let barrier = Arc::new(Barrier::new(worker_count));
@@ -663,7 +707,10 @@ mod tests {
 
         assert_eq!(ids.len(), worker_count * ids_per_worker);
         for sequence in 1..=(worker_count * ids_per_worker) {
-            assert!(ids.contains(&format!("rx_mcp_skill_alpha_{sequence}")));
+            assert!(ids.contains(&format!(
+                "rx_mcp_{}_skill_alpha_{sequence}",
+                state.session_id
+            )));
         }
         Ok(())
     }

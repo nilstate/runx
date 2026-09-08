@@ -40,7 +40,8 @@ consume those owners; none is a parallel implementation.
 
 - `runx-contracts` owns domain-neutral portable Rust wire types and schema
   mechanics. Payment skills consume the same generic authority, provider
-  operation, approval, and receipt contracts; there is no OSS payment crate.
+  operation, approval, and receipt contracts. `runx-x402` is inert protocol
+  presentation; it owns no provider execution or payment orchestration.
 - `runx-core` owns pure policy, authority, and state-transition algebra.
 - `runx-parser` owns all pure package parsing and validation. It returns one
   aggregate validated package representation; consumers do not reparse package
@@ -131,6 +132,14 @@ map for every target kind. A static/context name collision is a validation
 error. Missing or type-invalid context fails at the producing edge. No target
 kind gets a private context projection path.
 
+CLI and MCP calls share `execution::orchestrator::LocalOrchestrator` and
+`execution::skill_front`. Preparation admits an immutable package and source
+closure once for that invocation; a continuation revalidates its binding.
+Typed run disposition controls success, refusal, approval, and agent handoff.
+An arbitrary JSON `status` field is output data, never execution authority.
+Continuation state binds the original input, package identity, and exact
+resolution answers; transport fronts do not reconstruct a second workflow.
+
 ## Deterministic module boundary
 
 Deterministic JavaScript runs in a dedicated, versioned `runx-js-worker`
@@ -192,10 +201,10 @@ symlink escapes are rejected. Generic command execution is credential-free and
 runs under exact process supervision. Authenticated HTTP destinations are
 derived from the resolved grant; caller input can only narrow that set.
 
-New or changed Rust files stay at roughly 350 lines and functions at 60 lines.
-An exception requires a specific architectural reason and review evidence.
-Existing waivers are migration debt, not precedent; the native monolith and
-its waiver are deleted when typed capabilities land.
+Split code where responsibilities, authority, or independently changing
+contracts separate. Keep ordered admission, invocation, and sealing visible in
+the concrete runner. File length alone does not justify a forwarding module,
+a new trait, or an extra hot-path dispatch.
 
 ## Effect and finality boundary
 
@@ -284,6 +293,15 @@ duplicates cannot change its meaning. A concrete provider driver may map a
 capability it actually implements to the provider's OAuth scopes and bounded
 API operation; an unknown operation remains unsupported rather than being
 silently broadened or rewritten.
+
+Cloud separates authenticated source observations, verified immutable receipt
+archives, and mutable tenant projections. Receiving a webhook is not governed
+execution and never manufactures an execution signature. Receipt queries bind
+the tenant before fetching an archived body. Hosted-run list filtering and
+keyset pagination happen in storage before hydration; full maintenance scans
+consume bounded pages. Registry publication, hosted-run domain rules, and
+atomic effect state have distinct feature owners. Shared protocol code stays
+below those features.
 
 ## Performance contract
 

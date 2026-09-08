@@ -16,9 +16,9 @@ use crate::execution::harness::{assert_json_expectation, assert_receipt_expectat
 use crate::execution::orchestrator::SkillRunRequest;
 use crate::services::{ReceiptServices, WorkspaceEnv};
 
-use super::graph_state::read_graph_state;
 use super::resolution_answers::ResolutionAnswers;
 use super::runner_manifest::selected_runner;
+use super::state_store::read_graph_state;
 
 mod package;
 
@@ -160,6 +160,7 @@ fn run_inline_harness_case(
     let overrides = SkillRunOverrides {
         runner: case.runner.clone(),
         seeded_answers,
+        ..Default::default()
     };
     execute_inline_harness_case(context, &request, receipt_dir, case, runner, &overrides)
 }
@@ -179,7 +180,8 @@ fn execute_inline_harness_case(
         &case.caller.http_exchanges,
     );
     match execute_skill_run_with_overrides(request, overrides, &effects) {
-        Ok(output) => {
+        Ok(result) => {
+            let output = result.output;
             let receipt_id = receipt_id_from_output(&output);
             if receipt_id.is_some()
                 && let (Some(receipt_dir), Some(output_receipt_dir)) =
@@ -370,7 +372,7 @@ fn assert_inline_harness_expectations(
             })?;
         let (receipts, workspace) = harness_receipt_services(request)?;
         let closure = crate::skill_package::inspect_loaded_execution_closure_binding(
-            loaded.clone(),
+            loaded.clone().into(),
             runner_name,
             &request.env,
         )

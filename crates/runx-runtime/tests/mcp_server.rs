@@ -15,8 +15,8 @@ use runx_runtime::RuntimeReceiptSignatureConfig;
 #[cfg(feature = "mcp")]
 use runx_runtime::adapters::mcp::McpServerExecutionOptions;
 use runx_runtime::adapters::mcp::{
-    McpContent, McpHostRunResult, McpServerOptions, McpServerTool, McpServerToolBehavior,
-    McpToolResult, mcp_tool_result_from_host_result, serve_mcp_json_rpc,
+    McpContent, McpServerOptions, McpServerTool, McpServerToolBehavior, McpToolResult,
+    mcp_tool_result_from_run_result, serve_mcp_json_rpc,
 };
 #[cfg(feature = "mcp")]
 use runx_runtime::receipts::store::LocalReceiptStore;
@@ -268,7 +268,7 @@ runners:
             &responses[slow_position],
             &["result", "structuredContent", "runx", "status"]
         ),
-        Some(&JsonValue::String("completed".to_owned()))
+        Some(&JsonValue::String("sealed".to_owned()))
     );
     Ok(())
 }
@@ -305,7 +305,7 @@ fn mcp_server_skill_tool_execution_returns_completed_runx_structured_content()
             &responses[0],
             &["result", "structuredContent", "runx", "status"]
         ),
-        Some(&JsonValue::String("completed".to_owned())),
+        Some(&JsonValue::String("sealed".to_owned())),
         "unexpected MCP server skill response: {:#?}",
         responses[0]
     );
@@ -345,13 +345,13 @@ fn mcp_server_single_skill_call_writes_sealed_receipt() -> Result<(), Box<dyn st
             &responses[0],
             &["result", "structuredContent", "runx", "status"]
         ),
-        Some(&JsonValue::String("completed".to_owned())),
+        Some(&JsonValue::String("sealed".to_owned())),
         "unexpected MCP server skill response: {:#?}",
         responses[0]
     );
     let JsonValue::String(receipt_id) = path(
         &responses[0],
-        &["result", "structuredContent", "runx", "receiptId"],
+        &["result", "structuredContent", "runx", "receipt_id"],
     )
     .ok_or("missing runx receipt id")?
     else {
@@ -371,7 +371,7 @@ fn mcp_server_single_skill_call_writes_sealed_receipt() -> Result<(), Box<dyn st
 
 #[test]
 #[cfg(feature = "mcp")]
-fn mcp_server_missing_required_skill_input_pauses_with_request()
+fn mcp_server_missing_required_skill_input_refuses_without_false_continuation()
 -> Result<(), Box<dyn std::error::Error>> {
     let responses = run_server_with_options(
         vec![request(
@@ -386,45 +386,13 @@ fn mcp_server_missing_required_skill_input_pauses_with_request()
         skill_server_options()?,
     )?;
 
-    assert_no_json_rpc_error(&responses[0]);
+    let response = serde_json::to_string(&responses[0])?;
+    assert!(response.contains("required"), "{response}");
+    assert!(!response.contains("runx resume"), "{response}");
     assert_eq!(
-        path(
-            &responses[0],
-            &["result", "structuredContent", "runx", "status"]
-        ),
-        Some(&JsonValue::String("needs_agent".to_owned()))
+        path(&responses[0], &["result", "isError"]),
+        Some(&JsonValue::Bool(true))
     );
-    assert_eq!(
-        path(
-            &responses[0],
-            &[
-                "result",
-                "structuredContent",
-                "runx",
-                "requests",
-                "0",
-                "kind"
-            ],
-        ),
-        Some(&JsonValue::String("input".to_owned()))
-    );
-    assert_eq!(
-        path(
-            &responses[0],
-            &[
-                "result",
-                "structuredContent",
-                "runx",
-                "requests",
-                "0",
-                "questions",
-                "0",
-                "id"
-            ],
-        ),
-        Some(&JsonValue::String("message".to_owned()))
-    );
-    assert_result_not_error(&responses[0]);
     Ok(())
 }
 
@@ -652,52 +620,57 @@ fn mcp_server_mid_session_transport_error_keeps_recorded_diagnostic()
 }
 
 #[test]
-fn mcp_server_host_result_conversion_covers_terminal_statuses() {
-    let completed = mcp_tool_result_from_host_result(McpHostRunResult::Completed {
-        skill_name: "echo".to_owned(),
-        output: JsonValue::Null,
-        receipt_id: "receipt-1".to_owned(),
-        runx: runx_status("completed"),
-    });
-    assert_eq!(
-        completed.content[0].text,
-        "echo completed. Inspect receipt receipt-1."
-    );
-    assert!(!completed.is_error);
-
-    let needs_agent = mcp_tool_result_from_host_result(McpHostRunResult::NeedsAgent {
-        skill_name: "echo".to_owned(),
-        run_id: "run-1".to_owned(),
-        request_count: 2,
-        runx: runx_status("needs_agent"),
-    });
-    assert_eq!(
-        needs_agent.content[0].text,
-        "echo needs agent input at run-1. Resolve 2 request(s), write answers.json, then run: runx resume run-1 answers.json."
-    );
-    assert!(!needs_agent.is_error);
-
-    for result in [
-        McpHostRunResult::Denied {
-            skill_name: "echo".to_owned(),
-            receipt_id: Some("receipt-2".to_owned()),
-            runx: runx_status("denied"),
-        },
-        McpHostRunResult::Escalated {
-            skill_name: "echo".to_owned(),
-            receipt_id: "receipt-3".to_owned(),
-            error: "needs approval".to_owned(),
-            runx: runx_status("escalated"),
-        },
-        McpHostRunResult::Failed {
-            skill_name: "echo".to_owned(),
-            receipt_id: None,
-            error: "boom".to_owned(),
-            runx: runx_status("failed"),
-        },
+fn mcp_server_uses_typed_disposition_even_when_json_claims_success()
+-> Result<(), Box<dyn std::error::Error>> {
+    for disposition in [
+        ClosureDisposition::Failed,
+        ClosureDisposition::Declined,
+        ClosureDisposition::Blocked,
+        ClosureDisposition::Killed,
+        ClosureDisposition::TimedOut,
     ] {
-        assert!(mcp_tool_result_from_host_result(result).is_error);
+        let result = runx_runtime::execution::orchestrator::RunResult {
+            status: runx_runtime::execution::orchestrator::RunStatus::Sealed,
+            disposition: Some(disposition),
+            output: JsonValue::Object(runx_status("succeeded")),
+            receipt_refs: vec!["receipt-1".to_owned()],
+            child_receipt_refs: Vec::new(),
+            pending_requests: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        assert!(mcp_tool_result_from_run_result(result, None).is_error);
     }
+
+    // Readback-pending graphs are sealed Deferred without an agent request.
+    // They need reconciliation, not a fresh mutation or an invented resume file.
+    let deferred = mcp_tool_result_from_run_result(
+        runx_runtime::execution::orchestrator::RunResult {
+            status: runx_runtime::execution::orchestrator::RunStatus::Failed,
+            disposition: Some(ClosureDisposition::Deferred),
+            output: JsonValue::Object(runx_status("failed")),
+            receipt_refs: vec!["receipt-deferred".to_owned()],
+            child_receipt_refs: Vec::new(),
+            pending_requests: Vec::new(),
+            diagnostics: Vec::new(),
+        },
+        None,
+    );
+    assert!(!deferred.is_error);
+    assert!(deferred.content[0].text.contains("receipt-deferred"));
+    assert!(
+        deferred.content[0]
+            .text
+            .contains("reconcile provider state before retrying")
+    );
+    assert!(!deferred.content[0].text.contains("answers.json"));
+    let structured = deferred.structured_content.ok_or("typed run result")?;
+    assert!(!structured.contains_key("output"));
+    let metadata = structured
+        .get("runx")
+        .and_then(|value| value.as_object())
+        .ok_or("runx metadata")?;
+    assert!(!metadata.contains_key("request_digests"));
+    Ok(())
 }
 
 fn run_server(requests: Vec<JsonValue>) -> Result<Vec<JsonValue>, Box<dyn std::error::Error>> {
@@ -706,8 +679,16 @@ fn run_server(requests: Vec<JsonValue>) -> Result<Vec<JsonValue>, Box<dyn std::e
 
 fn run_server_with_options(
     requests: Vec<JsonValue>,
-    options: McpServerOptions,
+    mut options: McpServerOptions,
 ) -> Result<Vec<JsonValue>, Box<dyn std::error::Error>> {
+    let receipts = tempfile::tempdir()?;
+    for tool in &mut options.tools {
+        if let McpServerToolBehavior::Skill(execution) = &mut tool.result
+            && execution.receipt_dir.is_none()
+        {
+            execution.receipt_dir = Some(receipts.path().to_path_buf());
+        }
+    }
     let prepend_handshake = !matches!(request_method(requests.first()), Some("initialize"));
     let mut framed_requests = Vec::new();
     if prepend_handshake {

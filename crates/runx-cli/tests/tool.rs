@@ -1,10 +1,10 @@
+use crate::support::{repo_root, unsigned_runx_command_with_inherited_cwd};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 #[test]
 fn tool_search_fixture_catalog_json() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args([
             "tool",
             "search",
@@ -24,7 +24,7 @@ fn tool_search_fixture_catalog_json() -> Result<(), Box<dyn std::error::Error>> 
 
 #[test]
 fn tool_inspect_fixture_catalog_json() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args([
             "tool",
             "inspect",
@@ -47,7 +47,7 @@ fn tool_inspect_fixture_catalog_json() -> Result<(), Box<dyn std::error::Error>>
 #[test]
 fn tool_build_minimal_manifest_json() -> Result<(), Box<dyn std::error::Error>> {
     let temp_root = copy_tool_catalog_build_fixture("cli_tool_build", "minimal")?;
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args(["tool", "build", "tools/fixture/minimal", "--json"])
         .env("RUNX_CWD", &temp_root)
         .output()?;
@@ -81,7 +81,7 @@ fn tool_build_matches_invalid_oracle_bytes() -> Result<(), Box<dyn std::error::E
 
 #[test]
 fn tool_search_matches_fixture_oracle_bytes() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args(["tool", "search", "mcp", "--source", "fixture-mcp", "--json"])
         .env("RUNX_ENABLE_FIXTURE_TOOL_CATALOG", "1")
         .output()?;
@@ -91,7 +91,7 @@ fn tool_search_matches_fixture_oracle_bytes() -> Result<(), Box<dyn std::error::
 
 #[test]
 fn tool_inspect_matches_catalog_oracle_bytes() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args([
             "tool",
             "inspect",
@@ -109,7 +109,7 @@ fn tool_inspect_matches_catalog_oracle_bytes() -> Result<(), Box<dyn std::error:
 #[test]
 fn tool_inspect_matches_local_oracle_bytes() -> Result<(), Box<dyn std::error::Error>> {
     let repo = repo_root()?;
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args(["tool", "inspect", "fixture.local_echo", "--json"])
         .env(
             "RUNX_TOOL_ROOTS",
@@ -122,7 +122,7 @@ fn tool_inspect_matches_local_oracle_bytes() -> Result<(), Box<dyn std::error::E
 
 #[test]
 fn tool_inspect_matches_missing_oracle_bytes() -> Result<(), Box<dyn std::error::Error>> {
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args([
             "tool",
             "inspect",
@@ -137,19 +137,13 @@ fn tool_inspect_matches_missing_oracle_bytes() -> Result<(), Box<dyn std::error:
     assert_oracle_output("inspect-missing", &output, None)
 }
 
-fn runx_command() -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_runx"));
-    command.env("NO_COLOR", "1");
-    command
-}
-
 fn assert_build_oracle(
     oracle_name: &str,
     fixture_name: &str,
     tool_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let temp_root = copy_tool_catalog_build_fixture(oracle_name, fixture_name)?;
-    let output = runx_command()
+    let output = unsigned_runx_command_with_inherited_cwd()
         .args(["tool", "build", tool_path, "--json"])
         .env("RUNX_CWD", &temp_root)
         .output()?;
@@ -223,12 +217,6 @@ fn copy_dir(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Erro
         }
     }
     Ok(())
-}
-
-fn repo_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    Ok(Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .canonicalize()?)
 }
 
 fn display(path: &Path) -> String {

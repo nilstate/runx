@@ -90,11 +90,6 @@ pub fn runx_core::policy::authority_proof::build_authority_proof(options: &runx_
 pub fn runx_core::policy::authority_proof::build_authority_proof_metadata(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_core::policy::AuthorityProofMetadata
 pub fn runx_core::policy::authority_proof::build_local_scope_admission(auth: core::option::Option<&runx_contracts::json::JsonValue>, grants: &[runx_core::policy::LocalAdmissionGrant], options: &runx_core::policy::LocalScopeAdmissionOptions) -> runx_contracts::policy_proof::ScopeAdmission
 pub fn runx_core::policy::authority_proof::validate_credential_binding(request: &runx_core::policy::CredentialBindingRequest) -> runx_core::policy::CredentialBindingDecision
-pub mod runx_core::policy::public_work
-pub fn runx_core::policy::public_work::default_public_work_policy() -> runx_core::policy::RequiredPublicWorkPolicy
-pub fn runx_core::policy::public_work::evaluate_public_comment_opportunity(request: &runx_core::policy::PublicCommentOpportunityRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicCommentPolicyDecision
-pub fn runx_core::policy::public_work::evaluate_public_pull_request_candidate(request: &runx_core::policy::PublicPullRequestCandidateRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicPolicyDecision
-pub fn runx_core::policy::public_work::normalize_public_work_policy(policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::RequiredPublicWorkPolicy
 pub mod runx_core::policy::scope
 pub enum runx_core::policy::scope::ScopeGrantPolicy
 pub runx_core::policy::scope::ScopeGrantPolicy::Delegated
@@ -225,42 +220,6 @@ pub struct runx_core::policy::LocalScopeAdmissionOptions
 pub runx_core::policy::LocalScopeAdmissionOptions::connected_auth_checked_at: core::option::Option<alloc::string::String>
 pub runx_core::policy::LocalScopeAdmissionOptions::denied_before_grant_resolution: core::option::Option<bool>
 pub runx_core::policy::LocalScopeAdmissionOptions::wildcard_scopes_trusted: bool
-pub struct runx_core::policy::PublicCommentOpportunityRequest
-pub runx_core::policy::PublicCommentOpportunityRequest::author_association: core::option::Option<alloc::string::String>
-pub runx_core::policy::PublicCommentOpportunityRequest::comments_count: core::option::Option<f64>
-pub runx_core::policy::PublicCommentOpportunityRequest::lane: core::option::Option<alloc::string::String>
-pub runx_core::policy::PublicCommentOpportunityRequest::pull_request: runx_core::policy::PublicPullRequestCandidateRequest
-pub runx_core::policy::PublicCommentOpportunityRequest::recent_outcomes: alloc::vec::Vec<runx_core::policy::PublicRecentOutcome>
-pub runx_core::policy::PublicCommentOpportunityRequest::review_comments_count: core::option::Option<f64>
-pub runx_core::policy::PublicCommentOpportunityRequest::source: core::option::Option<alloc::string::String>
-pub struct runx_core::policy::PublicCommentPolicyDecision
-pub runx_core::policy::PublicCommentPolicyDecision::blocked: bool
-pub runx_core::policy::PublicCommentPolicyDecision::reasons: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::PublicCommentPolicyDecision::welcome_signal: bool
-pub struct runx_core::policy::PublicPolicyDecision
-pub runx_core::policy::PublicPolicyDecision::blocked: bool
-pub runx_core::policy::PublicPolicyDecision::reasons: alloc::vec::Vec<alloc::string::String>
-pub struct runx_core::policy::PublicPullRequestCandidateRequest
-pub runx_core::policy::PublicPullRequestCandidateRequest::author_login: core::option::Option<alloc::string::String>
-pub runx_core::policy::PublicPullRequestCandidateRequest::head_ref_name: core::option::Option<alloc::string::String>
-pub runx_core::policy::PublicPullRequestCandidateRequest::labels: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::PublicPullRequestCandidateRequest::title: core::option::Option<alloc::string::String>
-pub struct runx_core::policy::PublicRecentOutcome
-pub runx_core::policy::PublicRecentOutcome::status: core::option::Option<alloc::string::String>
-pub struct runx_core::policy::PublicWorkPolicy
-pub runx_core::policy::PublicWorkPolicy::blocked_author_patterns: core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub runx_core::policy::PublicWorkPolicy::blocked_exact_labels: core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub runx_core::policy::PublicWorkPolicy::blocked_head_ref_prefixes: core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub runx_core::policy::PublicWorkPolicy::blocked_label_prefixes: core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub runx_core::policy::PublicWorkPolicy::require_welcome_signal_for_pull_request_comments: core::option::Option<bool>
-pub runx_core::policy::PublicWorkPolicy::trust_recovery_statuses: core::option::Option<alloc::vec::Vec<alloc::string::String>>
-pub struct runx_core::policy::RequiredPublicWorkPolicy
-pub runx_core::policy::RequiredPublicWorkPolicy::blocked_author_patterns: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::RequiredPublicWorkPolicy::blocked_exact_labels: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::RequiredPublicWorkPolicy::blocked_head_ref_prefixes: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::RequiredPublicWorkPolicy::blocked_label_prefixes: alloc::vec::Vec<alloc::string::String>
-pub runx_core::policy::RequiredPublicWorkPolicy::require_welcome_signal_for_pull_request_comments: bool
-pub runx_core::policy::RequiredPublicWorkPolicy::trust_recovery_statuses: alloc::vec::Vec<alloc::string::String>
 pub struct runx_core::policy::ScopeBoundsComparator
 impl runx_core::policy::authority_mint::ScopeBoundsComparator
 pub const runx_core::policy::authority_mint::ScopeBoundsComparator::ALGORITHM: &'static str
@@ -293,15 +252,11 @@ pub fn runx_core::policy::build_authority_proof(options: &runx_core::policy::Bui
 pub fn runx_core::policy::build_authority_proof_metadata(options: &runx_core::policy::BuildAuthorityProofOptions) -> runx_core::policy::AuthorityProofMetadata
 pub fn runx_core::policy::build_local_scope_admission(auth: core::option::Option<&runx_contracts::json::JsonValue>, grants: &[runx_core::policy::LocalAdmissionGrant], options: &runx_core::policy::LocalScopeAdmissionOptions) -> runx_contracts::policy_proof::ScopeAdmission
 pub fn runx_core::policy::compute_maturity(signals: &runx_contracts::maturity::MaturitySignals) -> runx_contracts::maturity::MaturityTier
-pub fn runx_core::policy::default_public_work_policy() -> runx_core::policy::RequiredPublicWorkPolicy
 pub fn runx_core::policy::ensure_subset_proof(proof: core::option::Option<&runx_contracts::authority::AuthoritySubsetProof>, child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm) -> core::result::Result<(), runx_core::policy::authority_mint::SubsetProofError>
 pub fn runx_core::policy::evaluate_authority_effect_guards<'a>(parent: &'a runx_contracts::authority::AuthorityTerm, child: &'a runx_contracts::authority::AuthorityTerm, family: &'a str) -> runx_core::policy::authority_algebra::AuthorityEffectGuardDecision<'a>
-pub fn runx_core::policy::evaluate_public_comment_opportunity(request: &runx_core::policy::PublicCommentOpportunityRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicCommentPolicyDecision
-pub fn runx_core::policy::evaluate_public_pull_request_candidate(request: &runx_core::policy::PublicPullRequestCandidateRequest, policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::PublicPolicyDecision
 pub fn runx_core::policy::is_authority_subset(child: &runx_contracts::authority::AuthorityTerm, parent: &runx_contracts::authority::AuthorityTerm, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator) -> bool
 pub fn runx_core::policy::mint_attenuated(parent: &runx_contracts::authority::AuthorityTerm, request: &runx_core::policy::authority_mint::AttenuationRequest, comparator: &dyn runx_core::policy::authority_mint::FamilySubsetComparator, checked_at: runx_contracts::schema::IsoDateTime) -> core::result::Result<(runx_contracts::authority::AuthorityTerm, runx_contracts::authority::AuthoritySubsetProof), runx_core::policy::authority_mint::AttenuationError>
 pub fn runx_core::policy::missing_granted_scopes(required_scopes: &[alloc::string::String], granted_scopes: &[alloc::string::String], policy: runx_core::policy::scope::ScopeGrantPolicy) -> alloc::vec::Vec<alloc::string::String>
-pub fn runx_core::policy::normalize_public_work_policy(policy: &runx_core::policy::PublicWorkPolicy) -> runx_core::policy::RequiredPublicWorkPolicy
 pub fn runx_core::policy::parse_rfc3339_moment(value: &str) -> core::option::Option<(i64, i64, u32)>
 pub fn runx_core::policy::scope_grant_allows(granted_scope: &str, requested_scope: &str, policy: runx_core::policy::scope::ScopeGrantPolicy) -> bool
 pub fn runx_core::policy::strict_cli_tool_inline_code_denial(command: core::option::Option<&str>, args: &[alloc::string::String], policy: core::option::Option<&runx_core::policy::LocalExecutionPolicy>) -> core::option::Option<alloc::string::String>

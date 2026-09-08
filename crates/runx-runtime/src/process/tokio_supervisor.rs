@@ -106,7 +106,7 @@ impl OwnedTokioProcess {
         #[cfg(not(windows))]
         {
             let mut command = command;
-            command.spawn().map(|child| Self { child })
+            super::with_spawn_lock(|| command.spawn()).map(|child| Self { child })
         }
 
         #[cfg(windows)]
