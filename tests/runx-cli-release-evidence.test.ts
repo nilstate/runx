@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   RUNX_CLI_NPM_PACKAGES,
   RUNX_CLI_RELEASE_NOTE_SECTIONS,
-  RUNX_CLI_REQUIRED_CANDIDATE_CHECKS,
   RUNX_CLI_REQUIRED_RELEASE_CHANNELS,
   RUNX_CLI_REQUIRED_RELEASE_CHECKS,
   githubActionsSkipDirective,
@@ -85,7 +84,7 @@ describe("Runx CLI release evidence", () => {
       .every(({ authorization }) => authorization !== "Bearer github-readback-token")).toBe(true);
   });
 
-  it("binds release readiness to the required checks on the exact commit", async () => {
+  it("binds release readiness to the CI aggregate on the exact commit", async () => {
     const requests: Array<{ url: string; authorization: string | null }> = [];
     const evidence = await observeRunxCliCandidateChecks({
       commit,
@@ -96,11 +95,10 @@ describe("Runx CLI release evidence", () => {
           authorization: new Headers(init?.headers).get("authorization"),
         });
         return jsonResponse({
-          check_runs: RUNX_CLI_REQUIRED_CANDIDATE_CHECKS.map((name) => ({
-            name,
-            status: "completed",
-            conclusion: "success",
-          })),
+          check_runs: [
+            { name: "checks", status: "completed", conclusion: "success" },
+            { name: "Dependabot", status: "completed", conclusion: "failure" },
+          ],
         });
       },
     });
@@ -108,7 +106,7 @@ describe("Runx CLI release evidence", () => {
     expect(evidence.ready).toBe(true);
     expect(evidence.commitRef).toBe(commit);
     expect(evidence.checks.map((check: { id: string }) => check.id))
-      .toEqual(["candidate_checks", "candidate_gitleaks"]);
+      .toEqual(["candidate_checks"]);
     expect(requests).toEqual([{
       url:
         `https://api.github.com/repos/runxhq/runx/commits/${commit}/check-runs`
@@ -118,20 +116,25 @@ describe("Runx CLI release evidence", () => {
   });
 
   it("refuses missing, pending, or failed exact-commit checks", async () => {
-    const evidence = await observeRunxCliCandidateChecks({
-      commit,
-      githubToken: "",
-      fetchImpl: async () => jsonResponse({
-        check_runs: [
-          { name: "checks", status: "completed", conclusion: "success" },
-          { name: "checks", status: "in_progress", conclusion: null },
-          { name: "gitleaks", status: "completed", conclusion: "failure" },
-        ],
-      }),
-    });
+    for (const checkRuns of [
+      [],
+      [{ name: "classify", status: "completed", conclusion: "success" }],
+      [{ name: "checks", status: "completed", conclusion: "failure" }],
+      [{ name: "checks", status: "completed", conclusion: "skipped" }],
+      [
+        { name: "checks", status: "completed", conclusion: "success" },
+        { name: "checks", status: "in_progress", conclusion: null },
+      ],
+    ]) {
+      const evidence = await observeRunxCliCandidateChecks({
+        commit,
+        githubToken: "",
+        fetchImpl: async () => jsonResponse({ check_runs: checkRuns }),
+      });
 
-    expect(evidence.ready).toBe(false);
-    expect(failedIds(evidence)).toEqual(["candidate_checks", "candidate_gitleaks"]);
+      expect(evidence.ready).toBe(false);
+      expect(failedIds(evidence)).toEqual(["candidate_checks"]);
+    }
   });
 
   it("refuses workflow, npm-latest, and anonymous-container drift", async () => {

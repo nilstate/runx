@@ -45,8 +45,8 @@ export const RUNX_CLI_RELEASE_NOTE_SECTIONS = Object.freeze([
 ]);
 
 export const RUNX_CLI_REQUIRED_CANDIDATE_CHECKS = Object.freeze([
+  // CI owns the affected platform checks and secret scan behind this aggregate.
   "checks",
-  "gitleaks",
 ]);
 
 const GITHUB_ACTIONS_SKIP_MARKERS = Object.freeze([
