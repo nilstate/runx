@@ -33,7 +33,7 @@ use super::admission::{
     recover_pending_effects, validate_replayed_effect,
 };
 use super::{
-    GraphRun, Runtime, StepRun, graph_run_ephemeral_result, graph_run_result,
+    GraphCheckpoint, GraphRun, Runtime, StepRun, graph_run_ephemeral_result, graph_run_result,
     graph_run_skill_output,
 };
 use crate::RuntimeError;
@@ -108,6 +108,7 @@ pub(super) struct StepRunRequest<'a, A> {
     pub(super) inputs: JsonObject,
     pub(super) provenance: Vec<ProvenanceEntry>,
     pub(super) policy_approval_refs: Vec<Reference>,
+    pub(super) child_checkpoint: Option<Box<GraphCheckpoint>>,
     pub(super) host: &'a mut dyn Host,
 }
 
@@ -120,6 +121,7 @@ struct StepHandlerCtx<'a, A> {
     inputs: JsonObject,
     provenance: Vec<ProvenanceEntry>,
     policy_approval_refs: Vec<Reference>,
+    child_checkpoint: Option<Box<GraphCheckpoint>>,
     host: &'a mut dyn Host,
     authority: Option<StepAuthorityContext>,
     loaded_skill: Option<LoadedStepSkill>,
@@ -191,6 +193,7 @@ where
         inputs,
         provenance,
         policy_approval_refs,
+        child_checkpoint,
         host,
     } = request;
     let effect_target = ResolvedEffectTarget {
@@ -252,6 +255,7 @@ where
         inputs,
         provenance,
         policy_approval_refs,
+        child_checkpoint,
         host,
         authority,
         loaded_skill,
@@ -280,6 +284,12 @@ where
     // `<step>.<packet>.data`, never the sub-skill's internal step ids.
     let runner_artifacts = skill.runner.artifacts.clone();
     let (skill_name, invocation) = loaded_skill_invocation(skill, &request)?;
+    if request.child_checkpoint.is_some() && invocation.source.source_type != SourceKind::Graph {
+        return Err(RuntimeError::InvalidRunStep {
+            step_id: request.step.id.clone(),
+            reason: "child graph checkpoint cannot resume a non-graph runner".to_owned(),
+        });
+    }
     crate::execution_environment::resolve_declared_environment(
         &invocation.requirements,
         &invocation.env,
@@ -343,7 +353,12 @@ where
     let skill_directory = invocation.skill_directory.clone();
     let invocation_env = invocation.env.clone();
     let policy_approval_refs = request.policy_approval_refs.clone();
-    let run = execute_nested_graph(request.runtime, request.host, &invocation)?;
+    let run = execute_nested_graph(
+        request.runtime,
+        request.host,
+        &invocation,
+        request.child_checkpoint,
+    )?;
     let result = graph_run_result(&run)?;
     let ephemeral_result = graph_run_ephemeral_result(&run);
     let mut output = graph_run_skill_output(&result, &run)?;
@@ -395,6 +410,7 @@ fn execute_nested_graph<A>(
     runtime: &Runtime<A>,
     host: &mut dyn Host,
     invocation: &SkillInvocation,
+    checkpoint: Option<Box<GraphCheckpoint>>,
 ) -> Result<GraphRun, RuntimeError>
 where
     A: SkillAdapter,
@@ -418,7 +434,15 @@ where
         runtime.javascript.clone(),
         runtime.local_artifacts.clone(),
     );
-    child_runtime.run_graph_with_host(&invocation.skill_directory, graph, host)
+    match checkpoint {
+        Some(checkpoint) => child_runtime.resume_graph_with_host(
+            &invocation.skill_directory,
+            graph,
+            *checkpoint,
+            host,
+        ),
+        None => child_runtime.run_graph_with_host(&invocation.skill_directory, graph, host),
+    }
 }
 
 /// A nested graph exposes the same canonical public result that a top-level
@@ -841,6 +865,12 @@ where
     A: SkillAdapter,
 {
     let kind = step_execution_kind(request.step)?;
+    if request.child_checkpoint.is_some() && !matches!(kind, StepExecutionKind::Subskill) {
+        return Err(RuntimeError::InvalidRunStep {
+            step_id: request.step.id.clone(),
+            reason: "child graph checkpoint requires a graph skill target".to_owned(),
+        });
+    }
     // Every registered step is admitted centrally (enforce_step_authority_admission,
     // upstream) and sealed centrally here: this is the single place a step's
     // admission witness records which authority admitted the act, or falls back to a
@@ -921,6 +951,7 @@ where
         authority,
         loaded_skill: _,
         policy_approval_refs,
+        child_checkpoint: _,
     } = request;
     let source = inline_source(step)?;
     let requirements = inline_step_requirements(step, &source);
@@ -1067,6 +1098,7 @@ where
         authority: _,
         loaded_skill: _,
         policy_approval_refs: _,
+        child_checkpoint: _,
     } = request;
     let source = agent_task_source(step)?;
     let requirements = inline_step_requirements(step, &source);
@@ -1103,6 +1135,7 @@ where
         return Err(RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("agent act {request_id} requires resolution"),
+            checkpoint: None,
         });
     };
     let verification_metadata = verified_agent_metadata_with_artifacts(
@@ -1211,6 +1244,7 @@ fn resolve_agent_act(
         .ok_or_else(|| RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("agent act {request_id} requires resolution"),
+            checkpoint: None,
         })
 }
 
@@ -1262,6 +1296,7 @@ where
         host: _,
         authority,
         loaded_skill: _,
+        child_checkpoint: _,
     } = request;
     #[cfg(not(feature = "catalog"))]
     {
@@ -1525,6 +1560,7 @@ fn completed_approval_resolution(
         return Err(RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason: format!("approval gate '{}' is pending", gate.id),
+            checkpoint: None,
         });
     }
     Ok(resolution)

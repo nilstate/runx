@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use runx_contracts::{ClosureDisposition, FanoutReceiptSyncPoint, JsonObject, JsonValue, Receipt};
-use runx_core::state_machine::{GraphStatus, SequentialGraphState, StepAdmissionWitness};
+use runx_core::state_machine::{
+    GraphStatus, GraphStepStatus, SequentialGraphState, StepAdmissionWitness,
+};
 use runx_parser::ExecutionGraph;
 use serde::{Deserialize, Serialize};
 
@@ -197,6 +199,16 @@ pub struct GraphCheckpoint {
     pub steps: Vec<StepRun>,
     pub sync_points: Vec<FanoutReceiptSyncPoint>,
     pub journal: ExecutionJournal,
+    /// A host-suspended step retains its attempt and any unfinished child graph.
+    /// This is allocated only when execution yields, never for completed steps.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suspended_step: Option<Box<SuspendedGraphStep>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SuspendedGraphStep {
+    pub step_id: String,
+    pub child: Option<Box<GraphCheckpoint>>,
 }
 
 pub struct Runtime<A> {
@@ -379,9 +391,9 @@ where
                 )?;
                 Ok(execution.finish(graph, receipt))
             }
-            Err(RuntimeError::ResolutionPending { step_id, reason })
-                if terminal_outcome == GraphTerminalOutcome::SealReceipt =>
-            {
+            Err(RuntimeError::ResolutionPending {
+                step_id, reason, ..
+            }) if terminal_outcome == GraphTerminalOutcome::SealReceipt => {
                 let receipt = graph_receipt_with_disposition_and_policy(
                     &graph.name,
                     &mut execution.runs,
@@ -401,7 +413,7 @@ where
                 )?;
                 Ok(execution.finish(graph, receipt))
             }
-            Err(error) => Err(error),
+            Err(error) => Err(execution.checkpoint_error(&graph.name, error)),
         }
     }
 
@@ -434,7 +446,9 @@ where
         host: &mut dyn Host,
     ) -> Result<GraphCheckpoint, RuntimeError> {
         let mut execution = GraphExecution::new(graph);
-        execution.run(self, graph_dir, graph, host, Some(max_steps))?;
+        if let Err(error) = execution.run(self, graph_dir, graph, host, Some(max_steps)) {
+            return Err(execution.checkpoint_error(&graph.name, error));
+        }
         Ok(execution.checkpoint(graph.name.clone()))
     }
 
@@ -495,7 +509,9 @@ where
         host: &mut dyn Host,
     ) -> Result<GraphRun, RuntimeError> {
         let mut execution = GraphExecution::from_checkpoint(&graph, checkpoint)?;
-        execution.run(self, graph_dir, &graph, host, None)?;
+        if let Err(error) = execution.run(self, graph_dir, &graph, host, None) {
+            return Err(execution.checkpoint_error(&graph.name, error));
+        }
         let receipt = graph_receipt_with_effects_and_signature_policy(
             &graph.name,
             &mut execution.runs,
@@ -615,7 +631,13 @@ where
             .steps
             .iter()
             .find(|step| step.step_id == step_id)
-            .map_or(1, |step| step.attempts.saturating_add(1).max(1));
+            .map_or(1, |step| {
+                if step.status == GraphStepStatus::Running {
+                    step.attempts
+                } else {
+                    step.attempts.saturating_add(1).max(1)
+                }
+            });
         let step = graph
             .steps
             .iter()
@@ -652,7 +674,9 @@ where
         host: &mut dyn Host,
     ) -> Result<GraphCheckpoint, RuntimeError> {
         let mut execution = GraphExecution::from_checkpoint(graph, checkpoint)?;
-        execution.run(self, graph_dir, graph, host, Some(max_steps))?;
+        if let Err(error) = execution.run(self, graph_dir, graph, host, Some(max_steps)) {
+            return Err(execution.checkpoint_error(&graph.name, error));
+        }
         Ok(execution.checkpoint(graph.name.clone()))
     }
 }
@@ -1107,6 +1131,7 @@ mod tests {
             steps: run.steps,
             sync_points: run.sync_points,
             journal: run.journal,
+            suspended_step: None,
         };
         let serialized = serde_json::to_value(checkpoint)?;
         let step = serialized

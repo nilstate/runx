@@ -12,7 +12,7 @@ use super::super::graph::{
 };
 use super::super::graph_index::PriorRunIndex;
 use super::step_handlers::{StepRunRequest, run_step_with_inputs};
-use super::{Runtime, StepRun};
+use super::{GraphCheckpoint, Runtime, StepRun};
 use crate::RuntimeError;
 use crate::adapter::SkillAdapter;
 use crate::host::Host;
@@ -61,6 +61,7 @@ pub(super) struct LoadedStepExecutionRequest<'a, A: SkillAdapter> {
     pub(super) attempt: u32,
     pub(super) loaded_skill: Option<LoadedStepSkill>,
     pub(super) policy_approval_refs: Vec<Reference>,
+    pub(super) child_checkpoint: Option<Box<GraphCheckpoint>>,
     pub(super) host: &'a mut dyn Host,
 }
 
@@ -109,6 +110,7 @@ where
         attempt,
         loaded_skill,
         policy_approval_refs,
+        child_checkpoint,
         host,
     } = request;
     let request = StepRunRequest {
@@ -120,6 +122,7 @@ where
         inputs,
         provenance,
         policy_approval_refs,
+        child_checkpoint,
         host,
     };
     match loaded_skill {

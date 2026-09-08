@@ -89,6 +89,7 @@ pub(super) fn prepare_effect_execution(
         Ok(EffectPreparationOutcome::Pending { reason }) => Err(RuntimeError::ResolutionPending {
             step_id: step.id.clone(),
             reason,
+            checkpoint: None,
         }),
         Err(source) => Err(runtime_effect_error(step, source)),
     }

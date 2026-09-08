@@ -51,7 +51,11 @@ pub enum RuntimeError {
     #[error("graph step '{step_id}' is blocked: {reason}")]
     GraphBlocked { step_id: String, reason: String },
     #[error("graph step '{step_id}' is waiting for host resolution: {reason}")]
-    ResolutionPending { step_id: String, reason: String },
+    ResolutionPending {
+        step_id: String,
+        reason: String,
+        checkpoint: Option<Box<crate::execution::runner::GraphCheckpoint>>,
+    },
     #[error(transparent)]
     ContextEdgeUnresolved(Box<ContextEdgeUnresolvedError>),
     #[error("authority {verb:?} denied graph step '{step_id}': {reason}")]
@@ -391,9 +395,12 @@ impl RuntimeError {
                 step_id: step_id.to_owned(),
                 reason,
             },
-            Self::ResolutionPending { reason, .. } => Self::ResolutionPending {
+            Self::ResolutionPending {
+                reason, checkpoint, ..
+            } => Self::ResolutionPending {
                 step_id: step_id.to_owned(),
                 reason,
+                checkpoint,
             },
             Self::AuthorityDenied { verb, reason, .. } => Self::AuthorityDenied {
                 verb,
