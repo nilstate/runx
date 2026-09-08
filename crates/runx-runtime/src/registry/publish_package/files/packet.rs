@@ -3,7 +3,10 @@ use std::path::Path;
 
 use super::insert_source_file;
 use crate::LoadedSkillPackage;
-use crate::packet_schemas::{PacketSchemaCatalog, packet_schema_directories};
+use crate::packet_schemas::{
+    PacketSchemaCatalog, declared_runner_packet_ids, declared_tool_packet_ids,
+    packet_schema_directories,
+};
 use crate::registry::RegistryPackageFile;
 use crate::registry::publish_package::RegistryPublishPackageError;
 
@@ -14,7 +17,18 @@ pub(super) fn append_declared_packet_schemas(
     cwd: &Path,
     packet_ids: &std::collections::BTreeSet<String>,
 ) -> Result<(), RegistryPublishPackageError> {
-    if packet_ids.is_empty() {
+    // Bundles retain the full manifest, including runners outside the selected execution closure.
+    let mut required_packet_ids = packet_ids.clone();
+    required_packet_ids.extend(loaded.resolved_input_packet_schemas.keys().cloned());
+    for manifest in loaded.package.profiles.values() {
+        for runner in manifest.runners.values() {
+            required_packet_ids.extend(declared_runner_packet_ids(runner));
+        }
+    }
+    for package_tool in loaded.package.tools.values() {
+        required_packet_ids.extend(declared_tool_packet_ids(&package_tool.tool));
+    }
+    if required_packet_ids.is_empty() {
         return Ok(());
     }
     let workspace = crate::resolve_runx_workspace_base(env, cwd);
@@ -41,7 +55,7 @@ pub(super) fn append_declared_packet_schemas(
         .map_err(|error| {
             RegistryPublishPackageError::invalid(format!("packet schema catalog failed: {error}"))
         })?;
-    for packet_id in packet_ids {
+    for packet_id in &required_packet_ids {
         let Some(schema) = loaded
             .resolved_input_packet_schemas
             .get(packet_id)

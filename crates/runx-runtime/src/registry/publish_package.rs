@@ -315,6 +315,7 @@ runners:
     fn publish_harness_preserves_local_sibling_execution_closure()
     -> Result<(), Box<dyn std::error::Error>> {
         let temp = tempfile::tempdir()?;
+        fs::write(temp.path().join("pnpm-workspace.yaml"), "packages: []\n")?;
         let catalog = temp.path().join("skills");
         let root = catalog.join("root");
         let sibling = catalog.join("sibling");
@@ -368,8 +369,32 @@ runners:
           tool: data.digest
           inputs:
             value: sibling
+  verify:
+    type: agent
+    inputs:
+      provider_operation:
+        type: json
+        required: true
+        packet: runx.test.provider-operation.v1
+    outputs:
+      verification: object
+    artifacts:
+      named_emits:
+        verification: verification
+      packets:
+        verification: runx.test.verification.v1
 "#,
         )?;
+        fs::create_dir_all(temp.path().join("dist/packets"))?;
+        for (name, packet) in [
+            ("provider-operation", "runx.test.provider-operation.v1"),
+            ("verification", "runx.test.verification.v1"),
+        ] {
+            fs::write(
+                temp.path().join(format!("dist/packets/{name}.schema.json")),
+                format!(r#"{{"x-runx-packet-id":"{packet}","type":"object"}}"#),
+            )?;
+        }
         fs::create_dir_all(root.join("packets"))?;
         fs::write(
             root.join("packets/sibling.schema.json"),
@@ -396,6 +421,13 @@ runners:
         assert!(package_paths.contains(&"runx.package.json"));
         assert!(package_paths.contains(&"dependencies/sibling/SKILL.md"));
         assert!(package_paths.contains(&"dependencies/sibling/X.yaml"));
+        for schema in ["provider-operation", "verification"] {
+            assert!(
+                package_paths.contains(
+                    &format!("dependencies/sibling/packets/{schema}.schema.json").as_str()
+                )
+            );
+        }
         let harness_path = package
             .harness
             .as_ref()
