@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 
@@ -6,6 +7,13 @@ import { RUNX_SCOPE_GRANT_POLICY, scopeGrantAllows } from "@runxhq/contracts";
 import { evaluateRustKernelInputSync } from "../scripts/rust-kernel-eval.js";
 
 const policies = Object.values(RUNX_SCOPE_GRANT_POLICY);
+const workspaceRoot = fileURLToPath(new URL("..", import.meta.url));
+const batchBinary = path.join(
+  path.resolve(workspaceRoot, process.env.CARGO_TARGET_DIR ?? "crates/target"),
+  "debug",
+  "examples",
+  process.platform === "win32" ? "kernel_eval_batch.exe" : "kernel_eval_batch",
+);
 const namespaces = ["", "repo", "repository", "repo:admin", "α", "🧭", "repo*", " ", "\0"];
 const segments = ["", "read", "write", "*", "read:child", "🛠️", "\n"];
 const grants = [...new Set([
@@ -26,10 +34,8 @@ const cases = policies.flatMap((policy) => grants.flatMap((grantedScope) => requ
 let nativeResults: readonly { kind: "output"; value: boolean }[];
 
 beforeAll(() => {
-  const result = spawnSync("cargo", [
-    "run", "--quiet", "--manifest-path", "crates/Cargo.toml", "-p", "runx-core", "--example", "kernel_eval_batch",
-  ], {
-    cwd: fileURLToPath(new URL("..", import.meta.url)),
+  const result = spawnSync(batchBinary, [], {
+    cwd: workspaceRoot,
     encoding: "utf8",
     input: JSON.stringify(cases),
     maxBuffer: 8 * 1024 * 1024,
