@@ -179,6 +179,9 @@ if (rustBuild.status === 0) {
       step("docs:api:check", "pnpm", ["docs:api:check"]),
       step("docs:exit-codes", "pnpm", ["docs:exit-codes"]),
       step("doctor json", rustKernelBin, ["doctor", "--json"]),
+      step("release candidate smoke", "node", [
+        "scripts/smoke-release-candidate.mjs", "--runx-bin", rustKernelBin,
+      ]),
       step("test:fast", "pnpm", ["test:fast"]),
     ],
     evalBinEnv,

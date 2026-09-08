@@ -51,8 +51,8 @@ try {
   writeFileSync(
     path.join(root, ".env"),
     [
-      "RUNX_RELEASE_SMOKE_MARKER=workspace-env",
-      "RUNX_RELEASE_SMOKE_UNDECLARED=must-not-cross",
+      "RELEASE_SMOKE_MARKER=workspace-env",
+      "RELEASE_SMOKE_UNDECLARED=must-not-cross",
       "",
     ].join("\n"),
   );
@@ -178,7 +178,7 @@ runners:
     type: javascript
     module: environment.mjs
     environment:
-      required: [RUNX_RELEASE_SMOKE_MARKER]
+      required: [RELEASE_SMOKE_MARKER]
     outputs:
       environment: object
 `,
@@ -187,11 +187,11 @@ runners:
     path.join(skill, "environment.mjs"),
     `export default (_inputs, context) => ({
   environment: {
-    marker: context.environment.RUNX_RELEASE_SMOKE_MARKER,
+    marker: context.environment.RELEASE_SMOKE_MARKER,
     frozen: Object.isFrozen(context.environment),
     hasUndeclared: Object.hasOwn(
       context.environment,
-      "RUNX_RELEASE_SMOKE_UNDECLARED",
+      "RELEASE_SMOKE_UNDECLARED",
     ),
     keys: Object.keys(context.environment).sort(),
   },
@@ -211,7 +211,7 @@ runners:
     || output.result?.environment?.frozen !== true
     || output.result?.environment?.hasUndeclared !== false
     || JSON.stringify(output.result?.environment?.keys)
-      !== JSON.stringify(["RUNX_RELEASE_SMOKE_MARKER"])
+      !== JSON.stringify(["RELEASE_SMOKE_MARKER"])
   ) {
     throw new Error(
       "declared workspace environment did not reach JavaScript intact and exclusively",
@@ -256,7 +256,11 @@ runners:
     throw new Error("operator context was not printed exactly once");
   }
   const output = parseJson(result.stdout, "operator context");
-  const envelope = output.requests?.[0]?.invocation?.envelope;
+  const request = output.requests?.[0];
+  if (request?.request_digest !== request?.artifact_ref?.digest) {
+    throw new Error("agent request digest does not match its artifact");
+  }
+  const envelope = readArtifact(request?.artifact_ref).invocation?.envelope;
   const instructions = envelope?.instructions;
   if (
     typeof instructions !== "string"
@@ -295,13 +299,12 @@ runners:
             wrap_as: approval_decision
             packet: runx.approval.decision.v1
         - id: apply
-          tool: fs.apply_bundle
+          tool: fs.write
           scopes: [fs.write]
           inputs:
             repo_root: .
-            writes:
-              - path: approval-proof.txt
-                contents: one host-attested human approval
+            path: approval-proof.txt
+            contents: one host-attested human approval
       policy:
         guards:
           - step: apply
@@ -365,7 +368,8 @@ runners:
     "--json",
   ]);
   const resumed = parseJson(resumedResult.stdout, "approval resume");
-  const actor = resumed.context?.step_outputs?.approve?.approval_decision?.data?.actor;
+  const diagnostics = readArtifact(resumed.diagnostics_ref);
+  const actor = diagnostics.context?.step_outputs?.approve?.approval_decision?.data?.actor;
   const proof = path.join(root, "approval-proof.txt");
   if (
     resumed.status !== "sealed"
@@ -585,6 +589,7 @@ function isolatedEnvironment() {
     ...Object.fromEntries(
       Object.entries(process.env).filter(([name]) => !name.startsWith("RUNX_")),
     ),
+    INIT_CWD: root,
     RUNX_HOME: home,
     RUNX_REGISTRY_DIR: registry,
     RUNX_REGISTRY_MANIFEST_TRUST_KEY_ID: signingKey.keyId,
@@ -599,6 +604,18 @@ function parseJson(value, context) {
   } catch {
     throw new Error(`${context} did not return JSON: ${value}`);
   }
+}
+
+function readArtifact(reference) {
+  if (reference?.schema !== "runx.project_artifact_ref.v1") {
+    throw new Error("candidate omitted the expected project artifact reference");
+  }
+  const bytes = readFileSync(path.resolve(root, reference.path));
+  const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+  if (bytes.length !== reference.bytes || digest !== reference.digest) {
+    throw new Error("candidate artifact content does not match its reference");
+  }
+  return parseJson(bytes.toString("utf8"), "candidate artifact");
 }
 
 function requireFile(file, label) {
