@@ -245,7 +245,7 @@ Consequential run pattern:
 - doctrine: <https://runx.ai/doctrine>
 - catalog: <https://runx.ai/x>
 - source: <https://github.com/runxhq/runx>
-- credentials: <https://github.com/runxhq/runx/blob/main/oss/docs/credentials.md>
+- credentials: <https://github.com/runxhq/runx/blob/main/docs/credentials.md>
 
 Open source. Apache-2.0 licensed. Self-hostable. Works with local agents and hosted
 surfaces because the skill contract, authority model, and receipts are portable.
